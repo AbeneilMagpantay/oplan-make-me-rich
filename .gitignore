@@ -1,0 +1,11 @@
+.venv/
+data/*
+!data/manifest.json
+!data/validation.json
+__pycache__/
+*.pyc
+*.nbi
+*.nbc
+.pytest_cache/
+ledger/.evaluate.lock
+_build/

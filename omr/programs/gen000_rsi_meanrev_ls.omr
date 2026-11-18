@@ -1,0 +1,12 @@
+# Generation 0 baseline (kernel copy, hash-locked; also used as a calibration family).
+# rsi() is centred: (RSI - 50) / 50, so the Python band 20 (RSI 30 / 70) is 0.4 here.
+name = "gen000_rsi_meanrev_ls"
+family = "meanrev"
+kind = "single"
+hypothesis = "Short-horizon overreaction reverts: on 4h bars, a Wilder RSI below 50 minus the band marks an oversold move worth buying and holding until RSI recovers above 50; RSI above 50 plus the band marks an overbought move worth shorting until RSI falls below 50. Mechanism: liquidity provision against forced and impatient flow. Falsified if VAL PSR(0) < 0.90, 2x costs kill it, or the timing permutation shows no timing skill."
+
+period = param(14, 7, 28)
+band = param(0.4, 0.2, 0.6)
+
+r = rsi(h4(close), period)
+signal = hold(r < -band, r > 0, r > band, r < 0)

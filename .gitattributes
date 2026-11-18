@@ -1,0 +1,2 @@
+# Byte-exact storage: the kernel lock hashes file bytes, so git must never convert line endings.
+* -text

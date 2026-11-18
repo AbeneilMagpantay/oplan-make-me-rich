@@ -1,0 +1,23 @@
+# Kernel selftest program (never a trial): touches every field, timeframe and function once.
+name = "kernel_kitchen_sink"
+family = "other"
+kind = "portfolio"
+hypothesis = "Selftest only: exercises every field, timeframe and function of the language; it has no edge."
+
+n = param(10, 5, 20)
+k = param(0.5, 0.25, 1.0)
+
+m8 = h8(mark_close)
+w = weekly(trades)
+a = zscore(h2(close), n) + rank(ema(h3(high), n), n)
+b = ret(sma(h4(low), n), 1) - logret(median(h6(open), n), 1)
+c = delta(rmax(m8, n), 1) / std(m8, n)
+e = min2(rmin(h12(volume), n) / rsum(h12(taker_buy_volume), n), lag(daily(quote_volume), n) / daily(taker_buy_quote_volume))
+f = max2(sqrt(w / lag(w, 1)), abs(corr(close, btc(close), n)))
+g = rsi(close, n) * tanh(atr(high, low, close, n) / close) + realised_vol(close, n)
+u = log(exp(funding_mean(n) + funding8h)) + hour - weekday
+y = clip(a + b + c, -1, 1)
+p = y > 0
+hh = hold(p and g > 0, not p, y < -0.5 or p, p)
+s = where(g > k, sign(u), u)
+signal = cs_scale(cs_rank(e + f + s) + cs_demean(hh) + cs_mean(y))

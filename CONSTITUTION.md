@@ -1,0 +1,349 @@
+# CONSTITUTION v1 (perpetual futures, formula language)
+
+This file is part of the KERNEL. It changes only through a re-key (section 10). Every number below
+is mirrored in `omr/constants.py`, except the G6 threshold, which is written into `kernel.lock` by
+the calibration seal (section 8). If they ever disagree, the code is what ran and the disagreement
+is a kernel bug.
+
+## 1. Purpose
+
+A research system that looks for trading strategies on USDT-margined perpetual futures and says
+"no edge" honestly when there is none. Later sessions run generations: an LLM researcher reads the
+ledger and lessons, pre-registers hypotheses, writes strategy PROGRAMS (`.omr`, LANGUAGE.md),
+submits them to the evaluator, records the results, and promotes passers to a forward-tested paper
+pool.
+
+The loop improves strategies (level 1) and its own research playbook (level 2). It must never be
+able to raise its score by weakening the measuring instrument. Enemies, in order: (1) backtest
+overfitting and multiple testing, (2) lookahead, (3) unrealistic costs. Small, correct and
+auditable beats feature-rich.
+
+Nothing in this system trades real money. Kernel v1 contains no exchange credentials and no
+order-placement code.
+
+## 2. Kernel, genome and threat model
+
+KERNEL (immutable to the loop): EVERY file under `omr/` (including the programs in
+`omr/programs/`) and `tests/`, plus `CONSTITUTION.md`, `LANGUAGE.md` and `requirements.txt`. Their
+sha256 hashes are recorded in `kernel.lock`; any other file appearing under `omr/` or `tests/`
+(a `__pycache__` included) fails verification. Every re-key and the calibration seal append a
+hash-chained row to `ledger/kernel_history.jsonl`. `kernel_lock verify` also compares the installed
+package versions (from the environment's `*.dist-info` metadata) and the running Python with the
+exact pins in `requirements.txt`. The evaluator refuses a lock that does not verify or is not
+sealed; sandbox, pool and census refuse a lock that does not verify. The research environment
+never writes bytecode (`sys.dont_write_bytecode` set by a `.pth` file in the venv).
+
+GENOME (the loop may write): `strategies/`, `generations/`, `LESSONS.md`, `RESEARCH_PLAYBOOK.md`,
+`STATE.md`, `KERNEL_PROPOSALS.md`.
+
+The loop never edits the kernel, never edits `ledger/` or `data/` by hand, never adds a data source
+itself, and never computes vault performance.
+
+Threat model. **No strategy code is executed.** A strategy is a `.omr` text program in a small
+formula language (LANGUAGE.md); the kernel parses it with `ast.parse`, walks the tree with its own
+checker (only names, numeric literals, calls to the language's functions, `+ - * /`, unary minus,
+`not`, `and`/`or` and single comparisons exist), and evaluates the checked tree with its own
+interpreter. There is no import, attribute, subscript, string, loop, file, process or eval path for
+a program to reach, and no field that tells a program where it is in history. So:
+(a) lookahead, calendar dependence and scale dependence are excluded by construction (every
+    function is causal; there is no index or date; units make the signal invariant to price and
+    volume levels); the stage-1 truncation self-check verifies the causality of the kernel's own
+    functions on every trial;
+(b) a program cannot see, store or leak anything: its only output is a signal array;
+(c) ANY scored run on VAL bars is a counted trial (the single exception is the kernel selftest,
+    section 9);
+(d) the VAL quarantine for HUMAN-OR-SESSION code (scripts, notebooks, an LLM session with shell
+    access) is PROCEDURAL: VAL handles (section 9) and private data readers are tripwires against
+    honest mistakes, not a security boundary against someone with write access to the folder. A
+    determined author can still read VAL bars outside the kernel. Forward results, measured after a
+    program is frozen, are the last line of defence.
+
+## 3. Data and regions
+
+Instruments: Binance USD-M linear perpetuals.
+- Core universe (traded in research): BTCUSDT, ETHUSDT.
+- Extended universe (veto only, survivorship-biased): SOLUSDT, BNBUSDT, XRPUSDT, ADAUSDT,
+  DOGEUSDT, LTCUSDT, LINKUSDT, AVAXUSDT.
+
+Bars: 1h OHLCV, UTC, indexed by bar OPEN time. Stored on a complete hourly grid; a missing bar
+becomes the previous close for open/high/low/close, volume-type columns 0, `is_gap = True`.
+
+Regions (bar open time, UTC, inclusive):
+
+| region | from | to | rule |
+|---|---|---|---|
+| warm-up | first bar (BTC 2019-09-08, ETH 2019-11-27) | 2019-12-31 23:00 | indicator input only, no positions |
+| DEV | 2020-01-01 00:00 | 2022-06-30 23:00 | free sandbox, uncounted |
+| VAL | 2022-07-01 00:00 | 2025-06-30 23:00 | counted: any scored run of a program on VAL bars is one trial forever |
+| VAULT | 2025-07-01 00:00 | 2026-11-18 09:00 (build snapshot end) | never computed in kernel v1 |
+| FORWARD | bars after a program's birth (and after VAULT end) | - | measured only by the census |
+
+Loaders take an explicit ceiling: `dev_end`, `val_end`, or `latest`. Any ceiling beyond DEV end
+needs a ledger-issued ValHandle (section 9). Only `omr/data.py` and `omr/census.py` may name
+`latest` (tested).
+
+Every stored file is hashed AT THE MOMENT IT IS READ and must equal its sha256 in
+`data/manifest.json` (a file missing from the manifest is refused); the same bytes are then parsed.
+The readers are private to the data layer (`omr/data.py`, `omr/datasets.py`; tested). The manifest
+records per dataset and symbol the source, rows, gaps, the REST-vs-bulk cross-check, mark-price
+coverage and the sha256, plus `research_hash` (sha256 over every stored row visible at or before VAL
+end). An update checks the stored files first and refuses on any mismatch; an update that would
+change a stored row writes nothing and stops.
+
+`python -m omr.data validate` checks every dataset, symbol and region (warm-up, DEV, VAL, VAULT,
+after) for finite and positive prices, OHLC consistency, finite non-negative volumes, unique
+sorted hourly timestamps, finite funding with positive intervals, mark coverage and gap bars; it
+prints and stores COUNTS only (`data/validation.json`, bound to the data fingerprint: the
+research_hash and every file hash). The evaluator refuses to run without a passing validation of
+the current files. If validation fails on real data, nothing is filled in: the human decides.
+
+### 3.1 Dataset registry and point-in-time alignment
+
+The data layer is a registry of dataset adapters (`omr/datasets.py`). Each declares its name,
+frequency, history start, source, fields, and `visible_from(row)` = the open time of the 1h bar
+from whose CLOSE the row may be used. One kernel function, `align_to_grid`, puts rows on the 1h
+grid and never shows a row before its `visible_from` bar.
+
+v1 datasets:
+- `klines` (1h): Binance USD-M bulk klines, REST for the 2019 warm-up and the hours after the last
+  bulk file. Visible from its own bar.
+- `funding` (event): Binance USD-M bulk fundingRate, REST for the 2019 backfill and the current
+  month; settlement times rounded to the hour; a rate settled at t is visible from the bar that
+  opens at t. A missing interval is the gap to the previous settlement (first row: 8 hours).
+- `mark_klines` (1h, KP-001): Binance USD-M bulk markPriceKlines, REST for the backfill (from
+  2019-12-23 11:00) and the hours after the last bulk file; missing mark bars stay missing.
+
+Every program frame carries the klines columns, `funding_rate` (settled at that bar's open, else 0;
+used by the engine), `funding.rate/interval_hours/new` and `mark_klines.open/high/low/close/new`
+(as of the latest visible row). The language exposes them as the fields of LANGUAGE.md section 5.
+
+### 3.2 Data admission
+
+A new dataset enters only by a kernel re-key, after it shows: (a) history covering DEV and VAL;
+(b) timestamps as of when each value was knowable, with a conservative lag; (c) the same source live
+at decision time; (d) it is free, or its cost was approved by the human; (e) a revision check. The
+researcher proposes sources in `KERNEL_PROPOSALS.md`; it never wires one in itself. A new field or
+function of the language is a kernel change and bumps SEMANTICS_VERSION if it changes the meaning
+of anything that exists.
+
+## 4. Engine and costs
+
+Linear perpetuals, signed weights, no leverage above 1x gross anywhere in research.
+
+- Weight = signed notional / equity, each in [-1, 1], gross sum(|w|) <= 1. The interpreter's
+  signal -> weight rule (LANGUAGE.md section 7) makes every weight valid by construction.
+- The weight decided at the close of bar t is executed at the open of bar t+1. Returns are
+  open-to-open. Cash earns 0.
+- Holdings drift with prices. Order at every bar open: 1. mark to the open; 2. funding: equity
+  changes by -sum(h_i x rate_i) on the drifted position coming into that open; 3. rebalance: if ANY
+  |target - drifted weight| > 0.01, trade ALL assets to target; cost = traded notional x (5.5 bps
+  taker fee + 2 bps slippage) per side, deducted from equity.
+- Liquidation check, per bar, on MARK price: worst-case intrabar equity with every long at the
+  bar's mark low and every short at its mark high, relative to the mark open of the same bar; where
+  a bar has no mark data, last-price low/high relative to the last-price open. Worst-case equity at
+  or below 2.5% of gross notional flags liquidation. In the base run this ends the trial with final
+  status `liquidated` (counted, no metric); in jitter, stress, permutation and extended-universe
+  runs it scores that run as Sharpe = -infinity (an extended unit is coded `liquidated`).
+- Cost stress = 2x costs. Funding stress = funding paid x1.5, received x0.5.
+- Daily returns: equity sampled at the 00:00 UTC opens BEFORE any trade there; a run's first day
+  starts at its first bar (capital 1.0), its last day ends at the post-trade equity of its last bar.
+- `deploy_scale = min(1, 0.20 / max drawdown over DEV+VAL)` is recorded on every evaluated trial.
+- A numba-compiled inner loop (no on-disk cache) and an independent pure-Python reference agree to
+  1e-10, including liquidating paths and paths where equity reaches 0 (tested).
+
+## 5. Statistics
+
+On DAILY net returns, 365-day annualisation, risk-free 0.
+- Sharpe = mean / std(ddof=1) x sqrt(365); 0 when std < 1e-12.
+- PSR(SR*) = Phi((SR - SR*) x sqrt(n-1) / sqrt(1 - g3 x SR + ((g4-1)/4) x SR^2)), SR per day.
+- DSR = PSR(SR0), SR0 = max(0, sqrt(V) x [(1-g) x PhiInv(1-1/N) + g x PhiInv(1-1/(N e))]),
+  g = 0.5772156649, N = rho + (1-rho) x M. M = every counted trial including the current one
+  (pending, incomplete, liquidated and kernel_fault trials count). V (variance of per-day VAL
+  Sharpes, floored at 1/(n-1)) and rho (mean pairwise correlation of VAL daily returns, clipped to
+  [0,1]) use only counted trials with stored returns.
+
+## 6. Evaluation (two stages: count before exposure)
+
+`python -m omr.evaluate strategies/<name>.omr --generation N`.
+
+Preconditions (refused before any row): the kernel lock verifies and is sealed; the ledger chains
+and HEAD anchors are intact; the stored data equal the manifest and are validated; N equals the
+highest generation in the trial ledger or that plus one (0 for an empty ledger);
+`generations/genNNN/PLAN.md` exists; generation N has fewer than 5 counted trials.
+
+Stage 1, UNCOUNTED, on DEV-only frames (warm-up + DEV, no handle):
+1. Parse and static checks (LANGUAGE.md). A rejection is `parse:<rule>` with line and column.
+2. Identity and dedupe: trial id = sha256(canonical program + SEMANTICS_VERSION +
+   research_hash)[:16]. An identical trial returns the existing row and is not counted again.
+   The evaluator always evaluates the declared defaults.
+3. Signals on DEV (each symbol on its own history for kind single; the panel for kind portfolio).
+4. Truncation self-check: the program is re-evaluated on data cut at 24 random rows between the
+   bar before DEV start and DEV end, plus DEV end; every row up to each cut must be identical
+   (NaN equal to NaN). The cut seed comes from fresh OS entropy and is stored afterwards. A mismatch,
+   or any interpreter exception, is `kernel_fault` (the functions are causal by construction, so
+   this is a kernel bug to report, never a property of the program).
+5. Activity in DEV: per symbol, state = sign(w) where |w| > 0.01, else 0; a direction change is a
+   decision row whose state differs from the previous row's; the sum over symbols must be >= 20
+   (`activity_dev`).
+A stage-1 rejection is ONE row in `ledger/stage1_log.jsonl` (hash-chained); nothing enters the
+trial ledger and nothing is counted.
+
+Then a COUNTED `pending` row is appended to `ledger/trials.jsonl`, flushed and fsynced. It holds the
+trial id, generation, the sha256 of the generation's PLAN.md, kernel hash, SEMANTICS_VERSION,
+research_hash, the canonical text, params, node count, and the python / numpy / pandas / numba /
+pyarrow / scipy versions; the frozen source copy `ledger/sources/<id>.omr` is written before it.
+The pending row issues the trial's ValHandle.
+
+Stage 2, COUNTED, on DEV+VAL frames: every frame is hash-verified at read again; signals are
+recomputed and the DEV rows must equal stage 1 bit for bit (else final status `kernel_fault`,
+reason `dev_rows_changed`); then the engine, liquidation, metrics, gates (section 7), the result
+files (`ledger/returns/<id>.parquet`, `ledger/trials/<id>.json`) and the final row. Final statuses:
+`evaluated` (with tier), `liquidated`, `kernel_fault`. ANY unexpected exception in stage 2 (an
+interrupt included) writes the final row `kernel_fault` with the exception type and no metric; a
+pending row is never left behind by an exception.
+
+## 7. Gates and tiers
+
+All on the one continuous DEV+VAL run unless stated. Tier 1 ("paper-eligible") needs ALL of G1-G8
+and G10.
+
+| gate | rule |
+|---|---|
+| G1 | VAL PSR(0) >= 0.90 |
+| G2 | funding stress (paid x1.5, received x0.5): VAL Sharpe > 0 |
+| G3 | DEV Sharpe > 0 |
+| G4 | VAL Sharpe at 2x costs > 0 |
+| G5 | jitter: 12 variants; EVERY param x U(0.8, 1.2) (ints rounded; an int left unchanged by rounding moves by 1 with a random sign; clipped to bounds); median VAL Sharpe >= 0.5 x base VAL Sharpe AND >= 75% with VAL Sharpe > 0. A program without params passes and the trial records `g5_vacuous`. Only the median and fraction positive are stored. |
+| G6 | timing permutation on VAL: 200 circular shifts of the VAL weight matrix against VAL prices (offsets uniform in [30 days, length - 30 days], all assets together, funding on the price timeline, engine restarted flat at VAL start for actual and shifted alike); p = (1 + #(shifted Sharpe >= actual)) / 201 <= the SEALED threshold (section 8) |
+| G7 | sub-periods 2020, 2021, 2022, 2023, 2024, 2025H1: net return > 0 in at least 4, AND the largest bucket log return <= 50% of the sum of positive bucket log returns |
+| G8 | extended-universe veto. Kind single: the program on each extended perp alone at full weight; kind portfolio: on the disjoint tuples (SOL,BNB), (XRP,ADA), (DOGE,LTC), (LINK,AVAX). Each unit from its OWN first bar (its own warm-up, flat until its signal exists), DEV start at the earliest, to VAL end; btc(...) stays the real BTC. A unit with < 2 years of scored history is coded `short_history`, a liquidated unit `liquidated`; coded units count as NOT positive. Median Sharpe > 0 AND at least half > 0. No exception is swallowed. |
+| G10 | activity in VAL: direction changes (section 6, step 5) >= 12 |
+
+G9 (at most 6 params) is retired as a gate: the parser enforces it. Information only: the benchmark
+(constant long 1/K per core symbol through the same engine) VAL Sharpe and max drawdown, beta,
+annualised alpha and PSR(0) of the beta-hedged residual.
+
+## 8. Calibration (protocol v3) and the seal
+
+The G6 threshold is not a constant. The sequence is fixed: lock the kernel (re-key) ->
+`python -m omr.calibrate` on the LOCKED kernel (it refuses otherwise; the artifact records
+`kernel_lock_verified: true` and the locked hash) -> `python -m omr.kernel_lock seal --calibration
+<artifact>`. The seal re-applies the rule in code to the artifact's stored per-pair rows and, only
+if the rule passes, writes the threshold and the artifact's sha256 into `kernel.lock` and
+`ledger/kernel_history.jsonl`. It refuses an artifact that is not from the verified locked kernel,
+not on the stored data, or whose families are not the kernel's baseline programs. `verify` fails if
+the sealed artifact changes. The evaluator refuses an unsealed lock.
+
+The calibration measures the real stage-1 and stage-2 pipeline functions, in-process, on synthetic
+worlds built from the real core data on the real calendar (klines, mark bars and funding together),
+read under a logged calibration handle; nothing enters the trial ledger:
+- Null A: whole UTC days drawn iid with replacement from DEV+VAL, the same day for both core
+  symbols. Destroys multi-day predictability.
+- Null B: the real day order; per UTC day one fair coin (shared by both core symbols) mirrors that
+  day's demeaned hourly log-return path, r' = -(r - m) + m (high/low excursions swap; mark bars
+  likewise; funding unchanged). Keeps real volatility dynamics, destroys direction across days.
+- DEV-overfit protocol, 100 worlds per null x the five kernel baseline programs
+  (`omr/programs/gen000_*.omr`, hash-locked; `--families` accepts nothing else): 20 parameter sets
+  drawn from the declared ranges; those passing stage 1 on the world's DEV-only frames are kept;
+  the best DEV Sharpe among them is SUBMITTED to stage 2; none -> nothing submitted. Null pass rate
+  = Tier-1 passes / SUBMITTED pairs. Every gate value and G6 p is stored (G8 not run: no extended
+  universe; G8 can only veto, so the rates are upper bounds).
+- Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
+  (fast k = 1, slow k = 20), weight = signal / K, injected after the interpreter into the gates
+  (G5 passes, no params). On 100 fresh worlds per null, rho is tuned per speed and level so the
+  ACHIEVED mean VAL Sharpe over those worlds is within 0.1 of the nominal 1.0 / 1.5 (reported).
+- Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
+  under BOTH nulls; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds under both
+  nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule fails,
+  nothing is sealed, generation 0 cannot run, and the human decides.
+
+The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
+
+## 9. Ledger, VAL access, selftest, pool and census
+
+- `ledger/trials.jsonl` and `ledger/stage1_log.jsonl`: append-only, hash-chained (prev_hash,
+  row_hash); `ledger/HEAD.json` anchors each chain's row count and head hash and is checked by
+  `ledger verify` and the evaluator. The chain head itself is not anchored outside the folder
+  (KP-009). `python -m omr.ledger verify` reports a pending row without a final row, and any result
+  file no row references, as `incomplete` (still counted).
+- VAL access: every loader and pipeline entry point that touches bars after DEV end requires a
+  ValHandle. The ledger issues one when it appends a pending row; calibration, census and selftest
+  get one only with an explicit purpose logged in `ledger/val_access_log.jsonl`. A call without a
+  handle raises. `data validate` reads all rows inside the data layer and prints counts only.
+- Selftest, `python -m omr.selftest`: THE SINGLE EXCEPTION to "any scored run on VAL bars is a
+  counted trial". Under a logged `selftest` handle it (1) runs the five baselines and a kitchen-sink
+  program using every field, timeframe and function on real DEV+VAL frames, checking shape,
+  alignment, finiteness and bounds only (nothing scored); (2) runs two kernel NOISE programs
+  (`omr/programs/kernel_noise_*.omr`) through the complete evaluate path into a temporary ledger
+  that is deleted afterwards, asserting finite metrics and gate inputs, every G8 unit scored, p in
+  (0, 1], activity above both thresholds, the daily-return length, stage-2 DEV rows equal to
+  stage 1, and a clean `ledger verify`. It prints ONLY `OK` or the failed assertion and file:line;
+  no metric leaves it.
+- Paper pool: at most 5 members, Tier-1 trials evaluated under the kernel's CURRENT
+  SEMANTICS_VERSION; each member keeps the kernel hash it was evaluated under; replacement must be
+  explicit; every change is a hash-chained row in `ledger/pool_log.jsonl`.
+- Census: updates the data, then for each pool member parses the frozen program (hash-checked; its
+  canonical form and SEMANTICS_VERSION must match) and runs it flat from birth on post-birth bars
+  only. Birth = the later of the trial's born_at and its pool admission, rounded up to the next bar
+  open, and never before the bar after VAULT end. Forward daily returns (intervals ending at a 00:00
+  open) are stored raw and at deploy_scale. Idempotent.
+
+## 10. Kernel change procedure
+
+1. The researcher files a request in `KERNEL_PROPOSALS.md` (problem, evidence, proposed change,
+   expected effect). It never edits the kernel.
+2. The human (or the coordinator acting for the human, recorded as such) reviews and makes or
+   accepts the change; tests pass.
+3. `python -m omr.kernel_lock rekey --reason "..." --approved-by "<who>"`. A re-key REMOVES the
+   seal: `python -m omr.calibrate` runs again on the locked kernel and `seal` writes the new
+   threshold before any trial can be evaluated.
+4. What a re-key does: trial identity does not include the kernel hash, so a re-key that leaves
+   SEMANTICS_VERSION and the data unchanged keeps every trial id; re-submitting an identical program
+   returns the existing row (not re-evaluated, not counted again), and earlier trials stay counted
+   in M. A change to the meaning of anything a program can express, the engine, costs, regions,
+   gates or statistics MUST bump SEMANTICS_VERSION: every trial id changes, earlier trials stay
+   counted, and pool members evaluated under the old version can no longer be admitted or censused
+   (they must be re-evaluated as new counted trials). Pool members keep their kernel hash.
+5. If a kernel bug is found after real VAL results were seen, it is fixed, re-keyed with the reason,
+   and the before/after results are reported openly.
+
+## 11. LIVE requirements (defined now, implemented in later kernels)
+
+A strategy may trade real money only when ALL hold:
+1. At least 60 days forward in the paper pool.
+2. Its forward result is not below the 5th percentile of block-bootstrapped same-length windows of
+   its own VAL returns.
+3. A one-time VAULT check that returns pass/fail only, with every query logged (kernel v2).
+4. DSR >= 0.95 on VAL + forward at the then-current trial count.
+5. Explicit human approval.
+
+Live risk limits the loop can never change:
+- Perpetual futures on the approved venue only. Live gross exposure = deploy_scale by default; any
+  increase is the human's decision, with a hard ceiling of 2.0 gross.
+- A dedicated sub-account (or isolated margin) holding only the bot's capital.
+- API key trade-only, withdrawals disabled, IP-restricted.
+- Per-strategy capital cap set by the human.
+- An exchange-side reduce-only protective stop on every position, modelled in the engine before any
+  live use (kernel v2 item).
+- Halts, as defaults the human confirms before live: per-strategy halt (and demotion from the pool)
+  at 20% drawdown from peak; account daily-loss halt at 4%.
+- A `HALT` kill-switch file checked before every order.
+- The bot runs on an always-on host, not a personal PC.
+
+## 12. Known limitations
+
+- VAL quarantine is procedural for human or session code (section 2 d).
+- The LLM researcher's training data covers market history to about mid-2026, so every pre-birth
+  backtest, the vault included, is optimistic. The language removes dates, positions and bar counts,
+  but remembered history can still enter through the CHOICE of structure and parameters (KP-010).
+  Only FORWARD is clean.
+- A text- or news-reading signal cannot be honestly backtested; it can only be judged forward (and
+  the language has no such input).
+- The extended universe is survivorship-biased, so it may only veto.
+- Two highly correlated core assets give a small effective sample.
+- Funding and prices are Binance's; another live venue will differ slightly.
+- Leverage is structurally excluded at gross <= 1. The liquidation check uses 1h mark-price bars;
+  real liquidation happens tick by tick with tiered maintenance margins, so the 2.5% rule is an
+  approximation. Where mark bars are missing the check falls back to last-trade highs/lows.
+- Fills are bar-based at the next open with fixed costs; no order book, no partial fills.
+- The ledger's hash chain is anchored only inside the folder (KP-009).

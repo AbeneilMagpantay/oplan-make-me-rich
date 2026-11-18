@@ -1,0 +1,11 @@
+# Generation 0 baseline (kernel copy, hash-locked; also used as a calibration family).
+name = "gen000_sma_cross_ls"
+family = "trend"
+kind = "single"
+hypothesis = "Crypto perps trend over weeks to months: when the fast SMA of the daily close is above the slow SMA, being long earns more than being short, and vice versa. Mechanism: slow diffusion of information and leverage cycles; the other side is early mean-reversion traders and hedgers. Falsified if VAL PSR(0) < 0.90 or the timing permutation shows no timing skill."
+
+fast = param(20, 5, 60)
+slow = param(100, 50, 250)
+
+d = daily(close)
+signal = sign(sma(d, fast) - sma(d, slow))

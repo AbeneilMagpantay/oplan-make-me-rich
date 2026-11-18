@@ -1,0 +1,10 @@
+# Kernel selftest program (never a trial): a deliberately meaningless signal that trades often.
+name = "kernel_noise_single"
+family = "other"
+kind = "single"
+hypothesis = "Selftest only: the rolling rank of daily volume over its previous value carries no edge; it exists to drive the full evaluation path."
+
+n = param(20, 10, 40)
+
+v = daily(volume)
+signal = 2 * rank(v / lag(v, 1), n) - 1

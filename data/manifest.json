@@ -1,0 +1,805 @@
+{
+ "admitted_this_snapshot": [
+  "mark_klines"
+ ],
+ "created_at": "2026-11-18T10:36:31Z",
+ "dataset_hashes": {
+  "funding": "50d871b6122d2ffc9a69e9792acf045381bcf118cfe54869c498bc34bc8230bf",
+  "klines": "af26b87c7b8c012af84d32e89fe90048a615407fcbe249dc5d3e659e8ff764cd",
+  "mark_klines": "21d75497aa07b9d4011980e7bf15124d5c3f82e30423ce4c445e8160a67ac51f"
+ },
+ "datasets": {
+  "funding": {
+   "ADAUSDT": {
+    "bulk_rows": 7432,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-01-19 16:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7485,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 7485,
+    "sha256": "42d78fcc8e6392939654274b0e11230670ec875524784b1b2fa366900574450d",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "AVAXUSDT": {
+    "bulk_rows": 6691,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-09-22 16:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 6744,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 6744,
+    "sha256": "bf928dea40f5b5bb4a268b7bbfa3016d2d206fdee1daa9c938395837d6d82330",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "BNBUSDT": {
+    "bulk_rows": 7367,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-02-10 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7420,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 7420,
+    "sha256": "b3309eb2eff95b0973d7adc6e66f7a05539b416170b1b4a6ba96df01e017b57c",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "BTCUSDT": {
+    "bulk_rows": 7488,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2019-09-10 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7879,
+    "rest_backfill_rows": 338,
+    "rest_topup_rows": 53,
+    "rows": 7879,
+    "sha256": "58d934abe15220ab52f7ce3b21d3e9bca0503b19275b5c2aba3c75b69308bf61",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "DOGEUSDT": {
+    "bulk_rows": 6914,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-07-10 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 6967,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 6967,
+    "sha256": "bdbab42985e2e2131092da40144236e93d512085f759d0fdfbea6bbf1fa26918",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "ETHUSDT": {
+    "bulk_rows": 7488,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2019-11-27 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7645,
+    "rest_backfill_rows": 104,
+    "rest_topup_rows": 53,
+    "rows": 7645,
+    "sha256": "ae9a7cead624b82aff83d4807d067fcb9df339b402f9149e9ac49a4fabf93543",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "LINKUSDT": {
+    "bulk_rows": 7439,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-01-17 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7492,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 7492,
+    "sha256": "692095fceba80afed18fffeaf1604fa9b2c78bf2b459bd539680f10f98abc296",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "LTCUSDT": {
+    "bulk_rows": 7463,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-01-09 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7516,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 7516,
+    "sha256": "e62327ef01d19ed9ed577ad864049fb3513cf5461fa33500fe8e17adf530748a",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "SOLUSDT": {
+    "bulk_rows": 6793,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-09-13 16:00:00+00:00",
+    "interval_anomalies": 1,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 6846,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 6846,
+    "sha256": "b9b01a0ac4707edcea1ea2f2b3ffbf5c30ea8bc39242c96cfa5961cc4aa5b887",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "XRPUSDT": {
+    "bulk_rows": 7472,
+    "duplicates_after_rounding": 0,
+    "first_settlement": "2020-01-06 08:00:00+00:00",
+    "interval_anomalies": 0,
+    "last_settlement": "2026-11-18 08:00:00+00:00",
+    "max_abs_offset_ms": 47.0,
+    "offsets_over_60s": 0,
+    "raw_rows": 7525,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 53,
+    "rows": 7525,
+    "sha256": "093f95b3b106602ccedae42df20254faf334bc9eb965a924d08c931093778b9a",
+    "source": "binance_usdm_bulk fundingRate(data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   }
+  },
+  "klines": {
+   "ADAUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-31 08:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 59595,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 59595,
+    "sha256": "67c8c25fca2bb052741195762aa675547d49267ee1103e2982d14a6c6368daba",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 0.00011838522552376496,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "AVAXUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 74
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-09-23 07:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06",
+     "monthly:2020-07",
+     "monthly:2020-08"
+    ],
+    "ohlc_violations": 0,
+    "raw_rows": 53932,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 53932,
+    "sha256": "e6ba98679af02d8d61afff5bd306105fcb36df435d373df690d14267f74c286e",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 2.8020623178637294e-05,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "BNBUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 81
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-02-10 08:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [
+     "monthly:2020-01"
+    ],
+    "ohlc_violations": 0,
+    "raw_rows": 59355,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 59355,
+    "sha256": "b257115007c20b4f19e1e50ef3681d76ff1f334fa35850b38f3e336275f72963",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 1.4242579615908468e-05,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "BTCUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2019-09-08 17:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 63066,
+    "rest_backfill_rows": 2743,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": {
+     "max_rel_diff": {
+      "close": 0.0,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "volume": 0.0
+     },
+     "rows_compared": 745
+    },
+    "rows": 63066,
+    "sha256": "17fe5f125629e00a6f9e422575f03ce0f8bfe17f2439aef0d4e2048731e530de",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": -1.0689596563473458e-06,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "DOGEUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 76
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-07-10 09:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06"
+    ],
+    "ohlc_violations": 0,
+    "raw_rows": 55730,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 55730,
+    "sha256": "eb804b158cdf1714a6bfefca67724891be70570e1d6f41816a6a78f4b89083c9",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 0.0,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "ETHUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2019-11-27 07:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 61156,
+    "rest_backfill_rows": 833,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": {
+     "max_rel_diff": {
+      "close": 0.0,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "volume": 0.0
+     },
+     "rows_compared": 745
+    },
+    "rows": 61156,
+    "sha256": "e368ed3c0efe605842751b4186b4fc11c47ce969ccf31d4863090869c9f9b23e",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 2.9970898256515e-06,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "LINKUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-17 08:00:00+00:00",
+    "gap_count": 0,
+    "gap_runs": 0,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 59931,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 59931,
+    "sha256": "bab7d4e40ce31fb6cdc539be3707ba2859a7757b7796646d6c37165af80d5257",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": -4.999250112491804e-05,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "LTCUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-09 08:00:00+00:00",
+    "gap_count": 120,
+    "gap_runs": 2,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 60003,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 60123,
+    "sha256": "414da8a9b838c8aab1d2825c48335b3f0deb0ba84d725782f5df27e7237c438c",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 9.688044952538277e-05,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "SOLUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 74
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-09-14 07:00:00+00:00",
+    "gap_count": 120,
+    "gap_runs": 2,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06",
+     "monthly:2020-07",
+     "monthly:2020-08"
+    ],
+    "ohlc_violations": 0,
+    "raw_rows": 54028,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 54148,
+    "sha256": "e3db3f536847494062b4273b19523f175420050a4dc9191c2fc7ff28e3c05fa1",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": 0.0,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   },
+   "XRPUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "duplicates_conflicting": 0,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-06 08:00:00+00:00",
+    "gap_count": 120,
+    "gap_runs": 2,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "missing_bulk_files": [],
+    "ohlc_violations": 0,
+    "raw_rows": 60075,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rest_vs_bulk_crosscheck": null,
+    "rows": 60195,
+    "sha256": "34e490451220c664e861f893f3a3c2e0c2e81587ac57ce1cf9346b351a506795",
+    "source": "binance_usdm_bulk(data.binance.vision); rest(fapi.binance.com) for warm-up backfill and top-up",
+    "unit_check": {
+     "bar_2024_12_31_23_present_raw": true,
+     "bar_2025_01_01_00_present_raw": true,
+     "files_with_us_timestamps": [],
+     "open_2025_over_close_2024_minus_1": -4.799385678644352e-05,
+     "step_hours": 1.0,
+     "us_rows": 0
+    }
+   }
+  },
+  "mark_klines": {
+   "ADAUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.9987918449534356,
+    "coverage_dev_val": 0.9989887072307433,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-19 09:00:00+00:00",
+    "grid_bars_all": 59595,
+    "grid_bars_dev_val": 47464,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 59523,
+    "mark_bars_dev_val": 47416,
+    "missing_bulk_files": [],
+    "missing_dev_val": 48,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3090,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 59810,
+    "sha256": "f45cdc05aca7dfe58c725229cb2ae327968d0fb41302075f2101807f3a3df717",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "AVAXUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 74
+    },
+    "coverage_all": 0.99599495661203,
+    "coverage_dev_val": 0.9954068084495586,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-09-22 09:00:00+00:00",
+    "grid_bars_all": 53932,
+    "grid_bars_dev_val": 41801,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 53716,
+    "mark_bars_dev_val": 41609,
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06",
+     "monthly:2020-07",
+     "monthly:2020-08"
+    ],
+    "missing_dev_val": 192,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 1924,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 53738,
+    "sha256": "42b6ee1a38e42c99bb7a5d2b672708d43ce00d87c2142c54cf4e33f81e018dc8",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "BNBUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 81
+    },
+    "coverage_all": 0.9963608794541319,
+    "coverage_dev_val": 0.9959342707098086,
+    "duplicates_dropped": 0,
+    "first_bar": "2019-12-23 11:00:00+00:00",
+    "grid_bars_all": 59355,
+    "grid_bars_dev_val": 47224,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 59139,
+    "mark_bars_dev_val": 47032,
+    "missing_bulk_files": [
+     "monthly:2020-01"
+    ],
+    "missing_dev_val": 192,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3222,
+    "rest_backfill_rows": 949,
+    "rest_topup_rows": 11,
+    "rows": 60312,
+    "sha256": "1d17b25e75c1e45c045feb69dce8836c3853db3db530de62dc3934993d3d0533",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "BTCUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.9563314622776139,
+    "coverage_dev_val": 0.9960159362549801,
+    "duplicates_dropped": 0,
+    "first_bar": "2019-12-23 11:00:00+00:00",
+    "grid_bars_all": 63066,
+    "grid_bars_dev_val": 48192,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 60312,
+    "mark_bars_dev_val": 48000,
+    "missing_bulk_files": [],
+    "missing_dev_val": 192,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3397,
+    "rest_backfill_rows": 205,
+    "rest_topup_rows": 11,
+    "rows": 60312,
+    "sha256": "b582489fdcb2c0d6f3138891fa0a98d0236f241c610bf9fd8158110e79721bd0",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "DOGEUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 76
+    },
+    "coverage_all": 0.9987080567019558,
+    "coverage_dev_val": 0.9988990573178284,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-07-10 03:00:00+00:00",
+    "grid_bars_all": 55730,
+    "grid_bars_dev_val": 43599,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 55658,
+    "mark_bars_dev_val": 43551,
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06"
+    ],
+    "missing_dev_val": 48,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 2213,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 55664,
+    "sha256": "28e877aed0c55171a6dcd2cc6caf27a674c251d6ae0b3d342973a69ff5d9897d",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "ETHUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.9885538622539081,
+    "coverage_dev_val": 0.999003984063745,
+    "duplicates_dropped": 0,
+    "first_bar": "2019-12-23 11:00:00+00:00",
+    "grid_bars_all": 61156,
+    "grid_bars_dev_val": 48192,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 60456,
+    "mark_bars_dev_val": 48144,
+    "missing_bulk_files": [],
+    "missing_dev_val": 48,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3454,
+    "rest_backfill_rows": 205,
+    "rest_topup_rows": 11,
+    "rows": 60456,
+    "sha256": "5f11f0d1237dd3b092024245411f528ea0b89630aba15f006c5f3d3d6fde5cf3",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "LINKUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.9963958552335186,
+    "coverage_dev_val": 0.9959832635983263,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-17 07:00:00+00:00",
+    "grid_bars_all": 59931,
+    "grid_bars_dev_val": 47800,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 59715,
+    "mark_bars_dev_val": 47608,
+    "missing_bulk_files": [],
+    "missing_dev_val": 192,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3087,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 59716,
+    "sha256": "917435112e628a914cedea603a6bb9aed3a516bcce8a7bbb6ee6391fa5a722a4",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "LTCUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.998802454967317,
+    "coverage_dev_val": 0.998999833305551,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-09 04:00:00+00:00",
+    "grid_bars_all": 60123,
+    "grid_bars_dev_val": 47992,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 60051,
+    "mark_bars_dev_val": 47944,
+    "missing_bulk_files": [],
+    "missing_dev_val": 48,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3200,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 60055,
+    "sha256": "02b57e72698b639656dc08d23f0dbf301a567a596f301594bb5c64956b7d1356",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "SOLUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 74
+    },
+    "coverage_all": 0.9964541626652877,
+    "coverage_dev_val": 0.9960016183925554,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-09-13 11:00:00+00:00",
+    "grid_bars_all": 54148,
+    "grid_bars_dev_val": 42017,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 53956,
+    "mark_bars_dev_val": 41849,
+    "missing_bulk_files": [
+     "monthly:2020-01",
+     "monthly:2020-02",
+     "monthly:2020-03",
+     "monthly:2020-04",
+     "monthly:2020-05",
+     "monthly:2020-06",
+     "monthly:2020-07",
+     "monthly:2020-08"
+    ],
+    "missing_dev_val": 168,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 1949,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 53976,
+    "sha256": "8ff85779fd3094dbe5258c3fee65edceb85fdec606c658c2cf6d432913994c3d",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   },
+   "XRPUSDT": {
+    "bulk_files": {
+     "daily": 17,
+     "monthly": 82
+    },
+    "coverage_all": 0.9968103663094942,
+    "coverage_dev_val": 0.9965046604527297,
+    "duplicates_dropped": 0,
+    "first_bar": "2020-01-06 03:00:00+00:00",
+    "grid_bars_all": 60195,
+    "grid_bars_dev_val": 48064,
+    "last_bar": "2026-11-18 10:00:00+00:00",
+    "mark_bars_all": 60003,
+    "mark_bars_dev_val": 47896,
+    "missing_bulk_files": [],
+    "missing_dev_val": 168,
+    "ohlc_violations": 0,
+    "partial_bars_samples_lt_3600": 3225,
+    "rest_backfill_rows": 0,
+    "rest_topup_rows": 11,
+    "rows": 60008,
+    "sha256": "ad698bc85bdfc09b752c693b026bd98734765b3b9d80777985f48900c9eb3f83",
+    "source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) for backfill and top-up",
+    "us_rows": 0
+   }
+  }
+ },
+ "dev": [
+  "2020-01-01 00:00",
+  "2022-06-30 23:00"
+ ],
+ "kernel_data_version": 1,
+ "research_hash": "cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8",
+ "snapshot_end": "2026-11-18 10:00:00+00:00",
+ "updated_at": "2026-11-18T11:30:49Z",
+ "val": [
+  "2022-07-01 00:00",
+  "2025-06-30 23:00"
+ ],
+ "vault_end": "2026-11-18 09:00:00+00:00",
+ "vault_start": "2025-07-01 00:00:00+00:00"
+}

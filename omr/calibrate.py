@@ -1,0 +1,617 @@
+"""Instrument calibration (protocol v3, formula language):
+
+    python -m omr.calibrate [--worlds 100] [--oracle-worlds 100] [--workers 6]
+
+Runs ONLY on a verified kernel lock (the artifact records kernel_lock_verified true and the locked
+kernel hash); `--unlocked-dry-run --out <file>` is for construction checks and can never be sealed.
+The G6 threshold is not a constant: `python -m omr.kernel_lock seal --calibration <artifact>`
+re-applies `decide` (below) to the stored per-pair rows and writes the result into kernel.lock.
+
+Families: the five generation-0 baseline programs shipped inside the kernel (omr/programs/*.omr,
+hash-locked); --families accepts a subset of these names and nothing else. Every program run here
+goes through the real pipeline functions in-process (pipeline.stage1, pipeline.stage2); nothing is
+written to the trial ledger.
+
+Synthetic worlds are built from the real core data (BTCUSDT, ETHUSDT) over the real 1h calendar,
+carrying klines, mark-price klines and funding together (read with a logged calibration handle).
+NULL A (bootstrap): whole UTC days drawn iid with replacement from DEV+VAL, the same source day for
+  both core symbols; each day keeps its intraday bars, mark bars and funding settlements. Keeps
+  drift, intraday shape and within-day volatility; destroys multi-day predictability.
+NULL B (sign-flip): the real day order; per UTC day one fair coin (shared by both core symbols)
+  mirrors that day's DEMEANED hourly log-return path (r' = -(r - m) + m); high/low excursions swap;
+  mark bars likewise with their own m; funding unchanged. Keeps the real volatility dynamics;
+  destroys directional predictability across days.
+
+DEV-overfit protocol (false-positive rate): for each (world, family) draw 20 parameter sets
+  uniformly from the declared ranges; keep those that pass stage 1 (truncation self-check and
+  activity_dev on the world's DEV-only frames); submit the one with the best DEV Sharpe to stage 2;
+  if none passes stage 1, nothing is submitted for that pair. Null pass rate = Tier-1 passes /
+  SUBMITTED pairs. Every gate value and the G6 p-value of every submitted pair are stored.
+NOISY-ORACLE power: per asset, signal = sign(rho * z_future + sqrt(1 - rho^2) * eps), z_future =
+  standardised future k-day open-to-open log return, eps independent N(0,1), re-decided every k days
+  (decided at the 23:00 bar, executed at the next 00:00 open), weight = signal / K; injected after
+  the interpreter into pipeline.evaluate_weights (G5 passes by definition: no params; G8 not run).
+  Speeds: fast k = 1 day, slow k = 20 days. For each (null, speed, level 1.0 / 1.5) rho is tuned on
+  the power worlds themselves (fixed eps per world) until the ACHIEVED mean VAL Sharpe is within
+  RHO_TOL of the nominal level; the achieved value is reported.
+Reduced pipeline (stated in the artifact): G8 not run (no extended universe in synthetic worlds;
+  G8 can only veto, so null pass rates are upper bounds). Everything else is the real stage 1 and
+  stage 2 with 200 permutation shifts and 12 jitter perturbations.
+
+Rule (decide): the LARGEST G6 threshold in G6_GRID whose null pass rate is <= NULL_PASS_MAX under
+BOTH nulls; then oracle power at true Sharpe 1.5 must be >= POWER_MIN for both speeds under both
+nulls. None qualifies, or the power rule fails -> STOP (the seal refuses).
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import math
+import multiprocessing as mp
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from omr import access
+from omr import constants as C
+from omr import data
+from omr import datasets as D
+from omr import kernel_lock
+from omr import lang as L
+from omr import ledger
+from omr import paths as P
+from omr import pipeline
+from omr import stats as S
+
+PROTOCOL_VERSION = 3
+FAMILIES = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls",
+            "gen000_voltarget_trend_ls", "gen000_funding_carry")
+N_DRAWS = 20
+SPEEDS = {"fast": 1, "slow": 20}
+LEVELS = (1.0, 1.5)
+RHO_GRID = np.round(np.concatenate([np.linspace(0.0, 0.2, 41), np.linspace(0.22, 1.0, 40)]), 6)
+RHO_TOL = 0.02                     # bisection target; the order's bound is 0.1
+RHO_BOUND = 0.1
+HOUR_NS = 3_600_000_000_000
+DAY_NS = 24 * HOUR_NS
+OTHER = ["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]
+GATES = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10"]
+SEEDS = {"A": 1000, "B": 4000, "oracle_A": 7000, "oracle_B": 8000}
+OPTS = pipeline.Opts(include_g8=False, keep_detail=False)
+
+
+def T(s) -> pd.Timestamp:
+    return pd.Timestamp(s, tz="UTC").as_unit("ns")
+
+
+def family_path(name: str) -> Path:
+    if name not in FAMILIES:
+        raise ValueError(f"unknown calibration family {name!r}: only the kernel's baselines {FAMILIES}")
+    return P.PROGRAMS_DIR / f"{name}.omr"
+
+
+# ---------------------------------------------------------------- source days
+
+class Source:
+    """Real core data as whole UTC days, each bar stored as open-relative ratios.
+
+    Per symbol, over its calendar from its first full day to VAL end:
+      g  = open / previous close, hr = high / open, lr = low / open, cr = close / open
+      mark: gm = mark open / previous mark close (NaN if unknown), hm, lm, cm (NaN if no mark bar)
+    m (mean hourly close-to-close log return over DEV+VAL) for last price and for mark.
+    """
+
+    def __init__(self, handle):
+        a, b = T(C.DEV_START), T(C.VAL_END)
+        self.sym = {}
+        for s in C.CORE:
+            kl = D.load_raw("klines", s, upto="val_end", handle=handle)
+            fu = D.load_raw("funding", s, upto="val_end", handle=handle)
+            mk = D.load_raw("mark_klines", s, upto="val_end", handle=handle)
+            first_full = (kl.index[0] + pd.Timedelta(hours=23)).normalize()
+            seg = kl.loc[first_full:b]
+            nd = len(seg) // 24
+            if len(seg) != nd * 24:
+                raise RuntimeError(f"{s}: not a whole number of days")
+            o = seg["open"].to_numpy(dtype=np.float64)
+            h = seg["high"].to_numpy(dtype=np.float64)
+            lo = seg["low"].to_numpy(dtype=np.float64)
+            c = seg["close"].to_numpy(dtype=np.float64)
+            pc = np.r_[kl.loc[:first_full - pd.Timedelta(hours=1), "close"].iloc[-1], c[:-1]]
+            m = mk.reindex(seg.index)
+            mo, mh, ml, mc = (m[k].to_numpy(dtype=np.float64) for k in ("open", "high", "low", "close"))
+            mpc = np.r_[np.nan, mc[:-1]]
+            has = np.isfinite(mo) & np.isfinite(mh) & np.isfinite(ml) & np.isfinite(mc) & (mo > 0) & (ml > 0)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                gm = np.where(has & np.isfinite(mpc) & (mpc > 0), mo / mpc, np.nan)
+                hm, lm, cm = (np.where(has, x / mo, np.nan) for x in (mh, ml, mc))
+            dv = (seg.index >= a) & (seg.index <= b)
+            lr_close = np.log(c / pc)
+            m_last = float(np.mean(lr_close[dv]))
+            with np.errstate(divide="ignore", invalid="ignore"):
+                mlr = np.log(mc / mpc)
+            ok = dv & np.isfinite(mlr)
+            m_mark = float(np.mean(mlr[ok])) if ok.any() else m_last
+            f = fu.loc[first_full:b]
+            ft = data.ns_int(f.index)
+            fday = ((ft - data.ns_int(seg.index[:1])[0]) // DAY_NS).astype(np.int64)
+            order = np.argsort(fday, kind="mergesort")
+            fday = fday[order]
+            pre_mark = mk["close"].loc[:first_full - pd.Timedelta(hours=1)]
+            self.sym[s] = {
+                "days": pd.DatetimeIndex(seg.index[::24]), "nd": nd,
+                "g": (o / pc).reshape(nd, 24), "hr": (h / o).reshape(nd, 24), "lr": (lo / o).reshape(nd, 24),
+                "cr": (c / o).reshape(nd, 24),
+                "gm": gm.reshape(nd, 24), "hm": hm.reshape(nd, 24), "lm": lm.reshape(nd, 24), "cm": cm.reshape(nd, 24),
+                "has": has.reshape(nd, 24),
+                "other": seg[OTHER].to_numpy(dtype=np.float64).reshape(nd, 24, len(OTHER)),
+                "gap": seg["is_gap"].to_numpy().reshape(nd, 24),
+                "fhour": ((ft[order] % DAY_NS) // HOUR_NS).astype(np.int64),
+                "frate": f["rate"].to_numpy()[order], "fint": f["interval_hours"].to_numpy()[order],
+                "offs": np.searchsorted(fday, np.arange(nd + 1)),
+                "p0": float(pc[0]), "mp0": float(pre_mark.iloc[-1]) if len(pre_mark) else float(pc[0]),
+                "m": m_last, "m_mark": m_mark,
+            }
+        # DEV+VAL calendar dates shared by all core symbols: the null-A sampling pool
+        self.pool = pd.date_range(a, b.normalize(), freq="D").as_unit("ns")
+
+
+def _synth_symbol(v: dict, src_days: np.ndarray, flip: np.ndarray):
+    """klines / mark / funding tables for one symbol from source day indices and per-day mirror
+    flags. Returns (frame, liq)."""
+    nd = len(src_days)
+    g, hr, lr, cr = (v[k][src_days].copy() for k in ("g", "hr", "lr", "cr"))
+    gm, hm, lm, cm = (v[k][src_days].copy() for k in ("gm", "hm", "lm", "cm"))
+    has = v["has"][src_days].copy()
+    F = flip[:, None]
+    # mirror the demeaned path: log g' = 2m - log g ; hr' = 1/lr ; lr' = 1/hr ; cr' = 1/cr
+    g = np.where(F, np.exp(2 * v["m"]) / g, g)
+    hr, lr = np.where(F, 1.0 / lr, hr), np.where(F, 1.0 / hr, lr)
+    cr = np.where(F, 1.0 / cr, cr)
+    gm = np.where(F, np.exp(2 * v["m_mark"]) / gm, gm)
+    hm, lm = np.where(F, 1.0 / lm, hm), np.where(F, 1.0 / hm, lm)
+    cm = np.where(F, 1.0 / cm, cm)
+    g, hr, lr, cr = (x.reshape(-1) for x in (g, hr, lr, cr))
+    gm, hm, lm, cm, has = (x.reshape(-1) for x in (gm, hm, lm, cm, has))
+    step = g * cr
+    prev_c = v["p0"] * np.r_[1.0, np.cumprod(step)[:-1]]
+    o = prev_c * g
+    idx = pd.date_range(v["days"][0], periods=nd * 24, freq="h").as_unit("ns")
+    idx.name = "open_time"
+    kl = pd.DataFrame({"open": o, "high": o * hr, "low": o * lr, "close": o * cr}, index=idx)
+    oth = v["other"][src_days].reshape(nd * 24, len(OTHER))
+    for j, c in enumerate(OTHER):
+        kl[c] = oth[:, j]
+    kl["is_gap"] = v["gap"][src_days].reshape(-1)
+    gm_eff = np.where(np.isfinite(gm), gm, g)
+    cm_eff = np.where(has, cm, cr)
+    mstep = gm_eff * cm_eff
+    mprev = v["mp0"] * np.r_[1.0, np.cumprod(mstep)[:-1]]
+    mo = mprev * gm_eff
+    mark = pd.DataFrame({"open": mo, "high": mo * hm, "low": mo * lm, "close": mo * cm,
+                         "samples": 3600.0}, index=idx)[has]
+    sel = np.concatenate([np.arange(v["offs"][p], v["offs"][p + 1]) for p in src_days])
+    day_of = np.concatenate([np.full(v["offs"][p + 1] - v["offs"][p], i) for i, p in enumerate(src_days)])
+    ft = data.ns_int(idx[:1])[0] + day_of * DAY_NS + v["fhour"][sel] * HOUR_NS
+    fu = pd.DataFrame({"rate": v["frate"][sel], "interval_hours": v["fint"][sel], "offset_ms": 0.0},
+                      index=pd.DatetimeIndex(pd.to_datetime(ft, unit="ns", utc=True)).as_unit("ns"))
+    fu.index.name = "settle_time"
+    raw = {"klines": kl, "funding": fu, "mark_klines": mark}
+    return D.assemble_frame(raw, D.PROGRAM_EXTRA), D.liquidation_ratios(kl, mark)
+
+
+def build_world(src: Source, null: str, seed: int) -> pipeline.World:
+    """null 'A': iid day bootstrap from DEV+VAL; null 'B': real day order with daily mirror coins."""
+    rng = np.random.default_rng([seed, 11 if null == "A" else 12])
+    syms = list(src.sym)
+    start = min(src.sym[s]["days"][0] for s in syms)
+    cal = pd.date_range(start, T(C.VAL_END).normalize(), freq="D").as_unit("ns")
+    ncal = len(cal)
+    if null == "A":
+        pick_date = src.pool[rng.integers(0, len(src.pool), ncal)]
+        flips = np.zeros(ncal, dtype=bool)
+    elif null == "B":
+        pick_date = cal
+        flips = rng.uniform(size=ncal) < 0.5
+    else:
+        raise ValueError(null)
+    frames, liqs = {}, {}
+    for s in syms:
+        v = src.sym[s]
+        d0 = int((v["days"][0] - cal[0]) / pd.Timedelta(days=1))
+        src_days = np.asarray(((pick_date[d0:] - v["days"][0]) // pd.Timedelta(days=1)).astype(np.int64))
+        frames[s], liqs[s] = _synth_symbol(v, src_days, flips[d0:])
+    return pipeline.World(core=frames, symbols=C.CORE, liq=liqs, btc=frames[C.BTC])
+
+
+def dev_view(world: pipeline.World):
+    cap = T(C.DEV_END)
+    frames = {s: f.loc[:cap] for s, f in world.core.items()}
+    return frames, frames[C.BTC]
+
+
+# ---------------------------------------------------------------- noisy oracle
+
+class OracleBase:
+    """Per world and speed: standardised future block returns z and fixed eps draws."""
+
+    def __init__(self, world: pipeline.World, k_days: int, eps_seed):
+        self.grid = pipeline.core_grid(world.core, world.symbols)
+        self.mk = pipeline.Market(world.core, world.liq, self.grid, world.symbols)
+        self.dev_s, self.val_e = self.mk.pos(C.DEV_START), self.mk.pos(C.VAL_END)
+        K = len(world.symbols)
+        step = 24 * k_days
+        self.starts = np.arange(self.dev_s, self.val_e, step)
+        self.ends = np.minimum(self.starts + step, self.val_e)
+        rng = np.random.default_rng(eps_seed)
+        self.z, self.eps = [], []
+        for j in range(K):
+            o = self.mk.op[:, j]
+            R = np.log(o[self.ends] / o[self.starts])
+            sd = R.std(ddof=1)
+            self.z.append((R - R.mean()) / sd if sd > 0 else np.zeros_like(R))
+            self.eps.append(rng.standard_normal(len(R)))
+        rows = np.arange(self.starts[0] - 1, self.ends[-1] - 1)
+        self.rows = rows
+        self.block = np.repeat(np.arange(len(self.starts)), self.ends - self.starts)
+        self.K = K
+
+    def weights(self, rho: float) -> np.ndarray:
+        W = np.zeros((len(self.grid), self.K))
+        for j in range(self.K):
+            x = rho * self.z[j] + math.sqrt(max(0.0, 1.0 - rho * rho)) * self.eps[j]
+            sgn = np.where(x >= 0, 1.0, -1.0) / self.K
+            W[self.rows, j] = sgn[self.block]
+            W[self.ends[-1] - 1:, j] = sgn[-1]
+        return W
+
+    def val_sharpe(self, rho: float) -> float:
+        return pipeline.val_sharpe_of(self.mk.run(self.weights(rho), self.dev_s, self.val_e))
+
+
+# ---------------------------------------------------------------- workers
+
+_W = {}
+
+
+def _init(families, handle):
+    _W["handle"] = handle
+    _W["src"] = Source(handle)
+    _W["progs"] = {f: L.parse_file(family_path(f)) for f in families}
+
+
+def _seed(*parts) -> int:
+    return int(ledger.sha256_text("|".join(str(x) for x in parts))[:15], 16)
+
+
+def draw_params(prog: L.Program, rng) -> dict:
+    out = {}
+    for k, p in prog.params.items():
+        out[k] = int(rng.integers(int(p.low), int(p.high) + 1)) if p.is_int else float(rng.uniform(p.low, p.high))
+    return out
+
+
+def dev_sharpe(world_dev_frames, liq, s1) -> float:
+    mk = pipeline.Market(world_dev_frames, liq, s1["grid"], C.CORE)
+    run = mk.run(s1["W"], mk.pos(C.DEV_START), mk.pos(C.DEV_END))
+    return float("-inf") if run.liquidated else S.sharpe(run.daily_returns())
+
+
+def summarise(res: dict, extra: dict) -> dict:
+    out = dict(extra)
+    out["status"] = res["status"]
+    if res["status"] != "evaluated":
+        out["reason"] = res.get("reason")
+        return out
+    g = res["gates"]
+    out["gates"] = {k: v["pass"] for k, v in g.items()}
+    out["gate_values"] = {k: v["value"] for k, v in g.items()}
+    out["g5_vacuous"] = bool(g["G5"].get("g5_vacuous"))
+    out["perm_p"] = g["G6"]["value"]
+    m = res["metrics"]
+    out.update(val_sharpe=m["val"]["sharpe"], dev_sharpe=m["dev"]["sharpe"], psr0=m["val"]["psr0"],
+               direction_changes_dev=m["direction_changes_dev"], direction_changes_val=m["direction_changes_val"],
+               rebalances=m["rebalances"])
+    return out
+
+
+def task_null(args) -> list:
+    null, world_seed = args
+    world = build_world(_W["src"], null, world_seed)
+    frames_dev, btc_dev = dev_view(world)
+    out = []
+    for fam, prog in _W["progs"].items():
+        rng = np.random.default_rng(_seed("draws", null, fam, world_seed))
+        best, best_sh, best_s1, codes = None, float("-inf"), None, {}
+        for i in range(N_DRAWS):
+            q = draw_params(prog, rng)
+            s1 = pipeline.stage1(prog, q, frames_dev, btc_dev, np.random.default_rng(_seed("s1", null, fam, world_seed, i)),
+                                 OPTS)
+            if not s1["ok"]:
+                codes[s1["code"]] = codes.get(s1["code"], 0) + 1
+                continue
+            codes["passed"] = codes.get("passed", 0) + 1
+            sh = dev_sharpe(frames_dev, world.liq, s1)
+            if best is None or sh > best_sh:
+                best, best_sh, best_s1 = q, sh, s1
+        base = {"null": null, "family": fam, "world_seed": world_seed, "stage1": codes}
+        if best is None:
+            out.append(dict(base, submitted=False, status="not_submitted"))
+            continue
+        res = pipeline.stage2(prog, best, world, best_s1, OPTS, _W["handle"], _seed("null", null, fam, world_seed), None)
+        out.append(summarise(res, dict(base, submitted=True, params=best, best_dev_sharpe_of_passers=best_sh)))
+    return out
+
+
+def task_oracle_curve(args) -> list:
+    null, world_seed, speed, rhos = args
+    ob = OracleBase(build_world(_W["src"], null, world_seed), SPEEDS[speed], _seed("eps", null, world_seed, speed))
+    return [ob.val_sharpe(float(r)) for r in rhos]
+
+
+def task_oracle_power(args) -> list:
+    null, world_seed, rhos = args      # rhos: {"speed|level": rho}
+    world = build_world(_W["src"], null, world_seed)
+    out = []
+    for speed in SPEEDS:
+        ob = OracleBase(world, SPEEDS[speed], _seed("eps", null, world_seed, speed))
+        for lvl in LEVELS:
+            rho = rhos[f"{speed}|{lvl}"]
+            res = pipeline.evaluate_weights(ob.weights(rho), ob.grid, world, _seed("oracle", null, world_seed, speed, lvl),
+                                            OPTS, _W["handle"], None)
+            out.append(summarise(res, {"null": null, "speed": speed, "level": lvl, "rho": rho,
+                                       "world_seed": world_seed}))
+    return out
+
+
+# ---------------------------------------------------------------- summaries and the rule
+
+def tier_at(row: dict, p_max: float) -> bool:
+    """Tier 1 re-read at G6 threshold p_max from stored gate outcomes and the p-value."""
+    if row.get("status") != "evaluated":
+        return False
+    others = [v for k, v in row["gates"].items() if k != "G6" and v is not None]
+    return all(others) and row["perm_p"] <= p_max + 1e-12
+
+
+def gate_rates(rows: list, p_max: float) -> dict:
+    ev = [r for r in rows if r.get("status") == "evaluated"]
+    out = {}
+    for g in GATES:
+        if not rows:
+            out[g] = None
+        elif g == "G6":
+            out[g] = sum(r["perm_p"] <= p_max + 1e-12 for r in ev) / len(rows)
+        else:
+            out[g] = sum(bool(r["gates"].get(g)) for r in ev) / len(rows)
+    return out
+
+
+def null_summary(rows: list, families) -> dict:
+    sub = [r for r in rows if r.get("submitted")]
+    out = {"n_pairs": len(rows), "n_submitted": len(sub),
+           "n_not_submitted": len(rows) - len(sub),
+           "submitted_status": {}, "stage1_draws": {}, "by_threshold": {},
+           "per_family": {f: {"pairs": 0, "submitted": 0} for f in families}}
+    for r in rows:
+        out["per_family"][r["family"]]["pairs"] += 1
+        out["per_family"][r["family"]]["submitted"] += int(bool(r.get("submitted")))
+        for k, v in r.get("stage1", {}).items():
+            out["stage1_draws"][k] = out["stage1_draws"].get(k, 0) + v
+    for r in sub:
+        out["submitted_status"][r["status"]] = out["submitted_status"].get(r["status"], 0) + 1
+    for t in C.G6_GRID:
+        passers = [r for r in sub if tier_at(r, t)]
+        out["by_threshold"][str(t)] = {
+            "tier1": len(passers),
+            "pass_rate": len(passers) / len(sub) if sub else None,           # per SUBMITTED pair (the rule)
+            "pass_rate_all_pairs": len(passers) / len(rows) if rows else None,
+            "passer_families": {f: sum(1 for r in passers if r["family"] == f) for f in families},
+            "passers": [{"family": r["family"], "world_seed": r["world_seed"], "params": r["params"],
+                         "perm_p": r["perm_p"], "val_sharpe": r["val_sharpe"]} for r in passers],
+            "gate_pass_rate_submitted": gate_rates(sub, t),
+        }
+    return out
+
+
+def oracle_summary(rows: list) -> dict:
+    out = {}
+    for speed in SPEEDS:
+        for lvl in LEVELS:
+            rr = [r for r in rows if r["speed"] == speed and r["level"] == lvl]
+            fin = [r["val_sharpe"] for r in rr if r.get("status") == "evaluated" and np.isfinite(r["val_sharpe"])]
+            out[f"{speed}|{lvl}"] = {
+                "n": len(rr), "mean_val_sharpe": float(np.mean(fin)) if fin else None,
+                "not_evaluated": int(sum(1 for r in rr if r.get("status") != "evaluated")),
+                "by_threshold": {str(t): {"power": (sum(tier_at(r, t) for r in rr) / len(rr)) if rr else None,
+                                          "tier1": int(sum(tier_at(r, t) for r in rr)),
+                                          "gate_pass_rate": gate_rates(rr, t)} for t in C.G6_GRID}}
+    return out
+
+
+RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is "
+        "<= NULL_PASS_MAX under BOTH nulls; then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds "
+        "under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; "
+        "otherwise STOP")
+
+
+def decide(nulls: dict, oracle: dict) -> dict:
+    """The calibration rule (also applied by `omr.kernel_lock seal` to the stored rows)."""
+    def rate(n, t, k="pass_rate"):
+        return nulls[n]["summary"]["by_threshold"][str(t)][k]
+    qualifying = [t for t in C.G6_GRID
+                  if all(rate(n, t) is not None and rate(n, t) <= C.NULL_PASS_MAX + 1e-12 for n in ("A", "B"))]
+    chosen = max(qualifying) if qualifying else None
+    verdict = {"rule": RULE, "grid": list(C.G6_GRID), "null_pass_max": C.NULL_PASS_MAX, "power_min": C.POWER_MIN,
+               "denominator": "submitted pairs",
+               "null_pass_rate": {n: {str(t): rate(n, t) for t in C.G6_GRID} for n in ("A", "B")},
+               "null_pass_rate_all_pairs": {n: {str(t): rate(n, t, "pass_rate_all_pairs") for t in C.G6_GRID}
+                                            for n in ("A", "B")},
+               "qualifying": qualifying, "chosen_threshold": chosen}
+    if chosen is None:
+        verdict["STOP"] = True
+        verdict["reason"] = "no G6 threshold in the grid keeps the null pass rate <= NULL_PASS_MAX under both nulls"
+        return verdict
+    achieved = {n: {k: v["mean_val_sharpe"] for k, v in oracle[n]["summary"].items()} for n in ("A", "B")}
+    verdict["oracle_achieved_mean_val_sharpe"] = achieved
+    off = [f"{n}/{k}" for n in achieved for k, v in achieved[n].items()
+           if v is None or abs(v - float(k.split("|")[1])) > RHO_BOUND]
+    verdict["oracle_level_outside_bound"] = off
+    power15 = {n: {s: oracle[n]["summary"][f"{s}|1.5"]["by_threshold"][str(chosen)]["power"] for s in SPEEDS}
+               for n in ("A", "B")}
+    verdict["power_at_1_5_chosen"] = power15
+    below = [f"{n}/{s}" for n in power15 for s in power15[n] if power15[n][s] is None or power15[n][s] < C.POWER_MIN]
+    verdict["below_power_min"] = below
+    verdict["STOP"] = bool(below) or bool(off)
+    if off:
+        verdict["reason"] = f"oracle achieved mean VAL Sharpe more than {RHO_BOUND} from its level: " + ", ".join(off)
+    elif below:
+        verdict["reason"] = "oracle power at true Sharpe 1.5 below POWER_MIN at the chosen threshold: " + ", ".join(below)
+    return verdict
+
+
+def verdict_from_rows(art: dict) -> dict:
+    """Recompute every summary from the stored per-pair rows and apply the rule (no re-run)."""
+    fams = list(art["families"])
+    nulls = {n: {"summary": null_summary(art["nulls"][n]["rows"], fams)} for n in ("A", "B")}
+    oracle = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
+    return decide(nulls, oracle)
+
+
+def tune_rho(pool, null: str, speed: str, seeds: list, log) -> dict:
+    """rho per level so the mean VAL Sharpe over the power worlds (fixed eps per world) is as close
+    as possible to the level: a coarse curve on RHO_GRID, a 41-point fine curve inside the bracket,
+    the fine point closest to the level, then the achieved mean re-measured at that rho."""
+    def means(rhos):
+        res = pool.map(task_oracle_curve, [(null, s, speed, [float(r) for r in rhos]) for s in seeds])
+        mat = np.array(res, dtype=np.float64)
+        mat = np.where(np.isfinite(mat), mat, np.nan)
+        return np.nanmean(mat, axis=0)
+
+    mean = means(RHO_GRID)
+    out = {"mean_curve": {f"{r:.4f}": float(m) for r, m in zip(RHO_GRID, mean)},
+           "mean_val_sharpe_at_rho0": float(mean[0])}
+    fine = {}
+    for lvl in LEVELS:
+        idx = np.nonzero(mean >= lvl)[0]
+        if len(idx) == 0:
+            lo, hi = float(RHO_GRID[-2]), float(RHO_GRID[-1])
+        elif idx[0] == 0:
+            lo, hi = float(RHO_GRID[0]), float(RHO_GRID[1])
+        else:
+            lo, hi = float(RHO_GRID[idx[0] - 1]), float(RHO_GRID[idx[0]])
+        fine[lvl] = np.linspace(lo, hi, 41)
+    fm = means(np.concatenate([fine[lv] for lv in LEVELS]))
+    picks = {}
+    for i, lvl in enumerate(LEVELS):
+        seg = fm[i * 41:(i + 1) * 41]
+        j = int(np.nanargmin(np.abs(seg - lvl)))
+        picks[lvl] = float(fine[lvl][j])
+    ach = means([picks[lv] for lv in LEVELS])
+    for i, lvl in enumerate(LEVELS):
+        a_ = float(ach[i])
+        out[str(lvl)] = {"rho": picks[lvl], "achieved_mean_val_sharpe": a_,
+                         "bracket": [float(fine[lvl][0]), float(fine[lvl][-1])],
+                         "within_tol": bool(abs(a_ - lvl) <= RHO_TOL), "within_bound": bool(abs(a_ - lvl) <= RHO_BOUND)}
+        log(f"    null {null} {speed:4s} level {lvl}: rho {picks[lvl]:.5f} -> achieved mean VAL Sharpe {a_:.3f} "
+            f"on {len(seeds)} worlds")
+    return out
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="python -m omr.calibrate")
+    ap.add_argument("--worlds", type=int, default=100, help="null worlds per null (x 5 families = pairs)")
+    ap.add_argument("--oracle-worlds", type=int, default=100)
+    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--families", nargs="*", default=None, help="subset of the kernel's five baselines")
+    ap.add_argument("--unlocked-dry-run", action="store_true", help="construction check; never sealable")
+    ap.add_argument("--out", default=None, help="output path (required with --unlocked-dry-run)")
+    a = ap.parse_args(argv)
+    t0 = time.time()
+
+    def log(s):
+        print(s, flush=True)
+
+    fams = list(a.families) if a.families else list(FAMILIES)
+    for f in fams:
+        family_path(f)
+    problems = kernel_lock.verify()
+    lock_ok = not problems
+    if not lock_ok and not a.unlocked_dry_run:
+        log("KERNEL LOCK DOES NOT VERIFY - the calibration runs only on the locked kernel:")
+        for p in problems[:10]:
+            log("  " + p)
+        raise SystemExit(3)
+    if a.unlocked_dry_run and not a.out:
+        raise SystemExit("--unlocked-dry-run needs --out <path> (never written into ledger/)")
+    kh = kernel_lock.read_lock()["combined"] if lock_ok else kernel_lock.kernel_hash()
+    manifest = data.load_manifest()
+    if not data.validation_ok():
+        raise SystemExit("data not validated for the current files: run python -m omr.data validate")
+    log(f"calibration v{PROTOCOL_VERSION}: kernel {kh[:16]} (lock {'VERIFIED' if lock_ok else 'NOT verified: dry run'}), "
+        f"research_hash {manifest['research_hash'][:16]}, families {fams}")
+    handle = access.for_calibration(f"calibration protocol v{PROTOCOL_VERSION}, kernel {kh[:16]}: synthetic worlds built "
+                                    "from DEV+VAL bars; no real-program VAL result is computed")
+    ctx = mp.get_context("spawn")
+    nulls, oracle = {}, {}
+    with ctx.Pool(a.workers, initializer=_init, initargs=(fams, handle)) as pool:
+        for null in ("A", "B"):
+            log(f"[null {null}] {a.worlds} worlds x {len(fams)} families, {N_DRAWS} draws, stage-1 passers, best DEV Sharpe")
+            rows = []
+            for i, rr in enumerate(pool.imap_unordered(task_null, [(null, SEEDS[null] + i) for i in range(a.worlds)])):
+                rows.extend(rr)
+                if (i + 1) % 20 == 0:
+                    log(f"    {i + 1}/{a.worlds} worlds  ({time.time() - t0:.0f} s)")
+            rows.sort(key=lambda r: (r["world_seed"], r["family"]))
+            sm = null_summary(rows, fams)
+            nulls[null] = {"rows": rows, "summary": sm}
+            for t in C.G6_GRID:
+                b = sm["by_threshold"][str(t)]
+                rate = "n/a" if b["pass_rate"] is None else f"{b['pass_rate']:.4f}"
+                log(f"    null {null} p<={t}: {b['tier1']}/{sm['n_submitted']} submitted = {rate} "
+                    f"({sm['n_pairs']} pairs)  passers {b['passer_families']}")
+            log(f"    submitted status {sm['submitted_status']}  stage-1 draws {sm['stage1_draws']}")
+        for null in ("A", "B"):
+            seeds = [SEEDS[f"oracle_{null}"] + i for i in range(a.oracle_worlds)]
+            log(f"[oracle {null}] tuning rho on the {len(seeds)} power worlds")
+            rhos, tuning = {}, {}
+            for speed in SPEEDS:
+                tuning[speed] = tune_rho(pool, null, speed, seeds, log)
+                for lvl in LEVELS:
+                    rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
+            log(f"[oracle {null}] power on the {len(seeds)} worlds")
+            rows = []
+            for rr in pool.imap_unordered(task_oracle_power, [(null, s, rhos) for s in seeds]):
+                rows.extend(rr)
+            rows.sort(key=lambda r: (r["world_seed"], r["speed"], r["level"]))
+            oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": oracle_summary(rows)}
+            for key, sm in oracle[null]["summary"].items():
+                log(f"    null {null} {key}: mean VAL SR {sm['mean_val_sharpe']:.3f}  power " +
+                    "  ".join(f"p<={t}: {sm['by_threshold'][str(t)]['tier1']}/{sm['n']}" for t in C.G6_GRID))
+
+    verdict = decide(nulls, oracle)
+    out = {"protocol_version": PROTOCOL_VERSION, "kernel_hash": kh, "kernel_lock_verified": lock_ok,
+           "research_hash": manifest["research_hash"], "semantics_version": C.SEMANTICS_VERSION,
+           "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
+           "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": N_DRAWS, "oracle_worlds": a.oracle_worlds,
+                        "speeds_days": SPEEDS, "levels": list(LEVELS), "seeds": SEEDS, "rho_tol": RHO_TOL,
+                        "reduced_pipeline": "G8 not run (no extended universe; G8 can only veto, so null pass rates "
+                                            "are upper bounds); oracles: G5 passes by definition (no params)"},
+           "nulls": nulls, "oracle": oracle, "verdict": verdict, "wall_seconds": round(time.time() - t0, 1)}
+    if a.out:
+        path = Path(a.out)
+    else:
+        path = P.LEDGER_DIR / f"calibration_{kh[:16]}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(ledger.clean(out), indent=1, sort_keys=True), encoding="ascii")
+    log(f"saved {path}")
+    log(json.dumps(ledger.clean(verdict), indent=1))
+    log(f"wall time {out['wall_seconds']} s")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,1199 @@
+{
+ "counts": {
+  "funding/ADAUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/ADAUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2680
+  },
+  "funding/ADAUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/ADAUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/ADAUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/ADAUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/AVAXUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/AVAXUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1939
+  },
+  "funding/AVAXUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/AVAXUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/AVAXUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/AVAXUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/BNBUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/BNBUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2615
+  },
+  "funding/BNBUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/BNBUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/BNBUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/BNBUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/BTCUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/BTCUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2736
+  },
+  "funding/BTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/BTCUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/BTCUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/BTCUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 338
+  },
+  "funding/DOGEUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/DOGEUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2162
+  },
+  "funding/DOGEUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/DOGEUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/DOGEUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/DOGEUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/ETHUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/ETHUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2736
+  },
+  "funding/ETHUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/ETHUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/ETHUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/ETHUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 104
+  },
+  "funding/LINKUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/LINKUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2687
+  },
+  "funding/LINKUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/LINKUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/LINKUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/LINKUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/LTCUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/LTCUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2711
+  },
+  "funding/LTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/LTCUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/LTCUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/LTCUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/SOLUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/SOLUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1966
+  },
+  "funding/SOLUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/SOLUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3363
+  },
+  "funding/SOLUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/SOLUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/XRPUSDT/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/XRPUSDT/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 2720
+  },
+  "funding/XRPUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "funding/XRPUSDT/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 3288
+  },
+  "funding/XRPUSDT/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1517
+  },
+  "funding/XRPUSDT/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "klines/ADAUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/ADAUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21160
+  },
+  "klines/ADAUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/ADAUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/ADAUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/ADAUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/AVAXUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/AVAXUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 15497
+  },
+  "klines/AVAXUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/AVAXUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/AVAXUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/AVAXUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/BNBUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/BNBUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 20920
+  },
+  "klines/BNBUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/BNBUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/BNBUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/BNBUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/BTCUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/BTCUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "klines/BTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/BTCUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/BTCUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/BTCUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 2743
+  },
+  "klines/DOGEUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/DOGEUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 17295
+  },
+  "klines/DOGEUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/DOGEUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/DOGEUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/DOGEUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/ETHUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/ETHUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "klines/ETHUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/ETHUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/ETHUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/ETHUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 833
+  },
+  "klines/LINKUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/LINKUSDT/dev": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21496
+  },
+  "klines/LINKUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/LINKUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/LINKUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/LINKUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/LTCUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/LTCUSDT/dev": {
+   "gap_bars": 120,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21688
+  },
+  "klines/LTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/LTCUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/LTCUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/LTCUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/SOLUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/SOLUSDT/dev": {
+   "gap_bars": 120,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 15713
+  },
+  "klines/SOLUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/SOLUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/SOLUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/SOLUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/XRPUSDT/after_vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "klines/XRPUSDT/dev": {
+   "gap_bars": 120,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21760
+  },
+  "klines/XRPUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "klines/XRPUSDT/val": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26304
+  },
+  "klines/XRPUSDT/vault": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12130
+  },
+  "klines/XRPUSDT/warmup": {
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/ADAUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/ADAUSDT/dev": {
+   "grid_bars": 21160,
+   "mark_bars_on_grid": 21160,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21447
+  },
+  "mark_klines/ADAUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/ADAUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/ADAUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/ADAUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/AVAXUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/AVAXUSDT/dev": {
+   "grid_bars": 15497,
+   "mark_bars_on_grid": 15377,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 15399
+  },
+  "mark_klines/AVAXUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/AVAXUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "mark_klines/AVAXUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/AVAXUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/BNBUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/BNBUSDT/dev": {
+   "grid_bars": 20920,
+   "mark_bars_on_grid": 20800,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21768
+  },
+  "mark_klines/BNBUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/BNBUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "mark_klines/BNBUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/BNBUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "mark_klines/BTCUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/BTCUSDT/dev": {
+   "grid_bars": 21888,
+   "mark_bars_on_grid": 21768,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21768
+  },
+  "mark_klines/BTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/BTCUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "mark_klines/BTCUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/BTCUSDT/warmup": {
+   "grid_bars": 2743,
+   "mark_bars_on_grid": 205,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "mark_klines/DOGEUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/DOGEUSDT/dev": {
+   "grid_bars": 17295,
+   "mark_bars_on_grid": 17295,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 17301
+  },
+  "mark_klines/DOGEUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/DOGEUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/DOGEUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/DOGEUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/ETHUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/ETHUSDT/dev": {
+   "grid_bars": 21888,
+   "mark_bars_on_grid": 21888,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "mark_klines/ETHUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/ETHUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/ETHUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/ETHUSDT/warmup": {
+   "grid_bars": 833,
+   "mark_bars_on_grid": 205,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "mark_klines/LINKUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/LINKUSDT/dev": {
+   "grid_bars": 21496,
+   "mark_bars_on_grid": 21376,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21377
+  },
+  "mark_klines/LINKUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/LINKUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "mark_klines/LINKUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/LINKUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/LTCUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/LTCUSDT/dev": {
+   "grid_bars": 21688,
+   "mark_bars_on_grid": 21688,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21692
+  },
+  "mark_klines/LTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/LTCUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/LTCUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/LTCUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/SOLUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/SOLUSDT/dev": {
+   "grid_bars": 15713,
+   "mark_bars_on_grid": 15593,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 15613
+  },
+  "mark_klines/SOLUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/SOLUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/SOLUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/SOLUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/XRPUSDT/after_vault": {
+   "grid_bars": 1,
+   "mark_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "mark_klines/XRPUSDT/dev": {
+   "grid_bars": 21760,
+   "mark_bars_on_grid": 21640,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21645
+  },
+  "mark_klines/XRPUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/XRPUSDT/val": {
+   "grid_bars": 26304,
+   "mark_bars_on_grid": 26256,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26256
+  },
+  "mark_klines/XRPUSDT/vault": {
+   "grid_bars": 12130,
+   "mark_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "mark_klines/XRPUSDT/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  }
+ },
+ "data_fingerprint": "aaef7e0d16f3fc187edd3dfaf78476b93e75b2751571b3f69ff7569e1834082e",
+ "failures": 0,
+ "passed": true,
+ "research_hash": "cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8",
+ "validated_at": "2026-11-18T18:31:10Z"
+}

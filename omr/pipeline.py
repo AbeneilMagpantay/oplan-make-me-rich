@@ -1,0 +1,397 @@
+"""Evaluation pipeline for .omr programs. Kernel module.
+
+No strategy code exists or runs: signals come from the kernel's interpreter (omr.interp) over a
+checked program (omr.lang). All comparisons, metrics and gates are computed here.
+
+stage1(...)  DEV-only frames, uncounted: signals, program truncation self-check (a mismatch is a
+             kernel fault: the functions are meant to be causal), activity_dev (direction changes).
+stage2(...)  DEV+VAL frames, counted, needs a ValHandle: recompute; DEV rows must equal stage 1
+             (else kernel_fault); engine; liquidation; metrics; gates G1-G8 and G10.
+evaluate_weights(...)  calibration only: gates for injected weights (noisy oracles).
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+
+import numpy as np
+import pandas as pd
+
+from omr import access
+from omr import constants as C
+from omr import engine as E
+from omr import interp as X
+from omr import lang as L
+from omr import stats as S
+
+
+def T(s: str) -> pd.Timestamp:
+    return pd.Timestamp(s, tz="UTC").as_unit("ns")
+
+
+class KernelFault(Exception):
+    """An internal invariant of the kernel failed (never a property of the program)."""
+
+
+@dataclass
+class World:
+    """core / extended: {symbol: frame}; btc: the BTCUSDT frame used by btc(field);
+    liq: {symbol: DataFrame(dn, up, has_mark)} (mark-price liquidation ratios)."""
+    core: dict
+    extended: dict = field(default_factory=dict)
+    btc: pd.DataFrame | None = None
+    liq: dict = field(default_factory=dict)
+    symbols: tuple = C.CORE
+
+
+@dataclass
+class Opts:
+    perm_n: int = C.PERM_N
+    jitter_n: int = C.JITTER_N
+    include_g8: bool = True
+    keep_detail: bool = True
+    truncation_cuts: int = C.TRUNCATION_CUTS
+
+
+# ---------------------------------------------------------------- market
+
+def liq_ratios(frame: pd.DataFrame, liq, grid: pd.DatetimeIndex):
+    f = frame.reindex(grid)
+    o = f["open"].to_numpy(dtype=np.float64)
+    dn = f["low"].to_numpy(dtype=np.float64) / o
+    up = f["high"].to_numpy(dtype=np.float64) / o
+    if liq is not None:
+        lq = liq.reindex(grid)
+        has = lq["dn"].notna().to_numpy() & lq["up"].notna().to_numpy()
+        dn = np.where(has, lq["dn"].to_numpy(dtype=np.float64), dn)
+        up = np.where(has, lq["up"].to_numpy(dtype=np.float64), up)
+    return dn, up
+
+
+class Market:
+    """Aligned price arrays for `symbols` on `grid` (no region requirement)."""
+
+    def __init__(self, frames: dict, liq: dict, grid: pd.DatetimeIndex, symbols):
+        syms = list(symbols)
+        self.grid = grid
+        self.op = np.column_stack([frames[s]["open"].reindex(grid).to_numpy(dtype=np.float64) for s in syms])
+        r = [liq_ratios(frames[s], liq.get(s), grid) for s in syms]
+        self.dn = np.column_stack([x[0] for x in r])
+        self.up = np.column_stack([x[1] for x in r])
+        self.fr = np.column_stack([frames[s]["funding_rate"].reindex(grid).to_numpy(dtype=np.float64) for s in syms])
+
+    def pos(self, s: str):
+        t = T(s)
+        return int(self.grid.get_loc(t)) if t in self.grid else None
+
+    def run(self, Wn: np.ndarray, s: int, e: int, cost_mult=1.0, pay=1.0, recv=1.0) -> E.Run:
+        """Run over grid positions s..e (s >= 1). Target at position j = decision at j-1."""
+        return E.run(self.grid[s:e + 1], self.op[s:e + 1], self.dn[s:e + 1], self.up[s:e + 1], self.fr[s:e + 1],
+                     Wn[s - 1:e], cost_rate=C.COST_RATE * cost_mult, pay_mult=pay, recv_mult=recv)
+
+
+def core_grid(frames: dict, symbols) -> pd.DatetimeIndex:
+    idx = None
+    for s in symbols:
+        i = pd.DatetimeIndex(frames[s].index).as_unit("ns")
+        idx = i if idx is None else idx.intersection(i)
+    return idx
+
+
+# ---------------------------------------------------------------- signals
+
+def unit_signals(prog: L.Program, params: dict, frames: dict, symbols, btc, grid: pd.DatetimeIndex,
+                 upto: pd.Timestamp | None = None):
+    """(weights, raw) on grid[:upto]. single: each symbol evaluated alone on its own history;
+    portfolio: one panel on the grid. raw keeps NaN; weights are valid by construction."""
+    symbols = list(symbols)
+    g = grid if upto is None else grid[grid <= upto]
+    b = btc if (btc is None or upto is None) else btc.loc[:upto]
+    if prog.kind == "single":
+        raws = []
+        for s in symbols:
+            f = frames[s] if upto is None else frames[s].loc[:upto]
+            r = X.evaluate(prog, params, [f], b)[:, 0]
+            raws.append(pd.Series(r, index=pd.DatetimeIndex(f.index).as_unit("ns")).reindex(g).to_numpy())
+        raw = np.column_stack(raws)
+    else:
+        panel = [frames[s].reindex(g) for s in symbols]
+        raw = X.evaluate(prog, params, panel, b)
+    return X.weights(prog, raw, len(symbols)), raw
+
+
+def direction_changes(W: np.ndarray, lo: int, hi: int) -> int:
+    """Per symbol: state = sign(w) where |w| > DIRECTION_TOL else 0; count decision rows lo..hi whose
+    state differs from the previous row; sum over symbols."""
+    st = np.where(np.abs(W) > C.DIRECTION_TOL, np.sign(W), 0.0)
+    if lo < 1:
+        raise KernelFault("direction_changes needs a row before lo")
+    return int(np.sum(st[lo:hi + 1] != st[lo - 1:hi]))
+
+
+def same_rows(a: np.ndarray, b: np.ndarray) -> bool:
+    return a.shape == b.shape and bool(np.array_equal(a, b, equal_nan=True))
+
+
+# ---------------------------------------------------------------- stage 1
+
+def stage1(prog: L.Program, params: dict, frames_dev: dict, btc_dev, rng, opts: Opts = Opts(),
+           symbols=C.CORE) -> dict:
+    grid = core_grid(frames_dev, symbols)
+    if grid[-1] != T(C.DEV_END):
+        raise KernelFault("stage 1 frames must end at DEV end")
+    W, raw = unit_signals(prog, params, frames_dev, symbols, btc_dev, grid)
+    dev_s = int(grid.get_loc(T(C.DEV_START)))
+    dev_e = len(grid) - 1
+    pool = np.arange(dev_s - 1, dev_e)
+    cuts = sorted(set(rng.choice(pool, size=min(opts.truncation_cuts, len(pool)), replace=False).tolist()) | {dev_e})
+    for c in cuts:
+        _, rt = unit_signals(prog, params, frames_dev, symbols, btc_dev, grid, upto=grid[c])
+        if not same_rows(rt, raw[:c + 1]):
+            return {"ok": False, "code": "kernel_fault", "cuts": len(cuts)}
+    n_dev = direction_changes(W, dev_s - 1, dev_e - 1)
+    out = {"ok": n_dev >= C.MIN_DIRECTION_CHANGES_DEV, "code": None if n_dev >= C.MIN_DIRECTION_CHANGES_DEV else "activity_dev",
+           "cuts": len(cuts), "direction_changes_dev": n_dev, "grid": grid, "W": W, "raw": raw}
+    return out
+
+
+# ---------------------------------------------------------------- stage 2
+
+def split_daily(daily: pd.Series):
+    dev = daily[(daily.index >= T(C.DEV_START)) & (daily.index <= T(C.DEV_END))]
+    val = daily[(daily.index >= T(C.VAL_START)) & (daily.index <= T(C.VAL_END))]
+    return dev, val
+
+
+def val_sharpe_of(run: E.Run) -> float:
+    if run.liquidated:
+        return float("-inf")
+    return S.sharpe(split_daily(run.daily_returns())[1])
+
+
+def jitter_params(prog: L.Program, base: dict, rng, n: int) -> list:
+    """Every param x U(0.8, 1.2); ints rounded and, if rounding leaves the value unchanged, moved by
+    1 with a random sign; clipped to the declared bounds."""
+    out = []
+    for _ in range(n):
+        q = {}
+        for k, p in prog.params.items():
+            d = base[k]
+            v = d * rng.uniform(C.JITTER_LO, C.JITTER_HI)
+            if p.is_int:
+                v = int(math.floor(v + 0.5))
+                if v == d:
+                    v = d + (1 if rng.uniform() < 0.5 else -1)
+            v = min(max(v, p.low), p.high)
+            q[k] = int(v) if p.is_int else float(v)
+        out.append(q)
+    return out
+
+
+def perm_offsets(L_: int, rng, n: int) -> np.ndarray:
+    lo = C.PERM_MIN_OFFSET_DAYS * 24
+    hi = L_ - C.PERM_MIN_OFFSET_DAYS * 24
+    if hi < lo:
+        raise KernelFault("VAL too short for the permutation test")
+    return rng.integers(lo, hi + 1, size=n)
+
+
+def g5_rule(base_val: float, variant_sharpes) -> dict:
+    shs = np.asarray(variant_sharpes, dtype=np.float64)
+    med = float(np.median(shs))
+    frac = float(np.mean(shs > 0))
+    return {"pass": bool(med >= C.JITTER_MEDIAN_FRAC * base_val and frac >= C.JITTER_POSITIVE_FRAC),
+            "median": med, "frac_positive": frac}
+
+
+def g6_p(actual: float, shifted) -> float:
+    shifted = np.asarray(shifted, dtype=np.float64)
+    return (1 + int(np.sum(shifted >= actual))) / (len(shifted) + 1)
+
+
+def g7_rule(bucket_returns) -> dict:
+    lr = [math.log1p(R) if R > -1 else float("-inf") for R in bucket_returns]
+    n_pos = sum(1 for R in bucket_returns if R > 0)
+    pos_sum = sum(x for x in lr if x > 0)
+    largest = max(lr) if lr else float("-inf")
+    share = largest / pos_sum if pos_sum > 0 else None          # undefined without a positive bucket (G7 fails)
+    return {"pass": bool(n_pos >= C.G7_MIN_POSITIVE and pos_sum > 0 and largest <= C.G7_MAX_SHARE * pos_sum),
+            "n_positive": n_pos, "largest_share": share}
+
+
+def g8_rule(unit_rows: list) -> dict:
+    """Units that could not be scored count as NOT positive."""
+    shs = np.array([r["sharpe"] if r.get("code") is None else -np.inf for r in unit_rows], dtype=np.float64)
+    if len(shs) == 0:
+        return {"pass": False, "median": None, "frac_positive": None, "n": 0}
+    med = float(np.median(shs))
+    frac = float(np.mean(shs > 0))
+    return {"pass": bool(med > 0 and frac >= 0.5), "median": med, "frac_positive": frac, "n": int(len(shs))}
+
+
+def g10_rule(n_val: int) -> dict:
+    return {"pass": bool(n_val >= C.G10_MIN_DIRECTION_CHANGES_VAL), "value": int(n_val)}
+
+
+def g8_units(prog: L.Program, world: World) -> list:
+    ext = list(world.extended)
+    if prog.kind == "single":
+        return [(s,) for s in ext]
+    k = len(world.symbols)
+    return [tuple(ext[i:i + k]) for i in range(0, len(ext) - k + 1, k)]
+
+
+def g8_scores(prog: L.Program, params: dict, world: World, end: str = C.VAL_END,
+              min_years: float = C.G8_MIN_YEARS) -> list:
+    """G8 units: each scored from its own first bar (signals from its own history, so its own
+    warm-up is flat), DEV start at the earliest, to `end`. btc(...) stays the real BTC frame.
+    A unit with less than min_years of scored history or liquidated gets a named code (counts as
+    not positive in g8_rule). No exception is caught here."""
+    rows = []
+    for unit in g8_units(prog, world):
+        grid = core_grid(world.extended, unit)
+        grid = grid[grid <= T(end)]
+        start = max(T(C.DEV_START), grid[1])
+        si = int(np.searchsorted(grid.asi8, start.value))
+        ei = int(grid.get_loc(T(end)))
+        name = "+".join(unit)
+        years = (T(end) - grid[si]) / pd.Timedelta(days=365)
+        if years < min_years:
+            rows.append({"unit": name, "code": "short_history", "years": round(float(years), 2)})
+            continue
+        W, _ = unit_signals(prog, params, world.extended, unit, world.btc, grid)
+        mk = Market(world.extended, world.liq, grid, unit)
+        run = mk.run(W, si, ei)
+        if run.liquidated:
+            rows.append({"unit": name, "code": "liquidated"})
+            continue
+        rows.append({"unit": name, "code": None, "sharpe": S.sharpe(run.daily_returns()),
+                     "years": round(float(years), 2)})
+    return rows
+
+
+def stage2(prog: L.Program, params: dict, world: World, s1: dict | None, opts: Opts, handle, seed: int,
+           p_max: float | None) -> dict:
+    """COUNTED. Raises on unexpected errors (the evaluator turns that into a kernel_fault row)."""
+    access.require(handle, "pipeline.stage2")
+    syms = list(world.symbols)
+    grid = core_grid(world.core, syms)
+    grid = grid[grid <= T(C.VAL_END)]
+    W, raw = unit_signals(prog, params, world.core, syms, world.btc, grid)
+    if s1 is not None:
+        n = len(s1["grid"])
+        if not s1["grid"].equals(grid[:n]) or not same_rows(raw[:n], s1["raw"]):
+            return {"status": "kernel_fault", "reason": "dev_rows_changed"}
+    mk = Market(world.core, world.liq, grid, syms)
+    rng = np.random.default_rng([seed, 2])
+    variants = jitter_params(prog, params, rng, opts.jitter_n) if prog.params else []
+    jit_W = [unit_signals(prog, q, world.core, syms, world.btc, grid)[0] for q in variants]
+    if opts.include_g8 and not world.extended:
+        raise KernelFault("G8 requested but the world has no extended universe")
+    g8 = g8_scores(prog, params, world) if opts.include_g8 else None
+    return gates(W, world, mk, np.random.default_rng([seed, 3]), opts, p_max, variants=variants, jit_W=jit_W,
+                 g8=g8, n_params=len(prog.params))
+
+
+def evaluate_weights(W: np.ndarray, grid: pd.DatetimeIndex, world: World, seed: int, opts: Opts, handle,
+                     p_max: float | None) -> dict:
+    """CALIBRATION ONLY: gates for injected weights (noisy oracles). G5 passes by definition (no
+    params); G8 is not run."""
+    access.require(handle, "pipeline.evaluate_weights")
+    mk = Market(world.core, world.liq, grid, list(world.symbols))
+    return gates(W, world, mk, np.random.default_rng([seed, 3]), opts, p_max, variants=[], jit_W=[], g8=None,
+                 n_params=0)
+
+
+def gates(W, world, mk: Market, rng_perm, opts: Opts, p_max, variants, jit_W, g8, n_params) -> dict:
+    K = W.shape[1]
+    dev_s, val_s, val_e = mk.pos(C.DEV_START), mk.pos(C.VAL_START), mk.pos(C.VAL_END)
+    base = mk.run(W, dev_s, val_e)
+    if base.liquidated:
+        return {"status": "liquidated", "reason": "liquidation"}
+    daily = base.daily_returns()
+    dev, val = split_daily(daily)
+    m = {"dev": S.summary(dev), "val": S.summary(val)}
+    m["dev_val_max_drawdown"] = S.max_drawdown(daily)
+    m["deploy_scale"] = min(1.0, C.DEPLOY_RISK_BUDGET / m["dev_val_max_drawdown"]) if m["dev_val_max_drawdown"] > 0 else 1.0
+    n_years = len(daily) / C.PERIODS_PER_YEAR
+    m["turnover_per_year"] = float(base.ev_turn.sum() / n_years) if n_years > 0 else 0.0
+    m["avg_gross_exposure"] = float(base.gross.mean())
+    m["avg_net_exposure"] = float(base.net.mean())
+    m["rebalances"] = int(len(base.ev_idx))
+    m["direction_changes_dev"] = direction_changes(W, dev_s - 1, mk.pos(C.DEV_END) - 1)
+    m["direction_changes_val"] = direction_changes(W, val_s - 1, val_e - 1)
+    m["funding_paid_total"] = float(base.funding_paid)
+    m["costs_total"] = float(base.ev_cost.sum())
+    m["val_sharpe_daily"] = S.sharpe_daily(val)
+    m["n_daily"] = int(len(daily))
+    g = {}
+    g["G1"] = {"pass": bool(m["val"]["psr0"] >= C.G1_PSR_MIN), "value": m["val"]["psr0"]}
+    fs_sh = val_sharpe_of(mk.run(W, dev_s, val_e, pay=C.FUNDING_STRESS_PAY, recv=C.FUNDING_STRESS_RECV))
+    g["G2"] = {"pass": bool(fs_sh > 0), "value": fs_sh}
+    g["G3"] = {"pass": bool(m["dev"]["sharpe"] > 0), "value": m["dev"]["sharpe"]}
+    cs_sh = val_sharpe_of(mk.run(W, dev_s, val_e, cost_mult=C.COST_STRESS_MULT))
+    g["G4"] = {"pass": bool(cs_sh > 0), "value": cs_sh}
+    if variants:
+        shs = [val_sharpe_of(mk.run(Wv, dev_s, val_e)) for Wv in jit_W]
+        r5 = g5_rule(m["val"]["sharpe"], shs)
+        g["G5"] = {"pass": r5["pass"], "value": {"n": len(shs), "median": r5["median"], "frac_positive": r5["frac_positive"]},
+                   "g5_vacuous": False}
+    else:
+        g["G5"] = {"pass": True, "value": None, "g5_vacuous": True}
+    L_ = val_e - val_s + 1
+    Wv0 = W[val_s - 1: val_e].copy()
+    vgrid = mk.grid[val_s: val_e + 1]
+    sl = slice(val_s, val_e + 1)
+    args = (mk.op[sl], mk.dn[sl], mk.up[sl], mk.fr[sl])
+
+    def vrun(tgt):
+        out = E.run_arrays(*args, tgt)
+        if out[7] >= 0:
+            return float("-inf")
+        return S.sharpe(E.daily_returns(out[8], out[0], vgrid).to_numpy())
+
+    actual = vrun(Wv0)
+    offs = perm_offsets(L_, rng_perm, opts.perm_n)
+    shifted = np.array([vrun(np.roll(Wv0, int(k), axis=0)) for k in offs])
+    p = g6_p(actual, shifted)
+    g["G6"] = {"pass": (bool(p <= p_max + 1e-12) if p_max is not None else None), "value": p, "threshold": p_max}
+    buckets = []
+    for name, a, b in C.G7_BUCKETS:
+        r = daily[(daily.index >= T(a).normalize()) & (daily.index <= T(b))]
+        buckets.append({"bucket": name, "n_days": int(len(r)), "return": S.total_return(r)})
+    r7 = g7_rule([x["return"] for x in buckets])
+    g["G7"] = {"pass": r7["pass"], "value": {"n_positive": r7["n_positive"], "largest_share": r7["largest_share"]}}
+    if g8 is None:
+        g["G8"] = {"pass": None, "value": "not run", "not_run": True}
+    else:
+        r8 = g8_rule(g8)
+        g["G8"] = {"pass": r8["pass"], "value": {"median": r8["median"], "frac_positive": r8["frac_positive"], "n": r8["n"]}}
+    r10 = g10_rule(m["direction_changes_val"])
+    g["G10"] = {"pass": r10["pass"], "value": r10["value"]}
+    decided = [v["pass"] for v in g.values() if v["pass"] is not None]
+    tier1 = all(decided) and g["G6"]["pass"] is not None and g["G8"]["pass"] is not None
+    Wb = np.full_like(W, 1.0 / K)
+    bdaily = mk.run(Wb, dev_s, val_e).daily_returns()
+    bdev, bval = split_daily(bdaily)
+    info = {"benchmark_val_sharpe": S.sharpe(bval), "benchmark_val_max_drawdown": S.max_drawdown(bval),
+            "benchmark_dev_sharpe": S.sharpe(bdev)}
+    info.update({f"vs_benchmark_{k}": v for k, v in S.beta_alpha(val.to_numpy(), bval.reindex(val.index).to_numpy()).items()})
+    res = {"status": "evaluated", "metrics": m, "gates": g, "tier": "tier1" if tier1 else "none", "info": info,
+           "daily_returns": daily, "n_params": n_params}
+    if opts.keep_detail:
+        fin = shifted[np.isfinite(shifted)]
+        res["detail"] = {"permutation": {"actual_val_sharpe_restarted": actual, "n": int(len(offs)), "p": p,
+                                         "shifted_mean": float(np.mean(fin)) if len(fin) else None,
+                                         "shifted_p95": float(np.percentile(fin, 95)) if len(fin) else None},
+                         "per_year": S.per_year(daily), "buckets": buckets, "extended": g8,
+                         "stress": {"funding_stress_val_sharpe": fs_sh, "cost2x_val_sharpe": cs_sh}}
+    return res
+
+
+def tier_at(row: dict, p_max: float) -> bool:
+    """Tier 1 re-read at G6 threshold p_max from stored gate outcomes (calibration rows)."""
+    if row.get("status") != "evaluated":
+        return False
+    others = [v for k, v in row["gates"].items() if k != "G6" and v is not None]
+    return all(others) and row["perm_p"] <= p_max + 1e-12
