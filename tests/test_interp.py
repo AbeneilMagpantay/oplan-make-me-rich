@@ -220,14 +220,21 @@ def test_nan_values_compare_false_and_division_by_zero_is_nan():
     assert kn[5, 0] and np.isnan(raw).all()
 
 
-def test_mark_close_is_known_only_where_a_mark_bar_exists():
+def test_mark_close_is_the_last_mark_bar_known_while_at_most_6_hours_old():
     raw = synth_raw(start="2022-03-01 00:00", end="2022-03-10 23:00", seed=4)
-    raw["mark_klines"] = raw["mark_klines"].drop(raw["mark_klines"].index[[50, 51]])
+    mk = raw["mark_klines"]
+    raw["mark_klines"] = mk.drop(mk.index[[50]]).drop(mk.index[100:108])     # one missing bar; an 8-hour gap
     f = D.assemble_frame(raw, D.PROGRAM_EXTRA)
-    r, kn = ev("signal = sign(mark_close - close)", [f])
-    assert not kn[50, 0] and not kn[51, 0] and kn[49, 0] and kn[52, 0]
+    prog = L.parse(prog_text("signal = sign(mark_close - close)"), "x_test")
+    ctx = X.Context(prog, {}, [f], f)
+    s = ctx.field("mark_close")
+    mc = mk["close"].to_numpy()
+    assert s.kn[50, 0] and s.arr[50, 0] == mc[49]                              # one missing bar: last bar's close
+    assert s.kn[99 + 6, 0] and not s.kn[99 + 7, 0] and not s.kn[107, 0]          # 6 h old known, 7 h old not
+    assert s.kn[108, 0] and s.arr[108, 0] == mc[108]
     r, kn = ev("n = param(3, 2, 5)\nsignal = sign(sma(mark_close, n) - close)", [f])
-    assert not kn[50:54, 0].any() and kn[54, 0]
+    assert kn[48:56, 0].all()                                                  # a window across the single gap
+    assert not kn[106:110, 0].any() and kn[110, 0]                             # unknown after more than 6 h
 
 
 def test_funding_fields_and_funding_mean_over_settlements():

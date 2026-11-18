@@ -1,22 +1,32 @@
-"""Constant probe (H1a). Kernel module.
+"""Constant probe (H1a, refined in FIX PASS 6). Kernel module.
 
 At parse time, with the default params, every NUMERIC series node of a program is evaluated on a
 fixed synthetic probe panel: two years of hourly bars for two symbols and for BTC (fixed seed), with
 trends and volatility regimes, a daily volume cycle, funding settlements that swing through
-positive and negative regimes, and mark-price bars with a few missing hours.
-- A numeric node that has the same value on every known row is rejected (`constant_subexpression`):
-  a constant built without literals (`close / close`, `rank(x, 1)`, `x - x`) would escape the G5
-  jitter, so it is not allowed.
-- A numeric node with no known row on the panel is rejected (`probe_undefined`): its warm-up exceeds
-  two years, so it could never be known for most of DEV.
-Boolean nodes are not probed (a rare-event condition may legitimately never fire on the panel).
-The panel is built once per process; nothing here reads real data.
+positive and negative regimes, and mark-price bars with a few missing hours. On each node's KNOWN
+rows:
+- no known row -> `probe_undefined` (its warm-up exceeds two years);
+- known rows but no finite value -> `constant_subexpression`;
+- constancy is judged on the FINITE values only (NaN rows are ignored, so `hour / hour`, NaN once a
+  day, is still the constant 1);
+- every finite value exactly 0 -> accepted (a zero series is harmless; a rare-event indicator is 0
+  on the panel);
+- every finite value the same NON-ZERO number -> rejected, UNLESS that number changes when the
+  program's literals and non-window params are jittered (PROBE_JITTER_DRAWS fixed-seed draws, every
+  window param kept at its default): then it is a jittered constant, which G5 tests. Keeping window
+  params fixed matters: `sma(hour, n)` at n = 24 is exactly 11.5 and stays rejected.
+What it does NOT catch: NEAR-constants (`mark_close / close`, `sma(hour, 25)`, sums of such ratios
+used as a scale) and thresholds hidden by multiplying both sides of a comparison by the same series.
+Those are deliberate and visible; the coordinator's source read catches them (KERNEL_PROPOSALS
+KP-010). Boolean nodes are not probed. An exception raised while probing is `probe_fault` (a kernel
+bug, not the researcher's syntax). The panel is built once per process; nothing here reads real data.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
+from omr import constants as C
 from omr import datasets as D
 from omr import lang as L
 
@@ -74,19 +84,96 @@ def panel():
     return _PANEL
 
 
+def window_params(prog: L.Program) -> set:
+    """Params used as a window / lag / count / horizon argument anywhere in the program."""
+    import ast
+    out = set()
+    for _, node in prog.defs:
+        for n in ast.walk(node):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in L.WINDOW_FUNCS:
+                a = n.args[L.WINDOW_FUNCS[n.func.id]]
+                if isinstance(a, ast.Name) and a.id in prog.params:
+                    out.add(a.id)
+    return out
+
+
+def jitter_draws(prog: L.Program, n: int = C.PROBE_JITTER_DRAWS):
+    """(params, literal values) draws: literals and NON-window params x U(0.8, 1.2) (ints rounded, an
+    unchanged int moved by 1, clipped to bounds); window params at their defaults. Fixed seed."""
+    rng = np.random.default_rng(C.PROBE_JITTER_SEED)
+    wp = window_params(prog)
+    base = L.default_params(prog)
+    out = []
+    for _ in range(n):
+        q = dict(base)
+        for k, p in prog.params.items():
+            if k in wp:
+                continue
+            v = base[k] * rng.uniform(C.JITTER_LO, C.JITTER_HI)
+            if p.is_int:
+                v = int(np.floor(v + 0.5))
+                if v == base[k]:
+                    v = base[k] + (1 if rng.uniform() < 0.5 else -1)
+            v = min(max(v, p.low), p.high)
+            q[k] = int(v) if p.is_int else float(v)
+        lits = tuple(float(v * rng.uniform(C.JITTER_LO, C.JITTER_HI)) for _, v in prog.literals)
+        out.append((q, lits))
+    return out
+
+
+def _constant_value(s):
+    """None if the node passes; 'undefined', 'no_finite', or the constant non-zero value."""
+    kn = np.asarray(s.kn, dtype=bool)
+    if not kn.any():
+        return "undefined"
+    v = np.asarray(s.arr, dtype=np.float64)[kn]
+    fin = v[np.isfinite(v)]
+    if len(fin) == 0:
+        return "no_finite"
+    if not bool(np.all(fin == fin[0])):
+        return None
+    if fin[0] == 0.0:
+        return None                                       # an all-zero series is harmless
+    return float(fin[0])
+
+
 def check(prog: L.Program) -> None:
     from omr import interp as X
     a, b, btc = panel()
     frames = [a] if prog.kind == "single" else [a, b]
     rec = []
     X.evaluate_full(prog, L.default_params(prog), frames, btc, record=rec)
+    suspects = []
     for node, s in rec:
-        kn = np.asarray(s.kn, dtype=bool)
-        if not kn.any():
+        c = _constant_value(s)
+        if c == "undefined":
             raise L.LangError("probe_undefined", node, "this series is never known on the two-year probe panel "
                               "(its warm-up is too long)")
-        v = np.asarray(s.arr, dtype=np.float64)[kn]
-        fin = v[np.isfinite(v)]
-        if len(fin) == 0 or (len(fin) == len(v) and bool(np.all(fin == fin[0]))):
-            raise L.LangError("constant_subexpression", node, "this series has one value on every known row of the "
-                              "probe panel: a constant built without literals escapes the G5 jitter")
+        if c == "no_finite":
+            raise L.LangError("constant_subexpression", node, "this series has no finite value on any known row of "
+                              "the probe panel")
+        if c is not None:
+            suspects.append((node, c))
+    if not suspects:
+        return
+    moved = {id(node): False for node, _ in suspects}
+    for q, lits in jitter_draws(prog):
+        rj = []
+        X.evaluate_full(prog, q, frames, btc, literals=lits, record=rj)
+        by = {}
+        for node, s in rj:
+            by[id(node)] = s
+        for node, c in suspects:
+            s = by.get(id(node))
+            if s is None:
+                continue
+            kn = np.asarray(s.kn, dtype=bool)
+            v = np.asarray(s.arr, dtype=np.float64)[kn]
+            fin = v[np.isfinite(v)]
+            if len(fin) and not bool(np.all(fin == c)):
+                moved[id(node)] = True
+    for node, c in suspects:
+        if not moved[id(node)]:
+            raise L.LangError("constant_subexpression", node, f"this series is the constant {c:g} on every known row "
+                              "of the probe panel and no jitter of the program's literals or non-window params "
+                              "moves it: a constant built without literals escapes the G5 jitter")

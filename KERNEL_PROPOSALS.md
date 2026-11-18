@@ -91,6 +91,22 @@ rates, status.
 - Status: implemented and tested; takes effect at the next re-key (with the independent audit's
   findings), followed by calibration on the locked kernel and the seal.
 
+## 2026-11-19 (build session) KP-013 FIX PASS 6 (fourth audit READY; coordinator's read)
+
+- P1 constant probe refined: constancy on finite values only; an all-zero series accepted; a
+  non-zero constant rejected unless jittering the literals and non-window params moves it (3
+  fixed-seed draws, window params at their defaults). Closes `hour / hour` (NaN once a day) and stops
+  rejecting honest rare-event rules (`where(z > 4, ...)`, `sma(where(rare, 1, 0), n)`).
+- P2 mark_close = the close of the last mark bar at or before the row, known while at most 6 hours old
+  (MARK_MAX_STALE_HOURS); computed in the interpreter from the frame's own mark rows.
+- P3 an exception while probing is `probe_fault` with the exception type (uncounted), not
+  `parse_error`.
+- P4 calibration: 300 worlds per null, 200 per oracle configuration (the rule is unchanged).
+- P5 documents: what the probe catches and what it leaves to the source read; when a seal counts;
+  PLAN/REPORT existence only; a custom provider reading the stored files is a route the kernel cannot
+  prevent.
+- Status: implemented and tested; one semantic re-key, calibration, seal.
+
 ## 2026-11-19 (build session) KP-012 FIX PASS 5 (independent audit of c891061, pre-genesis, zero trials)
 
 - CRITICAL (a program could read its own bar position: a first-bar impulse fed into the unbounded
@@ -121,7 +137,9 @@ rates, status.
 - Related: since FIX PASS 4 every body literal other than 0 is jittered in G5 like a param, and
   since FIX PASS 5 the constant probe rejects numeric nodes that are constant on a synthetic probe
   panel (`one = close / close`, `rank(x, 1)`). A constant that the probe panel does not expose (for
-  example one that varies only on synthetic data) still escapes the jitter. That is deliberate
+  example one that varies only on synthetic data) still escapes the jitter, and the probe does not
+  catch NEAR-constants (`mark_close / close`, `sma(hour, 25)`, sums of such ratios used as a scale)
+  or thresholds hidden by multiplying both sides of a comparison by the same series (FIX PASS 6). That is deliberate
   evasion, not an honest mistake: the source audit of each generation's programs catches it, and a
   program found doing it is reported in the generation REPORT. Since FIX PASS 5 a program also cannot
   read its position in history from the frame (locality, KP-012); it can still react to market

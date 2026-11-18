@@ -1,6 +1,6 @@
 """Instrument calibration (protocol v3, formula language):
 
-    python -m omr.calibrate [--worlds 100] [--oracle-worlds 100] [--workers 6]
+    python -m omr.calibrate [--worlds 300] [--oracle-worlds 200] [--workers 6]
 
 Runs ONLY on a verified kernel lock (the artifact records kernel_lock_verified true and the locked
 kernel hash); `--unlocked-dry-run --out <file>` is for construction checks and can never be sealed.
@@ -550,8 +550,8 @@ def tune_rho(pool, null: str, speed: str, seeds: list, log) -> dict:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m omr.calibrate")
-    ap.add_argument("--worlds", type=int, default=100, help="null worlds per null (x 5 families = pairs)")
-    ap.add_argument("--oracle-worlds", type=int, default=100)
+    ap.add_argument("--worlds", type=int, default=300, help="null worlds per null (x 5 families = pairs)")
+    ap.add_argument("--oracle-worlds", type=int, default=200)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--families", nargs="*", default=None, help="subset of the kernel's five baselines")
     ap.add_argument("--unlocked-dry-run", action="store_true",

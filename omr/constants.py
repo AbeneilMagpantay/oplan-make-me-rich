@@ -54,6 +54,11 @@ START_CUT_SPAN_VAL = 0.9
 EMA_MEMORY = 5
 RSI_MEMORY = 10
 ATR_MEMORY = 10
+# mark_close = close of the last mark bar at or before the row, known while that bar is at most this old
+MARK_MAX_STALE_HOURS = 6
+# constant probe: jitter draws (literals and non-window params) that may move a constant node
+PROBE_JITTER_DRAWS = 3
+PROBE_JITTER_SEED = 20261120
 DIRECTION_TOL = 0.01          # |weight| above this has a direction (sign); otherwise flat
 MIN_DIRECTION_CHANGES_DEV = 20    # stage 1: activity_dev
 MAX_COUNTED_PER_GENERATION = 5

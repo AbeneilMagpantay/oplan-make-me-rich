@@ -48,8 +48,12 @@ $paths = @(git diff --cached --name-only --diff-filter=AM)
 $keep = @('data/manifest.json', 'data/validation.json')
 $bad = @($paths | Where-Object { $_ -match '^data/' -and $_ -notin $keep })
 if ($bad.Count -gt 0) { Write-Output 'ABORT: data files are staged:'; $bad; exit 8 }
-$big = @($paths | Where-Object { (Get-Item -LiteralPath (Join-Path $proj ($_ -replace '/', '\'))).Length -gt 5MB })
-if ($big.Count -gt 0) { Write-Output 'ABORT: a staged file is larger than 5 MB:'; $big; exit 9 }
+# Calibration artifacts hold one record per simulated pair and may reach a few MB; everything else stays small.
+$big = @($paths | Where-Object {
+        $len = (Get-Item -LiteralPath (Join-Path $proj ($_ -replace '/', '\'))).Length
+        if ($_ -match '^ledger/calibration_[0-9a-f]+.*\.json$') { $len -gt 25MB } else { $len -gt 5MB }
+    })
+if ($big.Count -gt 0) { Write-Output 'ABORT: a staged file is larger than its limit (5 MB; 25 MB for calibration artifacts):'; $big; exit 9 }
 
 if ($paths.Count -gt 0) {
     $scan = (& $py -I (Join-Path $proj 'tools\scan_private.py') @paths)

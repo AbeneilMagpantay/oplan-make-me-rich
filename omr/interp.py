@@ -112,8 +112,17 @@ class Context:
             v = np.asarray(dec.hour if name == "hour" else dec.day_of_week, dtype=np.float64)
             return np.repeat(v[:, None], len(frames), axis=1), np.ones((n, len(frames)), dtype=bool)
         if name == "mark_close":
-            v = np.column_stack([f["mark_klines.close"].to_numpy(dtype=np.float64) for f in frames])
-            kn = np.column_stack([_is_true(f["mark_klines.new"]) for f in frames]) & np.isfinite(v)
+            # the close of the LAST mark bar at or before the row, taken from this frame's own mark rows
+            # (mark_klines.new marks them); known while that bar is at most MARK_MAX_STALE_HOURS old
+            col = np.column_stack([f["mark_klines.close"].to_numpy(dtype=np.float64) for f in frames])
+            new = np.column_stack([_is_true(f["mark_klines.new"]) for f in frames]) & np.isfinite(col)
+            rows = np.arange(n)[:, None]
+            last = np.maximum.accumulate(np.where(new, rows, -1), axis=0)
+            has = last >= 0
+            lp = np.where(has, last, 0)
+            v = np.take_along_axis(col, lp, axis=0)
+            age = self.ns[:, None] - self.ns[lp]
+            kn = has & (age <= C.MARK_MAX_STALE_HOURS * HOUR_NS)
         elif name == "funding8h":
             v = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
                                  for f in frames])

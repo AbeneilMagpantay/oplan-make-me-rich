@@ -230,7 +230,12 @@ def _parse(text: str, stem: str, probe: bool = True) -> Program:
     _check_unit_windows(prog)
     if probe:
         from omr import probe as _probe                     # late import: the probe uses the interpreter
-        _probe.check(prog)
+        try:
+            _probe.check(prog)
+        except LangError:
+            raise
+        except Exception as e:                              # a kernel bug, not the researcher's syntax
+            raise LangError("probe_fault", None, type(e).__name__)
     return prog
 
 

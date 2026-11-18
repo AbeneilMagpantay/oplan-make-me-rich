@@ -186,6 +186,8 @@ def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts
     try:
         prog = L.parse_file(p)
     except L.LangError as e:
+        if e.rule == "probe_fault":                  # a kernel bug while probing: never shown as a syntax error
+            return stage1_log(dict(base, code="probe_fault", error_type=e.msg), quiet)
         return stage1_log(dict(base, code=f"parse:{e.rule}", line=e.line, col=e.col), quiet)
     tid = L.trial_id(prog, k["semantic"], rh)
     existing = ledger.find_trial(tid)

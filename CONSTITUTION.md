@@ -64,8 +64,10 @@ a program to reach. So:
 (d) the VAL quarantine for HUMAN-OR-SESSION code (scripts, notebooks, an LLM session with shell
     access) is PROCEDURAL: VAL handles (section 9) and private data readers are tripwires against
     honest mistakes, not a security boundary against someone with write access to the folder. A
-    determined author can still read VAL bars outside the kernel. Forward results, measured after a
-    program is frozen, are the last line of defence.
+    determined author can still read VAL bars outside the kernel - for example with a custom data
+    provider passed to the evaluator that reads the stored files directly, or with a script that
+    opens data/ - and the kernel cannot prevent it. Forward results, measured after a program is
+    frozen, are the last line of defence.
 
 ## 3. Data and regions
 
@@ -120,7 +122,9 @@ v1 datasets:
   month; settlement times rounded to the hour; a rate settled at t is visible from the bar that
   opens at t. A missing interval is the gap to the previous settlement (first row: 8 hours).
 - `mark_klines` (1h, KP-001): Binance USD-M bulk markPriceKlines, REST for the backfill (from
-  2019-12-23 11:00) and the hours after the last bulk file; missing mark bars stay missing.
+  2019-12-23 11:00) and the hours after the last bulk file; missing mark bars stay missing. The field
+  `mark_close` is the close of the last mark bar at or before the row and is known while that bar is
+  at most MARK_MAX_STALE_HOURS = 6 hours old.
 
 Every program frame carries the klines columns, `funding_rate` (settled at that bar's open, else 0;
 used by the engine), `funding.rate/interval_hours/new` and `mark_klines.open/high/low/close/new`
@@ -181,7 +185,8 @@ highest generation in the trial ledger or that plus one (0 for an empty ledger);
 `generations/genNNN/PLAN.md` exists, and for N >= 1 `generations/gen(N-1)/REPORT.md` exists;
 generation N has fewer than 5 counted trials. The cap PACES the work; it does not limit attempts over
 time. The protection against many attempts is the count M: every counted trial raises M in every
-later DSR, forever.
+later DSR, forever. The code checks only that PLAN.md and REPORT.md EXIST (and records the PLAN's
+sha256); their content is not checked by code.
 
 Stage 1, UNCOUNTED, on DEV-only frames (warm-up + DEV, no handle):
 1. Parse and static checks (LANGUAGE.md), the constant probe and the nested-window rule included.
@@ -264,7 +269,7 @@ read under a logged calibration handle; nothing enters the trial ledger:
 - Null B: the real day order; per UTC day one fair coin (shared by both core symbols) mirrors that
   day's demeaned hourly log-return path, r' = -(r - m) + m (high/low excursions swap; mark bars
   likewise; funding unchanged). Keeps real volatility dynamics, destroys direction across days.
-- DEV-overfit protocol, 100 worlds per null x the five kernel baseline programs
+- DEV-overfit protocol, 300 worlds per null x the five kernel baseline programs
   (`omr/programs/gen000_*.omr`, hash-locked; `--families` accepts nothing else): 20 parameter sets
   drawn from the declared ranges are SCREENED with the DEV signals and the activity rule only; the
   activity passer with the best DEV Sharpe gets the full stage 1 (truncation and start-cut
@@ -273,7 +278,7 @@ read under a logged calibration handle; nothing enters the trial ledger:
   universe; G8 can only veto, so the rates are upper bounds).
 - Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
   (fast k = 1, slow k = 20), weight = signal / K, injected after the interpreter into the gates
-  (G5 passes, no params). On 100 fresh worlds per null, rho is tuned per speed and level so the
+  (G5 passes, no params). On 200 fresh worlds per null and speed, rho is tuned per speed and level so the
   ACHIEVED mean VAL Sharpe over those worlds is within 0.1 of the nominal 1.0 / 1.5 (reported).
 - Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
   under BOTH nulls; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds under both
@@ -281,6 +286,11 @@ read under a logged calibration handle; nothing enters the trial ledger:
   nothing is sealed, generation 0 cannot run, and the human decides.
 
 The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
+
+A SEAL COUNTS only when the artifact, its calibration_log row and the sealed kernel.lock are in ONE
+commit pushed by the coordinator, and an independent auditor has recomputed the null and oracle
+counts and the rule from the artifact's stored rows. `log_calibration` is a public function, so the
+log alone proves nothing about who produced an artifact.
 
 ## 9. Ledger, VAL access, selftest, pool and census
 
@@ -384,6 +394,8 @@ Live risk limits the loop can never change:
 - Fills are bar-based at the next open with fixed costs; no order book, no partial fills.
 - Between the coordinator's pushes the ledger's hash chain is anchored only inside the folder, and
   `ledger verify` does not itself compare with the remote (KP-009).
-- Constants built without literals (`x / x`, `rank(x, 1)`) are rejected by the constant probe when
-  they are constant on the probe panel; a constant that the probe panel does not expose is deliberate
-  evasion of the literal jitter, which the source audit catches (KP-010).
+- The constant probe catches EXACT constants built without literals (`x / x`, `hour / hour`,
+  `rank(x, 1)`, `sign(close * 2)`). It does not catch NEAR-constants (`mark_close / close`,
+  `sma(hour, 25)`, sums of such ratios used as a scale) or thresholds hidden by multiplying both sides
+  of a comparison by the same series; these are deliberate, visible in the text, and left to the
+  coordinator's source read before every counted submission (KP-010).

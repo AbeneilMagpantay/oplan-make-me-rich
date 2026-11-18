@@ -67,14 +67,22 @@ jittered value across its uses). At most 8 such literals per program; their numb
 
 **The constant probe.** At parse time, with the default params, every NUMERIC series node of the
 program is evaluated on a fixed synthetic probe panel (two years of hourly bars for two symbols and
-for BTC, fixed seed, with trends, volatility regimes, swinging funding and a few missing mark bars;
-`omr/probe.py`). A node with the same value on every known row is rejected
-(`constant_subexpression`): constants built without literals (`close / close`, `rank(x, 1)`,
-`sign(close / open)`, a condition that never changes a `where`) would escape the jitter. A node with
-no known row on the panel is rejected (`probe_undefined`): its warm-up is longer than two years.
-Boolean nodes are not probed (a rare-event condition may legitimately never fire there), but a
-numeric node built on one is. A constant that varies on the probe panel but not on real data is not
-caught; that is deliberate evasion, and the source audit catches it (KERNEL_PROPOSALS KP-010).
+for BTC, fixed seed, with trends, volatility regimes, swinging funding and missing mark bars;
+`omr/probe.py`). On the node's known rows: no known row -> `probe_undefined` (a warm-up longer than
+two years); no finite value -> `constant_subexpression`; constancy is judged on the FINITE values
+only (`hour / hour`, NaN once a day, is still the constant 1); a series that is exactly 0 everywhere
+is ACCEPTED (harmless, and a rare-event indicator is 0 on the panel); a series that is the same
+NON-ZERO number everywhere is rejected (`constant_subexpression`) UNLESS that number moves when the
+program's literals and non-window params are jittered (3 fixed-seed draws, window params kept at
+their defaults: `sma(hour, n)` at n = 24 is exactly 11.5 and stays rejected). Boolean nodes are not
+probed. An exception while probing is `probe_fault` (a kernel bug, not a syntax error).
+
+What the probe catches: EXACT constants built without literals (`close / close`, `volume / volume`,
+`hour / hour`, `rank(x, 1)`, `sign(close * 2)`, a hold whose entry is always true). What it does NOT
+catch: NEAR-constants (`mark_close / close`, `sma(hour, 25)`, sums of such ratios used as a scale)
+and thresholds hidden by multiplying both sides of a comparison by the same series. These are
+deliberate and visible in the text; they are left to the coordinator's source read before any
+counted submission (KERNEL_PROPOSALS KP-010).
 
 ## 4. Types and units
 
@@ -100,7 +108,7 @@ the decision time. Every series carries a VALUE and a KNOWN flag per row.
 | field | unit | timeframe aggregation | known where |
 |---|---|---|---|
 | open, high, low, close | P | first, max, min, last | the bar exists |
-| mark_close | P (Binance mark price) | last | a mark-price bar exists for that hour |
+| mark_close | P (Binance mark price): the close of the LAST mark bar at or before the row, from the frame's own mark rows | last | that bar is at most 6 hours old (MARK_MAX_STALE_HOURS) |
 | volume, taker_buy_volume | V | sum | the bar exists |
 | quote_volume, taker_buy_quote_volume | P V | sum | the bar exists |
 | trades | N | sum | the bar exists |

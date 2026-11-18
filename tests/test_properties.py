@@ -161,7 +161,12 @@ PROGS, TRIED, REASONS = generate()
 def panel(start="2022-01-03 00:00", end="2022-07-24 23:00", shift_weeks=0):
     frames = []
     for seed in (1, 2, 3):                                     # two symbols and the BTC frame
-        f = D.assemble_frame(synth_raw(start=start, end=end, seed=seed), D.PROGRAM_EXTRA)
+        raw = synth_raw(start=start, end=end, seed=seed)
+        mk = raw["mark_klines"]                                # mark gaps: single bars and a 10-hour block
+        keep = np.random.default_rng(seed).uniform(size=len(mk)) > 0.02
+        keep[1000 + 100 * seed:1010 + 100 * seed] = False
+        raw["mark_klines"] = mk[keep]
+        f = D.assemble_frame(raw, D.PROGRAM_EXTRA)
         if shift_weeks:
             f = f.copy()
             f.index = f.index + pd.Timedelta(weeks=shift_weeks)

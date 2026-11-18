@@ -31,7 +31,9 @@ def world():
 def test_the_clock_is_rejected_by_the_constant_probe():
     with pytest.raises(L.LangError) as e:
         L.parse(HDR.format(n="r05_clock", k="portfolio") + CLOCK + CLOCK_SIGNAL, "r05_clock")
-    assert e.value.rule == "constant_subexpression" and e.value.line == 6          # imp: 0 on every known row
+    # imp is 0 on every known row (accepted: a zero series is harmless); e = ema(imp, w) is 0 too, and
+    # clk has no finite value on any known row
+    assert e.value.rule == "constant_subexpression" and e.value.line == 8
 
 
 def test_the_clock_has_no_definite_value_and_no_start_dependence(world):
@@ -61,8 +63,8 @@ def test_the_remembered_calendar_never_reaches_tier1(world, tmp_path, tmp_ledger
 def test_a_hold_latch_carries_no_memory_of_the_frame_start(world):
     """`hold(hour < 1, ...)` as a one-shot impulse: unbounded it would be 0 until the first midnight and
     1 forever after (a 'frame has started' flag); windowed it is 1 on every known row."""
-    body = ("hz = param(48, 24, 96)\nhh = param(23, 18, 28)\n"
-            "st = hold(hour < 1, hour > hh, hour > hh, hour > hh, hz)\nsignal = st * sign(ret(close, 1))\n")
+    body = ("hz = param(48, 24, 96)\n"
+            "st = hold(hour < 1, hour < 0, hour < 0, hour < 0, hz)\nsignal = st * sign(ret(close, 1))\n")
     with pytest.raises(L.LangError) as e:
         L.parse(HDR.format(n="x_latch", k="single") + body, "x_latch")
     assert e.value.rule == "constant_subexpression"

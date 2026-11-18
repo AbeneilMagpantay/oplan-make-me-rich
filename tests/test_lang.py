@@ -98,18 +98,48 @@ def test_the_ones_series_constant_is_rejected_by_the_probe():
 @pytest.mark.parametrize("body,rule", [
     ("signal = sign(close / close - ret(close, 1))", "constant_subexpression"),
     ("n = param(5, 2, 8)\nsignal = sign(rank(close, 1) - ret(close, n))", "constant_subexpression"),
-    ("signal = sign(ret(close, 1) - ret(close, 1) + ret(open, 1))", "constant_subexpression"),
     ("signal = sign(close / open) * ret(close, 1)", "constant_subexpression"),
-    ("signal = sign(median(close, 1) - close) + sign(ret(close, 1))", "constant_subexpression"),
     ("signal = sign(std(close, 1) / close) + sign(ret(close, 1))", "constant_subexpression"),
     ("n = param(47, 37, 57)\nsignal = rank(zscore(sma(ret(weekly(close), 1), n), n), n) - 0.5", "probe_undefined"),
-    ("n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z * 0.5 * 0.5 > 1, -1, 0)", "constant_subexpression"),
-    ("signal = where(ret(close, 1) > 10, 1, 0)", "constant_subexpression"),
+    # FIX PASS 6: constancy on the FINITE values; non-zero constants rejected unless the jitter moves them
+    ("n = param(20, 5, 60)\none = hour / hour\nz = zscore(close, n)\nsignal = where(z > one + one + one, -1, 0)",
+     "constant_subexpression"),
+    ("n = param(20, 5, 60)\none = volume / volume\nz = zscore(close, n)\nsignal = where(z > one + one + one, -1, 0)",
+     "constant_subexpression"),
+    ("n = param(24, 12, 48)\nsignal = sign(ret(close, 1)) * sma(hour, n) / 10", "constant_subexpression"),
+    ("signal = sign(close * 2) * ret(close, 1)", "constant_subexpression"),
+    ("h = param(10, 5, 20)\nsignal = hold(hour >= 0, hour < 0, hour < 0, hour < 0, h) * ret(close, 1)",
+     "constant_subexpression"),
+    ("signal = log(ret(close, 1) - ret(close, 1)) + ret(close, 1)", "constant_subexpression"),
 ])
 def test_constant_probe(body, rule):
     with pytest.raises(L.LangError) as e:
         L.parse(prog_text(body), "x_test")
     assert e.value.rule == rule, body
+
+
+@pytest.mark.parametrize("body", [
+    "k = param(0.3, 0.1, 0.5)\nn = param(5, 2, 10)\nd = daily(close)\nsignal = sma(where(ret(d, 1) < -k, 1, 0), n)",
+    "n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z > 4, -1, where(z < -4, 1, 0))",
+    "n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z > 4, 0, 1) * sign(ret(close, 1))",
+    "n = param(20, 5, 60)\nk = param(0.5, 0.25, 1.0)\nz = zscore(close, n)\nsignal = ret(close, 1) * where(z > 4, 0, k)",
+    "n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z * 0.5 * 0.5 > 1, -1, 0)",
+    "signal = sign(ret(close, 1) - ret(close, 1) + ret(open, 1))",
+])
+def test_rare_events_and_jittered_constants_are_accepted(body):
+    """(A series that is exactly 0 on every known row, e.g. x - x, is accepted too: harmless.)"""
+    L.parse(prog_text(body), "x_test")
+
+
+def test_a_probe_exception_is_a_probe_fault_not_a_parse_error(monkeypatch):
+    from omr import interp as X
+
+    def boom(*a, **k):
+        raise ZeroDivisionError("x")
+    monkeypatch.setattr(X, "evaluate_full", boom)
+    with pytest.raises(L.LangError) as e:
+        L.parse(prog_text("signal = sign(ret(close, 1))"), "x_test")
+    assert e.value.rule == "probe_fault" and e.value.msg == "ZeroDivisionError"
 
 
 def test_boolean_nodes_are_not_probed():

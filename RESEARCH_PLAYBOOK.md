@@ -84,6 +84,12 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
 
 ## 5. Submit: at most 5 counted submissions per generation (enforced by the evaluator)
 
+Before ANY counted submission the coordinator reads the program text for the patterns the constant
+probe cannot see: a threshold or scale built from same-unit field ratios (`mark_close / close`,
+`taker_buy_volume / volume` used as a constant), from calendar fields averaged over a cycle
+(`sma(hour, 25)`), or by algebra across a comparison (both sides multiplied by the same series). A
+program using them is not submitted. The researcher's inputs are trial rows and `status` only.
+
     python -m omr.evaluate strategies/genNNN_idea.omr --generation NNN
 
 - The generation must be the ledger's highest or the next one; the 6th counted trial of a generation

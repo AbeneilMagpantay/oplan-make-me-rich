@@ -212,3 +212,15 @@ def test_dsr_for_counts_trials_without_returns_in_m_only(tmp_ledger):
     assert mat.shape[1] == 2
     assert abs(d["rho"] - S.mean_pairwise_corr(mat)) < 1e-15
     assert abs(d["N"] - S.effective_n(3, d["rho"])) < 1e-12
+
+
+def test_a_probe_exception_is_logged_as_probe_fault(tmp_path, tmp_ledger, world, monkeypatch):
+    """P3: an exception while the constant probe evaluates a program is a kernel bug: stage-1 log code
+    probe_fault with the exception type, uncounted, never shown as the researcher's parse error."""
+    from omr import interp as X
+
+    def boom(*a, **k):
+        raise ZeroDivisionError("x")
+    monkeypatch.setattr(X, "evaluate_full", boom)
+    r = run(write(tmp_path, NOISE, "t_noise"), Prov(world))
+    assert r["code"] == "probe_fault" and r["error_type"] == "ZeroDivisionError" and ledger.trials() == []

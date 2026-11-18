@@ -1,28 +1,28 @@
 {
  "approved_by": "coordinator (Claude), pre-genesis construction, zero trials evaluated; human confirmation pending",
- "combined": "b73302d990db96dfbfbb7c95350f8e9c8b630fedb0bcb8b81a08961115815178",
- "created_at": "2026-11-18T21:14:19Z",
+ "combined": "fa6b7a1e2639fbb57a5144132aaefe6c87cfbbac326d2db39391a5a69d80d09b",
+ "created_at": "2026-11-18T22:08:33Z",
  "files": {
-  "CONSTITUTION.md": "b2977191e347006954ba4e7f192dd8b6916b570affd435e249a6a4a93035e512",
-  "LANGUAGE.md": "2787e7fa12701823b13d6935e5ad588ba475bd65880b24f940f9414db72ee3db",
+  "CONSTITUTION.md": "f1ea5bfe38158896bd23f3e144685ef6e0cbb53f230fed5de79d9ef14182a170",
+  "LANGUAGE.md": "71d48d9f327fb7b8ad1f293b981b43357bd6cf2a1ab55e33a6d6039fa1000439",
   "omr/__init__.py": "84cd8adce3e8fa2c03353b1739cf43553d0e15ca4fb25b33b8567618224def01",
   "omr/access.py": "7f63c30a1f8b4701e6c9db4ef23f394cb37cd10ee8181fa49ce883f6f6f535e6",
-  "omr/calibrate.py": "3db70f1eed1401711617d2dc7509bae925ef8413d2d82ccfcdda2beb8a2102e4",
+  "omr/calibrate.py": "5303246cf36de3d28d8b8201179019c0ac96feb06d4684e3f233d5773c0081fe",
   "omr/census.py": "f42f0d75794b45fab6e75a370d8dfb6e383e50038fec53a3fcab9d4e3e84cc29",
-  "omr/constants.py": "9d83cf00ef2d5252fa2b3e6efd6da61019b28bdb2e95b252676295c37f696fa1",
+  "omr/constants.py": "4e177dbabf386c6b471d15932c40ba0ccddfebcb71037509fb15b7abc60a6afb",
   "omr/data.py": "dc78abaecbd922bcf2c1bbd9efb8b52053edd8080a5dc285a2426f28f808e0c8",
   "omr/datasets.py": "8e786f96d8b0e20df3112de534da3919c067f944857e46e3fdd83d40edac1747",
   "omr/engine.py": "602ff3ecbb0855cfcf676fb703bcd6cf36a49f331667e680d15a01791f299a01",
-  "omr/evaluate.py": "27f06618fff0ce2385717850b141c5afa5c2ec1319b90cdb5e1b0971368ace85",
+  "omr/evaluate.py": "a8df792700795e8b000fc822d50e4ed1d76036acccec06657e0d45b1f746074e",
   "omr/indicators.py": "8ca04c5edbfb4ec51403613c5a8414edf463dfcc054471d4f7175f5d97d3e769",
-  "omr/interp.py": "0c9ebca8ffb6cfbc2fccade0f15519acfe95ffb5d4578f301c2dba7c9e7d6762",
+  "omr/interp.py": "bcff8b71f42454857b45edc0ce99a20c4f752e2879deabf114df5d9d52865d40",
   "omr/kernel_lock.py": "ac7e1152627b1bb641487d71ea4531b413e632ed278110643f191d1f37a0b000",
-  "omr/lang.py": "2548e6836a7dd24481371e61d723a94a7ed4c1cc127a2f099dd51a24f861182c",
+  "omr/lang.py": "ac8215d8e003a6f0c85ec3ed5c5a898aa3917e8212e80ab579123689b7edb438",
   "omr/ledger.py": "5867b866f2c13aab143c014cdf283d074c32d81d27525a80b3c3a512f0f38383",
   "omr/paths.py": "1f8fb8eaa1ddd8f326107e0727888c2d4b60d290c002bc1b982cacb6445a3496",
   "omr/pipeline.py": "a912d6197150fb78025d5bddbb21f663c7ae13aa3921fe61c746b625a69549bf",
   "omr/pool.py": "363954c93483633910aa048620797e87761cf9b89eafe0bc7cdb28c5958c7cbc",
-  "omr/probe.py": "ebe7055301dfd0ec716f5c3b9b3c42cd256c223fd4067858bfcb0ef2c8204798",
+  "omr/probe.py": "e3276df6cfb6a4afcbb3964a7e9b10dee09a67c6e03c0576e05409ebd1f36b7e",
   "omr/programs/gen000_donchian_ls.omr": "0c3ee868dc894306fdef94048914c3f6dcf91acb2eb0915a2903676d21e1e414",
   "omr/programs/gen000_funding_carry.omr": "2f78f28416e423487c654c9cbe9f9da295e2c5694eb7979207b12624815d1ea5",
   "omr/programs/gen000_rsi_meanrev_ls.omr": "d49f9e50691dbe94e956730d0297296480e79cf1a016befb11a075ba2080061f",
@@ -46,49 +46,49 @@
   "tests/test_data_integrity.py": "8827d63535bf9ea4ba3a2512f97dbd29c38037e83312d70c0643456c71924485",
   "tests/test_datasets.py": "de65255f80b486b25d2177a9a4fca46031302c388db71caa6d5ae25f6ed5d9ee",
   "tests/test_engine.py": "985fce832559d1e981ce733e22a88d3dcf71459ceeecafa852962efaf95af4ee",
-  "tests/test_evaluate.py": "1cf132cdb1be8cefdaf46d79e6252ca6ce91a3dab046eab03ce1b17925132185",
+  "tests/test_evaluate.py": "7068c26d84b3396b09fe4783e495d6bf6e57c7c21a944cddb50936cc2b3c66a3",
   "tests/test_exploits.py": "5a1b4d38556643e0f209c76b6edc94421f674bc5828b956265db9cbea3aac2fb",
-  "tests/test_interp.py": "583be516081c57c874ed1a9f19a9c5228773e9fb223193971e7a5fd70632c5ab",
-  "tests/test_lang.py": "8ebbf9bcc2b6dcb8165fc9c780e88020d9811ffa0b69cfb4436c2b7912b84e7d",
+  "tests/test_interp.py": "c5da414fe62eead455e27a4b286591e7d12af2ab9e5ac7acd71fc66afb3a437b",
+  "tests/test_lang.py": "2009ed57c63ac312ae18d39e89a28e797d337615f6d3eb51ad8025953e19e8cd",
   "tests/test_ledger_lock.py": "81414de3dc44f28b50e9a352af164de6e2ec7b8eb20ccefd610ce3f61f624b82",
-  "tests/test_locality.py": "e11bdbecd1228ac46771ce6f4afaea05e5643bc9fb5087b8430931948be965b8",
+  "tests/test_locality.py": "b08eef9b8b7654a24e9644511902cf4184bbfabfbba3073a0135e7a6c291e1f7",
   "tests/test_pipeline.py": "f7f96562e245423f92e0c45654df2a9dad4514127b33786c9234ded3258b1fcb",
-  "tests/test_properties.py": "da4fc110267158b9c1b1fdcafe7e21edcdc028edb1f7bc29737ebdce405a13a9",
+  "tests/test_properties.py": "b1dd77a8aaed3d1bb63a991a5f629f1c37bfc8348870e0c722bcd07b76d40eac",
   "tests/test_selftest.py": "4ab1426de3d7d77cd9c4ddeb9d851650305eb6b9732b1b9ab8b794a175a54e40",
   "tests/test_stats.py": "b0a8ebd8e0cb3446f08517f0f96eb9d29dc100b7d69f91ee3da3794beb8a3cfb",
   "tests/test_structure.py": "750270fca24a2ba29ac36c1244a4aba7d2fd72586c72f2c9103231cd839ab99d"
  },
- "reason": "FIX PASS 4 (coordinator review: G5 jitters every body literal except 0, at most 8; quote volume = price x volume; VAL access log never redirected, temp_ledger_trial rows; no time-resolved VAL performance stored; parser errors are parse_error) and FIX PASS 5 (independent audit of c891061: LOCALITY BY CONSTRUCTION - known channel with strict propagation, finite ema/rsi/atr memory, windowed five-argument hold, fixed-order window kernels omr/windows.py, start-cut self-checks in stage 1 and 2, clock/latch/warm-up regressions; constant probe and nested_unit_window; two-part lock with seal and trial identity bound to the semantic hash, SEMANTICS_VERSION dropped; ledger/calibration_log.jsonl required by seal; fully synthetic calibration dry run; REPORT.md of N-1 required; calibration screens draws by activity; Donchian and RSI baselines get a hold horizon, RSI finite), zero trials evaluated, 662 tests pass",
+ "reason": "FIX PASS 6 (fourth audit READY; coordinator read), zero trials evaluated: P1 constant probe judged on finite values, all-zero series accepted, non-zero constants rejected unless jittering literals and non-window params moves them (3 fixed-seed draws); P2 mark_close = close of the last mark bar at or before the row, known while at most MARK_MAX_STALE_HOURS = 6 old, computed from the frame's own mark rows; P3 probe exceptions are probe_fault (stage-1 log, uncounted); P4 calibration defaults 300 worlds per null and 200 per oracle configuration; P5 documents (what the probe catches, when a seal counts, PLAN/REPORT existence only, custom-provider route); 672 tests pass",
  "seal": {
-  "calibration_file": "ledger/calibration_4598ef4299ceb43c.json",
-  "calibration_sha256": "394e46fed235bcb6f66386b4e87c898b26723fca14d6e1edd1f65db703e30a7a",
-  "g6_threshold": 0.05,
+  "calibration_file": "ledger/calibration_7446278556aadd8f.json",
+  "calibration_sha256": "67a71662ee0fca2ee249cccb37520e583ea9286c2c81e2cceb777ea57c7e177e",
+  "g6_threshold": 0.1,
   "null_pass_rate": {
    "A": {
-    "0.025": 0.008016032064128256,
-    "0.05": 0.028056112224448898,
-    "0.1": 0.03206412825651302
+    "0.025": 0.006675567423230975,
+    "0.05": 0.017356475300400534,
+    "0.1": 0.029372496662216287
    },
    "B": {
-    "0.025": 0.0,
-    "0.05": 0.008,
-    "0.1": 0.022
+    "0.025": 0.004,
+    "0.05": 0.012,
+    "0.1": 0.023333333333333334
    }
   },
   "power_at_1_5": {
    "A": {
-    "fast": 0.83,
-    "slow": 0.81
+    "fast": 0.84,
+    "slow": 0.855
    },
    "B": {
-    "fast": 0.91,
-    "slow": 0.81
+    "fast": 0.905,
+    "slow": 0.855
    }
   },
   "rule": "G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls; then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; otherwise STOP",
-  "sealed_at": "2026-11-18T21:30:26Z",
-  "semantic_hash": "4598ef4299ceb43c2bde1b3bf0928fd194054ffc5019322c195e5c330e3f2e8b"
+  "sealed_at": "2026-11-18T22:47:41Z",
+  "semantic_hash": "7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1"
  },
- "semantic": "4598ef4299ceb43c2bde1b3bf0928fd194054ffc5019322c195e5c330e3f2e8b",
- "text": "63c0f6ad94998acf270af9c6fc60f3699e60cbc27fde33fdfce1b530ca242ed7"
+ "semantic": "7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1",
+ "text": "d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1"
 }
