@@ -1,49 +1,38 @@
-# STATE (2026-11-19, end of the build session: FIX PASS 6 locked, calibrated (300 / 200 worlds) and sealed)
+# STATE (2026-11-19: generation 0 complete)
 
 ## Where things stand
 
-- Kernel v1 (formula language, locality by construction, refined constant probe) LOCKED AND SEALED:
-  - semantic `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1` (32 files: omr/**,
-    requirements.txt) - trial identities and the seal bind to it;
-  - text `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files:
-    CONSTITUTION.md, LANGUAGE.md, tests/**).
-  - Approved-by label: "coordinator (Claude), pre-genesis construction, zero trials evaluated; human
-    confirmation pending". History: `ledger/kernel_history.jsonl` rows 7 (re-key) and 8 (seal).
-  - Seal: G6 threshold 0.10 from `ledger/calibration_7446278556aadd8f.json` (sha256
-    67a71662ee0fca2ee249cccb37520e583ea9286c2c81e2cceb777ea57c7e177e, logged in
-    `ledger/calibration_log.jsonl`). Per CONSTITUTION section 8 the seal COUNTS only once the
-    coordinator has pushed the artifact, its log row and kernel.lock in one commit and an independent
-    auditor has recomputed the counts and the rule from the artifact.
-- Calibration v3 on the locked kernel (38 min; 300 worlds per null, 200 per oracle configuration):
-  null pass rate per submitted pair at 0.025 / 0.05 / 0.10: null A 10 / 26 / 44 of 1,498 (0.67% /
-  1.74% / 2.94%), null B 6 / 18 / 35 of 1,500 (0.40% / 1.20% / 2.33%) -> largest qualifying 0.10
-  (null A is one pass from the 3% limit: 45 would be 3.00%+). Oracle power at true Sharpe 1.5 at 0.10:
-  A fast 0.84, slow 0.85; B fast 0.91, slow 0.85 -> stop rule passed.
-- `python -m omr.selftest`: OK. Tests: 672 pass in about 76 s.
-- Data: research_hash `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`; validate
-  PASSED (0 failing counts) after the re-key.
-- Ledger: 0 trials, 0 stage-1 rejections. Generation 0 has NOT been run; nothing has been scored on
-  VAL. VAL access log: 15 rows (calibration, selftest and dry-run rows of this and earlier kernels,
-  plus the temp_ledger_trial rows of the selftests).
-- DEV-only facts: direction changes in DEV at the defaults - SMA cross 16, Donchian 65, RSI 311,
-  vol-target trend 92, funding carry 60. The SMA cross is expected to be an uncounted
-  `activity_dev` rejection at generation 0.
-- Repository: git, branch main, private GitHub remote; the coordinator commits and pushes at gates
-  (KP-009). Research sessions make no git writes.
+- Kernel (sealed): semantic `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1`
+  (32 files), text `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files),
+  G6 threshold 0.10 from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth
+  audit; artifact, calibration-log row and seal are in commit d2c2d4f.
+- Generation 0 ran on that kernel (commit d2c2d4f, 2026-11-19). Results in
+  `generations/gen000/REPORT.md`: SMA cross rejected in stage 1 (`activity_dev`, uncounted);
+  Donchian, RSI mean reversion, vol-target trend and funding carry evaluated, none Tier 1; the
+  vol-target trend was the only positive VAL Sharpe (0.384; benchmark 0.921).
+- Ledger: M = 4 counted trials (generation 0: 4 of 5), N = 4.00, Tier 1: 0, pool 0 of 5, one
+  uncounted stage-1 rejection; all chains verify.
+- Data: research_hash `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`, validated.
+- Repository: git, branch main, private GitHub remote; the coordinator commits and pushes at gates.
+  Research sessions make no git writes.
 
-## Open decisions for the human / coordinator
+## Next session does first
 
-1. Confirm the kernel (the lock's approval is pending human confirmation) and make the seal count
-   (one pushed commit + independent recomputation, CONSTITUTION section 8).
-2. Generation 0: the SMA-cross baseline fails the DEV activity floor at its pre-registered defaults
-   (16 < 20); keep it as a recorded stage-1 rejection or replace it.
-3. Before every counted submission the coordinator reads the program for near-constants and hidden
-   thresholds (RESEARCH_PLAYBOOK section 5).
-4. KP-002, KP-004, KP-005, KP-010 open; KP-009 kernel-side check optional.
+Generation 1:
+1. Read LESSONS.md, generations/gen000/REPORT.md, `python -m omr.ledger summary`, `python -m
+   omr.status` (trial rows and status only; never ledger/returns or ledger/trials/).
+2. Write generations/gen001/PLAN.md with 3 to 5 pre-registered hypotheses (rule as program text,
+   mechanism, falsifier, relation to earlier trials) BEFORE any evaluation.
+3. Explore on DEV only with `python -m omr.sandbox`.
+4. The coordinator reads each program's source for near-constants and hidden thresholds
+   (RESEARCH_PLAYBOOK section 5) before any counted submission.
+5. At most 5 counted submissions: `python -m omr.evaluate strategies/gen001_<idea>.omr --generation 1`;
+   then generations/gen001/REPORT.md.
 
-## Next session
+## Open decisions for the human
 
-Generation 0 is ordered by the coordinator after the independent re-audit of this build. Then:
-`python -m omr.evaluate strategies/<name>.omr --generation 0` for each gen-0 program (at most 5
-counted), then generations/gen000/REPORT.md (required before generation 1). Any kernel change ->
-tests, re-key (a semantic change removes the seal), calibrate on the locked kernel, seal.
+1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
+   confirmation pending": the human has not yet confirmed the kernel.
+2. KP-014 (text-only LANGUAGE.md additions from the fifth audit) is open: a text-only re-key keeps the
+   seal and trial ids, but needs the human's approval now that trials exist.
+3. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.

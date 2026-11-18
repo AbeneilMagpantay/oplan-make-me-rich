@@ -62,6 +62,11 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
   constant probe (`constant_subexpression`); anything that dodges the probe is evasion, and the
   source audit reports it. `lag(lag(x, 1), 1)` is rejected (`nested_unit_window`): use an integer
   param for a longer lag.
+- Honest forms the probe rejects, and how to restate them: `open / lag(close, 1) - 1` (exactly 0
+  where the open equals the previous close) -> `(open - lag(close, 1)) / close`;
+  `exp(where(rare, 1, 0))` or `rank(where(rare, 1, 0), n)` (a non-zero constant when the event never
+  fires on the probe panel) -> use the event series `where(rare, 1, 0)` itself (a zero series is
+  accepted) or scale it by a param.
 - Locality: every value is computed from a bounded trailing window; a program is flat until ALL of
   its parts have their history (one uniform warm-up), so the longest window decides when it starts
   trading. `ema` remembers 5n rows, `rsi` and `atr` 10n; `hold(..., h)` rebuilds its state from flat
@@ -87,8 +92,10 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
 Before ANY counted submission the coordinator reads the program text for the patterns the constant
 probe cannot see: a threshold or scale built from same-unit field ratios (`mark_close / close`,
 `taker_buy_volume / volume` used as a constant), from calendar fields averaged over a cycle
-(`sma(hour, 25)`), or by algebra across a comparison (both sides multiplied by the same series). A
-program using them is not submitted. The researcher's inputs are trial rows and `status` only.
+(`sma(hour, 25)`, small-offset averages such as `sma(hour + 0.5, n)` at n = 24), rounding-noise
+constants (`sma(hour + e, n) - e`), a sign cliff tuned to the probe panel's fixed seed, a scale such
+as `1 / (1 + k)` with a tiny param, or by algebra across a comparison (both sides multiplied by the
+same series). A program using them is not submitted. The researcher's inputs are trial rows and `status` only.
 
     python -m omr.evaluate strategies/genNNN_idea.omr --generation NNN
 

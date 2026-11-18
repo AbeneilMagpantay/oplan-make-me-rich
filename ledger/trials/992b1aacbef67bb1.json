@@ -1,0 +1,217 @@
+{
+ "buckets": [
+  {
+   "bucket": "2020",
+   "n_days": 366,
+   "return": 1.2032357013358639
+  },
+  {
+   "bucket": "2021",
+   "n_days": 365,
+   "return": 0.2995517452019587
+  },
+  {
+   "bucket": "2022",
+   "n_days": 365
+  },
+  {
+   "bucket": "2023",
+   "n_days": 365
+  },
+  {
+   "bucket": "2024",
+   "n_days": 366
+  },
+  {
+   "bucket": "2025H1",
+   "n_days": 181
+  }
+ ],
+ "dsr": {
+  "M": 3,
+  "N": 2.9899095119475345,
+  "V": 0.0010160855910287352,
+  "dsr": 0.40784457075077757,
+  "rho": 0.005045244026232724,
+  "sr0_daily": 0.027104965668247927
+ },
+ "extended": [
+  {
+   "code": null,
+   "sharpe": 0.8811193140962074,
+   "unit": "SOLUSDT",
+   "years": 4.8
+  },
+  {
+   "code": null,
+   "sharpe": 0.6869025256592927,
+   "unit": "BNBUSDT",
+   "years": 5.39
+  },
+  {
+   "code": null,
+   "sharpe": -0.10687564073505028,
+   "unit": "XRPUSDT",
+   "years": 5.49
+  },
+  {
+   "code": null,
+   "sharpe": 0.6133143856799895,
+   "unit": "ADAUSDT",
+   "years": 5.42
+  },
+  {
+   "code": null,
+   "sharpe": 1.1815944167605226,
+   "unit": "DOGEUSDT",
+   "years": 4.98
+  },
+  {
+   "code": null,
+   "sharpe": -0.5651556750059322,
+   "unit": "LTCUSDT",
+   "years": 5.48
+  },
+  {
+   "code": null,
+   "sharpe": -0.1934203057792632,
+   "unit": "LINKUSDT",
+   "years": 5.46
+  },
+  {
+   "code": null,
+   "sharpe": 0.9139948173852006,
+   "unit": "AVAXUSDT",
+   "years": 4.77
+  }
+ ],
+ "gates": {
+  "G1": {
+   "pass": false,
+   "value": 0.747179388940945
+  },
+  "G10": {
+   "pass": true,
+   "value": 121
+  },
+  "G2": {
+   "pass": true,
+   "value": 0.2882516330293692
+  },
+  "G3": {
+   "pass": true,
+   "value": 1.452636308585161
+  },
+  "G4": {
+   "pass": true,
+   "value": 0.2965449934026645
+  },
+  "G5": {
+   "g5_vacuous": false,
+   "pass": true,
+   "value": {
+    "frac_positive": 1.0,
+    "median": 0.3268707074487679,
+    "n": 12
+   }
+  },
+  "G6": {
+   "pass": false,
+   "threshold": 0.1,
+   "value": 0.23880597014925373
+  },
+  "G7": {
+   "pass": true,
+   "value": {
+    "largest_share": 0.46533562131232503,
+    "n_positive": 5
+   }
+  },
+  "G8": {
+   "pass": true,
+   "value": {
+    "frac_positive": 0.625,
+    "median": 0.650108455669641,
+    "n": 8
+   }
+  }
+ },
+ "info": {
+  "benchmark_dev_sharpe": 0.9485617896057631,
+  "benchmark_val_max_drawdown": 0.4879047617738055,
+  "benchmark_val_sharpe": 0.9214392856906813,
+  "vs_benchmark_alpha_ann": 0.12682825360909994,
+  "vs_benchmark_beta": 0.03178773920313775,
+  "vs_benchmark_resid_psr0": 0.7225198920488805,
+  "vs_benchmark_resid_sharpe": 0.34028710927021116
+ },
+ "metrics": {
+  "avg_gross_exposure": 0.6578059179115208,
+  "avg_net_exposure": 0.10265960881377599,
+  "costs_total": 0.4614137607993909,
+  "deploy_scale": 0.48691584418781675,
+  "dev": {
+   "cagr": 0.6752446244917854,
+   "calmar": 2.036702640463818,
+   "kurtosis": 31.112918757402166,
+   "max_drawdown": 0.33153814949540794,
+   "n_days": 912,
+   "psr0": 0.9930317825641768,
+   "sharpe": 1.452636308585161,
+   "skew": 2.267942328972076,
+   "total_return": 2.6298495614538133
+  },
+  "dev_val_max_drawdown": 0.410748597293241,
+  "direction_changes_dev": 92,
+  "direction_changes_val": 121,
+  "funding_paid_total": 0.9160970458921036,
+  "n_daily": 2008,
+  "rebalances": 2544,
+  "turnover_per_year": 38.19189598181225,
+  "val": {
+   "cagr": 0.07648357959733487,
+   "calmar": 0.19427216983285736,
+   "kurtosis": 7.163128926580082,
+   "max_drawdown": 0.3936929291680725,
+   "n_days": 1096,
+   "psr0": 0.747179388940945,
+   "sharpe": 0.38353410564697393,
+   "skew": 0.23120569241968994,
+   "total_return": 0.24769926806488507
+  },
+  "val_sharpe_daily": 0.020075092602486855
+ },
+ "per_year": [
+  {
+   "max_drawdown": 0.21548264073330725,
+   "n_days": 366,
+   "return": 1.2032357013358639,
+   "sharpe": 1.9545060725255452,
+   "year": 2020
+  },
+  {
+   "max_drawdown": 0.23567804475873055,
+   "n_days": 365,
+   "return": 0.2995517452019587,
+   "sharpe": 0.913600700057242,
+   "year": 2021
+  }
+ ],
+ "permutation": {
+  "actual_val_sharpe_restarted": 0.38329370797253376,
+  "n": 200,
+  "p": 0.23880597014925373,
+  "shifted_mean": -0.016593740677444502,
+  "shifted_p95": 1.1068815790213204
+ },
+ "seed": "3636033429319561945",
+ "stage1": {
+  "direction_changes_dev": 92,
+  "truncation_cuts": 25
+ },
+ "stress": {
+  "cost2x_val_sharpe": 0.2965449934026645,
+  "funding_stress_val_sharpe": 0.2882516330293692
+ },
+ "trial_id": "992b1aacbef67bb1"
+}

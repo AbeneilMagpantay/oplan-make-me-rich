@@ -7,6 +7,14 @@
   "head": "dc0c17b6f2cef65e0c04944c963b7d6628724795a76de90895c70167b91bc65b",
   "rows": 8
  },
+ "stage1_log.jsonl": {
+  "head": "82ed669d66c817d0c47011e1115fa7c22632242d08ec50e541c49de7b34fa060",
+  "rows": 1
+ },
+ "trials.jsonl": {
+  "head": "78cd6bc69369ab81b84b080f00da7723bbe9ae0c6c6dd4b66f17ff8753492ea4",
+  "rows": 8
+ },
  "val_access_log.jsonl": {
   "head": "4e53ed596d83789babb9166cf419c0c075e0fbc5e22d019d9154c6ddf087e333",
   "rows": 15

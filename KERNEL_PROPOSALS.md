@@ -91,6 +91,24 @@ rates, status.
 - Status: implemented and tested; takes effect at the next re-key (with the independent audit's
   findings), followed by calibration on the locked kernel and the seal.
 
+## 2026-11-19 (after generation 0) KP-014 LANGUAGE.md: more of what the constant probe does not catch, and honest restatements
+
+- Source: the fifth audit (commit d2c2d4f), two low findings, TEXT ONLY.
+- Problem: LANGUAGE.md lists near-constants and hidden thresholds as left to the source read but
+  omits forms the audit found: small-offset calendar averages such as `sma(hour + 0.5, n)` at
+  n = 24 (exactly 12 on every row, but the literal moves it, so the probe accepts it);
+  rounding-noise constants such as `sma(hour + e, n) - e` (not bit-exact, so not "constant"); a sign
+  cliff tuned to the probe panel's fixed seed; and `1 / (1 + k)` with a tiny param (a near-constant
+  scale). It also does not say which HONEST forms the probe rejects and how to restate them:
+  `open / lag(close, 1) - 1` is exactly 0 wherever the synthetic open equals the previous close and
+  can be restated as `(open - lag(close, 1)) / close`; `exp(where(rare, 1, 0))` and
+  `rank(where(rare, 1, 0), n)` are non-zero constants on the panel when the event never fires and can
+  be restated with the event series itself (`where(rare, 1, 0)`, a zero series, is accepted) or a
+  jittered scale.
+- Proposed change: add both lists to LANGUAGE.md section 3 (no code change).
+- Expected effect: none on any result; a text-only re-key keeps the seal and every trial id.
+- Status: open - needs the human's approval now that trials exist (text-only re-key).
+
 ## 2026-11-19 (build session) KP-013 FIX PASS 6 (fourth audit READY; coordinator's read)
 
 - P1 constant probe refined: constancy on finite values only; an all-zero series accepted; a

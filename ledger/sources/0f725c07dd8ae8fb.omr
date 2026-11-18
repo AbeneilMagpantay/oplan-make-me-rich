@@ -1,0 +1,18 @@
+# Generation 0 baseline (kernel copy, hash-locked; also used as a calibration family).
+name = "gen000_donchian_ls"
+family = "trend"
+kind = "single"
+hypothesis = "Breakouts persist: a daily close above the highest high of the prior entry days starts an up-move worth holding long; a close below the lowest low of the prior entry days starts a down-move worth holding short. Longs exit to flat below the prior exit-day low, shorts above the prior exit-day high. Mechanism: stop cascades and delayed participation after range breaks. Falsified if VAL PSR(0) < 0.90 or the timing permutation shows no timing skill."
+
+entry = param(20, 10, 60)
+exit = param(10, 5, 30)
+# the state is rebuilt from flat over the last `horizon` days (locality); on real DEV data a horizon of
+# 60 days or more never differs from an unbounded state machine
+horizon = param(90, 60, 180)
+
+d = daily(close)
+upper_entry = lag(rmax(daily(high), entry), 1)
+lower_entry = lag(rmin(daily(low), entry), 1)
+upper_exit = lag(rmax(daily(high), exit), 1)
+lower_exit = lag(rmin(daily(low), exit), 1)
+signal = hold(d > upper_entry, d < lower_exit, d < lower_entry, d > upper_exit, horizon)
