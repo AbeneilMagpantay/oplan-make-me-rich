@@ -54,5 +54,34 @@
   "tests/test_stats.py": "b0a8ebd8e0cb3446f08517f0f96eb9d29dc100b7d69f91ee3da3794beb8a3cfb",
   "tests/test_structure.py": "750270fca24a2ba29ac36c1244a4aba7d2fd72586c72f2c9103231cd839ab99d"
  },
- "reason": "FINAL PRE-GENESIS ORDER, zero trials evaluated: Python-sandbox kernel 2317921c retired and archived (archive/kernel_2317921c_python_sandbox.zip); strategies are .omr programs parsed (omr/lang.py, ast.parse + own walk, never compiled or executed) and interpreted (omr/interp.py) by the kernel; LANGUAGE.md added to the kernel; child runner, allowlist, invariance runs, per-strategy lookahead and strategy_api deleted; stage 1 uncounted with truncation self-check (kernel_fault) and activity_dev (direction changes >= 20) logged in ledger/stage1_log.jsonl; pending row with PLAN sha, SEMANTICS_VERSION, canonical text and package versions; stage 2 kernel_fault on any exception or DEV-row change; G10 (>= 12 VAL direction changes), G9 retired, G5 g5_vacuous, G8 from each unit's own first bar; generation rules (highest or +1, PLAN.md, max 5 counted); frames hash-verified at read; data validate; calibration v3 on the locked kernel then seal of the G6 threshold; selftest; lock covers every file under omr/ and tests/ and exact environment pins; 582 tests pass"
+ "reason": "FINAL PRE-GENESIS ORDER, zero trials evaluated: Python-sandbox kernel 2317921c retired and archived (archive/kernel_2317921c_python_sandbox.zip); strategies are .omr programs parsed (omr/lang.py, ast.parse + own walk, never compiled or executed) and interpreted (omr/interp.py) by the kernel; LANGUAGE.md added to the kernel; child runner, allowlist, invariance runs, per-strategy lookahead and strategy_api deleted; stage 1 uncounted with truncation self-check (kernel_fault) and activity_dev (direction changes >= 20) logged in ledger/stage1_log.jsonl; pending row with PLAN sha, SEMANTICS_VERSION, canonical text and package versions; stage 2 kernel_fault on any exception or DEV-row change; G10 (>= 12 VAL direction changes), G9 retired, G5 g5_vacuous, G8 from each unit's own first bar; generation rules (highest or +1, PLAN.md, max 5 counted); frames hash-verified at read; data validate; calibration v3 on the locked kernel then seal of the G6 threshold; selftest; lock covers every file under omr/ and tests/ and exact environment pins; 582 tests pass",
+ "seal": {
+  "calibration_file": "ledger/calibration_2c20fe7752b64de2.json",
+  "calibration_sha256": "3019d5782bd01fe70c42dd7fba5697549f1a4c981d6308301c5b8d9e3411e7cc",
+  "g6_threshold": 0.025,
+  "null_pass_rate": {
+   "A": {
+    "0.025": 0.012024048096192385,
+    "0.05": 0.03206412825651302,
+    "0.1": 0.03807615230460922
+   },
+   "B": {
+    "0.025": 0.002,
+    "0.05": 0.012,
+    "0.1": 0.028
+   }
+  },
+  "power_at_1_5": {
+   "A": {
+    "fast": 0.83,
+    "slow": 0.72
+   },
+   "B": {
+    "fast": 0.91,
+    "slow": 0.79
+   }
+  },
+  "rule": "G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls; then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; otherwise STOP",
+  "sealed_at": "2026-11-18T19:10:45Z"
+ }
 }

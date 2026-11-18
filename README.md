@@ -22,6 +22,12 @@ It does not trade. There are no exchange keys and no order code in this build.
 | `data/` | stored market data, manifest, validation counts | `omr.data` only |
 | `kernel.lock` | kernel file hashes and the calibration seal | `omr.kernel_lock` only |
 | `archive/` | the retired Python-sandbox kernel (2317921c), for the record | - |
+| `tools/`, `.gitattributes`, `.gitignore` | repository plumbing (`tools/git_push.ps1`) | coordinator only |
+
+The project is a git repository (branch main, private GitHub remote). `ledger/`, `kernel.lock`,
+`data/manifest.json` and `data/validation.json` are tracked; the coordinator commits and pushes at
+gates, which anchors the ledger chain heads outside the folder (KP-009). Research sessions make no
+git writes.
 
 ## Commands
 

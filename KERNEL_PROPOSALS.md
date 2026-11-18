@@ -71,10 +71,14 @@ rates, status.
 - Problem: `ledger/HEAD.json` anchors each hash chain's row count and head hash, but it lives in the
   same folder. Anyone with write access can rewrite a chain from any row and regenerate HEAD.json
   consistently; truncating trials.jsonl and HEAD.json together would silently lower M.
-- Proposed change: anchor the heads outside the folder after every counted trial and seal, e.g. a
-  git commit of `ledger/HEAD.json` and `kernel.lock` (the folder is a git repository), or a
-  signed timestamp sent to the human; `ledger verify` compares with the latest external anchor.
-- Status: open.
+- Addressed operationally (2026-11-19): the project is its own git repository (branch main, private
+  remote on GitHub). `ledger/` (all chains and HEAD.json), `kernel.lock`, `data/manifest.json` and
+  `data/validation.json` are tracked; the coordinator commits and pushes at every gate, so each
+  pushed commit is an anchor of the chain heads outside the folder. A rewrite of a chain after a push
+  shows up as a diff against the remote. Research sessions make no git writes.
+- Remaining (optional kernel change): `ledger verify` could compare HEAD.json with the latest pushed
+  commit itself instead of relying on the coordinator's review of the diff.
+- Status: addressed operationally by the coordinator's commits; kernel-side check open.
 
 ## 2026-11-19 (build session) KP-010 Remembered history through choice of structure and params
 

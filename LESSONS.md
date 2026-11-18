@@ -1,36 +1,29 @@
 # LESSONS
 
-Only what the evidence supports, with its source. No real VAL result has been
-read yet (generation 0 not run), so there are no market lessons. Everything below
-is about the measuring instrument, from the final calibration on the hardened
-pipeline (`ledger/calibration_43099ad9550d2be7.json`) and from DEV-only checks.
+Only what the evidence supports, with its source. No real VAL result has been read yet (generation 0
+not run), so there are no market lessons. Everything below is about the measuring instrument, from
+calibration v3 on the locked formula-language kernel 2c20fe77
+(`ledger/calibration_2c20fe7752b64de2.json`, sealed) and from DEV-only checks. The lessons of the
+retired Python-sandbox instrument (kernel 2317921c) are superseded.
 
-1. The pipeline rarely passes a strategy with no edge, even after DEV
-   overfitting (best of 20 random parameter draws by DEV Sharpe): at G6 0.025,
-   4/373 counted pairs pass Tier 1 under null A (day bootstrap) and 1/355 under
-   null B (real order, daily sign flips). The passers were 2 RSI mean-reversion
-   and 2 funding-carry draws (A) and 1 Donchian draw (B). G6 is the binding gate:
-   it passes 1.9% (A) / 1.1% (B) of evaluated null pairs, while G3 (DEV Sharpe > 0)
-   passes 83% / 76% - DEV selection works, it just does not carry into VAL timing.
-2. A real edge is not guaranteed to pass. Noisy oracles with a known true VAL
-   Sharpe of 1.5 pass Tier 1 in 80% (fast, 1-day) / 62% (slow, 20-day) of null-A
-   worlds and 84% / 79% of null-B worlds. At a true Sharpe of 1.0 they pass only
-   53% / 25% (A) and 56% / 37% (B). The limiting gates are G1 (PSR >= 0.90 over
-   three years) and, for slow signals, G6.
-3. Trading costs are material at high turnover: a 1-day oracle with no edge
-   (rho = 0) averages a VAL Sharpe of -0.49 (null A) / -0.60 (null B) from costs.
-4. The activity floor (40 decisions in DEV+VAL, 10 in VAL) rejects slow
-   parameterisations: 55-63 of 100 best-of-20 SMA-cross draws and 61-72 of 100
-   funding-carry draws failed it. On real DEV data the gen-0 SMA cross (20/100)
-   makes only 16 decisions in DEV, so it needs at least 24 in VAL to pass.
-5. With liquidation checked on mark price, no synthetic run liquidated in the
-   final calibration (the v1 last-price rule had failed about 35% of SMA-cross
-   planted pairs on one ETHUSDT wick).
-6. All five gen-0 files pass stage 1 on real DEV data (determinism, lookahead on
-   218-502 cuts, time-shift and scale invariance) through child processes, in
-   6-11 s each.
-7. The independent review showed the v1 tripwires were easy to defeat (kernel
-   monkeypatching, memoised outputs, NaN columns, hardcoded dates, sparse cheats,
-   exception-text leaks). All 14 reproduced against the pre-hardening kernel;
-   each now has a regression test that the hardened kernel passes. The threat
-   model still says plainly: tripwires, not a sandbox.
+1. The pipeline rarely passes a program with no edge, even after DEV overfitting (20 random
+   parameter draws, best DEV Sharpe among the stage-1 passers submitted): at the sealed G6 threshold
+   0.025, 6/499 submitted pairs pass Tier 1 under null A (day bootstrap; 4 RSI mean-reversion, 2
+   funding carry) and 1/500 under null B (real order, daily sign flips; 1 Donchian). G6 is the
+   binding gate (1.8% / 1.2% of submitted pairs pass it); G3 (DEV Sharpe > 0) passes 78% / 76%:
+   DEV selection works, it does not carry into VAL timing. G8 was not run (upper bounds).
+2. 0.05 missed the 3% rule by one passer under null A (16/499 = 3.21%; null B 1.2%).
+3. A real edge is not guaranteed to pass. Noisy oracles with a true mean VAL Sharpe of 1.5 pass Tier 1
+   in 83% (fast, 1-day) / 72% (slow, 20-day) of null-A worlds and 91% / 79% of null-B worlds; at 1.0
+   only 60% / 43% (A) and 62% / 38% (B). Limiting gates: G1 (PSR >= 0.90 over three years) and, for
+   slow signals, G6.
+4. The DEV activity floor (20 direction changes) is a cheap filter: 28% (A) / 19% (B) of random
+   baseline draws fail it; only 1 of 1,000 pairs had no draw passing. In VAL, G10 (12 changes)
+   rejects 1.4% (A) / 13.8% (B) of submitted pairs.
+5. On real DEV data the gen-0 SMA cross (20/100) makes only 16 direction changes, so it is expected
+   to be an uncounted `activity_dev` rejection at generation 0; the other four baselines make 60 to
+   311.
+6. The five `.omr` baselines reproduce the old Python strategies weight for weight (synthetic data
+   and real DEV, defaults and random draws). Property tests on 220 random programs found two kernel
+   defects before the lock (pandas' rolling corr is not bit-exact under rescaling; rsi/atr/vol crashed
+   on a coarse series with no complete bar yet); both fixed.
