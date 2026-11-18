@@ -71,7 +71,10 @@ def test_write_order_dedupe_counting_and_pending_contents(tmp_path, tmp_ledger, 
     assert ledger.counted_ids() == [row["trial_id"]] and row["M"] == 1
     assert pend["plan_sha256"] == ledger.sha256_file(P.GENERATIONS_DIR / "gen000" / "PLAN.md")
     assert set(pend["versions"]) == {"python", "numpy", "pandas", "numba", "pyarrow", "scipy"}
-    assert pend["semantics_version"] == C.SEMANTICS_VERSION and pend["node_count"] > 0
+    from omr import kernel_lock
+    k = kernel_lock.compute()
+    assert pend["semantic_hash"] == k["semantic"] and pend["text_hash"] == k["text"] and pend["node_count"] > 0
+    assert pend["stage1"]["start_cuts"] == FAST.start_cuts and "semantics_version" not in pend
     assert pend["canonical"].startswith("kind=single;signal=") and pend["params"] == {"n": 20}
     assert (P.TRIAL_SOURCE_DIR / f"{row['trial_id']}.omr").read_bytes() == f.read_bytes()
     assert "eval_seconds" not in row and "eval_seconds" not in pend
@@ -79,6 +82,13 @@ def test_write_order_dedupe_counting_and_pending_contents(tmp_path, tmp_ledger, 
     assert row["g6_threshold"] == 0.05 and row["direction_changes_val"] >= 12
     detail = json.loads((P.TRIAL_DETAIL_DIR / f"{row['trial_id']}.json").read_text())
     assert len(detail["extended"]) == 8
+    # C4: no time-resolved VAL performance is stored
+    assert [r["year"] for r in detail["per_year"]] == [2020, 2021]
+    assert [set(b) for b in detail["buckets"]] == [{"bucket", "n_days", "return"}] * 2 + [{"bucket", "n_days"}] * 4
+    assert set(row["gate_values"]["G7"]) == {"n_positive", "largest_share"}
+    assert pend["n_literals"] == 2 and row["n_literals"] == 2 and row["node_count"] == pend["node_count"]
+    for b in detail["buckets"]:                                       # no VAL period appears with a value
+        assert ("return" in b) == (b["bucket"] in ("2020", "2021"))
     # dedupe: identical program (even renamed names and comments) returns the existing row, appends nothing
     g = write(tmp_path, NOISE.replace("v = daily(volume)\nsignal = 2 * rank(v / lag(v, 1), n) - 1",
                                       "# same idea\nq = daily(volume)\nsignal = 2 * rank(q / lag(q, 1), n) - 1"), "t_noise")
@@ -92,7 +102,7 @@ def test_stage1_rejections_go_to_stage1_log_only(tmp_path, tmp_ledger, world):
     bad = write(tmp_path, prog_text("signal = close.shift(-1) / close", name="t_bad"), "t_bad")
     r = run(bad, prov)
     assert r["code"] == "parse:call" and r["line"] == 5
-    flat = write(tmp_path, prog_text("x = param(0.8, 0.5, 1.0)\nsignal = x * sign(close / open)", name="t_flat"), "t_flat")
+    flat = write(tmp_path, prog_text("signal = sign(ret(close, 1)) + 2", name="t_flat"), "t_flat")
     r2 = run(flat, prov)
     assert r2["code"] == "activity_dev" and r2["direction_changes_dev"] == 0
     assert prov.val_calls == 0 and ledger.trials() == [] and ledger.counted_ids() == []
@@ -155,6 +165,10 @@ def test_generation_rules(tmp_path, tmp_ledger, world):
         run(f, Prov(world), gen=2)                                     # not highest or highest + 1
     (P.GENERATIONS_DIR / "gen001").mkdir()
     (P.GENERATIONS_DIR / "gen001" / "PLAN.md").write_text("plan 1\n", encoding="ascii")
+    with pytest.raises(evaluate.Refused) as e:
+        run(f, Prov(world), gen=1)                                     # M4: generation 0 has no REPORT.md yet
+    assert "REPORT.md" in str(e.value)
+    (P.GENERATIONS_DIR / "gen000" / "REPORT.md").write_text("report 0\n", encoding="ascii")
     r = run(f, Prov(world), gen=1)
     assert r["status"] == "evaluated" and r["generation"] == 1
     with pytest.raises(evaluate.Refused):

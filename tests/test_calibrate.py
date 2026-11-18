@@ -108,3 +108,36 @@ def test_stage1_filter_and_dev_sharpe_selection_on_a_synthetic_world():
     s1 = pipeline.stage1(prog, q, frames_dev, btc_dev, np.random.default_rng(1), pipeline.Opts(truncation_cuts=3))
     assert s1["ok"] and np.isfinite(K.dev_sharpe(frames_dev, w.liq, s1))
     assert frames_dev[C.BTC].index[-1] == pd.Timestamp(C.DEV_END, tz="UTC")
+
+
+def test_the_dry_run_reads_no_real_bar(monkeypatch):
+    """M3: --unlocked-dry-run builds its worlds from fully synthetic core tables."""
+    from omr import datasets as D
+
+    def refuse(*a, **k):
+        raise AssertionError("the dry run read stored data")
+    monkeypatch.setattr(D, "load_raw", refuse)
+    src = K.Source(tables=K.synthetic_tables())
+    w = K.build_world(src, "B", 3)
+    grid = pipeline.core_grid(w.core, C.CORE)
+    assert grid[-1] == pd.Timestamp(C.VAL_END, tz="UTC") and grid[0] < pd.Timestamp(C.DEV_START, tz="UTC")
+
+
+def test_draws_are_screened_and_only_the_submitted_one_gets_the_full_stage1(monkeypatch, val_handle):
+    """M5: 20 draws screened with the activity rule only; the full stage 1 (self-checks) and stage 2 run
+    once, for the submitted draw."""
+    calls = {"screen": 0, "stage1": 0, "stage2": 0}
+    for name in ("screen_dev", "stage1", "stage2"):
+        orig = getattr(pipeline, name)
+
+        def wrap(*a, _o=orig, _n=name, **k):
+            calls[{"screen_dev": "screen"}.get(_n, _n)] += 1
+            return _o(*a, **k)
+        monkeypatch.setattr(pipeline, name, wrap)
+    monkeypatch.setitem(K._W, "src", K.Source(tables=K.synthetic_tables()))
+    monkeypatch.setitem(K._W, "progs", {"gen000_voltarget_trend_ls": L.parse_file(K.family_path("gen000_voltarget_trend_ls"))})
+    monkeypatch.setitem(K._W, "handle", val_handle)
+    monkeypatch.setattr(K, "OPTS", pipeline.Opts(include_g8=False, keep_detail=False, perm_n=20, jitter_n=2))
+    rows = K.task_null(("A", 1000))
+    assert calls["screen"] == K.N_DRAWS and calls["stage1"] == 1 and calls["stage2"] == 1
+    assert rows[0]["submitted"] and rows[0]["status"] == "evaluated"

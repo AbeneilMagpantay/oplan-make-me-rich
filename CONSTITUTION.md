@@ -26,7 +26,10 @@ order-placement code.
 KERNEL (immutable to the loop): EVERY file under `omr/` (including the programs in
 `omr/programs/`) and `tests/`, plus `CONSTITUTION.md`, `LANGUAGE.md` and `requirements.txt`. Their
 sha256 hashes are recorded in `kernel.lock`; any other file appearing under `omr/` or `tests/`
-(a `__pycache__` included) fails verification. Every re-key and the calibration seal append a
+(a `__pycache__` included) fails verification. The lock has two parts with their own hashes: the
+SEMANTIC part (everything under `omr/` and `requirements.txt`: what runs) and the TEXT part
+(`CONSTITUTION.md`, `LANGUAGE.md`, everything under `tests/`: what describes and checks it). Trial
+identity and the calibration seal bind to the SEMANTIC hash. Every re-key and the seal append a
 hash-chained row to `ledger/kernel_history.jsonl`. `kernel_lock verify` also compares the installed
 package versions (from the environment's `*.dist-info` metadata) and the running Python with the
 exact pins in `requirements.txt`. The evaluator refuses a lock that does not verify or is not
@@ -44,11 +47,17 @@ formula language (LANGUAGE.md); the kernel parses it with `ast.parse`, walks the
 checker (only names, numeric literals, calls to the language's functions, `+ - * /`, unary minus,
 `not`, `and`/`or` and single comparisons exist), and evaluates the checked tree with its own
 interpreter. There is no import, attribute, subscript, string, loop, file, process or eval path for
-a program to reach, and no field that tells a program where it is in history. So:
-(a) lookahead, calendar dependence and scale dependence are excluded by construction (every
-    function is causal; there is no index or date; units make the signal invariant to price and
-    volume levels); the stage-1 truncation self-check verifies the causality of the kernel's own
-    functions on every trial;
+a program to reach. So:
+(a) lookahead, calendar dependence and scale dependence are excluded by construction. LOCALITY: every
+    definite value at bar t is a function of a bounded trailing window of data, computed from that
+    window alone in a fixed order, and whether history is sufficient is a separate KNOWN channel that
+    a program cannot observe (LANGUAGE.md section 7): there is no index, date or bar count, every
+    recursive function has finite memory, `hold` is re-run from flat over a bounded window, and a
+    row without full history has no definite value anywhere. A program therefore cannot derive where
+    it is in history from the frame (the audit's first-bar-impulse clock is a regression test). The
+    truncation and start-cut self-checks verify this of the kernel's own functions on every trial.
+    Units make the signal invariant to price and volume levels. A program can still react to market
+    EVENTS its author remembers (KP-010);
 (b) a program cannot see, store or leak anything: its only output is a signal array;
 (c) ANY scored run on VAL bars is a counted trial (the single exception is the kernel selftest,
     section 9);
@@ -123,15 +132,15 @@ A new dataset enters only by a kernel re-key, after it shows: (a) history coveri
 (b) timestamps as of when each value was knowable, with a conservative lag; (c) the same source live
 at decision time; (d) it is free, or its cost was approved by the human; (e) a revision check. The
 researcher proposes sources in `KERNEL_PROPOSALS.md`; it never wires one in itself. A new field or
-function of the language is a kernel change and bumps SEMANTICS_VERSION if it changes the meaning
-of anything that exists.
+function of the language is a kernel change of the SEMANTIC part (every trial identity changes).
 
 ## 4. Engine and costs
 
 Linear perpetuals, signed weights, no leverage above 1x gross anywhere in research.
 
-- Weight = signed notional / equity, each in [-1, 1], gross sum(|w|) <= 1. The interpreter's
-  signal -> weight rule (LANGUAGE.md section 7) makes every weight valid by construction.
+- Weight = signed notional / equity, each in [-1, 1], gross sum(|w|) <= 1. By rule (LANGUAGE.md
+  section 7) the signal is clipped to [-1, 1] and portfolio weights are scaled down to gross 1; an
+  out-of-range signal is never a failure.
 - The weight decided at the close of bar t is executed at the open of bar t+1. Returns are
   open-to-open. Cash earns 0.
 - Holdings drift with prices. Order at every bar open: 1. mark to the open; 2. funding: equity
@@ -169,19 +178,26 @@ On DAILY net returns, 365-day annualisation, risk-free 0.
 Preconditions (refused before any row): the kernel lock verifies and is sealed; the ledger chains
 and HEAD anchors are intact; the stored data equal the manifest and are validated; N equals the
 highest generation in the trial ledger or that plus one (0 for an empty ledger);
-`generations/genNNN/PLAN.md` exists; generation N has fewer than 5 counted trials.
+`generations/genNNN/PLAN.md` exists, and for N >= 1 `generations/gen(N-1)/REPORT.md` exists;
+generation N has fewer than 5 counted trials. The cap PACES the work; it does not limit attempts over
+time. The protection against many attempts is the count M: every counted trial raises M in every
+later DSR, forever.
 
 Stage 1, UNCOUNTED, on DEV-only frames (warm-up + DEV, no handle):
-1. Parse and static checks (LANGUAGE.md). A rejection is `parse:<rule>` with line and column.
-2. Identity and dedupe: trial id = sha256(canonical program + SEMANTICS_VERSION +
+1. Parse and static checks (LANGUAGE.md), the constant probe and the nested-window rule included.
+   A rejection is `parse:<rule>` with line and column.
+2. Identity and dedupe: trial id = sha256(canonical program + SEMANTIC kernel hash +
    research_hash)[:16]. An identical trial returns the existing row and is not counted again.
    The evaluator always evaluates the declared defaults.
 3. Signals on DEV (each symbol on its own history for kind single; the panel for kind portfolio).
 4. Truncation self-check: the program is re-evaluated on data cut at 24 random rows between the
    bar before DEV start and DEV end, plus DEV end; every row up to each cut must be identical
-   (NaN equal to NaN). The cut seed comes from fresh OS entropy and is stored afterwards. A mismatch,
-   or any interpreter exception, is `kernel_fault` (the functions are causal by construction, so
-   this is a kernel bug to report, never a property of the program).
+   (values and known; NaN equal to NaN). Start-cut self-check: 6 cuts in the first 60% of the DEV
+   frame; every frame, BTC included, loses its rows before the cut; wherever the cut run is known,
+   the full run must be known and bit-identical. Cut seeds come from fresh OS entropy and are
+   stored afterwards. A mismatch, or any interpreter exception, is `kernel_fault` (the functions are
+   causal and local by construction, so this is a kernel bug to report, never a property of the
+   program).
 5. Activity in DEV: per symbol, state = sign(w) where |w| > 0.01, else 0; a direction change is a
    decision row whose state differs from the previous row's; the sum over symbols must be >= 20
    (`activity_dev`).
@@ -189,14 +205,15 @@ A stage-1 rejection is ONE row in `ledger/stage1_log.jsonl` (hash-chained); noth
 trial ledger and nothing is counted.
 
 Then a COUNTED `pending` row is appended to `ledger/trials.jsonl`, flushed and fsynced. It holds the
-trial id, generation, the sha256 of the generation's PLAN.md, kernel hash, SEMANTICS_VERSION,
-research_hash, the canonical text, params, node count, and the python / numpy / pandas / numba /
-pyarrow / scipy versions; the frozen source copy `ledger/sources/<id>.omr` is written before it.
+trial id, generation, the sha256 of the generation's PLAN.md, the semantic, text and combined
+kernel hashes, research_hash, the canonical text, params, node count, number of jitterable
+literals, and the python / numpy / pandas / numba / pyarrow / scipy versions; the frozen source copy `ledger/sources/<id>.omr` is written before it.
 The pending row issues the trial's ValHandle.
 
 Stage 2, COUNTED, on DEV+VAL frames: every frame is hash-verified at read again; signals are
-recomputed and the DEV rows must equal stage 1 bit for bit (else final status `kernel_fault`,
-reason `dev_rows_changed`); then the engine, liquidation, metrics, gates (section 7), the result
+recomputed and the DEV rows (values and known) must equal stage 1 bit for bit (else final status
+`kernel_fault`, reason `dev_rows_changed`); 3 start cuts over the first 90% of the full frame must
+agree (else `kernel_fault`, reason `start_cut`); then the engine, liquidation, metrics, gates (section 7), the result
 files (`ledger/returns/<id>.parquet`, `ledger/trials/<id>.json`) and the final row. Final statuses:
 `evaluated` (with tier), `liquidated`, `kernel_fault`. ANY unexpected exception in stage 2 (an
 interrupt included) writes the final row `kernel_fault` with the exception type and no metric; a
@@ -213,7 +230,7 @@ and G10.
 | G2 | funding stress (paid x1.5, received x0.5): VAL Sharpe > 0 |
 | G3 | DEV Sharpe > 0 |
 | G4 | VAL Sharpe at 2x costs > 0 |
-| G5 | jitter: 12 variants; EVERY param x U(0.8, 1.2) (ints rounded; an int left unchanged by rounding moves by 1 with a random sign; clipped to bounds); median VAL Sharpe >= 0.5 x base VAL Sharpe AND >= 75% with VAL Sharpe > 0. A program without params passes and the trial records `g5_vacuous`. Only the median and fraction positive are stored. |
+| G5 | jitter: 12 variants; EVERY param x U(0.8, 1.2) (ints rounded; an int left unchanged by rounding moves by 1 with a random sign; clipped to bounds) AND every body literal other than 0 (window/lag/count arguments excluded) x its own U(0.8, 1.2) - a literal is an implicit parameter, not a free constant (at most 8 per program; a name computed once shares its jittered value); draw order params (declaration order) then literals (source order); median VAL Sharpe >= 0.5 x base VAL Sharpe AND >= 75% with VAL Sharpe > 0. A program with neither params nor jitterable literals passes and the trial records `g5_vacuous`. Only the median and fraction positive are stored. |
 | G6 | timing permutation on VAL: 200 circular shifts of the VAL weight matrix against VAL prices (offsets uniform in [30 days, length - 30 days], all assets together, funding on the price timeline, engine restarted flat at VAL start for actual and shifted alike); p = (1 + #(shifted Sharpe >= actual)) / 201 <= the SEALED threshold (section 8) |
 | G7 | sub-periods 2020, 2021, 2022, 2023, 2024, 2025H1: net return > 0 in at least 4, AND the largest bucket log return <= 50% of the sum of positive bucket log returns |
 | G8 | extended-universe veto. Kind single: the program on each extended perp alone at full weight; kind portfolio: on the disjoint tuples (SOL,BNB), (XRP,ADA), (DOGE,LTC), (LINK,AVAX). Each unit from its OWN first bar (its own warm-up, flat until its signal exists), DEV start at the earliest, to VAL end; btc(...) stays the real BTC. A unit with < 2 years of scored history is coded `short_history`, a liquidated unit `liquidated`; coded units count as NOT positive. Median Sharpe > 0 AND at least half > 0. No exception is swallowed. |
@@ -227,12 +244,17 @@ annualised alpha and PSR(0) of the beta-hedged residual.
 
 The G6 threshold is not a constant. The sequence is fixed: lock the kernel (re-key) ->
 `python -m omr.calibrate` on the LOCKED kernel (it refuses otherwise; the artifact records
-`kernel_lock_verified: true` and the locked hash) -> `python -m omr.kernel_lock seal --calibration
-<artifact>`. The seal re-applies the rule in code to the artifact's stored per-pair rows and, only
-if the rule passes, writes the threshold and the artifact's sha256 into `kernel.lock` and
-`ledger/kernel_history.jsonl`. It refuses an artifact that is not from the verified locked kernel,
-not on the stored data, or whose families are not the kernel's baseline programs. `verify` fails if
-the sealed artifact changes. The evaluator refuses an unsealed lock.
+`kernel_lock_verified: true` and the locked SEMANTIC hash; the sha256 of the artifact's bytes is
+appended to the hash-chained `ledger/calibration_log.jsonl`) -> `python -m omr.kernel_lock seal
+--calibration <artifact>`. The seal re-applies the rule in code to the artifact's stored per-pair
+rows and, only if the rule passes, writes the threshold, the artifact's sha256 and the semantic hash
+into `kernel.lock` and `ledger/kernel_history.jsonl`. It refuses an artifact without a
+calibration_log row for exactly its bytes (a hand-edited artifact), one not from the verified
+locked semantic kernel, not on the stored data, or whose families are not the kernel's baseline
+programs. `verify` fails if the sealed artifact changes or loses its log row. The evaluator refuses
+an unsealed lock. A text-only re-key keeps the seal; a semantic re-key removes it.
+`--unlocked-dry-run --out <file>` runs the protocol on FULLY SYNTHETIC prices, reads no real bar
+after DEV end, and can never be sealed.
 
 The calibration measures the real stage-1 and stage-2 pipeline functions, in-process, on synthetic
 worlds built from the real core data on the real calendar (klines, mark bars and funding together),
@@ -244,8 +266,9 @@ read under a logged calibration handle; nothing enters the trial ledger:
   likewise; funding unchanged). Keeps real volatility dynamics, destroys direction across days.
 - DEV-overfit protocol, 100 worlds per null x the five kernel baseline programs
   (`omr/programs/gen000_*.omr`, hash-locked; `--families` accepts nothing else): 20 parameter sets
-  drawn from the declared ranges; those passing stage 1 on the world's DEV-only frames are kept;
-  the best DEV Sharpe among them is SUBMITTED to stage 2; none -> nothing submitted. Null pass rate
+  drawn from the declared ranges are SCREENED with the DEV signals and the activity rule only; the
+  activity passer with the best DEV Sharpe gets the full stage 1 (truncation and start-cut
+  self-checks) and is SUBMITTED to stage 2; none -> nothing submitted. Null pass rate
   = Tier-1 passes / SUBMITTED pairs. Every gate value and G6 p is stored (G8 not run: no extended
   universe; G8 can only veto, so the rates are upper bounds).
 - Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
@@ -263,13 +286,23 @@ The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md
 
 - `ledger/trials.jsonl` and `ledger/stage1_log.jsonl`: append-only, hash-chained (prev_hash,
   row_hash); `ledger/HEAD.json` anchors each chain's row count and head hash and is checked by
-  `ledger verify` and the evaluator. The chain head itself is not anchored outside the folder
-  (KP-009). `python -m omr.ledger verify` reports a pending row without a final row, and any result
-  file no row references, as `incomplete` (still counted).
+  `ledger verify` and the evaluator. Outside the folder, the project is a git repository with a
+  private remote: the coordinator commits and pushes `ledger/`, `kernel.lock` and the data manifest
+  after every re-key and every generation, so each push anchors the chain heads (KP-009; `ledger
+  verify` itself checks only the in-folder anchor). `python -m omr.ledger verify` reports a pending
+  row without a final row, and any result file no row references, as `incomplete` (still counted).
 - VAL access: every loader and pipeline entry point that touches bars after DEV end requires a
   ValHandle. The ledger issues one when it appends a pending row; calibration, census and selftest
   get one only with an explicit purpose logged in `ledger/val_access_log.jsonl`. A call without a
-  handle raises. `data validate` reads all rows inside the data layer and prints counts only.
+  handle raises. The VAL access log is the audit trail and is NEVER redirected (a temporary ledger
+  leaves it alone); a disk load of real VAL bars with a trial handle whose pending row is not in the
+  REAL trial ledger is logged there (kind `temp_ledger_trial`, trial id, source sha256) before any
+  frame is returned. `data validate` reads all rows inside the data layer and prints counts only.
+- No time-resolved VAL performance is stored: trial rows and detail files keep only aggregate VAL
+  metrics; the per-year table keeps calendar years ending by DEV end, and the G7 buckets keep their
+  return only if they end by DEV end (later buckets: name and day count; the gate value is
+  n_positive and largest_share). The daily returns file exists for the DSR and is read by the kernel
+  only; the researcher reads trial rows and `status`, never `ledger/returns` or `ledger/trials/`.
 - Selftest, `python -m omr.selftest`: THE SINGLE EXCEPTION to "any scored run on VAL bars is a
   counted trial". Under a logged `selftest` handle it (1) runs the five baselines and a kitchen-sink
   program using every field, timeframe and function on real DEV+VAL frames, checking shape,
@@ -279,11 +312,10 @@ The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md
   (0, 1], activity above both thresholds, the daily-return length, stage-2 DEV rows equal to
   stage 1, and a clean `ledger verify`. It prints ONLY `OK` or the failed assertion and file:line;
   no metric leaves it.
-- Paper pool: at most 5 members, Tier-1 trials evaluated under the kernel's CURRENT
-  SEMANTICS_VERSION; each member keeps the kernel hash it was evaluated under; replacement must be
-  explicit; every change is a hash-chained row in `ledger/pool_log.jsonl`.
+- Paper pool: at most 5 members, Tier-1 trials evaluated under the CURRENT semantic kernel hash;
+  replacement must be explicit; every change is a hash-chained row in `ledger/pool_log.jsonl`.
 - Census: updates the data, then for each pool member parses the frozen program (hash-checked; its
-  canonical form and SEMANTICS_VERSION must match) and runs it flat from birth on post-birth bars
+  canonical form and semantic kernel hash must match the current ones) and runs it flat from birth on post-birth bars
   only. Birth = the later of the trial's born_at and its pool admission, rounded up to the next bar
   open, and never before the bar after VAULT end. Forward daily returns (intervals ending at a 00:00
   open) are stored raw and at deploy_scale. Idempotent.
@@ -294,16 +326,15 @@ The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md
    expected effect). It never edits the kernel.
 2. The human (or the coordinator acting for the human, recorded as such) reviews and makes or
    accepts the change; tests pass.
-3. `python -m omr.kernel_lock rekey --reason "..." --approved-by "<who>"`. A re-key REMOVES the
-   seal: `python -m omr.calibrate` runs again on the locked kernel and `seal` writes the new
-   threshold before any trial can be evaluated.
-4. What a re-key does: trial identity does not include the kernel hash, so a re-key that leaves
-   SEMANTICS_VERSION and the data unchanged keeps every trial id; re-submitting an identical program
-   returns the existing row (not re-evaluated, not counted again), and earlier trials stay counted
-   in M. A change to the meaning of anything a program can express, the engine, costs, regions,
-   gates or statistics MUST bump SEMANTICS_VERSION: every trial id changes, earlier trials stay
-   counted, and pool members evaluated under the old version can no longer be admitted or censused
-   (they must be re-evaluated as new counted trials). Pool members keep their kernel hash.
+3. `python -m omr.kernel_lock rekey --reason "..." --approved-by "<who>"`. A re-key of the TEXT
+   part only (documents, tests) keeps the seal and needs no calibration. A re-key that changes the
+   SEMANTIC part removes the seal: `python -m omr.calibrate` runs again on the locked kernel and
+   `seal` writes the new threshold before any trial can be evaluated.
+4. What a re-key does: trial identity includes the SEMANTIC hash. A text-only re-key keeps every
+   trial id (re-submitting an identical program returns the existing row). A semantic re-key
+   changes every trial id: earlier trials stay counted in M, re-submitting a program is a new counted
+   trial, and pool members evaluated under the old semantic hash can no longer be admitted or
+   censused until re-evaluated.
 5. If a kernel bug is found after real VAL results were seen, it is fixed, re-keyed with the reason,
    and the before/after results are reported openly.
 
@@ -334,9 +365,14 @@ Live risk limits the loop can never change:
 
 - VAL quarantine is procedural for human or session code (section 2 d).
 - The LLM researcher's training data covers market history to about mid-2026, so every pre-birth
-  backtest, the vault included, is optimistic. The language removes dates, positions and bar counts,
-  but remembered history can still enter through the CHOICE of structure and parameters (KP-010).
-  Only FORWARD is clean.
+  backtest, the vault included, is optimistic. Locality removes every way to read the position in
+  history from the frame, but remembered history can still enter through the CHOICE of structure
+  and parameters and through reactions to remembered market events (KP-010). Only FORWARD is clean.
+- Scale invariance is bit-exact for power-of-two rescale factors and otherwise exact up to
+  floating-point ties.
+- The constant probe evaluates numeric nodes on a two-year synthetic panel: a node constant on real
+  data but varying on the panel is not caught, and a legitimate node that never varies on the panel
+  is rejected (the author must restate it).
 - A text- or news-reading signal cannot be honestly backtested; it can only be judged forward (and
   the language has no such input).
 - The extended universe is survivorship-biased, so it may only veto.
@@ -346,4 +382,8 @@ Live risk limits the loop can never change:
   real liquidation happens tick by tick with tiered maintenance margins, so the 2.5% rule is an
   approximation. Where mark bars are missing the check falls back to last-trade highs/lows.
 - Fills are bar-based at the next open with fixed costs; no order book, no partial fills.
-- The ledger's hash chain is anchored only inside the folder (KP-009).
+- Between the coordinator's pushes the ledger's hash chain is anchored only inside the folder, and
+  `ledger verify` does not itself compare with the remote (KP-009).
+- Constants built without literals (`x / x`, `rank(x, 1)`) are rejected by the constant probe when
+  they are constant on the probe panel; a constant that the probe panel does not expose is deliberate
+  evasion of the literal jitter, which the source audit catches (KP-010).

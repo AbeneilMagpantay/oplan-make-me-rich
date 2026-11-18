@@ -23,10 +23,15 @@ NULL B (sign-flip): the real day order; per UTC day one fair coin (shared by bot
   destroys directional predictability across days.
 
 DEV-overfit protocol (false-positive rate): for each (world, family) draw 20 parameter sets
-  uniformly from the declared ranges; keep those that pass stage 1 (truncation self-check and
-  activity_dev on the world's DEV-only frames); submit the one with the best DEV Sharpe to stage 2;
-  if none passes stage 1, nothing is submitted for that pair. Null pass rate = Tier-1 passes /
-  SUBMITTED pairs. Every gate value and the G6 p-value of every submitted pair are stored.
+  uniformly from the declared ranges; SCREEN them with the DEV signals and the activity rule only
+  (activity_dev on the world's DEV-only frames); the activity passer with the best DEV Sharpe gets the
+  full stage 1 (truncation and start-cut self-checks) and is SUBMITTED to stage 2; if no draw passes
+  the screen, nothing is submitted for that pair. Null pass rate = Tier-1 passes / SUBMITTED pairs.
+  Every gate value and the G6 p-value of every submitted pair are stored.
+Dry run (--unlocked-dry-run --out FILE): the same protocol on FULLY SYNTHETIC core prices (omr.probe
+  generator); no real bar after DEV end is read; the artifact can never be sealed.
+Every artifact written into ledger/ gets a hash-chained row in ledger/calibration_log.jsonl (its
+  sha256); `seal` refuses an artifact without that row or whose bytes differ.
 NOISY-ORACLE power: per asset, signal = sign(rho * z_future + sqrt(1 - rho^2) * eps), z_future =
   standardised future k-day open-to-open log return, eps independent N(0,1), re-decided every k days
   (decided at the 23:00 bar, executed at the next 00:00 open), weight = signal / K; injected after
@@ -104,13 +109,18 @@ class Source:
     m (mean hourly close-to-close log return over DEV+VAL) for last price and for mark.
     """
 
-    def __init__(self, handle):
+    def __init__(self, handle=None, tables=None):
+        """tables {symbol: {"klines", "funding", "mark_klines"}}; None = the real stored data, read
+        with the logged calibration handle."""
         a, b = T(C.DEV_START), T(C.VAL_END)
         self.sym = {}
         for s in C.CORE:
-            kl = D.load_raw("klines", s, upto="val_end", handle=handle)
-            fu = D.load_raw("funding", s, upto="val_end", handle=handle)
-            mk = D.load_raw("mark_klines", s, upto="val_end", handle=handle)
+            if tables is None:
+                kl = D.load_raw("klines", s, upto="val_end", handle=handle)
+                fu = D.load_raw("funding", s, upto="val_end", handle=handle)
+                mk = D.load_raw("mark_klines", s, upto="val_end", handle=handle)
+            else:
+                kl, fu, mk = tables[s]["klines"], tables[s]["funding"], tables[s]["mark_klines"]
             first_full = (kl.index[0] + pd.Timedelta(hours=23)).normalize()
             seg = kl.loc[first_full:b]
             nd = len(seg) // 24
@@ -157,6 +167,17 @@ class Source:
             }
         # DEV+VAL calendar dates shared by all core symbols: the null-A sampling pool
         self.pool = pd.date_range(a, b.normalize(), freq="D").as_unit("ns")
+
+
+def synthetic_tables(seed: int = 7) -> dict:
+    """Fully synthetic core tables (dry run, M3): no real bar is read."""
+    from omr import probe
+    rng = np.random.default_rng(seed)
+    out = {}
+    for s, start, p0 in (("BTCUSDT", "2019-09-08 17:00", 10000.0), ("ETHUSDT", "2019-11-27 07:00", 150.0)):
+        hours = int((T(C.VAL_END) - T(start)) / pd.Timedelta(hours=1)) + 1
+        out[s] = probe.synthetic_symbol(rng, p0, start=start, hours=hours)
+    return out
 
 
 def _synth_symbol(v: dict, src_days: np.ndarray, flip: np.ndarray):
@@ -277,9 +298,9 @@ class OracleBase:
 _W = {}
 
 
-def _init(families, handle):
+def _init(families, handle, synthetic=False):
     _W["handle"] = handle
-    _W["src"] = Source(handle)
+    _W["src"] = Source(tables=synthetic_tables()) if synthetic else Source(handle)
     _W["progs"] = {f: L.parse_file(family_path(f)) for f in families}
 
 
@@ -294,9 +315,9 @@ def draw_params(prog: L.Program, rng) -> dict:
     return out
 
 
-def dev_sharpe(world_dev_frames, liq, s1) -> float:
-    mk = pipeline.Market(world_dev_frames, liq, s1["grid"], C.CORE)
-    run = mk.run(s1["W"], mk.pos(C.DEV_START), mk.pos(C.DEV_END))
+def dev_sharpe(world_dev_frames, liq, screened) -> float:
+    mk = pipeline.Market(world_dev_frames, liq, screened["grid"], C.CORE)
+    run = mk.run(screened["W"], mk.pos(C.DEV_START), mk.pos(C.DEV_END))
     return float("-inf") if run.liquidated else S.sharpe(run.daily_returns())
 
 
@@ -325,23 +346,29 @@ def task_null(args) -> list:
     out = []
     for fam, prog in _W["progs"].items():
         rng = np.random.default_rng(_seed("draws", null, fam, world_seed))
-        best, best_sh, best_s1, codes = None, float("-inf"), None, {}
-        for i in range(N_DRAWS):
+        best, best_sh, codes = None, float("-inf"), {}
+        for i in range(N_DRAWS):                       # screening: DEV signals and the activity rule only (M5)
             q = draw_params(prog, rng)
-            s1 = pipeline.stage1(prog, q, frames_dev, btc_dev, np.random.default_rng(_seed("s1", null, fam, world_seed, i)),
-                                 OPTS)
-            if not s1["ok"]:
-                codes[s1["code"]] = codes.get(s1["code"], 0) + 1
+            sc = pipeline.screen_dev(prog, q, frames_dev, btc_dev)
+            if not sc["ok"]:
+                codes[sc["code"]] = codes.get(sc["code"], 0) + 1
                 continue
             codes["passed"] = codes.get("passed", 0) + 1
-            sh = dev_sharpe(frames_dev, world.liq, s1)
+            sh = dev_sharpe(frames_dev, world.liq, sc)
             if best is None or sh > best_sh:
-                best, best_sh, best_s1 = q, sh, s1
+                best, best_sh = q, sh
         base = {"null": null, "family": fam, "world_seed": world_seed, "stage1": codes}
         if best is None:
             out.append(dict(base, submitted=False, status="not_submitted"))
             continue
-        res = pipeline.stage2(prog, best, world, best_s1, OPTS, _W["handle"], _seed("null", null, fam, world_seed), None)
+        # the submitted draw gets the full stage 1 (truncation and start-cut self-checks) and stage 2
+        s1 = pipeline.stage1(prog, best, frames_dev, btc_dev, np.random.default_rng(_seed("s1", null, fam, world_seed)),
+                             OPTS)
+        if not s1["ok"]:
+            out.append(dict(base, submitted=False, status=f"stage1_{s1['code']}", params=best,
+                            fault=s1.get("fault")))
+            continue
+        res = pipeline.stage2(prog, best, world, s1, OPTS, _W["handle"], _seed("null", null, fam, world_seed), None)
         out.append(summarise(res, dict(base, submitted=True, params=best, best_dev_sharpe_of_passers=best_sh)))
     return out
 
@@ -527,7 +554,8 @@ def main(argv=None):
     ap.add_argument("--oracle-worlds", type=int, default=100)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--families", nargs="*", default=None, help="subset of the kernel's five baselines")
-    ap.add_argument("--unlocked-dry-run", action="store_true", help="construction check; never sealable")
+    ap.add_argument("--unlocked-dry-run", action="store_true",
+                    help="construction check on FULLY SYNTHETIC prices (no real bar after DEV end is read); never sealable")
     ap.add_argument("--out", default=None, help="output path (required with --unlocked-dry-run)")
     a = ap.parse_args(argv)
     t0 = time.time()
@@ -547,19 +575,28 @@ def main(argv=None):
         raise SystemExit(3)
     if a.unlocked_dry_run and not a.out:
         raise SystemExit("--unlocked-dry-run needs --out <path> (never written into ledger/)")
-    kh = kernel_lock.read_lock()["combined"] if lock_ok else kernel_lock.kernel_hash()
-    manifest = data.load_manifest()
-    if not data.validation_ok():
-        raise SystemExit("data not validated for the current files: run python -m omr.data validate")
-    log(f"calibration v{PROTOCOL_VERSION}: kernel {kh[:16]} (lock {'VERIFIED' if lock_ok else 'NOT verified: dry run'}), "
-        f"research_hash {manifest['research_hash'][:16]}, families {fams}")
-    handle = access.for_calibration(f"calibration protocol v{PROTOCOL_VERSION}, kernel {kh[:16]}: synthetic worlds built "
-                                    "from DEV+VAL bars; no real-program VAL result is computed")
+    k = kernel_lock.read_lock() if lock_ok else kernel_lock.compute()
+    kh, sem = k["combined"], k["semantic"]
+    synthetic = bool(a.unlocked_dry_run)
+    if synthetic:
+        rh = "synthetic-dry-run"
+        handle = access.for_calibration(f"calibration DRY RUN, semantic {sem[:16]}: fully synthetic prices, no real "
+                                        "bar after DEV end is read")
+    else:
+        manifest = data.load_manifest()
+        if not data.validation_ok():
+            raise SystemExit("data not validated for the current files: run python -m omr.data validate")
+        rh = manifest["research_hash"]
+        handle = access.for_calibration(f"calibration protocol v{PROTOCOL_VERSION}, semantic {sem[:16]}: synthetic "
+                                        "worlds built from DEV+VAL bars; no real-program VAL result is computed")
+    log(f"calibration v{PROTOCOL_VERSION}: semantic kernel {sem[:16]} (lock {'VERIFIED' if lock_ok else 'NOT verified'}), "
+        f"{'SYNTHETIC dry run' if synthetic else 'research_hash ' + rh[:16]}, families {fams}")
     ctx = mp.get_context("spawn")
     nulls, oracle = {}, {}
-    with ctx.Pool(a.workers, initializer=_init, initargs=(fams, handle)) as pool:
+    with ctx.Pool(a.workers, initializer=_init, initargs=(fams, handle, synthetic)) as pool:
         for null in ("A", "B"):
-            log(f"[null {null}] {a.worlds} worlds x {len(fams)} families, {N_DRAWS} draws, stage-1 passers, best DEV Sharpe")
+            log(f"[null {null}] {a.worlds} worlds x {len(fams)} families, {N_DRAWS} draws screened by activity, "
+                "best DEV Sharpe submitted")
             rows = []
             for i, rr in enumerate(pool.imap_unordered(task_null, [(null, SEEDS[null] + i) for i in range(a.worlds)])):
                 rows.extend(rr)
@@ -593,8 +630,9 @@ def main(argv=None):
                     "  ".join(f"p<={t}: {sm['by_threshold'][str(t)]['tier1']}/{sm['n']}" for t in C.G6_GRID))
 
     verdict = decide(nulls, oracle)
-    out = {"protocol_version": PROTOCOL_VERSION, "kernel_hash": kh, "kernel_lock_verified": lock_ok,
-           "research_hash": manifest["research_hash"], "semantics_version": C.SEMANTICS_VERSION,
+    out = {"protocol_version": PROTOCOL_VERSION, "kernel_hash": kh, "semantic_hash": sem, "text_hash": k["text"],
+           "kernel_lock_verified": lock_ok and not synthetic, "synthetic_dry_run": synthetic,
+           "research_hash": rh,
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": N_DRAWS, "oracle_worlds": a.oracle_worlds,
@@ -605,10 +643,13 @@ def main(argv=None):
     if a.out:
         path = Path(a.out)
     else:
-        path = P.LEDGER_DIR / f"calibration_{kh[:16]}.json"
+        path = P.LEDGER_DIR / f"calibration_{sem[:16]}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(ledger.clean(out), indent=1, sort_keys=True), encoding="ascii")
     log(f"saved {path}")
+    if not a.out:                                      # M2: the artifact's bytes are logged; seal needs the row
+        row = kernel_lock.log_calibration(path, sem, rh)
+        log(f"logged in ledger/calibration_log.jsonl: sha256 {row['sha256'][:16]}")
     log(json.dumps(ledger.clean(verdict), indent=1))
     log(f"wall time {out['wall_seconds']} s")
 

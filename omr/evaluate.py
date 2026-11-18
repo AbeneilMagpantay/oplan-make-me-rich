@@ -6,16 +6,18 @@ Order (count before exposure):
 1. Kernel lock verified AND sealed (the seal carries the G6 threshold); ledger chains intact; stored
    data equal to the manifest (every file hashed at the moment it is read) and validated
    (python -m omr.data validate). Generation rules: N equals the highest generation in the trial
-   ledger or that plus one (0 for an empty ledger); generations/genNNN/PLAN.md exists; at most
-   MAX_COUNTED_PER_GENERATION counted trials per generation (the next one is refused before any row).
-2. Stage 1 (UNCOUNTED, DEV-only frames, no handle): parse/static checks, identity and dedupe,
-   signals on DEV, the truncation self-check, activity_dev. A rejection is one row in
-   ledger/stage1_log.jsonl; nothing enters the trial ledger.
+   ledger or that plus one (0 for an empty ledger); generations/genNNN/PLAN.md exists, and for N >= 1
+   generations/gen(N-1)/REPORT.md exists; at most MAX_COUNTED_PER_GENERATION counted trials per
+   generation (the next one is refused before any row). The cap paces the work; the protection
+   against many attempts is the count M in the DSR.
+2. Stage 1 (UNCOUNTED, DEV-only frames, no handle): parse/static checks (incl. the constant probe),
+   identity and dedupe, signals on DEV, the truncation and start-cut self-checks, activity_dev. A
+   rejection is one row in ledger/stage1_log.jsonl; nothing enters the trial ledger.
 3. A COUNTED `pending` row is appended, flushed and fsynced; it issues the trial's ValHandle.
 4. Stage 2 on DEV+VAL frames. Result files are written, then the final row: `evaluated` (with
    tier), `liquidated`, or `kernel_fault` (any unexpected exception, or stage-2 DEV rows differing
    from stage 1; no metrics). A pending row is never left behind by an exception.
-Trial identity = sha256(canonical program + SEMANTICS_VERSION + research_hash)[:16].
+Trial identity = sha256(canonical program + SEMANTIC kernel hash + research_hash)[:16].
 """
 from __future__ import annotations
 
@@ -102,6 +104,11 @@ def check_generation(generation: int) -> str:
     if not plan.exists():
         raise Refused(f"generation {generation} refused: {plan.relative_to(P.ROOT) if plan.is_relative_to(P.ROOT) else plan} "
                       "does not exist (write the plan first)")
+    if generation >= 1:
+        report = P.GENERATIONS_DIR / f"gen{generation - 1:03d}" / "REPORT.md"
+        if not report.exists():
+            raise Refused(f"generation {generation} refused: generation {generation - 1} has no REPORT.md "
+                          "(report the previous generation first)")
     n = ledger.counted_in_generation(generation)
     if n >= C.MAX_COUNTED_PER_GENERATION:
         raise Refused(f"generation {generation} already has {n} counted trials (max {C.MAX_COUNTED_PER_GENERATION}); "
@@ -156,9 +163,10 @@ def print_result(row: dict):
 def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts | None = None,
                   quiet: bool = False, require_lock: bool = True, p_max: float | None = None) -> dict:
     if require_lock:
-        kh, p_max = kernel_lock.require_sealed()
+        k = kernel_lock.require_sealed()
+        p_max = k["g6_threshold"]
     else:
-        kh = kernel_lock.kernel_hash()
+        k = kernel_lock.compute()
         if p_max is None:
             raise ValueError("without the sealed lock a G6 threshold must be passed explicitly")
     for chain in (P.TRIALS_JSONL, P.STAGE1_LOG):
@@ -173,13 +181,13 @@ def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts
     rh = provider.check()
     plan_sha = check_generation(int(generation))
     p = Path(path).resolve()
-    base = {"generation": int(generation), "file": _rel(p), "kernel_hash": kh, "research_hash": rh,
-            "semantics_version": C.SEMANTICS_VERSION}
+    base = {"generation": int(generation), "file": _rel(p), "kernel_hash": k["combined"],
+            "semantic_hash": k["semantic"], "text_hash": k["text"], "research_hash": rh}
     try:
         prog = L.parse_file(p)
     except L.LangError as e:
         return stage1_log(dict(base, code=f"parse:{e.rule}", line=e.line, col=e.col), quiet)
-    tid = L.trial_id(prog, rh)
+    tid = L.trial_id(prog, k["semantic"], rh)
     existing = ledger.find_trial(tid)
     if existing:
         if not quiet:
@@ -213,19 +221,22 @@ def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max)
     except Exception as e:                           # an interpreter error on a checked program is a kernel fault
         return stage1_log(dict(ident, code="kernel_fault", error_type=type(e).__name__), quiet)
     if not s1["ok"]:
-        return stage1_log(dict(ident, code=s1["code"], direction_changes_dev=s1.get("direction_changes_dev")), quiet)
+        return stage1_log(dict(ident, code=s1["code"], fault=s1.get("fault"),
+                               direction_changes_dev=s1.get("direction_changes_dev")), quiet)
 
     # ---- COUNTED from here on: the pending row is on disk before any VAL bar is read
     P.TRIAL_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     src = P.TRIAL_SOURCE_DIR / f"{tid}.omr"
     shutil.copyfile(p, src)
     row = dict(ident, born_at=_now(), plan_sha256=plan_sha, hypothesis=prog.header["hypothesis"],
-               canonical=prog.canonical, params=params, node_count=prog.node_count,
+               canonical=prog.canonical, params=params, node_count=prog.node_count, n_literals=prog.n_literals,
                source_sha256=ledger.sha256_file(src), versions=versions(),
-               stage1={"truncation_cuts": s1["cuts"], "direction_changes_dev": s1["direction_changes_dev"]})
+               stage1={"truncation_cuts": s1["cuts"], "start_cuts": s1["start_cuts"],
+                       "direction_changes_dev": s1["direction_changes_dev"]})
     pending, handle = ledger.append_pending(row)
-    final = {k: row[k] for k in ("trial_id", "generation", "program", "family", "kind", "kernel_hash",
-                                 "research_hash", "semantics_version", "params", "born_at")}
+    keep = ("trial_id", "generation", "program", "family", "kind", "kernel_hash", "semantic_hash", "text_hash",
+            "research_hash", "params", "node_count", "n_literals", "born_at")
+    final = {k: row[k] for k in keep}
     final.update(pending_hash=pending["row_hash"], g6_threshold=p_max, seed=str(seed))
     try:
         world = provider.val_world(handle)
@@ -237,9 +248,7 @@ def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max)
         else:
             final.update(_evaluated_fields(tid, res, seed, s1))
     except BaseException as e:                       # never leave a pending row behind
-        final = {k: v for k, v in final.items() if k in ("trial_id", "generation", "program", "family", "kind",
-                                                         "kernel_hash", "research_hash", "semantics_version",
-                                                         "params", "born_at", "pending_hash", "g6_threshold", "seed")}
+        final = {k: v for k, v in final.items() if k in keep + ("pending_hash", "g6_threshold", "seed")}
         final.update(status="kernel_fault", reason="exception", error_type=type(e).__name__)
         written = ledger.append(P.TRIALS_JSONL, final)
         if not quiet:

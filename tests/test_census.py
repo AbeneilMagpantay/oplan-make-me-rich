@@ -1,5 +1,5 @@
-"""Census forward run on synthetic frames that extend past VAULT_END (no real data); frozen-source
-and SEMANTICS_VERSION checks; pool admission by SEMANTICS_VERSION."""
+"""Census forward run on synthetic frames that extend past VAULT_END (no real data); frozen-source and
+semantic-hash checks; pool admission by the current semantic kernel hash."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -7,6 +7,7 @@ import pytest
 from omr import census
 from omr import constants as C
 from omr import engine as E
+from omr import kernel_lock
 from omr import lang as L
 from omr import ledger
 from omr import paths as P
@@ -14,7 +15,15 @@ from omr import pipeline
 from omr import pool
 from conftest import liq_of, prog_text, synth_raw
 
-SRC = prog_text("x = param(0.8, 0.5, 1.0)\nsignal = x * sign(close / open)", name="t_always_long")
+# always long after the clip: sign(...) + 2 is 1, 2 or 3 (not a constant series), clipped to 1
+SRC = prog_text("signal = sign(ret(close, 1)) + 2", name="t_always_long")
+SEM = "s" * 64
+
+
+@pytest.fixture
+def current_semantic(monkeypatch):
+    monkeypatch.setattr(kernel_lock, "read_lock", lambda *a, **k: {"semantic": SEM, "combined": "c" * 64})
+    return SEM
 
 
 def setup_member(tmp_path, tid="t0t0t0t0t0t0t0t0", text=SRC, **over):
@@ -22,14 +31,14 @@ def setup_member(tmp_path, tid="t0t0t0t0t0t0t0t0", text=SRC, **over):
     src = tmp_path / "sources" / f"{tid}.omr"
     src.write_text(text, encoding="ascii")
     prog = L.parse(text, "t_always_long")
-    row = {"trial_id": tid, "program": "t_always_long", "source_sha256": ledger.sha256_file(src), "params": {"x": 1.0},
-           "canonical": prog.canonical, "semantics_version": C.SEMANTICS_VERSION,
+    row = {"trial_id": tid, "program": "t_always_long", "source_sha256": ledger.sha256_file(src), "params": {},
+           "canonical": prog.canonical, "semantic_hash": SEM,
            "born_at": "2026-11-20T05:20:00Z", "deploy_scale": 0.25}
     row.update(over)
     return row
 
 
-def test_census_runs_flat_from_birth_on_post_birth_bars_only(tmp_path, monkeypatch):
+def test_census_runs_flat_from_birth_on_post_birth_bars_only(tmp_path, monkeypatch, current_semantic):
     raws = {s: synth_raw(start="2026-10-01 00:00", end="2026-11-25 23:00", seed=5 + i) for i, s in enumerate(C.CORE)}
     from omr import datasets as D
     frames = {s: D.assemble_frame(r, D.PROGRAM_EXTRA) for s, r in raws.items()}
@@ -55,9 +64,9 @@ def test_census_runs_flat_from_birth_on_post_birth_bars_only(tmp_path, monkeypat
 
 
 @pytest.mark.parametrize("over,msg", [({"source_sha256": "0" * 64}, "ledger hash"),
-                                      ({"semantics_version": C.SEMANTICS_VERSION + 1}, "SEMANTICS_VERSION"),
+                                      ({"semantic_hash": "o" * 64}, "semantic kernel"),
                                       ({"canonical": "kind=single;signal=x;params=[]"}, "canonical")])
-def test_census_refuses_tampered_or_incompatible_members(tmp_path, monkeypatch, over, msg):
+def test_census_refuses_tampered_or_incompatible_members(tmp_path, monkeypatch, current_semantic, over, msg):
     monkeypatch.setattr(P, "TRIAL_SOURCE_DIR", tmp_path / "sources")
     trow = setup_member(tmp_path, **over)
     with pytest.raises(RuntimeError) as e:
@@ -65,16 +74,14 @@ def test_census_refuses_tampered_or_incompatible_members(tmp_path, monkeypatch, 
     assert msg in str(e.value)
 
 
-def test_pool_admission_needs_tier1_and_the_same_semantics_version(tmp_ledger, monkeypatch):
-    from omr import kernel_lock
-    monkeypatch.setattr(kernel_lock, "read_lock", lambda *a, **k: {"combined": "k" * 64})
-    base = {"status": "evaluated", "tier": "tier1", "program": "p", "kernel_hash": "old" * 21 + "x",
+def test_pool_admission_needs_tier1_and_the_current_semantic_hash(tmp_ledger, current_semantic):
+    base = {"status": "evaluated", "tier": "tier1", "program": "p", "kernel_hash": "k" * 64,
             "deploy_scale": 0.5, "born_at": "2026-11-20T00:00:00Z"}
     ledger.append_pending({"trial_id": "a" * 16, "generation": 0})
-    ledger.append(P.TRIALS_JSONL, dict(base, trial_id="a" * 16, semantics_version=C.SEMANTICS_VERSION))
+    ledger.append(P.TRIALS_JSONL, dict(base, trial_id="a" * 16, semantic_hash=SEM))
     ledger.append_pending({"trial_id": "b" * 16, "generation": 0})
-    ledger.append(P.TRIALS_JSONL, dict(base, trial_id="b" * 16, semantics_version=C.SEMANTICS_VERSION + 1))
-    pool.admit("a" * 16, "test")                                         # other kernel hash, same semantics: admitted
-    assert pool.members()["a" * 16]["kernel_hash"] == base["kernel_hash"]
+    ledger.append(P.TRIALS_JSONL, dict(base, trial_id="b" * 16, semantic_hash="o" * 64))
+    pool.admit("a" * 16, "test")
+    assert pool.members()["a" * 16]["semantic_hash"] == SEM
     with pytest.raises(SystemExit):
         pool.admit("b" * 16, "test")

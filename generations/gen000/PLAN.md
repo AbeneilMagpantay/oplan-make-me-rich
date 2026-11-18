@@ -1,10 +1,18 @@
-# Generation 0 - PLAN (pre-registered 2026-11-18, restated 2026-11-19 for the formula language; no VAL result exists yet)
+# Generation 0 - PLAN (pre-registered 2026-11-18, restated 2026-11-19 for the formula language and for locality; nothing has been scored: no VAL result exists)
 
 Five fixed baselines, all kind "single" (the kernel trades each core perp, BTCUSDT and ETHUSDT,
-alone on its own history, at weight = signal / 2). They are `.omr` programs (LANGUAGE.md), the same
-rules and defaults as the pre-language Python strategies (reproduced weight for weight on synthetic
-data and on the real DEV frames; the Python originals are trusted test references in
-`tests/ref_gen0.py`). Params are fixed as written; no tuning. Each is evaluated exactly once on the
+alone on its own history, at weight = signal / 2). They are `.omr` programs (LANGUAGE.md) with the
+rules and defaults of the pre-language Python strategies, except TWO RULES CHANGED BY THE KERNEL'S
+LOCALITY RULE (FIX PASS 5, KP-012), decided before any result:
+- gen000_donchian_ls: the position is the state machine re-run from flat over the last `horizon`
+  daily bars (default 90, range 60..180) instead of an unbounded state machine;
+- gen000_rsi_meanrev_ls: the RSI has finite memory (10 x period changes) and the position is the
+  state machine re-run from flat over the last `horizon` 4h bars (default 84, range 60..180).
+On the real DEV data these horizons never differ from an unbounded machine (a horizon of 60 or more
+never binds), and both programs give the same weights as the Python versions on every DEV row where
+they are known (they start later: one uniform warm-up). SMA cross and funding carry are bit-identical
+to the Python versions; the vol-target trend differs by floating-point rounding only (at most
+3.5e-15 in a weight). Params are fixed as written; no tuning. Each is evaluated exactly once on the
 sealed kernel:
 
     python -m omr.evaluate strategies/<name>.omr --generation 0
@@ -18,8 +26,8 @@ of G1-G8 and G10 (CONSTITUTION section 7), with the G6 threshold sealed by the c
 Activity rule (section 6 of the CONSTITUTION): a direction change is a decision bar where a
 symbol's state sign(w) (0 when |w| <= 0.01) differs from the previous bar's. At least 20 in DEV
 (stage 1, uncounted `activity_dev`) and at least 12 in VAL (gate G10). DEV counts on the real DEV
-data (BTC + ETH, known before any VAL result): SMA cross 16 (8 + 8), Donchian 67, RSI mean-reversion
-311, vol-target trend 92, funding carry 60. So gen000_sma_cross_ls, at its pre-registered defaults,
+data (BTC + ETH, known before any VAL result): SMA cross 16 (8 + 8), Donchian 65 (34 + 31), RSI
+mean-reversion 311, vol-target trend 92, funding carry 60. So gen000_sma_cross_ls, at its pre-registered defaults,
 is expected to be rejected at stage 1 as `activity_dev` (uncounted; no VAL bar is read). That is
 accepted as part of the instrument, not worked around by changing its params.
 
@@ -45,11 +53,13 @@ goes to the paper pool; that is "worth paper-trading", not "profitable".
 - Hypothesis: range breakouts start moves that persist long enough to pay for false breakouts.
 - Mechanism: stop-loss cascades and delayed participation. Other side: range traders fading the
   breakout.
+- Locality: `horizon = param(90, 60, 180)`; `signal = hold(..., horizon)`.
 - Falsified by: G1, G6, or G7 (profits concentrated in one bucket).
 
 ## 3. gen000_rsi_meanrev_ls (meanrev)
 
-- Rule: on 4h bars, centred Wilder RSI r = (RSI - 50) / 50 with period 14. Long when r < -band,
+- Rule: on 4h bars, centred finite RSI r = (G - L) / (G + L) over the last 140 changes (Wilder
+  weights, period 14), equal to (RSI - 50) / 50; state rebuilt over the last `horizon` = 84 bars. Long when r < -band,
   held until r > 0; short when r > band, held until r < 0; entries take priority. period=14 [7,28],
   band=0.4 [0.2,0.6] (= the Python band 20 RSI points, bounds 10..30).
 - Hypothesis: short-horizon overreactions revert within days.

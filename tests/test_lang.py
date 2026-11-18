@@ -35,7 +35,7 @@ OK_BODIES = [
     ("n = param(5, 2, 10)\nsignal = funding_mean(n) / funding8h", "single"),
     ("k = param(12, 9, 15)\nsignal = where(hour > k, 1, 0)", "single"),
     ("k = param(3, 2, 4)\nsignal = where(weekday < k, 1, 0)", "single"),
-    ("signal = hold(close > open, close < open, close < low, close > high)", "single"),
+    ("h = param(10, 5, 20)\nsignal = hold(close > open, close < open, close < low, close > high, h)", "single"),
     ("signal = sign(mark_close - close)", "single"),
     ("signal = sign(taker_buy_volume / volume - 0.5)", "single"),
     ("signal = sign(taker_buy_quote_volume / quote_volume - 0.5)", "single"),
@@ -45,17 +45,111 @@ OK_BODIES = [
     ("signal = cs_mean(ret(close, 1))", "portfolio"),
     ("x = weekly(close)\nsignal = sign(x - lag(x, 1))", "single"),
     ("a = h2(high)\nb = h3(low)\nc = h6(open)\nd = h8(close)\ne = h12(close)\n"
-     "signal = sign(a - b) + sign(c - d) + sign(e - d)", "single"),
+     "signal = sign(a - d) + sign(c - e) + sign(b - d)", "single"),
     ("k = param(2.0, 1.5, 3.0)\nsignal = min2(1, max2(-1, k * ret(close, 1)))", "single"),
     ("k = param(0.5, 0.25, 1.0)\nsignal = sqrt(abs(ret(close, 1))) * k", "single"),
     ("signal = log(close / open) + exp(ret(close, 1)) - 1", "single"),
-    ("signal = where(not (close > open) and close > low or close < high, 1, 0)", "single"),
-    ("k = param(-0.5, -1.0, -0.25)\nsignal = where(ret(close, 1) < k, 1, 0)", "single"),
+    ("signal = where(not (close > open) and close > low or close > high, 1, 0)", "single"),
+    ("k = param(-0.005, -0.01, -0.0025)\nsignal = where(ret(close, 1) < k, 1, 0)", "single"),
     ("n = param(2, 1, 4)\nsignal = delta(ret(close, 1), n)", "single"),
-    ("signal = sign(median(close, 1) - close) + sign(std(close, 1) / close)", "single"),
-    ("n = param(3, 2, 5)\nsignal = sign(rsum(volume, n) - rmax(volume, n) - rmin(volume, n) + ema(volume, n))", "single"),
+    ("n = param(3, 2, 5)\nsignal = sign(rsum(volume, n) - rmax(volume, n) - rmin(volume, n) - ema(volume, n))", "single"),
     ("n = param(3, 2, 5)\nsignal = rsi(daily(close), n)", "single"),
+    ("n = param(20, 5, 60)\nsignal = where(zscore(close, n) > 2, 1, 0)", "single"),
+    ("signal = where(hour > 3, 1, 0)", "single"),
+    ("n = param(20, 5, 60)\nv = rsum(quote_volume, n) / rsum(volume, n)\nsignal = sign(close - v)", "single"),
+    ("signal = sign(quote_volume / volume - close) + sign(btc(quote_volume) / btc(volume) - btc(close))", "single"),
 ]
+
+PROBE = 'name = "{stem}"\nfamily = "other"\nkind = "single"\nhypothesis = "coordinator probe of the parser rules"\n'
+# the coordinator's probe (C1): (stem, body, number of jitterable literals)
+PROBES = [
+    ("p01_shifted_threshold", "n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z - 2 > 0, -1, where(z + 2 < 0, 1, 0))\n", 4),
+    ("p02_named_literal", "n = param(20, 5, 60)\nthr = 7\nz = zscore(close, n)\nsignal = where(z * 4 > thr, -1, 0)\n", 3),
+    ("p03_inert_param", "n = param(20, 5, 60)\nk = param(100, 50, 200)\nz = zscore(close, n)\nsignal = where(z > k * 0 + 3, -1, 0)\n", 2),
+    ("p04_min2_constant", "n = param(20, 5, 60)\nk = param(100, 50, 200)\nz = zscore(close, n)\nsignal = where(z > min2(k, 3), -1, 0)\n", 2),
+    ("p06_scaled_tanh", "n = param(20, 5, 60)\nsignal = tanh(zscore(close, n) * 3)\n", 1),
+    ("p08_plain_threshold", "n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z > 2, -1, 0)\n", 2),
+]
+
+
+@pytest.mark.parametrize("stem,body,n_lit", PROBES)
+def test_probe_programs_are_accepted_and_their_literals_are_jitterable(stem, body, n_lit):
+    p = L.parse(PROBE.format(stem=stem) + body, stem)
+    assert p.n_literals == n_lit, p.literals
+    assert all(v != 0 for _, v in p.literals)
+
+
+def test_zero_and_window_arguments_are_not_literals_and_order_is_source_order():
+    p = L.parse(prog_text("n = param(3, 2, 5)\nsignal = where(ret(close, 1) > 0, 2 * sign(lag(ret(close, n), 1)), -0.5)"),
+                "x_test")
+    assert [v for _, v in p.literals] == [2.0, -0.5]                      # 0 and the windows 1 excluded
+    assert p.literals == sorted(p.literals)
+    q = L.parse(prog_text("n = param(3, 2, 5)\nsignal = sign(ret(close, 1)) + sign(lag(ret(close, n), 1))"), "x_test")
+    assert q.n_literals == 0
+
+
+def test_the_ones_series_constant_is_rejected_by_the_probe():
+    body = "n = param(20, 5, 60)\none = close / close\nz = zscore(close, n)\nsignal = where(z > one + one + one, -1, 0)\n"
+    with pytest.raises(L.LangError) as e:
+        L.parse(PROBE.format(stem="p05_ones_series") + body, "p05_ones_series")
+    assert e.value.rule == "constant_subexpression" and e.value.line == 6
+
+
+@pytest.mark.parametrize("body,rule", [
+    ("signal = sign(close / close - ret(close, 1))", "constant_subexpression"),
+    ("n = param(5, 2, 8)\nsignal = sign(rank(close, 1) - ret(close, n))", "constant_subexpression"),
+    ("signal = sign(ret(close, 1) - ret(close, 1) + ret(open, 1))", "constant_subexpression"),
+    ("signal = sign(close / open) * ret(close, 1)", "constant_subexpression"),
+    ("signal = sign(median(close, 1) - close) + sign(ret(close, 1))", "constant_subexpression"),
+    ("signal = sign(std(close, 1) / close) + sign(ret(close, 1))", "constant_subexpression"),
+    ("n = param(47, 37, 57)\nsignal = rank(zscore(sma(ret(weekly(close), 1), n), n), n) - 0.5", "probe_undefined"),
+    ("n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z * 0.5 * 0.5 > 1, -1, 0)", "constant_subexpression"),
+    ("signal = where(ret(close, 1) > 10, 1, 0)", "constant_subexpression"),
+])
+def test_constant_probe(body, rule):
+    with pytest.raises(L.LangError) as e:
+        L.parse(prog_text(body), "x_test")
+    assert e.value.rule == rule, body
+
+
+def test_boolean_nodes_are_not_probed():
+    # the rare condition never fires on the probe panel, but only its numeric where() is probed: varies
+    L.parse(prog_text("signal = where(ret(close, 1) > 10, ret(close, 1), 0 - ret(close, 1))"), "x_test")
+
+
+def test_exponential_reuse_is_bounded():
+    body = "x0 = ret(close, 1)\n" + "".join(f"x{i} = x{i - 1} + x{i - 1}\n" for i in range(1, 20)) + "signal = tanh(x19)"
+    with pytest.raises(L.LangError) as e:
+        L.parse(prog_text(body), "x_test")
+    assert e.value.rule == "inlined_too_large"
+
+
+def test_literal_cap():
+    ok = "signal = clip(" + " + ".join(f"{i} * ret(close, 1)" for i in range(1, 9)) + ", -1, 1)"
+    with pytest.raises(L.LangError) as e:                                 # 8 terms + the two clip bounds = 10
+        L.parse(prog_text(ok), "x_test")
+    assert e.value.rule == "too_many_literals"
+    eight = "signal = " + " + ".join(f"{i} * ret(close, 1)" for i in range(1, 9))
+    assert L.parse(prog_text(eight), "x_test").n_literals == 8
+    nine = "signal = " + " + ".join(f"{i} * ret(close, 1)" for i in range(1, 10))
+    with pytest.raises(L.LangError) as e:
+        L.parse(prog_text(nine), "x_test")
+    assert e.value.rule == "too_many_literals"
+
+
+def test_huge_integer_literals_are_parse_errors_not_crashes():
+    for body in ("n = param(" + "9" * 400 + ", 1, 2)\nsignal = sign(ret(close, n))",
+                 "signal = sign(ret(close, 1)) * " + "9" * 400):
+        with pytest.raises(L.LangError) as e:
+            L.parse(prog_text(body), "x_test")
+        assert e.value.rule == "parse_error"
+
+
+def test_quote_volume_is_price_times_volume():
+    p = L.parse(prog_text("signal = sign(quote_volume / volume - close)"), "x_test")
+    assert L.FIELDS["quote_volume"][0] == (("P", 1), ("V", 1))
+    assert L.FIELDS["taker_buy_quote_volume"][0] == (("P", 1), ("V", 1))
+    assert p.types["signal"].unit == ()
 
 
 @pytest.mark.parametrize("body,kind", OK_BODIES)
@@ -138,8 +232,11 @@ BAD = [
     ("n = param(300, 200, 500)\nsignal = sma(ret(daily(close), 1), n)", "window_limit"),
     ("n = param(60, 40, 80)\nsignal = sma(ret(weekly(close), 1), n)", "window_limit"),
     ("signal = where(ret(close, 1) > 0.0001, 1, 0)", "literal_value"),
-    ("signal = where(ret(close, 1) > 2, 1, 0)", "comparison_literal"),
-    ("signal = where(hour > 3, 1, 0)", "comparison_literal"),
+    ("signal = where(ret(close, 1) > 2.5, 1, 0)", "literal_value"),
+    ("signal = where(hour > 11, 1, 0)", "literal_value"),
+    ("signal = where(close > " + "9" * 400 + ", 1, 0)", "parse_error"),
+    ("signal = sign(quote_volume - close)", "unit"),
+    ("signal = sign(quote_volume / close - close)", "unit"),
     ("signal = ret(close, 1) * (2 * 3)", "literal_expression"),
     ("x = 2 * 3\nsignal = ret(close, 1) * x", "literal_expression"),
     ("k = param(2.0, 1.0, 3.0)\nsignal = where(k > 1, ret(close, 1), 0)", "scalar_comparison"),
@@ -154,7 +251,15 @@ BAD = [
     ("signal = min2(close, 1)", "unit"),
     ("signal = sign((close > open) - 1)", "type"),
     ("signal = where(close, 1, 0)", "type"),
-    ("signal = hold(close, close > open, close < open, close < low)", "type"),
+    ("h = param(10, 5, 20)\nsignal = hold(close, close > open, close < open, close < low, h)", "type"),
+    ("signal = hold(close > open, close < open, close < low, close > high)", "arity"),
+    ("signal = hold(close > open, close < open, close < low, close > high, 5)", "window_arg"),
+    ("n = param(900, 700, 1100)\nsignal = ema(ret(close, n), n)", "window_limit"),
+    ("n = param(501, 400, 650)\nsignal = rsi(close, n)", "window_limit"),
+    ("signal = sign(lag(lag(close, 1), 1) - close)", "nested_unit_window"),
+    ("signal = sign(ret(lag(close, 1), 1))", "nested_unit_window"),
+    ("a = lag(close, 1)\nsignal = sign(ret(a, 1))", "nested_unit_window"),
+    ("signal = sign(ema(ret(close, 1), 1))", "nested_unit_window"),
     ("signal = where(not close, 1, 0)", "type"),
     ("signal = where((close > open) and close, 1, 0)", "type"),
     ("signal = cs_rank(ret(close, 1))", "cross_section_single"),
@@ -244,21 +349,14 @@ def test_canonical_form_inlines_names_and_orders_params_by_first_use():
     assert a.canonical == ("kind=single;signal=sign((sma(daily(close),$0)-sma(daily(close),$1)));"
                            "params=[$0:int(20,5,60),$1:int(100,50,250)]")
     rh = "r" * 64
-    assert L.trial_id(a, rh) == L.trial_id(b, rh) and len(L.trial_id(a, rh)) == 16
+    sem = "s" * 64
+    assert L.trial_id(a, sem, rh) == L.trial_id(b, sem, rh) and len(L.trial_id(a, sem, rh)) == 16
     c = L.parse(prog_text("fast = param(21, 5, 60)\nslow = param(100, 50, 250)\nd = daily(close)\n"
                           "signal = sign(sma(d, fast) - sma(d, slow))"), "x_test")
-    assert L.trial_id(c, rh) != L.trial_id(a, rh)                   # defaults are part of identity
-    assert L.trial_id(a, "s" * 64) != L.trial_id(a, rh)             # research hash is part of identity
+    assert L.trial_id(c, sem, rh) != L.trial_id(a, sem, rh)                   # defaults are part of identity
+    assert L.trial_id(a, sem, "q" * 64) != L.trial_id(a, sem, rh)             # research hash is part of identity
 
 
-def test_semantics_version_is_part_of_identity(monkeypatch):
+def test_the_semantic_kernel_hash_is_part_of_identity():
     a = L.parse(prog_text("signal = sign(close - open)"), "x_test")
-    t1 = L.trial_id(a, "r" * 64)
-    monkeypatch.setattr(C, "SEMANTICS_VERSION", C.SEMANTICS_VERSION + 1)
-    assert L.trial_id(a, "r" * 64) != t1
-
-
-def test_kernel_hash_is_not_part_of_identity():
-    import inspect
-    src = inspect.getsource(L.trial_id)
-    assert "kernel" not in src
+    assert L.trial_id(a, "s" * 64, "r" * 64) != L.trial_id(a, "t" * 64, "r" * 64)

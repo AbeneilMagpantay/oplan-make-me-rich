@@ -1,5 +1,8 @@
 # Generation 0 baseline (kernel copy, hash-locked; also used as a calibration family).
-# rsi() is centred: (RSI - 50) / 50, so the Python band 20 (RSI 30 / 70) is 0.4 here.
+# rsi() is centred: (G - L) / (G + L) = (RSI - 50) / 50 over a finite memory of 10 x period changes,
+# so the Python band 20 (RSI 30 / 70) is 0.4 here. The state is rebuilt from flat over the last
+# `horizon` 4h bars (locality); on real DEV data a horizon of 60 bars or more never differs from an
+# unbounded state machine.
 name = "gen000_rsi_meanrev_ls"
 family = "meanrev"
 kind = "single"
@@ -7,6 +10,7 @@ hypothesis = "Short-horizon overreaction reverts: on 4h bars, a Wilder RSI below
 
 period = param(14, 7, 28)
 band = param(0.4, 0.2, 0.6)
+horizon = param(84, 60, 180)
 
 r = rsi(h4(close), period)
-signal = hold(r < -band, r > 0, r > band, r < 0)
+signal = hold(r < -band, r > 0, r > band, r < 0, horizon)

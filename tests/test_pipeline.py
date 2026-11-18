@@ -21,7 +21,8 @@ from conftest import dev_only, kernel_program, prog_text, synth_raw, synth_world
 FAST = pipeline.Opts(jitter_n=3, perm_n=30, truncation_cuts=4, include_g8=False)
 LATE = ["2020-09-14 00:00", "2020-02-10 00:00", "2020-01-06 00:00", "2020-01-31 00:00", "2020-07-10 00:00",
         "2020-01-09 00:00", "2020-01-17 00:00", "2020-09-23 00:00"]          # real listing dates (SOL ... AVAX)
-LONG = prog_text("x = param(0.8, 0.5, 1.0)\nsignal = x * sign(close / open)")
+# always long after the clip (sign(...) + 2 is 1, 2 or 3: not a constant series, so the probe accepts it)
+LONG = prog_text("signal = sign(ret(close, 1)) + 2")
 
 
 def test_direction_changes_count_state_changes_per_symbol():
@@ -60,8 +61,61 @@ def test_jitter_moves_every_param_and_stays_in_bounds():
     prog = L.parse(prog_text("n = param(2, 1, 5)\nk = param(0.5, 0.25, 1.0)\nsignal = sma(ret(close, 1), n) * k"),
                    "x_test")
     vs = pipeline.jitter_params(prog, {"n": 2, "k": 0.5}, np.random.default_rng(0), 50)
-    assert all(v["n"] in (1, 3) for v in vs)                                      # rounding never leaves it unchanged
-    assert all(0.4 <= v["k"] <= 0.6 and v["k"] != 0.5 for v in vs)
+    assert all(q["n"] in (1, 3) for q, _ in vs)                                   # rounding never leaves it unchanged
+    assert all(0.4 <= q["k"] <= 0.6 and q["k"] != 0.5 for q, _ in vs)
+    assert all(lits == () for _, lits in vs)
+
+
+def test_literals_are_jittered_after_params_in_source_order():
+    """C1: one independent U(0.8, 1.2) multiplier per literal token per draw; draw order params
+    (declaration order) then literals (source order), from the same generator."""
+    prog = L.parse(prog_text("n = param(20, 5, 60)\nz = zscore(close, n)\nsignal = where(z > 2, -1, where(z < -2, 0.5, 0))"),
+                   "x_test")
+    assert [v for _, v in prog.literals] == [2.0, -1.0, -2.0, 0.5]
+    vs = pipeline.jitter_params(prog, {"n": 20}, np.random.default_rng(7), 3)
+    rng = np.random.default_rng(7)
+    for q, lits in vs:
+        u = rng.uniform(C.JITTER_LO, C.JITTER_HI)
+        n = int(np.floor(20 * u + 0.5))
+        if n == 20:
+            n += 1 if rng.uniform() < 0.5 else -1
+        assert q["n"] == n
+        want = tuple(v * rng.uniform(C.JITTER_LO, C.JITTER_HI) for v in (2.0, -1.0, -2.0, 0.5))
+        assert lits == want
+        assert all(0.8 <= a / b <= 1.2 for a, b in zip(lits, (2.0, -1.0, -2.0, 0.5)))
+
+
+def test_a_binding_literal_threshold_moves_the_weights_under_jitter():
+    w = synth_world(seed=19)
+    # the only literal is the threshold 1 (0 is never jittered): every variant must move the weights
+    prog = L.parse(prog_text("n = param(20, 10, 40)\nz = zscore(close, n)\nsignal = where(z > 1, sign(-z), 0)"),
+                   "x_test")
+    assert [v for _, v in prog.literals] == [1.0]
+    grid = pipeline.core_grid(w.core, C.CORE)
+    base, _ = pipeline.unit_signals(prog, {"n": 20}, w.core, C.CORE, w.btc, grid)
+    moved = 0
+    for _, lits in pipeline.jitter_params(prog, {"n": 20}, np.random.default_rng(3), 12):
+        Wl, _ = pipeline.unit_signals(prog, {"n": 20}, w.core, C.CORE, w.btc, grid, literals=lits)
+        moved += int(not np.array_equal(Wl, base))
+        assert set(np.unique(np.abs(Wl) * 2)) <= {0.0, 1.0}
+    assert moved == 12
+    # a name computed once shares its jittered value: thr used twice moves both comparisons together
+    p2 = L.parse(prog_text("n = param(20, 10, 40)\nthr = 1\nz = zscore(close, n)\n"
+                           "signal = where(z > thr, -1, 0) + where(z > thr, -1, 0)"), "x_test")
+    assert p2.n_literals == 3
+    W2, raw2 = pipeline.unit_signals(p2, {"n": 20}, w.core, C.CORE, w.btc, grid, literals=(1.1, -1.0, -1.0))
+    zz = X.evaluate(L.parse(prog_text("n = param(20, 10, 40)\nsignal = zscore(close, n)"), "x_test"), {"n": 20},
+                    [w.core["BTCUSDT"]], w.btc)[:, 0]
+    raw_btc = X.evaluate(p2, {"n": 20}, [w.core["BTCUSDT"]], w.btc, (1.1, -1.0, -1.0))[:, 0]
+    want = np.where(np.isnan(zz), np.nan, np.where(zz > 1.1, -2.0, 0.0))
+    assert np.array_equal(raw_btc, want, equal_nan=True)
+
+
+def test_g5_is_vacuous_only_without_params_and_literals():
+    assert pipeline.g5_vacuous(L.parse(prog_text("signal = sign(ret(daily(close), 1))"), "x_test"))
+    assert not pipeline.g5_vacuous(L.parse(prog_text("signal = 2 * sign(ret(daily(close), 1))"), "x_test"))
+    assert not pipeline.g5_vacuous(L.parse(prog_text("k = param(0.8, 0.5, 1.0)\nsignal = k * sign(ret(close, 1))"),
+                                           "x_test"))
 
 
 def test_g8_scores_late_listings_on_synthetic_frames(val_handle):
@@ -97,14 +151,31 @@ def test_stage1_passes_a_causal_program_and_flags_a_non_causal_kernel(monkeypatc
     prog = kernel_program("gen000_sma_cross_ls")
     s1 = pipeline.stage1(prog, L.default_params(prog), fd, bd, np.random.default_rng(1), FAST)
     assert s1["ok"] and s1["cuts"] == 5 and s1["direction_changes_dev"] >= 20
-    orig = X.Context.rolling
+    orig = X.WN.roll
 
-    def centred(self, fn, x, n):                     # a kernel bug: a centred (future-reading) window
-        out = orig(self, fn, x, n)
-        return X.S(np.roll(out.arr, -1, axis=0), out.tf, out.idx)
-    monkeypatch.setattr(X.Context, "rolling", centred)
+    def centred(x, n, op):                            # a kernel bug: a centred (future-reading) window
+        return np.roll(orig(x, n, op), -1, axis=0)
+    monkeypatch.setattr(X.WN, "roll", centred)
     s1 = pipeline.stage1(prog, L.default_params(prog), fd, bd, np.random.default_rng(1), FAST)
-    assert not s1["ok"] and s1["code"] == "kernel_fault"
+    assert not s1["ok"] and s1["code"] == "kernel_fault" and s1["fault"] == "truncation"
+
+
+def test_stage1_flags_a_kernel_whose_values_depend_on_the_frame_start(monkeypatch):
+    """K6: a causal but start-dependent window (an online sum carried from the first row) passes the
+    truncation check and is caught by the start-cut check."""
+    w = synth_world(seed=13)
+    fd, bd = dev_only(w)
+    prog = kernel_program("kernel_noise_single")
+    s0 = pipeline.stage1(prog, L.default_params(prog), fd, bd, np.random.default_rng(1), FAST)
+    assert s0["ok"]
+    orig = X.WN.roll
+
+    def carried(x, n, op):                            # adds a quantity accumulated since the frame start
+        out = orig(x, n, op)
+        return out + 1e-6 * np.nancumsum(np.nan_to_num(x), axis=0)
+    monkeypatch.setattr(X.WN, "roll", carried)
+    s1 = pipeline.stage1(prog, L.default_params(prog), fd, bd, np.random.default_rng(1), FAST)
+    assert not s1["ok"] and s1["code"] == "kernel_fault" and s1["fault"] == "start_cut"
 
 
 def test_stage2_without_an_extended_universe_is_a_kernel_fault(val_handle):
@@ -139,8 +210,7 @@ def test_stage2_requires_dev_rows_equal_to_stage1(val_handle):
 def test_g5_is_vacuous_without_params(val_handle):
     w = synth_world(seed=16)
     fd, bd = dev_only(w)
-    prog = L.parse(prog_text("v = daily(volume)\nsignal = 2 * rank(v / lag(v, 1), 1) - 1 + sign(ret(daily(close), 1))"),
-                   "x_test")
+    prog = L.parse(prog_text("signal = sign(ret(daily(close), 1))"), "x_test")
     s1 = pipeline.stage1(prog, {}, fd, bd, np.random.default_rng(1), FAST)
     res = pipeline.stage2(prog, {}, w, s1, FAST, val_handle, 3, 0.05)
     assert res["gates"]["G5"] == {"pass": True, "value": None, "g5_vacuous": True}
@@ -154,7 +224,7 @@ def test_liquidation_is_a_final_status_without_metrics_or_timestamps(val_handle)
         w.liq[s] = w.liq[s].copy()
         w.liq[s].loc[t, "dn"] = 0.01
     prog = L.parse(LONG, "x_test")
-    res = pipeline.stage2(prog, {"x": 1.0}, w, None, FAST, val_handle, 3, 0.05)
+    res = pipeline.stage2(prog, {}, w, None, FAST, val_handle, 3, 0.05)
     assert res == {"status": "liquidated", "reason": "liquidation"}
     assert "2023" not in json.dumps(ledger.clean(res))
 

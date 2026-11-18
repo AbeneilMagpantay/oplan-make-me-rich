@@ -6,6 +6,7 @@ hypothesis = "Selftest only: exercises every field, timeframe and function of th
 
 n = param(10, 5, 20)
 k = param(0.5, 0.25, 1.0)
+hz = param(48, 24, 96)
 
 m8 = h8(mark_close)
 w = weekly(trades)
@@ -18,6 +19,6 @@ g = rsi(close, n) * tanh(atr(high, low, close, n) / close) + realised_vol(close,
 u = log(exp(funding_mean(n) + funding8h)) + hour - weekday
 y = clip(a + b + c, -1, 1)
 p = y > 0
-hh = hold(p and g > 0, not p, y < -0.5 or p, p)
+hh = hold(p and g > 0, not p, y < -0.5 or p, p, hz)
 s = where(g > k, sign(u), u)
 signal = cs_scale(cs_rank(e + f + s) + cs_demean(hh) + cs_mean(y))

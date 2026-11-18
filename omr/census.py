@@ -2,7 +2,7 @@
 
 1. Updates the data (append only; the research_hash must not change).
 2. For each pool member, parses the program from the ledger's frozen source copy (hash-checked;
-   the member's SEMANTICS_VERSION must equal the kernel's), interprets it on all data (the
+   the member's SEMANTIC kernel hash must equal the current one), interprets it on all data (the
    "latest" ceiling), and runs the engine flat from birth on post-birth bars only. Birth = the
    later of the trial's born_at and its pool admission, rounded up to the next bar open, and never
    before the bar after VAULT_END (vault performance is never computed).
@@ -51,9 +51,10 @@ def member_program(trial_row: dict) -> L.Program:
     src = P.TRIAL_SOURCE_DIR / f"{tid}.omr"
     if ledger.sha256_file(src) != trial_row["source_sha256"]:
         raise RuntimeError(f"frozen source of {tid} does not match its ledger hash")
-    if trial_row.get("semantics_version") != C.SEMANTICS_VERSION:
-        raise RuntimeError(f"{tid} was evaluated under SEMANTICS_VERSION {trial_row.get('semantics_version')}, "
-                           f"the kernel's is {C.SEMANTICS_VERSION}")
+    current = kernel_lock.read_lock()["semantic"]
+    if trial_row.get("semantic_hash") != current:
+        raise RuntimeError(f"{tid} was evaluated under semantic kernel {str(trial_row.get('semantic_hash'))[:16]}, "
+                           f"the current one is {current[:16]}: re-evaluate it as a new counted trial")
     text = src.read_bytes().decode("utf-8")
     prog = L.parse(text, trial_row["program"])
     if prog.canonical != trial_row["canonical"]:

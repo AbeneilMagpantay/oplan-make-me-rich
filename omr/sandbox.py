@@ -50,7 +50,7 @@ def main(argv=None):
     ap.add_argument("--set", action="append", default=[], help="param override name=value (within declared bounds)")
     ap.add_argument("--quick", action="store_true", help="truncation self-check at the DEV end only")
     a = ap.parse_args(argv)
-    kh = kernel_lock.require_kernel()
+    kh = kernel_lock.require_kernel()["combined"]
     path = Path(a.program_file)
     try:
         prog = L.parse_file(path)
@@ -64,7 +64,7 @@ def main(argv=None):
     s1 = pipeline.stage1(prog, params, core, core[C.BTC], np.random.default_rng(secrets.randbits(63)), opts)
     print(f"SANDBOX (DEV only, {C.DEV_START} .. {C.DEV_END}) - not a trial")
     print(f"program {prog.name}  kind {prog.kind}  params {params}  nodes {prog.node_count}")
-    print(f"canonical form (identity, with SEMANTICS_VERSION and research_hash): {prog.canonical}")
+    print(f"canonical form (identity, with the semantic kernel hash and research_hash): {prog.canonical}")
     if s1.get("code") == "kernel_fault":
         print("KERNEL FAULT in the truncation self-check: report it; this program cannot be evaluated")
         sys.exit(2)

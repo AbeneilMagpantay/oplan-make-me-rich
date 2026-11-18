@@ -80,12 +80,52 @@ rates, status.
   commit itself instead of relying on the coordinator's review of the diff.
 - Status: addressed operationally by the coordinator's commits; kernel-side check open.
 
+## 2026-11-19 (build session) KP-011 FIX PASS 4 (coordinator review, pre-genesis, zero trials)
+
+- C1 literals are jittered in G5 like params (at most 8, `too_many_literals`, `n_literals` recorded;
+  `comparison_literal` removed). C2 quote volumes have the unit price x base volume. C3 the VAL
+  access log is never redirected; temporary-ledger trials that read real VAL bars are logged in it
+  (`temp_ledger_trial`). C4 no time-resolved VAL performance is stored (per-year and G7 bucket
+  returns only for periods ending by DEV end). C5 any non-LangError inside the parser is
+  `parse_error`. C6 documents.
+- Status: implemented and tested; takes effect at the next re-key (with the independent audit's
+  findings), followed by calibration on the locked kernel and the seal.
+
+## 2026-11-19 (build session) KP-012 FIX PASS 5 (independent audit of c891061, pre-genesis, zero trials)
+
+- CRITICAL (a program could read its own bar position: a first-bar impulse fed into the unbounded
+  ema gave the bar index to 1e-9; a remembered-calendar program reached Tier 1 on a synthetic
+  world): fixed by LOCALITY BY CONSTRUCTION - a known channel next to every value with strict
+  propagation (K1), values kept apart (K2), finite memory for ema / rsi / atr (K3), a windowed
+  five-argument hold (K4), fixed-order window arithmetic (K5, omr/windows.py), a start-cut
+  self-check in stage 1 and stage 2 (K6), and regression tests for the clock, a hold latch and two
+  warm-ups (K7).
+- HIGH (constants and hidden windows without literals): the constant probe at parse time
+  (`constant_subexpression`, `probe_undefined`) and `nested_unit_window`.
+- MEDIUM: two-part lock with the seal and the trial identity bound to the SEMANTIC hash (M1);
+  ledger/calibration_log.jsonl and seal refusing unlogged or hand-edited artifacts (M2); a fully
+  synthetic calibration dry run (M3); generation N >= 1 needs REPORT.md of N - 1, and the
+  CONSTITUTION says the cap paces work while M protects against many attempts (M4); calibration
+  screens draws with the activity rule and runs the self-checks only on the submitted draw (M5).
+- LOW: wording on scale invariance and on clipping / scaling by rule.
+- Baselines: Donchian and RSI got a hold horizon (90 days, 84 4h bars; on real DEV a horizon of 60
+  or more never binds) and the RSI uses the finite definition.
+- Status: implemented and tested; one re-key, then calibration and seal.
+
 ## 2026-11-19 (build session) KP-010 Remembered history through choice of structure and params
 
 - Problem: the language removes dates, positions and price levels, but the researcher (an LLM
   trained on market history to about mid-2026) can still choose a structure and default params that
   fit remembered VAL-period behaviour (e.g. a lookback that happens to time 2022-2024 regimes). No
   static or dynamic check can see this; G5 (jitter) and G6 (timing permutation) only weaken it.
+- Related: since FIX PASS 4 every body literal other than 0 is jittered in G5 like a param, and
+  since FIX PASS 5 the constant probe rejects numeric nodes that are constant on a synthetic probe
+  panel (`one = close / close`, `rank(x, 1)`). A constant that the probe panel does not expose (for
+  example one that varies only on synthetic data) still escapes the jitter. That is deliberate
+  evasion, not an honest mistake: the source audit of each generation's programs catches it, and a
+  program found doing it is reported in the generation REPORT. Since FIX PASS 5 a program also cannot
+  read its position in history from the frame (locality, KP-012); it can still react to market
+  events its author remembers.
 - Proposed change: none in the kernel. Keep forward results as the judge (CONSTITUTION sections 11
   and 12); consider requiring forward days before pool-to-live promotion to scale with the number of
   counted trials of the family.

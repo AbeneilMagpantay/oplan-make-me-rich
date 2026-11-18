@@ -3,10 +3,12 @@
 No strategy code exists or runs: signals come from the kernel's interpreter (omr.interp) over a
 checked program (omr.lang). All comparisons, metrics and gates are computed here.
 
-stage1(...)  DEV-only frames, uncounted: signals, program truncation self-check (a mismatch is a
-             kernel fault: the functions are meant to be causal), activity_dev (direction changes).
-stage2(...)  DEV+VAL frames, counted, needs a ValHandle: recompute; DEV rows must equal stage 1
-             (else kernel_fault); engine; liquidation; metrics; gates G1-G8 and G10.
+stage1(...)  DEV-only frames, uncounted: signals; the truncation self-check (end cuts) and the
+             start-cut self-check (rows removed from the start of every frame): a mismatch is a
+             kernel fault (every function is causal and local by construction); activity_dev.
+stage2(...)  DEV+VAL frames, counted, needs a ValHandle: recompute; DEV rows (values and known) must
+             equal stage 1 and start cuts must agree (else kernel_fault); engine; liquidation;
+             metrics; gates G1-G8 and G10.
 evaluate_weights(...)  calibration only: gates for injected weights (noisy oracles).
 """
 from __future__ import annotations
@@ -51,6 +53,8 @@ class Opts:
     include_g8: bool = True
     keep_detail: bool = True
     truncation_cuts: int = C.TRUNCATION_CUTS
+    start_cuts: int = C.START_CUTS_DEV
+    start_cuts_val: int = C.START_CUTS_VAL
 
 
 # ---------------------------------------------------------------- market
@@ -100,24 +104,70 @@ def core_grid(frames: dict, symbols) -> pd.DatetimeIndex:
 
 # ---------------------------------------------------------------- signals
 
-def unit_signals(prog: L.Program, params: dict, frames: dict, symbols, btc, grid: pd.DatetimeIndex,
-                 upto: pd.Timestamp | None = None):
-    """(weights, raw) on grid[:upto]. single: each symbol evaluated alone on its own history;
-    portfolio: one panel on the grid. raw keeps NaN; weights are valid by construction."""
+def _cut(df, upto, start):
+    if df is None:
+        return None
+    if upto is not None:
+        df = df.loc[:upto]
+    if start is not None:
+        df = df.loc[start:]
+    return df
+
+
+def unit_full(prog: L.Program, params: dict, frames: dict, symbols, btc, grid: pd.DatetimeIndex,
+              upto: pd.Timestamp | None = None, literals=None, start: pd.Timestamp | None = None):
+    """(weights, raw, known) on grid[start:upto]. single: each symbol evaluated alone on its own
+    history; portfolio: one panel on the grid. Every frame (BTC included) is cut to [start, upto].
+    raw is NaN wherever not known; weights are 0 there and valid by construction.
+    literals: jittered literal values (G5 variants); None = as written."""
     symbols = list(symbols)
-    g = grid if upto is None else grid[grid <= upto]
-    b = btc if (btc is None or upto is None) else btc.loc[:upto]
+    g = grid
+    if upto is not None:
+        g = g[g <= upto]
+    if start is not None:
+        g = g[g >= start]
+    b = _cut(btc, upto, start)
     if prog.kind == "single":
-        raws = []
+        raws, kns = [], []
         for s in symbols:
-            f = frames[s] if upto is None else frames[s].loc[:upto]
-            r = X.evaluate(prog, params, [f], b)[:, 0]
-            raws.append(pd.Series(r, index=pd.DatetimeIndex(f.index).as_unit("ns")).reindex(g).to_numpy())
-        raw = np.column_stack(raws)
+            f = _cut(frames[s], upto, start)
+            r, k = X.evaluate_full(prog, params, [f], b, literals)
+            ix = pd.DatetimeIndex(f.index).as_unit("ns")
+            raws.append(pd.Series(r[:, 0], index=ix).reindex(g).to_numpy())
+            kns.append(pd.Series(k[:, 0], index=ix).reindex(g, fill_value=False).to_numpy(dtype=bool))
+        raw, kn = np.column_stack(raws), np.column_stack(kns)
     else:
         panel = [frames[s].reindex(g) for s in symbols]
-        raw = X.evaluate(prog, params, panel, b)
-    return X.weights(prog, raw, len(symbols)), raw
+        raw, kn = X.evaluate_full(prog, params, panel, b, literals)
+    return X.weights(prog, raw, len(symbols)), raw, kn
+
+
+def unit_signals(prog: L.Program, params: dict, frames: dict, symbols, btc, grid: pd.DatetimeIndex,
+                 upto: pd.Timestamp | None = None, literals=None):
+    """(weights, raw) on grid[:upto]; see unit_full."""
+    W, raw, _ = unit_full(prog, params, frames, symbols, btc, grid, upto=upto, literals=literals)
+    return W, raw
+
+
+def start_cut_agrees(raw_cut, kn_cut, raw_base, kn_base) -> bool:
+    """Wherever the cut run is known, the base run must be known and bit-identical."""
+    if raw_cut.shape != raw_base.shape:
+        return False
+    if not bool(np.all(kn_base[kn_cut])):
+        return False
+    return bool(np.array_equal(raw_cut[kn_cut], raw_base[kn_cut], equal_nan=True))
+
+
+def start_cut_check(prog, params, frames, symbols, btc, grid, raw, kn, rng, n_cuts: int, span: float):
+    """None if every start cut agrees, else the failing cut position."""
+    hi = int(span * len(grid))
+    if hi < 2 or n_cuts <= 0:
+        return None
+    for c in sorted(rng.choice(np.arange(1, hi), size=min(n_cuts, hi - 1), replace=False).tolist()):
+        _, rc, kc = unit_full(prog, params, frames, symbols, btc, grid, start=grid[c])
+        if not start_cut_agrees(rc, kc, raw[c:], kn[c:]):
+            return c
+    return None
 
 
 def direction_changes(W: np.ndarray, lo: int, hi: int) -> int:
@@ -140,19 +190,34 @@ def stage1(prog: L.Program, params: dict, frames_dev: dict, btc_dev, rng, opts: 
     grid = core_grid(frames_dev, symbols)
     if grid[-1] != T(C.DEV_END):
         raise KernelFault("stage 1 frames must end at DEV end")
-    W, raw = unit_signals(prog, params, frames_dev, symbols, btc_dev, grid)
+    W, raw, kn = unit_full(prog, params, frames_dev, symbols, btc_dev, grid)
     dev_s = int(grid.get_loc(T(C.DEV_START)))
     dev_e = len(grid) - 1
     pool = np.arange(dev_s - 1, dev_e)
     cuts = sorted(set(rng.choice(pool, size=min(opts.truncation_cuts, len(pool)), replace=False).tolist()) | {dev_e})
     for c in cuts:
-        _, rt = unit_signals(prog, params, frames_dev, symbols, btc_dev, grid, upto=grid[c])
-        if not same_rows(rt, raw[:c + 1]):
-            return {"ok": False, "code": "kernel_fault", "cuts": len(cuts)}
+        _, rt, kt = unit_full(prog, params, frames_dev, symbols, btc_dev, grid, upto=grid[c])
+        if not (same_rows(rt, raw[:c + 1]) and np.array_equal(kt, kn[:c + 1])):
+            return {"ok": False, "code": "kernel_fault", "fault": "truncation", "cuts": len(cuts)}
+    bad = start_cut_check(prog, params, frames_dev, symbols, btc_dev, grid, raw, kn, rng, opts.start_cuts,
+                          C.START_CUT_SPAN)
+    if bad is not None:
+        return {"ok": False, "code": "kernel_fault", "fault": "start_cut", "cuts": len(cuts)}
     n_dev = direction_changes(W, dev_s - 1, dev_e - 1)
     out = {"ok": n_dev >= C.MIN_DIRECTION_CHANGES_DEV, "code": None if n_dev >= C.MIN_DIRECTION_CHANGES_DEV else "activity_dev",
-           "cuts": len(cuts), "direction_changes_dev": n_dev, "grid": grid, "W": W, "raw": raw}
+           "cuts": len(cuts), "start_cuts": opts.start_cuts, "direction_changes_dev": n_dev, "grid": grid, "W": W,
+           "raw": raw, "known": kn}
     return out
+
+
+def screen_dev(prog: L.Program, params: dict, frames_dev: dict, btc_dev, symbols=C.CORE) -> dict:
+    """Calibration screening only: DEV signals and the activity rule, no self-checks."""
+    grid = core_grid(frames_dev, symbols)
+    W, raw, kn = unit_full(prog, params, frames_dev, symbols, btc_dev, grid)
+    dev_s = int(grid.get_loc(T(C.DEV_START)))
+    n_dev = direction_changes(W, dev_s - 1, len(grid) - 2)
+    return {"ok": n_dev >= C.MIN_DIRECTION_CHANGES_DEV, "code": None if n_dev >= C.MIN_DIRECTION_CHANGES_DEV
+            else "activity_dev", "direction_changes_dev": n_dev, "grid": grid, "W": W}
 
 
 # ---------------------------------------------------------------- stage 2
@@ -170,8 +235,11 @@ def val_sharpe_of(run: E.Run) -> float:
 
 
 def jitter_params(prog: L.Program, base: dict, rng, n: int) -> list:
-    """Every param x U(0.8, 1.2); ints rounded and, if rounding leaves the value unchanged, moved by
-    1 with a random sign; clipped to the declared bounds."""
+    """n G5 variants, each (params, literal values). Every param x U(0.8, 1.2) (ints rounded and,
+    if rounding leaves the value unchanged, moved by 1 with a random sign; clipped to the declared
+    bounds); then every jitterable literal token (all body literals except 0; window arguments are
+    not literals here) x its own U(0.8, 1.2). Draw order from the one generator: params in
+    declaration order, then literals in source order."""
     out = []
     for _ in range(n):
         q = {}
@@ -184,8 +252,13 @@ def jitter_params(prog: L.Program, base: dict, rng, n: int) -> list:
                     v = d + (1 if rng.uniform() < 0.5 else -1)
             v = min(max(v, p.low), p.high)
             q[k] = int(v) if p.is_int else float(v)
-        out.append(q)
+        lits = tuple(float(v * rng.uniform(C.JITTER_LO, C.JITTER_HI)) for _, v in prog.literals)
+        out.append((q, lits))
     return out
+
+
+def g5_vacuous(prog: L.Program) -> bool:
+    return not prog.params and not prog.literals
 
 
 def perm_offsets(L_: int, rng, n: int) -> np.ndarray:
@@ -277,15 +350,21 @@ def stage2(prog: L.Program, params: dict, world: World, s1: dict | None, opts: O
     syms = list(world.symbols)
     grid = core_grid(world.core, syms)
     grid = grid[grid <= T(C.VAL_END)]
-    W, raw = unit_signals(prog, params, world.core, syms, world.btc, grid)
+    W, raw, kn = unit_full(prog, params, world.core, syms, world.btc, grid)
     if s1 is not None:
         n = len(s1["grid"])
-        if not s1["grid"].equals(grid[:n]) or not same_rows(raw[:n], s1["raw"]):
+        if not s1["grid"].equals(grid[:n]) or not same_rows(raw[:n], s1["raw"]) or \
+                not np.array_equal(kn[:n], s1["known"]):
             return {"status": "kernel_fault", "reason": "dev_rows_changed"}
+    if opts.start_cuts_val > 0:
+        bad = start_cut_check(prog, params, world.core, syms, world.btc, grid, raw, kn,
+                              np.random.default_rng([seed, 4]), opts.start_cuts_val, C.START_CUT_SPAN_VAL)
+        if bad is not None:
+            return {"status": "kernel_fault", "reason": "start_cut"}
     mk = Market(world.core, world.liq, grid, syms)
     rng = np.random.default_rng([seed, 2])
-    variants = jitter_params(prog, params, rng, opts.jitter_n) if prog.params else []
-    jit_W = [unit_signals(prog, q, world.core, syms, world.btc, grid)[0] for q in variants]
+    variants = [] if g5_vacuous(prog) else jitter_params(prog, params, rng, opts.jitter_n)
+    jit_W = [unit_signals(prog, q, world.core, syms, world.btc, grid, literals=lv)[0] for q, lv in variants]
     if opts.include_g8 and not world.extended:
         raise KernelFault("G8 requested but the world has no extended universe")
     g8 = g8_scores(prog, params, world) if opts.include_g8 else None
@@ -384,9 +463,22 @@ def gates(W, world, mk: Market, rng_perm, opts: Opts, p_max, variants, jit_W, g8
         res["detail"] = {"permutation": {"actual_val_sharpe_restarted": actual, "n": int(len(offs)), "p": p,
                                          "shifted_mean": float(np.mean(fin)) if len(fin) else None,
                                          "shifted_p95": float(np.percentile(fin, 95)) if len(fin) else None},
-                         "per_year": S.per_year(daily), "buckets": buckets, "extended": g8,
-                         "stress": {"funding_stress_val_sharpe": fs_sh, "cost2x_val_sharpe": cs_sh}}
+                         "per_year": dev_only_years(S.per_year(daily)), "buckets": dev_only_buckets(buckets),
+                         "extended": g8, "stress": {"funding_stress_val_sharpe": fs_sh, "cost2x_val_sharpe": cs_sh}}
     return res
+
+
+def dev_only_years(rows: list) -> list:
+    """No time-resolved VAL performance is stored: only calendar years ending by DEV end."""
+    end = T(C.DEV_END)
+    return [r for r in rows if T(f"{r['year']}-12-31 23:00") <= end]
+
+
+def dev_only_buckets(buckets: list) -> list:
+    """G7 buckets: the return only for buckets ending by DEV end; name and n_days for later ones."""
+    end = T(C.DEV_END)
+    ends = {name: T(b) for name, _, b in C.G7_BUCKETS}
+    return [x if ends[x["bucket"]] <= end else {"bucket": x["bucket"], "n_days": x["n_days"]} for x in buckets]
 
 
 def tier_at(row: dict, p_max: float) -> bool:

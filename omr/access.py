@@ -10,7 +10,10 @@ only; it needs no handle.)
 A script that calls a VAL loader or the VAL pipeline without a handle raises PermissionError.
 This is a tripwire for honest mistakes, not a security boundary: the quarantine of VAL is
 procedural (CONSTITUTION.md). No strategy code exists that could hold or forge a handle; the
-only code that runs is the kernel's.
+only code that runs is the kernel's. The VAL access log is the audit trail: it is never redirected
+(paths.temporary_ledger leaves it alone), and a disk load of real VAL bars with a trial handle whose
+pending row is not in the REAL trial ledger is logged there before any frame is returned
+(note_val_read, kind temp_ledger_trial).
 """
 from __future__ import annotations
 
@@ -23,15 +26,17 @@ _ISSUER = object()
 
 
 class ValHandle:
-    __slots__ = ("purpose", "trial_id", "token")
+    __slots__ = ("purpose", "trial_id", "token", "source_sha256", "noted")
 
-    def __init__(self, purpose: str, trial_id, token: str, _issuer=None):
+    def __init__(self, purpose: str, trial_id, token: str, _issuer=None, source_sha256=None):
         if _issuer is not _ISSUER:
             raise PermissionError("VAL handles are issued only by the ledger (access.for_trial / for_calibration / "
                                   "for_census / for_selftest)")
         self.purpose = purpose
         self.trial_id = trial_id
         self.token = token
+        self.source_sha256 = source_sha256
+        self.noted = False
 
     def __repr__(self):
         return f"ValHandle({self.purpose!r}, trial={self.trial_id})"
@@ -46,9 +51,32 @@ def _now():
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def for_trial(trial_id: str, pending_row_hash: str) -> ValHandle:
+def for_trial(trial_id: str, pending_row_hash: str, source_sha256=None) -> ValHandle:
     """Called by omr.ledger.append_pending only, after the counted pending row is on disk."""
-    return ValHandle("trial", trial_id, pending_row_hash, _issuer=_ISSUER)
+    return ValHandle("trial", trial_id, pending_row_hash, _issuer=_ISSUER, source_sha256=source_sha256)
+
+
+def _in_real_trial_ledger(handle: ValHandle) -> bool:
+    from omr import ledger
+    for r in ledger.read_rows(P.REAL_TRIALS_JSONL):
+        if r.get("status") == "pending" and r.get("trial_id") == handle.trial_id and r.get("row_hash") == handle.token:
+            return True
+    return False
+
+
+def note_val_read(handle: ValHandle) -> None:
+    """Called by the disk loaders before any REAL bar after DEV end is returned. A trial handle whose
+    pending row is not in the REAL trial ledger (a temporary ledger) gets one row in the real VAL
+    access log (kind temp_ledger_trial), once per handle. Logged-purpose handles were logged when
+    issued."""
+    require(handle, "note_val_read")
+    if handle.purpose != "trial" or handle.noted:
+        return
+    if not _in_real_trial_ledger(handle):
+        from omr import ledger
+        ledger.append(P.VAL_ACCESS_LOG, {"at": _now(), "kind": "temp_ledger_trial", "trial_id": handle.trial_id,
+                                         "source_sha256": handle.source_sha256, "token": handle.token})
+    handle.noted = True
 
 
 def _logged(purpose: str, kind: str) -> ValHandle:

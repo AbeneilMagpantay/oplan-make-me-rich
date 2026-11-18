@@ -6,10 +6,13 @@ hypothesis = "Breakouts persist: a daily close above the highest high of the pri
 
 entry = param(20, 10, 60)
 exit = param(10, 5, 30)
+# the state is rebuilt from flat over the last `horizon` days (locality); on real DEV data a horizon of
+# 60 days or more never differs from an unbounded state machine
+horizon = param(90, 60, 180)
 
 d = daily(close)
 upper_entry = lag(rmax(daily(high), entry), 1)
 lower_entry = lag(rmin(daily(low), entry), 1)
 upper_exit = lag(rmax(daily(high), exit), 1)
 lower_exit = lag(rmin(daily(low), exit), 1)
-signal = hold(d > upper_entry, d < lower_exit, d < lower_entry, d > upper_exit)
+signal = hold(d > upper_entry, d < lower_exit, d < lower_entry, d > upper_exit, horizon)

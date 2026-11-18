@@ -1,32 +1,33 @@
-# STATE (2026-11-19, end of the build session, FINAL PRE-GENESIS ORDER complete)
+# STATE (2026-11-19, end of the build session: FIX PASS 4 + 5 locked, calibrated and sealed)
 
 ## Where things stand
 
-- Kernel v1, formula language, LOCKED AND SEALED:
-  `2c20fe7752b64de21e11b5885137ae7a4e7021bde9a18157261a519e95642cba` (50 files). Approved-by label
-  "coordinator (Claude), pre-genesis construction, zero trials evaluated; human confirmation
-  pending". Seal: G6 threshold 0.025 from `ledger/calibration_2c20fe7752b64de2.json` (sha256
-  3019d5782bd01fe70c42dd7fba5697549f1a4c981d6308301c5b8d9e3411e7cc). History:
-  `ledger/kernel_history.jsonl` rows 3 (re-key) and 4 (seal).
-- Strategies are `.omr` programs (LANGUAGE.md) parsed and interpreted by the kernel; no strategy code
-  is executed. The Python-sandbox kernel 2317921c is archived (`archive/`).
-- Tests: 582 pass in about 30 s. `python -m omr.selftest`: OK (11 s).
-- Data: Binance USD-M perps, 10 symbols, klines + funding + mark_klines; research_hash
-  `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`; `python -m omr.data validate`
-  PASSED (0 failing counts) before and after the re-key.
-- Calibration v3 (on the locked kernel, 39 min): null pass rate per submitted pair at 0.025 / 0.05 /
-  0.10: null A 1.20% / 3.21% / 3.81% (499 submitted), null B 0.20% / 1.20% / 2.80% (500 submitted) ->
-  0.025 is the only qualifying value. Oracle power at true Sharpe 1.5 at 0.025: A fast 0.83, slow
-  0.72; B fast 0.91, slow 0.79 (achieved mean VAL Sharpe within 0.002 of nominal) -> stop rule passed.
-- Ledger: 0 trials, 0 stage-1 rejections. Generation 0 has NOT been run. VAL access log: 6 rows
-  (3 retired-kernel calibrations, 1 calibration v3 dry run, 1 calibration v3, 1 selftest).
-- DEV-only facts: direction changes in DEV at the defaults - SMA cross 16, Donchian 67, RSI
-  mean-reversion 311, vol-target trend 92, funding carry 60. The SMA cross is therefore expected to
-  be an uncounted `activity_dev` rejection at generation 0.
-- Repository: the project is its own git repository (branch main, private GitHub remote); the
-  coordinator commits and pushes at gates (KP-009 addressed operationally). Coordinator files outside
-  the lock: `.gitattributes`, `tools/git_push.ps1`, `.gitignore` (tracks data/manifest.json and
-  data/validation.json). Research sessions make no git writes.
+- Kernel v1 (formula language, locality by construction) LOCKED AND SEALED:
+  - semantic `4598ef4299ceb43c2bde1b3bf0928fd194054ffc5019322c195e5c330e3f2e8b` (32 files: omr/**,
+    requirements.txt) - trial identities and the seal bind to it;
+  - text `63c0f6ad94998acf270af9c6fc60f3699e60cbc27fde33fdfce1b530ca242ed7` (22 files:
+    CONSTITUTION.md, LANGUAGE.md, tests/**).
+  - Approved-by label: "coordinator (Claude), pre-genesis construction, zero trials evaluated; human
+    confirmation pending". History: `ledger/kernel_history.jsonl` rows 5 (re-key) and 6 (seal).
+  - Seal: G6 threshold 0.05 from `ledger/calibration_4598ef4299ceb43c.json` (sha256
+    394e46fed235bcb6f66386b4e87c898b26723fca14d6e1edd1f65db703e30a7a, logged in
+    `ledger/calibration_log.jsonl`).
+- Calibration v3 on the locked kernel (14.5 min): null pass rate per submitted pair at 0.025 / 0.05 /
+  0.10: null A 0.80% / 2.81% / 3.21% (499 submitted), null B 0.00% / 0.80% / 2.20% (500) -> largest
+  qualifying 0.05. Oracle power at true Sharpe 1.5 at 0.05: A fast 0.83, slow 0.81; B fast 0.91, slow
+  0.81 (achieved mean VAL Sharpe within 0.002 of nominal) -> stop rule passed.
+- `python -m omr.selftest`: OK. Tests: 662 pass in about 75 s.
+- Data: research_hash `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`; validate
+  PASSED (0 failing counts) after the re-key.
+- Ledger: 0 trials, 0 stage-1 rejections. Generation 0 has NOT been run; nothing has been scored on
+  VAL. VAL access log: 11 rows (5 retired-kernel calibrations incl. one dry run, 1 synthetic dry run,
+  1 calibration of 4598ef42, 2 selftests, 2 temp_ledger_trial rows of the last selftest).
+- DEV-only facts: direction changes in DEV at the defaults - SMA cross 16, Donchian 65, RSI 311,
+  vol-target trend 92, funding carry 60. The SMA cross is expected to be an uncounted
+  `activity_dev` rejection at generation 0.
+- Repository: git, branch main, private GitHub remote; the coordinator commits and pushes at gates
+  (KP-009). Coordinator files outside the lock: `.gitattributes`, `tools/git_push.ps1`, `.gitignore`.
+  Research sessions make no git writes.
 
 ## Open decisions for the human / coordinator
 
@@ -38,5 +39,6 @@
 ## Next session
 
 Generation 0 is ordered by the coordinator after the independent re-audit of this build. Then:
-`python -m omr.evaluate strategies/<name>.omr --generation 0` for each gen-0 program, at most 5
-counted. Any kernel change -> tests, re-key (removes the seal), calibrate on the locked kernel, seal.
+`python -m omr.evaluate strategies/<name>.omr --generation 0` for each gen-0 program (at most 5
+counted), then generations/gen000/REPORT.md (required before generation 1). Any kernel change ->
+tests, re-key (a semantic change removes the seal), calibrate on the locked kernel, seal.

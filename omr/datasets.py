@@ -90,9 +90,12 @@ def get(name: str) -> Dataset:
 
 
 def _check_access(upto: str, handle, what: str) -> None:
-    """Any ceiling beyond DEV end (val_end, latest) needs a ledger-issued ValHandle."""
+    """Any ceiling beyond DEV end (val_end, latest) needs a ledger-issued ValHandle; a trial handle
+    whose pending row is not in the real trial ledger is logged in the real VAL access log before
+    any frame is returned (access.note_val_read)."""
     if upto != "dev_end":
         access.require(handle, f"{what}(upto={upto!r})")
+        access.note_val_read(handle)
 
 
 def load_raw(name: str, symbol: str, upto: str, handle=None) -> pd.DataFrame:

@@ -5,9 +5,8 @@ calibration rule and written into kernel.lock by `python -m omr.kernel_lock seal
 of these is a kernel change and needs a human-approved re-key.
 """
 
-# Bump on any change to the engine, costs, regions, gates, statistics, or the meaning of an existing
-# field or function of the language. It is part of every trial identity.
-SEMANTICS_VERSION = 1
+# Trial identity uses the SEMANTIC kernel hash (omr/** and requirements.txt; omr.kernel_lock), so any
+# change to the code or constants that run changes every trial id.
 
 # ---------------------------------------------------------------- universe
 # USDT-margined linear perpetuals (Binance USD-M). Engine and evaluator read
@@ -47,6 +46,14 @@ EULER_GAMMA = 0.5772156649
 
 # ---------------------------------------------------------------- stage 1 (uncounted)
 TRUNCATION_CUTS = 24          # random cuts for the program truncation self-check (plus DEV end)
+START_CUTS_DEV = 6            # stage 1: start cuts over the first START_CUT_SPAN of the DEV frame
+START_CUT_SPAN = 0.6
+START_CUTS_VAL = 3            # stage 2: start cuts on the full frame (first START_CUT_SPAN_VAL of it)
+START_CUT_SPAN_VAL = 0.9
+# finite memory of the recursive functions (rows of memory per unit of n; LANGUAGE.md section 6)
+EMA_MEMORY = 5
+RSI_MEMORY = 10
+ATR_MEMORY = 10
 DIRECTION_TOL = 0.01          # |weight| above this has a direction (sign); otherwise flat
 MIN_DIRECTION_CHANGES_DEV = 20    # stage 1: activity_dev
 MAX_COUNTED_PER_GENERATION = 5

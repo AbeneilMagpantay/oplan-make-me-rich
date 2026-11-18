@@ -1,6 +1,8 @@
-"""Ledger hash chains; kernel lock (any file under omr/ and tests/, LANGUAGE.md, environment pins);
-the calibration seal (C4): applied by rule, refused for unverified or mismatched artifacts or a STOP
-verdict, recorded in kernel.lock and kernel_history, removed by a re-key."""
+"""Ledger hash chains; the two-part kernel lock (SEMANTIC: omr/**, requirements.txt; TEXT:
+CONSTITUTION.md, LANGUAGE.md, tests/**), any file under omr/ and tests/, environment pins; the
+calibration seal (C4, M1, M2): applied by rule to an artifact that omr.calibrate wrote AND logged,
+refused for unverified, unlogged, hand-edited or mismatched artifacts or a STOP verdict; kept by a
+text-only re-key, dropped by a semantic re-key."""
 import json
 import shutil
 from pathlib import Path
@@ -23,62 +25,95 @@ def test_chain_detects_tampered_deleted_and_truncated_rows(tmp_path):
     lines = p.read_text().splitlines()
     row = json.loads(lines[2])
     row["val_sharpe"] = 9.9
-    tampered = lines[:2] + [LG.canonical(row)] + lines[3:]
-    p.write_text("\n".join(tampered) + "\n")
+    p.write_text("\n".join(lines[:2] + [LG.canonical(row)] + lines[3:]) + "\n")
     assert any("row 2" in x for x in LG.verify_chain(p))
     p.write_text("\n".join(lines[:1] + lines[2:]) + "\n")
     assert LG.verify_chain(p)
-    p.write_text("\n".join(lines[:-1]) + "\n")                       # last row removed: HEAD catches it
+    p.write_text("\n".join(lines[:-1]) + "\n")
     assert any("HEAD" in x for x in LG.verify_chain(p))
 
 
-def make_kernel(root):
-    (root / "omr" / "programs").mkdir(parents=True)
-    (root / "tests").mkdir()
-    (root / "omr" / "a.py").write_text("X = 1\n")
-    (root / "tests" / "test_a.py").write_text("def test(): pass\n")
-    for f in K.FAMILIES:
-        shutil.copyfile(ROOT / "omr" / "programs" / f"{f}.omr", root / "omr" / "programs" / f"{f}.omr")
-    (root / "CONSTITUTION.md").write_text("rules\n")
-    (root / "LANGUAGE.md").write_text("grammar\n")
-    (root / "requirements.txt").write_text("# python==0.0.0\nnumpy==1\n")
-    return root / "kernel.lock", root / "hist.jsonl"
+class Kern:
+    def __init__(self, root):
+        self.root = root
+        (root / "omr" / "programs").mkdir(parents=True)
+        (root / "tests").mkdir()
+        (root / "omr" / "a.py").write_text("X = 1\n")
+        (root / "tests" / "test_a.py").write_text("def test(): pass\n")
+        for f in K.FAMILIES:
+            shutil.copyfile(ROOT / "omr" / "programs" / f"{f}.omr", root / "omr" / "programs" / f"{f}.omr")
+        (root / "CONSTITUTION.md").write_text("rules\n")
+        (root / "LANGUAGE.md").write_text("grammar\n")
+        (root / "requirements.txt").write_text("# python==0.0.0\nnumpy==1\n")
+        (root / "ledger").mkdir()
+        self.lock, self.hist, self.clog = root / "kernel.lock", root / "ledger" / "hist.jsonl", root / "ledger" / "cal.jsonl"
+
+    def rekey(self, why="initial"):
+        return KL.rekey(why, "tester", root=self.root, lock_path=self.lock, history_path=self.hist)
+
+    def verify(self):
+        return KL.verify(self.root, self.lock, self.hist, check_env=False, calibration_log=self.clog)
+
+    def seal(self, art, rh="r" * 64):
+        return KL.seal(art, root=self.root, lock_path=self.lock, history_path=self.hist, research_hash=rh,
+                       log=lambda s: None, check_env=False, calibration_log=self.clog)
+
+    def write_art(self, art, name="calibration_x.json", logged=True):
+        p = self.root / "ledger" / name
+        p.write_text(json.dumps(art), encoding="ascii")
+        if logged:
+            KL.log_calibration(p, art.get("semantic_hash", ""), art.get("research_hash", ""),
+                               calibration_log=self.clog, root=self.root)
+        return p
 
 
-def verify(root, lock, hist):
-    return KL.verify(root, lock, hist, check_env=False)
+def test_two_part_hashes(tmp_path):
+    k = Kern(tmp_path)
+    a = KL.compute(tmp_path)
+    (tmp_path / "tests" / "test_a.py").write_text("def test(): assert True\n")
+    b = KL.compute(tmp_path)
+    assert a["semantic"] == b["semantic"] and a["text"] != b["text"] and a["combined"] != b["combined"]
+    (tmp_path / "LANGUAGE.md").write_text("grammar v2\n")
+    c = KL.compute(tmp_path)
+    assert c["semantic"] == a["semantic"]
+    (tmp_path / "omr" / "programs" / "gen000_funding_carry.omr").write_text("x\n")
+    d = KL.compute(tmp_path)
+    assert d["semantic"] != c["semantic"]
+    (tmp_path / "requirements.txt").write_text("# python==0.0.0\nnumpy==2\n")
+    assert KL.compute(tmp_path)["semantic"] != d["semantic"]
+    assert KL.is_semantic("omr/x.py") and KL.is_semantic("requirements.txt") and not KL.is_semantic("tests/x.py")
+    assert not KL.is_semantic("CONSTITUTION.md") and not KL.is_semantic("LANGUAGE.md")
 
 
-def test_kernel_lock_detects_edits_new_files_anywhere_and_language_md(tmp_path):
-    lock, hist = make_kernel(tmp_path)
-    KL.rekey("initial", "tester", root=tmp_path, lock_path=lock, history_path=hist)
-    assert verify(tmp_path, lock, hist) == []
-    assert "LANGUAGE.md" in KL.read_lock(lock)["files"] and "omr/programs/gen000_funding_carry.omr" in KL.read_lock(lock)["files"]
+def test_kernel_lock_detects_edits_and_any_new_file(tmp_path):
+    k = Kern(tmp_path)
+    k.rekey()
+    assert k.verify() == []
     (tmp_path / "omr" / "a.py").write_text("X = 2\n")
-    assert any("changed: omr/a.py" in x for x in verify(tmp_path, lock, hist))
+    assert any("changed: omr/a.py" in x for x in k.verify())
     (tmp_path / "omr" / "a.py").write_text("X = 1\n")
-    assert verify(tmp_path, lock, hist) == []
+    assert k.verify() == []
     for stray in ("omr/__pycache__/a.cpython-312.pyc", "tests/__pycache__/x.pyc", "omr/notes.txt", "tests/.cache/z"):
         p = tmp_path / stray
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"x")
-        assert any("not in the lock" in x and stray in x for x in verify(tmp_path, lock, hist)), stray
+        assert any("not in the lock" in x and stray in x for x in k.verify()), stray
         p.unlink()
     (tmp_path / "LANGUAGE.md").write_text("looser grammar\n")
-    assert any("LANGUAGE.md" in x for x in verify(tmp_path, lock, hist))
+    assert any("LANGUAGE.md" in x for x in k.verify())
 
 
 def test_kernel_lock_detects_lock_rewrite_without_history(tmp_path):
-    lock, hist = make_kernel(tmp_path)
-    KL.rekey("initial", "tester", root=tmp_path, lock_path=lock, history_path=hist)
+    k = Kern(tmp_path)
+    k.rekey()
     (tmp_path / "omr" / "a.py").write_text("X = 3\n")
     cur = KL.compute(tmp_path)
-    lock.write_text(json.dumps({"files": cur["files"], "combined": cur["combined"]}))
-    assert any("kernel_history" in x for x in verify(tmp_path, lock, hist))
+    k.lock.write_text(json.dumps(cur))
+    assert any("kernel_history" in x for x in k.verify())
 
 
 def test_rekey_requires_reason_and_approver(tmp_path):
-    make_kernel(tmp_path)
+    Kern(tmp_path)
     with pytest.raises(ValueError):
         KL.rekey("", "tester", root=tmp_path, lock_path=tmp_path / "l", history_path=tmp_path / "h")
     with pytest.raises(ValueError):
@@ -86,13 +121,12 @@ def test_rekey_requires_reason_and_approver(tmp_path):
 
 
 def test_environment_pins(tmp_path):
-    assert KL.env_problems() == []                                   # the running .venv matches requirements.txt
+    assert KL.env_problems() == []
     req = tmp_path / "requirements.txt"
     pins, py = KL.pins()
     req.write_text(f"# python=={py}\n" + "".join(f"{k}=={v}\n" for k, v in pins.items() if k != "numpy")
                    + "numpy==0.0.1\n")
-    probs = KL.env_problems(req)
-    assert any("numpy" in x and "0.0.1" in x for x in probs)
+    assert any("numpy" in x and "0.0.1" in x for x in KL.env_problems(req))
     req.write_text("# python==2.7.0\n" + "".join(f"{k}=={v}\n" for k, v in pins.items() if k != "scipy"))
     probs = KL.env_problems(req)
     assert any("python" in x for x in probs) and any("not pinned" in x and "scipy" in x for x in probs)
@@ -127,65 +161,70 @@ def oracle_rows(power):
 
 
 def artifact(lock, root, passes_010=4, passes_005=2, power=0.8, verified=True):
-    return {"kernel_lock_verified": verified, "kernel_hash": lock["combined"], "research_hash": "r" * 64,
+    return {"kernel_lock_verified": verified, "semantic_hash": lock["semantic"], "research_hash": "r" * 64,
             "families": {f: LG.sha256_file(root / "omr" / "programs" / f"{f}.omr") for f in K.FAMILIES},
             "nulls": {n: {"rows": null_rows(100, passes_010, passes_005)} for n in ("A", "B")},
             "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
 
 
-def write_art(root, art, name="calibration_x.json"):
-    p = root / "ledger" / name
-    p.parent.mkdir(exist_ok=True)
-    p.write_text(json.dumps(art), encoding="ascii")
-    return p
-
-
 def test_seal_applies_the_rule_and_records_it(tmp_path):
-    lock_p, hist = make_kernel(tmp_path)
-    lock = KL.rekey("initial", "tester", root=tmp_path, lock_path=lock_p, history_path=hist)
-    art = write_art(tmp_path, artifact(lock, tmp_path))
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = k.write_art(artifact(lock, tmp_path))
     v = K.verdict_from_rows(json.loads(art.read_text()))
     assert v["chosen_threshold"] == 0.05 and v["qualifying"] == [0.025, 0.05] and not v["STOP"]
-    KL.seal(art, root=tmp_path, lock_path=lock_p, history_path=hist, research_hash="r" * 64, log=lambda s: None,
-            check_env=False)
-    sealed = KL.read_lock(lock_p)
+    k.seal(art)
+    sealed = KL.read_lock(k.lock)
     assert sealed["seal"]["g6_threshold"] == 0.05 and sealed["seal"]["calibration_file"] == "ledger/calibration_x.json"
-    assert sealed["combined"] == lock["combined"]
-    last = LG.read_rows(hist)[-1]
-    assert last["event"] == "seal" and last["g6_threshold"] == 0.05 and last["new_combined"] == lock["combined"]
-    assert verify(tmp_path, lock_p, hist) == []
-    with pytest.raises(KL.SealRefused):                               # sealed once per key
-        KL.seal(art, root=tmp_path, lock_path=lock_p, history_path=hist, research_hash="r" * 64, log=lambda s: None,
-                check_env=False)
+    assert sealed["seal"]["semantic_hash"] == lock["semantic"] and sealed["combined"] == lock["combined"]
+    last = LG.read_rows(k.hist)[-1]
+    assert last["event"] == "seal" and last["g6_threshold"] == 0.05 and last["new_semantic"] == lock["semantic"]
+    assert k.verify() == []
+    with pytest.raises(KL.SealRefused):                               # sealed once per semantic key
+        k.seal(art)
     art.write_text(art.read_text() + " ")                            # the sealed artifact changed
-    assert any("artifact" in x for x in verify(tmp_path, lock_p, hist))
+    assert any("artifact" in x for x in k.verify())
     art.write_text(art.read_text()[:-1])
     forged = dict(sealed)
     forged["seal"] = dict(sealed["seal"], g6_threshold=0.1)            # hand-edited threshold
-    lock_p.write_text(json.dumps(forged))
-    assert any("seal" in x for x in verify(tmp_path, lock_p, hist))
-    lock_p.write_text(json.dumps(sealed))
-    KL.rekey("after seal", "tester", root=tmp_path, lock_path=lock_p, history_path=hist)
-    assert "seal" not in KL.read_lock(lock_p) and verify(tmp_path, lock_p, hist) == []
+    k.lock.write_text(json.dumps(forged))
+    assert any("seal" in x for x in k.verify())
+    k.lock.write_text(json.dumps(sealed))
+    assert k.verify() == []
+
+
+def test_a_text_only_rekey_keeps_the_seal_a_semantic_rekey_drops_it(tmp_path):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    k.seal(k.write_art(artifact(lock, tmp_path)))
+    (tmp_path / "tests" / "test_a.py").write_text("def test(): assert 1\n")
+    (tmp_path / "CONSTITUTION.md").write_text("rules, reworded\n")
+    l2 = k.rekey("text only")
+    assert l2["seal"]["g6_threshold"] == 0.05 and l2["semantic"] == lock["semantic"] and l2["text"] != lock["text"]
+    assert LG.read_rows(k.hist)[-1]["seal_kept"] is True and k.verify() == []
+    (tmp_path / "omr" / "a.py").write_text("X = 99\n")
+    l3 = k.rekey("semantic change")
+    assert "seal" not in l3 and LG.read_rows(k.hist)[-1]["seal_kept"] is False and k.verify() == []
 
 
 @pytest.mark.parametrize("case", ["unverified", "wrong_kernel", "wrong_family", "wrong_research", "no_threshold",
-                                  "low_power", "lock_broken"])
+                                  "low_power", "lock_broken", "unlogged", "hand_edited"])
 def test_seal_refuses(tmp_path, case):
-    lock_p, hist = make_kernel(tmp_path)
-    lock = KL.rekey("initial", "tester", root=tmp_path, lock_path=lock_p, history_path=hist)
+    k = Kern(tmp_path)
+    lock = k.rekey()
     a = artifact(lock, tmp_path)
     rh = "r" * 64
+    logged = True
     if case == "unverified":
         a["kernel_lock_verified"] = False
     elif case == "wrong_kernel":
-        a["kernel_hash"] = "0" * 64
+        a["semantic_hash"] = "0" * 64
     elif case == "wrong_family":
         a["families"]["gen000_funding_carry"] = "0" * 64
     elif case == "wrong_research":
         rh = "s" * 64
     elif case == "no_threshold":
-        a = artifact(lock, tmp_path, passes_010=6, passes_005=5)         # 5% null pass rate everywhere -> STOP
+        a = artifact(lock, tmp_path, passes_010=6, passes_005=5)
         for n in ("A", "B"):
             for r in a["nulls"][n]["rows"][:5]:
                 r["perm_p"] = 0.01
@@ -193,20 +232,27 @@ def test_seal_refuses(tmp_path, case):
         a = artifact(lock, tmp_path, power=0.3)
     elif case == "lock_broken":
         (tmp_path / "omr" / "a.py").write_text("X = 9\n")
-    art = write_art(tmp_path, a)
+    elif case == "unlogged":
+        logged = False
+    art = k.write_art(a, logged=logged)
+    if case == "hand_edited":                                         # the audit's r08 forgery: edit after logging
+        forged = json.loads(art.read_text())
+        for n in ("A", "B"):
+            for r in forged["nulls"][n]["rows"]:
+                r["perm_p"] = 0.9
+        art.write_text(json.dumps(forged), encoding="ascii")
     with pytest.raises(KL.SealRefused):
-        KL.seal(art, root=tmp_path, lock_path=lock_p, history_path=hist, research_hash=rh, log=lambda s: None,
-                check_env=False)
-    assert "seal" not in KL.read_lock(lock_p)
+        k.seal(art, rh)
+    assert "seal" not in KL.read_lock(k.lock)
 
 
 def test_decide_rule_and_oracle_bound():
-    a = artifact({"combined": "c"}, ROOT)
+    a = artifact({"semantic": "s"}, ROOT)
     v = K.verdict_from_rows(a)
     assert v["chosen_threshold"] == 0.05 and v["power_at_1_5_chosen"]["A"]["fast"] == 0.8
     for r in a["oracle"]["A"]["rows"]:
         if r["level"] == 1.5 and r["speed"] == "slow":
-            r["val_sharpe"] = 1.75                                     # achieved level off by 0.25 > 0.1
+            r["val_sharpe"] = 1.75
     v = K.verdict_from_rows(a)
     assert v["STOP"] and v["oracle_level_outside_bound"] == ["A/slow|1.5"]
     assert C.G6_GRID == (0.025, 0.05, 0.10) and C.NULL_PASS_MAX == 0.03 and C.POWER_MIN == 0.5

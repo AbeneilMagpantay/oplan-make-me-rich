@@ -10,10 +10,10 @@ It does not trade. There are no exchange keys and no order code in this build.
 
 | path | what | who may change it |
 |---|---|---|
-| `omr/` | kernel: data, language (parser + interpreter), engine, statistics, evaluator, ledger, calibration, selftest, pool, census | re-key only |
+| `omr/` | kernel (SEMANTIC part): data, language (parser, probe, interpreter, window kernels), engine, statistics, evaluator, ledger, calibration, selftest, pool, census | re-key only |
 | `omr/programs/` | kernel programs: the five baselines (calibration families), the kitchen-sink and two noise programs (selftest) | re-key only |
-| `tests/` | kernel tests (incl. the trusted Python reference baselines `tests/ref_gen0.py`) | re-key only |
-| `CONSTITUTION.md`, `LANGUAGE.md` | the rules and the strategy language | re-key only |
+| `tests/` | kernel tests (TEXT part; incl. the reference baselines `tests/ref_gen0.py`) | re-key only |
+| `CONSTITUTION.md`, `LANGUAGE.md` | the rules and the strategy language (TEXT part) | re-key only |
 | `requirements.txt` | exact pins of every package and the Python version | re-key only |
 | `strategies/` | strategy programs (`.omr`) | research loop |
 | `generations/` | per-generation PLAN.md and REPORT.md | research loop |
@@ -41,7 +41,7 @@ Run from the project root with the venv interpreter, e.g. `.venv\Scripts\python.
     python -m omr.census                            update data, forward results of pool members
     python -m omr.selftest                          prints OK or the failed assertion (the one VAL exception)
     python -m omr.calibrate                         instrument calibration on the LOCKED kernel
-    python -m omr.kernel_lock verify | hash | rekey | seal --calibration FILE
+    python -m omr.kernel_lock verify | hash | rekey | seal --calibration FILE   (semantic + text hashes)
     python -m omr.data download | update [--admit NAME] | verify | validate | summary
     python -m pytest tests -q
 
@@ -56,8 +56,14 @@ It is not run. A strategy is a `.omr` program in a small formula language (LANGU
 up to 6 params, and `name = expression` lines over price/volume/funding fields, timeframes and a
 fixed set of causal functions, ending in `signal = ...`. The kernel parses the text with its own
 checker (types, units, limits) and evaluates it with its own interpreter; no strategy code is
-compiled, executed or imported. The evaluator runs an uncounted DEV-only stage first, then writes a
-counted `pending` ledger row, and only then reads VAL bars. See CONSTITUTION sections 2 and 6.
+compiled, executed or imported. Every value is computed from a bounded trailing window and a row
+without full history has no definite value (a program cannot tell where it is in history). Every
+literal except 0 is jittered by G5 like a param, and constants built without literals are rejected
+by a probe at parse time. The evaluator
+runs an uncounted DEV-only stage first, then writes a counted `pending` ledger row, and only then
+reads VAL bars; every VAL read outside the real trial ledger is logged in the never-redirected
+`ledger/val_access_log.jsonl`. Stored outputs keep VAL performance in aggregate only. See
+CONSTITUTION sections 2, 6 and 9.
 
 ## Honest expectations
 

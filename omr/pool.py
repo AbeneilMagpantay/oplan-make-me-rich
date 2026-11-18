@@ -4,9 +4,9 @@
     python -m omr.pool admit <trial_id> --reason "..." [--replace <member_trial_id>]
     python -m omr.pool remove <trial_id> --reason "..."
 
-Max 5 members, Tier-1 trials only, evaluated under the kernel's current SEMANTICS_VERSION (a
-member keeps the kernel hash it was evaluated under; a re-key that leaves SEMANTICS_VERSION alone
-does not evict it). When full, admitting needs an explicit --replace. Every change is a
+Max 5 members, Tier-1 trials only, evaluated under the CURRENT semantic kernel hash (a text-only
+re-key keeps members; a semantic re-key means members must be re-evaluated before the census can
+run them). When full, admitting needs an explicit --replace. Every change is a
 hash-chained row in ledger/pool_log.jsonl; the pool is the replay of that log.
 """
 from __future__ import annotations
@@ -42,9 +42,10 @@ def admit(trial_id: str, reason: str, replace: str | None = None) -> None:
         raise SystemExit(f"no trial {trial_id} in the ledger")
     if row.get("status") != "evaluated" or row.get("tier") != "tier1":
         raise SystemExit(f"trial {trial_id} is not Tier 1 (status {row.get('status')}, tier {row.get('tier')})")
-    if row.get("semantics_version") != C.SEMANTICS_VERSION:
-        raise SystemExit(f"trial {trial_id} was evaluated under SEMANTICS_VERSION {row.get('semantics_version')}, "
-                         f"not the kernel's {C.SEMANTICS_VERSION}; it cannot be admitted")
+    current = kernel_lock.read_lock()["semantic"]
+    if row.get("semantic_hash") != current:
+        raise SystemExit(f"trial {trial_id} was evaluated under semantic kernel {str(row.get('semantic_hash'))[:16]}, "
+                         f"not the current {current[:16]}; it cannot be admitted")
     cur = members()
     if trial_id in cur:
         raise SystemExit(f"{trial_id} is already in the pool")
@@ -60,7 +61,7 @@ def admit(trial_id: str, reason: str, replace: str | None = None) -> None:
     ledger.append(P.POOL_LOG, {"at": t, "action": "admit", "trial_id": trial_id, "reason": reason,
                                "program": row.get("program"), "born_at": row.get("born_at"),
                                "deploy_scale": row.get("deploy_scale"), "kernel_hash": row.get("kernel_hash"),
-                               "semantics_version": row.get("semantics_version"),
+                               "semantic_hash": row.get("semantic_hash"),
                                "admitted_under_kernel": kernel_lock.read_lock()["combined"]})
     print(f"admitted {trial_id} ({row.get('program')})" + (f", replacing {replace}" if replace else ""))
 

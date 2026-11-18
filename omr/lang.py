@@ -34,14 +34,21 @@ MAX_NODES = 120
 MAX_DEPTH = 12
 MAX_WINDOW_BARS = 5000
 MAX_WINDOW_DAYS = 400
+MAX_LITERALS = 8              # jitterable literal tokens (every body literal except 0; windows excluded)
 
-# field -> (unit base or None for dimensionless, aggregation for timeframes or None)
+_P, _V, _N = (("P", 1),), (("V", 1),), (("N", 1),)
+_PV = (("P", 1), ("V", 1))     # quote volume = price x base volume
+# field -> (unit: sorted ((base, exponent), ...), () = dimensionless; aggregation for timeframes or None)
 FIELDS = {
-    "open": ("P", "first"), "high": ("P", "max"), "low": ("P", "min"), "close": ("P", "last"),
-    "mark_close": ("P", "last"), "volume": ("V", "sum"), "taker_buy_volume": ("V", "sum"),
-    "quote_volume": ("Q", "sum"), "taker_buy_quote_volume": ("Q", "sum"), "trades": ("N", "sum"),
-    "funding8h": (None, None), "hour": (None, None), "weekday": (None, None),
+    "open": (_P, "first"), "high": (_P, "max"), "low": (_P, "min"), "close": (_P, "last"),
+    "mark_close": (_P, "last"), "volume": (_V, "sum"), "taker_buy_volume": (_V, "sum"),
+    "quote_volume": (_PV, "sum"), "taker_buy_quote_volume": (_PV, "sum"), "trades": (_N, "sum"),
+    "funding8h": ((), None), "hour": ((), None), "weekday": ((), None),
 }
+
+
+def _btc_unit(unit: tuple) -> tuple:
+    return tuple(sorted((b + "_btc", e) for b, e in unit))
 BTC_FIELDS = tuple(f for f in FIELDS if f not in ("hour", "weekday"))
 TIMEFRAMES = {"h2": 2, "h3": 3, "h4": 4, "h6": 6, "h8": 8, "h12": 12, "daily": 24, "weekly": 168}
 ROLLING = ("sma", "ema", "std", "rmin", "rmax", "rsum", "median", "zscore", "rank")
@@ -51,13 +58,20 @@ CROSS = ("cs_mean", "cs_demean", "cs_rank", "cs_scale")
 FUNCTIONS = (set(ROLLING) | set(LAGS) | set(ELEMENTWISE) | set(CROSS) | set(TIMEFRAMES)
              | {"corr", "rsi", "atr", "realised_vol", "funding_mean", "clip", "min2", "max2", "where", "hold", "btc"})
 WINDOW_FUNCS = {**{f: 1 for f in ROLLING}, **{f: 1 for f in LAGS}, "rsi": 1, "realised_vol": 1, "corr": 2,
-                "atr": 3, "funding_mean": 0}          # function -> index of its window argument
+                "atr": 3, "funding_mean": 0, "hold": 4}          # function -> index of its window argument
+# rows of memory per unit of the window argument (the window limits apply to n x this)
+WINDOW_MEMORY = {"ema": C.EMA_MEMORY, "rsi": C.RSI_MEMORY, "atr": C.ATR_MEMORY}
 ARITY = {**{f: 2 for f in ROLLING}, **{f: 2 for f in LAGS}, **{f: 1 for f in ELEMENTWISE},
          **{f: 1 for f in CROSS}, **{f: 1 for f in TIMEFRAMES},
          "corr": 3, "rsi": 2, "atr": 4, "realised_vol": 2, "funding_mean": 1, "clip": 3, "min2": 2, "max2": 2,
-         "where": 3, "hold": 4, "btc": 1}
+         "where": 3, "hold": 5, "btc": 1}
+MAX_INLINED_NODES = 4000      # the canonical (fully inlined) tree; guards against exponential reuse
 RESERVED = set(FIELDS) | FUNCTIONS | set(HEADER) | {"param"}
-COMPARE_LITERALS = {0.0, 0.5, 1.0, -0.5, -1.0}
+
+
+def literal_key(node) -> tuple:
+    """Source position of a literal token (the minus sign of a negative literal included)."""
+    return (node.lineno, node.col_offset)
 
 
 class LangError(Exception):
@@ -96,6 +110,11 @@ class Program:
     node_count: int = 0
     canonical: str = ""
     param_order: list = field(default_factory=list)  # params in order of first use in the inlined tree
+    literals: list = field(default_factory=list)     # [(source key, base value)] jitterable literals, source order
+
+    @property
+    def n_literals(self):
+        return len(self.literals)
 
     @property
     def kind(self):
@@ -134,8 +153,19 @@ def _str_literal(node):
     return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
 
 
-def parse(text: str, stem: str) -> Program:
-    """Parse and fully check a program. Raises LangError (rule, line, column)."""
+def parse(text: str, stem: str, probe: bool = True) -> Program:
+    """Parse and fully check a program. Raises LangError (rule, line, column); any other exception
+    raised while checking (e.g. OverflowError from a 400-digit literal) becomes `parse_error`.
+    probe=True (always, outside the probe's own unit tests) runs the constant probe (omr.probe)."""
+    try:
+        return _parse(text, stem, probe)
+    except LangError:
+        raise
+    except Exception as e:
+        raise LangError("parse_error", None, type(e).__name__)
+
+
+def _parse(text: str, stem: str, probe: bool = True) -> Program:
     if not isinstance(text, str):
         raise LangError("parse_error", None, "source must be text")
     if len(text.encode("utf-8")) > MAX_BYTES:
@@ -197,7 +227,38 @@ def parse(text: str, stem: str) -> Program:
     prog = Program(header=header, params=params, defs=defs)
     _check_body(prog)
     _canonicalise(prog)
+    _check_unit_windows(prog)
+    if probe:
+        from omr import probe as _probe                     # late import: the probe uses the interpreter
+        _probe.check(prog)
     return prog
+
+
+def _is_one(node) -> bool:
+    return isinstance(node, ast.Constant) and type(node.value) is int and node.value == 1
+
+
+def _check_unit_windows(prog: Program):
+    """H1b: a call with the literal window 1 may not sit inside another such call on any path of the
+    inlined tree (`lag(lag(close, 1), 1)` is a hidden window of 2; a longer fixed lag needs a param)."""
+    defs = dict(prog.defs)
+    seen = set()
+
+    def walk(node, inside):
+        if isinstance(node, ast.Name) and node.id in defs:
+            key = (node.id, inside)
+            if key not in seen:
+                seen.add(key)
+                walk(defs[node.id], inside)
+            return
+        unit = (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in WINDOW_FUNCS
+                and _is_one(node.args[WINDOW_FUNCS[node.func.id]]))
+        if unit and inside:
+            raise LangError("nested_unit_window", node, f"{node.func.id}(..., 1) inside another call with window 1; "
+                            "use an integer param for a longer window")
+        for child in ast.iter_child_nodes(node):
+            walk(child, inside or unit)
+    walk(defs["signal"], False)
 
 
 def _parse_param(name, call) -> Param:
@@ -227,7 +288,7 @@ class _Checker:
         self.nodes = 0
         self.used_params = set()
         self.used_names = set()
-        self.window_uses = []          # (param name, tf hours, node)
+        self.literals = {}             # source key -> base value (jitterable literal tokens)
 
     def has_param(self, node) -> bool:
         return any(isinstance(n, ast.Name) and n.id in self.p.params for n in ast.walk(node))
@@ -242,9 +303,10 @@ class _Checker:
             if par.low < 1:
                 raise LangError("window_param_low", node, f"{fn}: window param {node.id} needs low >= 1")
             hours = 8 if fn == "funding_mean" else (1 if tf == "h1" else TIMEFRAMES[tf])
-            if par.high > MAX_WINDOW_BARS or par.high * hours > MAX_WINDOW_DAYS * 24:
-                raise LangError("window_limit", node, f"{fn}: {node.id} high {par.high:g} exceeds "
-                                f"{MAX_WINDOW_BARS} bars or {MAX_WINDOW_DAYS} days at this timeframe")
+            rows = par.high * WINDOW_MEMORY.get(fn, 1)
+            if rows > MAX_WINDOW_BARS or rows * hours > MAX_WINDOW_DAYS * 24:
+                raise LangError("window_limit", node, f"{fn}: {node.id} high {par.high:g} gives {rows:g} rows of "
+                                f"memory, above {MAX_WINDOW_BARS} bars or {MAX_WINDOW_DAYS} days at this timeframe")
             self.used_params.add(node.id)
             return
         raise LangError("window_arg", node, f"{fn}: a window, lag or count must be an integer param or the literal 1")
@@ -260,6 +322,11 @@ class _Checker:
             v, is_int = lit
             if not ((is_int and -10 <= v <= 10) or v in (0.5, -0.5)):
                 raise LangError("literal_value", node, "body literals: integers -10..10 or +-0.5; other numbers must be params")
+            if v != 0:                                   # every literal but 0 is jittered like a param (G5)
+                self.literals[literal_key(node)] = v
+                if len(self.literals) > MAX_LITERALS:
+                    raise LangError("too_many_literals", node, f"more than {MAX_LITERALS} literals other than 0 "
+                                    "(each is jittered like a param)")
             return SCALAR
         if isinstance(node, ast.Name):
             n = node.id
@@ -267,8 +334,7 @@ class _Checker:
                 self.used_params.add(n)
                 return SCALAR
             if n in FIELDS:
-                base, _ = FIELDS[n]
-                return Ty("num", ((base, 1),) if base else (), "h1")
+                return Ty("num", FIELDS[n][0], "h1")
             if n in self.types:
                 self.used_names.add(n)
                 return self.types[n]
@@ -316,10 +382,6 @@ class _Checker:
                 raise LangError("comparison", node, "single comparison with < > <= >=")
             left, right = node.left, node.comparators[0]
             a, b = self.expr(left, depth + 1), self.expr(right, depth + 1)
-            for side in (left, right):
-                lv = _literal_value(side)
-                if lv is not None and lv[0] not in COMPARE_LITERALS:
-                    raise LangError("comparison_literal", side, "a literal compared must be 0, 0.5 or 1 (or negative)")
             if a.kind == "bool" or b.kind == "bool":
                 raise LangError("type", node, "comparison of boolean series")
             if a.kind == "scalar" and b.kind == "scalar":
@@ -361,8 +423,7 @@ class _Checker:
             if not (isinstance(a, ast.Name) and a.id in BTC_FIELDS):
                 raise LangError("btc_arg", a, "btc() takes a field name")
             self.nodes += 1
-            base, _ = FIELDS[a.id]
-            return Ty("num", ((base + "_btc", 1),) if base else (), "h1")
+            return Ty("num", _btc_unit(FIELDS[a.id][0]), "h1")
         if fn in TIMEFRAMES:
             a = args[0]
             fld = a.id if isinstance(a, ast.Name) else None
@@ -372,8 +433,7 @@ class _Checker:
                 fld = a.args[0].id
             elif fld in FIELDS:
                 self.nodes += 1
-                base, _ = FIELDS[fld]
-                t = Ty("num", ((base, 1),) if base else (), "h1")
+                t = Ty("num", FIELDS[fld][0], "h1")
             else:
                 raise LangError("timeframe_arg", a, f"{fn}() takes a field or btc(field)")
             if FIELDS[fld][1] is None:
@@ -391,6 +451,12 @@ class _Checker:
                     raise LangError("type", args[0], "lag needs a series")
                 self.window(args[wi], ts[0].tf, fn)
                 return ts[0]
+            if fn == "hold":
+                if any(t.kind != "bool" for t in ts):
+                    raise LangError("type", node, "hold takes four boolean series and a horizon")
+                tf = _tf_join(*ts)
+                self.window(args[wi], tf, fn)
+                return Ty("num", (), tf)
             for t, a in zip(ts, data_args):
                 self.series(t, a)
             if fn == "corr":
@@ -447,10 +513,6 @@ class _Checker:
             if ts[1].unit != ts[2].unit:
                 raise LangError("unit", node, "where branches need identical units")
             return Ty("num", ts[1].unit, _tf_join(*ts))
-        if fn == "hold":
-            if any(t.kind != "bool" for t in ts):
-                raise LangError("type", node, "hold takes four boolean series")
-            return Ty("num", (), _tf_join(*ts))
         if fn in CROSS:
             if self.p.kind != "portfolio":
                 raise LangError("cross_section_single", node, f"{fn} is only allowed in kind portfolio")
@@ -490,6 +552,7 @@ def _check_body(prog: Program):
             raise LangError("param_unused", None, f"param {p} is not used by signal")
     prog.types = ch.types
     prog.node_count = ch.nodes
+    prog.literals = sorted(ch.literals.items())             # source order
 
 
 def _fmt_num(v: float, is_int: bool) -> str:
@@ -499,8 +562,12 @@ def _fmt_num(v: float, is_int: bool) -> str:
 def _canonicalise(prog: Program):
     defs = dict(prog.defs)
     order = []
+    count = [0]
 
     def c(node) -> str:
+        count[0] += 1
+        if count[0] > MAX_INLINED_NODES:
+            raise LangError("inlined_too_large", node, f"the inlined program exceeds {MAX_INLINED_NODES} nodes")
         lit = _literal_value(node)
         if lit is not None:
             return _fmt_num(*lit)
@@ -538,8 +605,10 @@ def _canonicalise(prog: Program):
     prog.canonical = f"kind={prog.kind};signal={tree};params=[{','.join(ps)}]"
 
 
-def trial_id(prog: Program, research_hash: str) -> str:
-    body = prog.canonical + "\n" + str(C.SEMANTICS_VERSION) + "\n" + research_hash
+def trial_id(prog: Program, semantic_hash: str, research_hash: str) -> str:
+    """sha256(canonical + semantic kernel hash + research_hash)[:16]: any change to the kernel's
+    semantic files (omr/**, requirements.txt) changes every trial identity."""
+    body = prog.canonical + "\n" + semantic_hash + "\n" + research_hash
     return hashlib.sha256(body.encode("ascii")).hexdigest()[:16]
 
 

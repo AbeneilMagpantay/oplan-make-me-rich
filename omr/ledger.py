@@ -199,7 +199,7 @@ def append_pending(row: dict, path: Path | None = None):
     r = dict(row)
     r["status"] = "pending"
     written = append(path, r)
-    return written, access.for_trial(written["trial_id"], written["row_hash"])
+    return written, access.for_trial(written["trial_id"], written["row_hash"], written.get("source_sha256"))
 
 
 def returns_path(trial_id: str) -> Path:
@@ -252,8 +252,8 @@ def highest_generation(path: Path | None = None):
 
 def verify_all(log=print) -> bool:
     ok = True
-    for path in (P.TRIALS_JSONL, P.STAGE1_LOG, P.KERNEL_HISTORY, P.POOL_LOG, P.CENSUS_LOG, P.SANDBOX_LOG,
-                 P.VAL_ACCESS_LOG):
+    for path in (P.TRIALS_JSONL, P.STAGE1_LOG, P.KERNEL_HISTORY, P.CALIBRATION_LOG, P.POOL_LOG, P.CENSUS_LOG,
+                 P.SANDBOX_LOG, P.VAL_ACCESS_LOG):
         if Path(path).exists():
             pr = verify_chain(path)
             for x in pr:

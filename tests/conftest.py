@@ -118,6 +118,38 @@ class SynthProvider:
         return self.world
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_the_real_ledger_logs(tmp_path_factory, monkeypatch):
+    """The kernel never redirects the VAL access log or the real trial ledger; the TESTS point them at
+    a temp folder so no test writes to the project's ledger."""
+    d = tmp_path_factory.mktemp("real_ledger")
+    monkeypatch.setattr(P, "VAL_ACCESS_LOG", d / "val_access_log.jsonl")
+    monkeypatch.setattr(P, "REAL_TRIALS_JSONL", d / "trials.jsonl")
+    return d
+
+
+def make_disk_data(root, symbols=C.ALL_SYMBOLS, end="2025-06-30 23:00"):
+    """A disk-like data folder (parquet files + manifest) with synthetic data for `symbols`, so the
+    real disk loaders (omr.datasets / omr.data) can be exercised without real data."""
+    from omr import data
+    starts = {"BTCUSDT": "2019-09-09 00:00", "ETHUSDT": "2019-11-28 00:00"}
+    tables = {}
+    for i, s in enumerate(symbols):
+        raw = synth_raw(start=starts.get(s, "2020-01-06 00:00"), end=end, seed=200 + i)
+        for ds in ("klines", "funding", "mark_klines"):
+            tables[(ds, s)] = raw[ds]
+    man = {"datasets": {}}
+    for (ds, s), df in tables.items():
+        p = root / ds / f"{s}.parquet"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(p)
+        man["datasets"].setdefault(ds, {})[s] = {"sha256": data.sha256_file(p)}
+    man["research_hash"] = data.compute_research_hash(tables)
+    import json
+    (root / "manifest.json").write_text(json.dumps(man), encoding="ascii")
+    return man["research_hash"]
+
+
 @pytest.fixture
 def val_handle(tmp_path, monkeypatch):
     """A calibration-purpose ValHandle whose access-log row goes to a temp file."""

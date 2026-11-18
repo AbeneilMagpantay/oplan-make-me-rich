@@ -22,6 +22,10 @@ If the kernel lock (or its seal) or a ledger chain fails, stop and report to the
 - `python -m omr.ledger summary` (every counted trial) and `ledger/stage1_log.jsonl` (rejections)
 - `STATE.md`
 
+Read trial ROWS (`ledger summary`, `status`) only. Never open `ledger/returns/` or the detail files in
+`ledger/trials/`: VAL performance is stored only in aggregate on purpose, so that later generations
+cannot fit VAL's period-by-period history (CONSTITUTION section 9).
+
 ## 3. Pre-register: write `generations/genNNN/PLAN.md` BEFORE any evaluation
 
 The evaluator refuses generation N without `generations/genNNN/PLAN.md`, and records the PLAN's
@@ -49,9 +53,20 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
 
 - Rules that bite: at most 6 params (no zero default; the range must contain 0.8 to 1.2 times the
   default; integer params also default +/- 1); windows and lags are integer params or the literal
-  1; body numbers are integers -10..10 or +-0.5 (anything else is a param); a compared literal is
-  0, 0.5 or 1; units must match (`close > 0` is rejected, `ret(close, 1) > 0` is fine); `signal`
-  must be dimensionless. A rejected file names the rule, line and column.
+  1; body numbers are integers -10..10 or +-0.5 (anything else is a param); units must match
+  (`close > 0` is rejected, `ret(close, 1) > 0` is fine; quote volume / volume is a price);
+  `signal` must be dimensionless. A rejected file names the rule, line and column.
+- Literals are parameters too: every body literal except 0 (and except window arguments) is
+  jittered by G5 exactly like a declared param, at most 8 per program. Constants built without
+  literals (`x / x`, `rank(x, 1)`, a `where` whose condition never changes) are rejected by the
+  constant probe (`constant_subexpression`); anything that dodges the probe is evasion, and the
+  source audit reports it. `lag(lag(x, 1), 1)` is rejected (`nested_unit_window`): use an integer
+  param for a longer lag.
+- Locality: every value is computed from a bounded trailing window; a program is flat until ALL of
+  its parts have their history (one uniform warm-up), so the longest window decides when it starts
+  trading. `ema` remembers 5n rows, `rsi` and `atr` 10n; `hold(..., h)` rebuilds its state from flat
+  over the last h bars - choose h long enough that positions re-synchronise within it (the sandbox
+  shows when the program is known). Nothing can tell where it is in history; do not try.
 - The program cannot see dates, bar positions or price levels; only hour and weekday of the
   decision time. Do not try to encode remembered history through the choice of structure and
   parameters either (KP-010): forward results will judge it.
@@ -80,13 +95,17 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
   counted: fix it in the sandbox. `kernel_fault` (stage 1 or 2) is a KERNEL bug: stop and report it.
   A `liquidated` final status IS counted and reveals no metric. Do not retry variations of a program
   that failed on its merits.
-- Identity is the canonical program (names, layout and comments do not matter) + SEMANTICS_VERSION
-  + research_hash: re-submitting the same logic returns the existing row; any change of logic or
-  defaults is a new trial.
+- Identity is the canonical program (names, layout and comments do not matter) + the SEMANTIC
+  kernel hash + research_hash: re-submitting the same logic under the same semantic kernel returns
+  the existing row; any change of logic or defaults is a new trial.
 
 ## 6. Report: write `generations/genNNN/REPORT.md`, update `LESSONS.md` and `STATE.md`
 
-- Results table straight from the ledger rows (gates P/F, PSR(0), DSR, M, N, g5_vacuous).
+The evaluator refuses generation N + 1 until `generations/genNNN/REPORT.md` exists. The cap of 5 paces
+the work; it is not a budget: every counted trial raises M in every later DSR.
+
+- Results table straight from the ledger rows (gates P/F, PSR(0), DSR, M, N, n_literals, g5_vacuous).
+  No per-period VAL numbers (none are stored for the researcher).
 - A verdict per hypothesis against its pre-registered falsifier.
 - LESSONS.md takes only what the evidence supports, with trial ids. Mark anything suggestive but
   unproven as such.
@@ -97,7 +116,7 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
     python -m omr.pool admit <trial_id> --reason "..." [--replace <member>]
     python -m omr.census
 
-Only Tier-1 trials of the current SEMANTICS_VERSION. At most 5 members; replacing one must be
+Only Tier-1 trials of the current semantic kernel hash. At most 5 members; replacing one must be
 explicit and justified. Run the census after pool changes.
 
 ## 8. Every 5th generation: meta-review
