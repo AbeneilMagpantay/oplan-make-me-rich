@@ -403,24 +403,30 @@ def membership(acts: dict, eligible_names, lo_ns: int, hi_ns: int, months: np.nd
     return Membership(months=np.asarray(months, dtype=np.int64), known=known, ranked=ranked, scores=scores)
 
 
+FUNDING_FRESH_CAP_HOURS = 8.0      # U7: freshness = 2 x min(interval, 8) hours
+
+
 def funding_fresh(grid_ns: np.ndarray, settle_ns: np.ndarray, interval_h: np.ndarray) -> np.ndarray:
-    """R2 per row: the latest settlement visible at the row (settle hour <= row) is at most 2 x its own
-    interval old. settle_ns: settlement hours (ns, sorted); interval_h: their intervals in hours."""
+    """R2 / U7 per row: the latest settlement visible at the row (settle hour <= row) is at most
+    2 x min(its own interval, 8) hours old. settle_ns: settlement hours (ns, sorted); interval_h: their
+    intervals in hours. The in-play rule (R2) and the knownness of funding8h (U7, every unit) use it."""
     settle_ns = np.asarray(settle_ns, dtype=np.int64)
+    grid_ns = np.asarray(grid_ns, dtype=np.int64)
     if len(settle_ns) == 0:
         return np.zeros(len(grid_ns), dtype=bool)
     iv = np.asarray(interval_h, dtype=np.float64)
     idx = np.searchsorted(settle_ns, grid_ns, side="right") - 1
     ok = idx >= 0
     j = np.where(ok, idx, 0)
-    lim = np.where(np.isfinite(iv[j]) & (iv[j] > 0), 2.0 * iv[j] * HOUR_NS, -1.0)
+    lim = np.where(np.isfinite(iv[j]) & (iv[j] > 0), 2.0 * np.minimum(iv[j], FUNDING_FRESH_CAP_HOURS) * HOUR_NS, -1.0)
     return ok & ((grid_ns - settle_ns[j]).astype(np.float64) <= lim)
 
 
 def inplay_matrix(mem: Membership, band: str, grid_ns: np.ndarray, panel: list, active: np.ndarray):
     """(inplay T x K, unit_known T): a symbol is IN PLAY at row t when it is a member of `band` for the
-    month containing t + 1 hour and its bar at t is active (D2). unit_known: that month's membership is
-    known and the unit exists."""
+    month containing t + 1 hour and `active[t]` holds for it; every caller passes usable bar (S3) AND fresh
+    funding (R2, interval capped at 8 hours) as `active`. unit_known: that month's membership is known and
+    the unit exists."""
     T = len(grid_ns)
     mi = np.searchsorted(mem.months, grid_ns + HOUR_NS, side="right") - 1
     col = {s: k for k, s in enumerate(panel)}

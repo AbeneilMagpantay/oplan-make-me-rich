@@ -175,6 +175,14 @@ def assemble_frame(raw: dict, extra: tuple = ()) -> pd.DataFrame:
             for f in ds.fields:
                 frame[f"{name}.{f}"] = asof[f].to_numpy()
             frame[f"{name}.new"] = new
+            if name == "funding":
+                # U7: funding8h is known only while funding is fresh, as of each row from the FULL funding
+                # table (the latest visible settlement at most 2 x min(its interval, 8) hours old)
+                from omr import universe as U
+                vf = data.ns_int(ds.visible_from(rows))
+                order = np.argsort(vf, kind="mergesort")
+                frame["funding.fresh"] = U.funding_fresh(data.ns_int(grid), vf[order],
+                                                         rows["interval_hours"].to_numpy(dtype=np.float64)[order])
     return frame
 
 

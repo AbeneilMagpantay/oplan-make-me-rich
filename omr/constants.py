@@ -109,6 +109,8 @@ UNIVERSE_LIQ_DAYS = 90                  # B3: median daily quote volume over the
 UNIVERSE_TOP = 30                       # top30 = ranks 1-30, next30 = ranks 31-60
 UNIVERSE_MIN_MEMBERS = 10               # fewer eligible members -> no unit that month (programs flat)
 UNIVERSE_MIN_CS = 10                    # S2: a cs_ result needs >= 10 in-play symbols with a known input
+G6_PAIRED_BOOK_TIE = 1e-12              # U1 / R-B: S_k within this of A_k on every cell is a tie (S >= A)
+G6_PAIRED_SHARPE_MARGIN = 1e-9          # U1 / R-B: otherwise S >= A when Sharpe(S) >= Sharpe(A) - this
 UNIVERSE_ZERO_TRADE_MAX = 24            # S3: a zero-trade bar is usable while its zero-trade run is <= 24
 UNIVERSE_BLOCK_MONTHS = 6               # S4: universe units are evaluated in blocks of 6 calendar months
 UNIVERSE_BLOCK_MONTHS_G8 = 3            # G8's next30 blocks (evaluated once, streamed): 3 calendar months

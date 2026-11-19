@@ -643,7 +643,8 @@ def lookback_hours(prog: Program) -> int:
     """D3: the program's total lookback in hours, every window param at its `high` bound: the longest
     chain of windows through the inlined tree. A row's value depends on at most this many trailing
     hourly rows (the row itself included). Leaves (leaf_hours): an h1 field 1; mark_close / index_close
-    their staleness limit + 1; funding8h 8 (the longest settlement interval); hour / weekday 1; btc(f) the
+    their staleness limit + 1; funding8h 17 (known while its settlement is at most 2 x 8 hours old, U7);
+    hour / weekday 1; btc(f) the
     same as the leaf f (the BTCUSDT frame has the same knownness rules). A timeframe of h hours over a leaf of
     l hours: 2h - 2 + l (its bin, the wait for the next bin's close, and the leaf's own reach before the bin);
     a window over a timeframe series counts each extra row as that timeframe's hours; funding_mean(n) is
@@ -668,7 +669,7 @@ def lookback_hours(prog: Program) -> int:
         if name == "index_close":
             return C.INDEX_MAX_STALE_HOURS + 1
         if name == "funding8h":
-            return 8
+            return 2 * 8 + 1                                # U7: known while its settlement is <= 16 h old
         return 1
 
     def lb(node) -> tuple:                                  # (hours, tf hours of the series; None = scalar)

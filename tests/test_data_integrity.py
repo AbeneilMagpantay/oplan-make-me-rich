@@ -78,3 +78,43 @@ def test_validate_counts_and_binding(datadir):
     assert not bad["passed"] and bad["counts"]["klines/BTCUSDT/dev"]["nonpositive_price"] == 1
     assert bad["counts"]["klines/BTCUSDT/dev"]["ohlc_inconsistent"] >= 0 and not data.validation_ok()
     assert "nonpositive_price" in text
+
+
+def _pin_symbols(root, table):
+    """Write symbols.json, pin it in the manifest and rewrite the manifest's research hash with the fold."""
+    import hashlib
+    b = json.dumps(table, sort_keys=True).encode("ascii")
+    (root / "symbols.json").write_bytes(b)
+    man = json.loads((root / "manifest.json").read_text(encoding="ascii"))
+    man["universe"] = {"symbols_sha256": hashlib.sha256(b).hexdigest()}
+    man["research_hash"] = data.research_hash_from_disk(man)
+    (root / "manifest.json").write_text(json.dumps(man), encoding="ascii")
+    return man
+
+
+def test_u5_the_symbol_table_is_in_the_research_hash_and_the_fingerprint(datadir, monkeypatch):
+    from omr import lang as L
+    from omr import universe as U
+    monkeypatch.setattr(U, "SYMBOLS_FILE", datadir / "symbols.json")
+    plain = data.research_hash_from_disk()                     # no universe stored: no fold, as before
+    table = {"symbols": {"AAAUSDT": {"class": "crypto_perpetual", "until": None, "n_months": 3},
+                         "BBBUSDT": {"class": "crypto_perpetual", "until": "2023-03-01 00:00", "n_months": 3}}}
+    man = _pin_symbols(datadir, table)
+    rh0, fp0 = data.research_hash_from_disk(), data.data_fingerprint()
+    assert rh0 == man["research_hash"] and rh0 != plain
+    assert data.validate(log=lambda s: None)["passed"] and data.validation_ok()
+    from conftest import prog_text
+    prog = L.parse(prog_text("signal = sign(ret(close, 1))\n"), "x_test", probe=False)
+    tid0 = L.trial_id(prog, "s" * 64, rh0)
+    seen = {rh0}
+    for edit in (("AAAUSDT", "class", "tradfi_perpetual"), ("BBBUSDT", "until", "2023-04-01 00:00")):
+        t = json.loads(json.dumps(table))
+        t["symbols"][edit[0]][edit[1]] = edit[2]
+        (datadir / "symbols.json").write_bytes(json.dumps(t, sort_keys=True).encode("ascii"))
+        rh = data.research_hash_from_disk()
+        assert rh not in seen                                   # one class or one `until` changes the hash
+        seen.add(rh)
+        assert data.data_fingerprint() != fp0 and not data.validation_ok()   # validation (and the seal) unbound
+        assert L.trial_id(prog, "s" * 64, rh) != tid0           # and every trial id
+    (datadir / "symbols.json").write_bytes(json.dumps(table, sort_keys=True).encode("ascii"))
+    assert data.research_hash_from_disk() == rh0 and data.data_fingerprint() == fp0 and data.validation_ok()

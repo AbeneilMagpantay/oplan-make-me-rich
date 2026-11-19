@@ -8,18 +8,20 @@ LOCALITY BY CONSTRUCTION (LANGUAGE.md section 7). Every series carries a VALUE a
 array. A definite value at row t is a function of a bounded trailing window of data; whether that
 window's history exists is the known channel, which a program cannot observe:
 - fields are known where their row exists (mark_close / index_close only while their last mark / index
-  bar is recent, funding8h once a settlement exists; hour and weekday always);
+  bar is recent, funding8h while the latest settlement is at most 2 x min(its interval, 8) hours old;
+  hour and weekday always);
 - an elementwise result is known only where every input is known; a windowed result only where its
   input is known on every row of the window; a timeframe bar only if its bin is complete and every
   hour in it is known; where() only where the condition and BOTH branches are known; hold() only
   where its four inputs are known on all h rows; cs_* only where every symbol is known in that row;
 - the final weight is 0 where the signal is not known (or its value is NaN).
 UNIVERSE PANELS (unit top30 / next30, omr.upipeline): the input is a Panel of per-field arrays with an
-IN-PLAY mask (omr.universe.inplay_matrix). cs_* (KP-015 S2) compute across the symbols that are in play
-AND whose input is known at that row (sums are sequential in panel column order, so a column outside that
-set changes nothing); the result is known for those symbols when the unit's membership is known and at
-least UNIVERSE_MIN_CS of them exist, otherwise unknown for everyone; the final signal of a symbol that is
-not in play is unknown (weight 0). A cs_* over a timeframe series uses the in-play mask of the hour at
+IN-PLAY mask (omr.universe.inplay_matrix). cs_* (KP-015 S2, U3) compute across the symbols that are in
+play AND whose input is known AND finite at that row (sums are sequential in panel column order, so a
+column outside that set changes nothing); the result is known for every in-play symbol with a known input
+when the unit's membership is known and at least UNIVERSE_MIN_CS finite inputs exist, otherwise unknown for
+everyone; a known but non-finite input gives a known NaN; the final signal of a symbol that is not in play
+is unknown (weight 0). A cs_* over a timeframe series uses the in-play mask of the hour at
 which each of its bars becomes visible. funding_mean is known only when its last n settlements all fall
 inside the last 8n hours (S1), so every function is bounded in time.
 So a program is flat until every subexpression has its history (one uniform warm-up), and nothing
@@ -179,7 +181,9 @@ class Context:
             else:
                 v = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
                                      for f in frames])
-            kn = np.isfinite(v)
+            # U7: bounded in time in every unit: known only while the latest visible settlement is at most
+            # 2 x min(its interval, 8) hours old (funding.fresh, computed as of each row from the full table)
+            kn = np.isfinite(v) & _stack_true(frames, "funding.fresh")
         else:
             v = _stack(frames, name)
             kn = np.isfinite(v)
@@ -437,13 +441,17 @@ class Context:
             pos = np.minimum(pos, len(self.ns) - 1)
             P_ = self.inplay[pos] & ok[:, None]
             uk = self.unit_known[pos] & ok
-        # S2 (R1b): across the in-play (tradable) symbols whose input is known at that row; known for those
-        # symbols when at least UNIVERSE_MIN_CS of them exist, otherwise unknown for everyone
+        # S2 (R1b) + U3: across the in-play (tradable) symbols whose input is known AND finite at that row;
+        # known when at least UNIVERSE_MIN_CS such symbols exist (otherwise unknown for everyone), for every
+        # in-play symbol with a known input: a known but non-finite input gives a known NaN (so one symbol
+        # can no longer flatten the row)
+        a = np.asarray(v.arr, dtype=np.float64)
         S_ = P_ & v.kn
-        row_kn = uk & (S_.sum(axis=1) >= C.UNIVERSE_MIN_CS)
+        F_ = S_ & np.isfinite(a)
+        row_kn = uk & (F_.sum(axis=1) >= C.UNIVERSE_MIN_CS)
         kn = S_ & row_kn[:, None]
-        vals = _cross_inplay(fn, np.asarray(v.arr, dtype=np.float64), S_)
-        return S(np.where(kn, _clean(vals), np.nan), kn, v.tf, v.idx)
+        vals = _cross_inplay(fn, a, F_)
+        return S(np.where(F_ & kn, _clean(vals), np.nan), kn, v.tf, v.idx)
 
     def funding_mean(self, n: int) -> S:
         new = _stack_true(self.frames, "funding.new")
@@ -487,7 +495,8 @@ def _cross(fn, a: np.ndarray) -> np.ndarray:
 
 
 def _cross_inplay(fn: str, a: np.ndarray, P_: np.ndarray) -> np.ndarray:
-    """cs_* values across the in-play columns P_ of each row (values of other columns are not used)."""
+    """cs_* values across the columns P_ of each row (the in-play symbols with a known, finite input;
+    values of other columns are not used)."""
     k = P_.sum(axis=1, keepdims=True).astype(np.float64)
     with np.errstate(all="ignore"):
         if fn in ("cs_mean", "cs_demean"):

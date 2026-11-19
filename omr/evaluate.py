@@ -245,8 +245,9 @@ def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max)
     except Exception as e:                           # an interpreter error on a checked program is a kernel fault
         return stage1_log(dict(ident, code="kernel_fault", error_type=type(e).__name__), quiet)
     if not s1["ok"]:
+        extra = {"block_overlap_cells": s1["block_overlap_cells"]} if "block_overlap_cells" in s1 else {}
         return stage1_log(dict(ident, code=s1["code"], fault=s1.get("fault"),
-                               direction_changes_dev=s1.get("direction_changes_dev")), quiet)
+                               direction_changes_dev=s1.get("direction_changes_dev"), **extra), quiet)
 
     if universe:                                     # R3: refuse, uncounted, when stage 2 may not fit in memory
         mc = upipeline.memory_check(prog, provider.universe_sizes())
@@ -263,9 +264,13 @@ def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max)
                source_sha256=ledger.sha256_file(src), versions=versions(),
                stage1={"truncation_cuts": s1["cuts"], "start_cuts": s1["start_cuts"],
                        "direction_changes_dev": s1["direction_changes_dev"]})
+    if universe:                                     # U8: a vacuous block_overlap check is visible (0 cells)
+        row["stage1"]["block_overlap_cells"] = s1["block_overlap_cells"]
+        row["block_overlap_cells"] = s1["block_overlap_cells"]
     pending, handle = ledger.append_pending(row)
     keep = ("trial_id", "generation", "program", "family", "kind", "unit", "lookback_hours", "kernel_hash",
-            "semantic_hash", "text_hash", "research_hash", "params", "node_count", "n_literals", "born_at")
+            "semantic_hash", "text_hash", "research_hash", "params", "node_count", "n_literals", "born_at") \
+        + (("block_overlap_cells",) if universe else ())
     final = {k: row[k] for k in keep}
     final.update(pending_hash=pending["row_hash"], g6_threshold=p_max, seed=str(seed))
     try:

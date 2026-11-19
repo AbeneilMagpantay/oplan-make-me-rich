@@ -115,7 +115,7 @@ the decision time. Every series carries a VALUE and a KNOWN flag per row.
 | volume, taker_buy_volume | V | sum | the bar exists |
 | quote_volume, taker_buy_quote_volume | P V | sum | the bar exists |
 | trades | N | sum | the bar exists |
-| funding8h | dimensionless: the latest settled funding rate x 8 / its interval in hours | not aggregatable | a settlement exists |
+| funding8h | dimensionless: the latest settled funding rate x 8 / its interval in hours | not aggregatable | that settlement is at most 2 x min(its interval, 8) hours old (KP-015 U7, every unit; as of each row from the full funding table) |
 | hour, weekday | dimensionless: hour 0-23 and weekday 0 (Monday) - 6 of the DECISION time | not aggregatable | always |
 
 There is no bar index, position, bar count, date, year or cumulative quantity.
@@ -279,9 +279,12 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   Membership counts bars with trades only.
 - IN PLAY (TRADABLE): a symbol is in play at a row when it is a member for the month containing the
   row's decision time (its close), its bar at that row is usable, and its latest funding settlement is no
-  older than twice its own funding interval (a symbol the engine cannot charge funding on is not held).
-- `cs_*` (S2) compute across the symbols that are in play AND whose input is known at that row; the result
-  is known for those symbols when at least 10 of them exist, otherwise unknown for everyone. A symbol whose
+  older than twice its own funding interval, capped at 8 hours (2 x min(interval, 8); a symbol the engine
+  cannot charge funding on is not held). funding8h uses the same freshness in every unit.
+- `cs_*` (S2, U3) compute across the symbols that are in play AND whose input is known AND finite at that
+  row; when at least 10 such symbols exist the result is known for every in-play symbol with a known input
+  (a known but non-finite input, such as a 0/0, gives a known NaN, so one symbol cannot flatten the row),
+  otherwise it is unknown for everyone. A symbol whose
   window holds a hole simply drops out of the cross-section until its window is clean. The final signal of a
   symbol not in play is unknown (weight 0). A `cs_*` over a
   timeframe series uses the in-play symbols of the hour at which each of its bars becomes visible. The
@@ -290,19 +293,24 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
 - LOOKBACK (D3, `lookback_exceeds_seasoning`): the program's total lookback, the longest chain of
   windows through the inlined tree with every window param at its `high` bound (ema 5n - 1, rsi / atr
   10n, lags and realised_vol n, other windows n - 1 extra rows; leaves: an hourly field, hour and
-  weekday 1, mark_close and index_close 7 (their 6-hour staleness), funding8h 8, btc(f) the same as f;
+  weekday 1, mark_close and index_close 7 (their 6-hour staleness), funding8h 17 (its 16-hour
+  freshness), btc(f) the same as f;
   a timeframe of h hours over a leaf of l hours 2h - 2 + l (its bin, the wait for the next bin's close and
   the leaf's own reach); rows of a timeframe series count as that many hours; funding_mean(n) 8n hours),
   must not exceed 90 days (2,160 hours). It is a true upper bound of a value's memory: from a frame's
   first row + lookback - 1 on, a value equals the whole run's (tests/test_blocks.py). Every program's
   lookback is recorded in its trial row (`lookback_hours`), in both units.
+- Gates: CONSTITUTION section 13. G6 in top30 is a paired test on the common names: for each shift, the
+  actual book and the shifted book hold the same names on every row (tradable now and in play at the
+  source row), re-centred to their own rows' nets, flat under 10 names.
 - Costs: 12.5 bps per side on every symbol. A position in a symbol whose next bar is missing is closed
-  at its last active close with that cost; a symbol leaving the unit gets weight 0.
+  at its last usable close (the close of its previous usable bar, which can be a zero-trade bar with a
+  frozen price) with that cost; a symbol leaving the unit gets weight 0.
 - Locality: the truncation and start-cut self-checks run on the universe panel; every RUN (the base, a
   truncation cut, a start cut, a jitter variant) computes its membership once from its own rows (a cut can
   only make the unit unknown, never different); stage 1 adds one start cut that removes the first 31 hours
   of a panel symbol's history. Every function is
-  bounded in time (funding_mean included), and the membership's 97-day read window keeps a cut run
+  bounded in time (funding_mean and funding8h included), and the membership's 97-day read window keeps a cut run
   unknown longer than the 90-day lookback limit, so a cut cannot change the set a `cs_*` sees.
 - Blocks (S4, fix pass 3): the evaluator runs a top30 program in blocks of six calendar months (G8's
   next30 in three-month blocks). A block is only a computation chunk of a run: it takes its in-play mask

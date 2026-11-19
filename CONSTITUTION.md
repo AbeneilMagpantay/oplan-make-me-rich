@@ -406,7 +406,8 @@ Live risk limits the loop can never change:
   every USDT-quoted perpetual name of the archive; only crypto perpetuals can be members. python -m
   omr.data universe downloads their monthly 1h klines, funding, mark and index klines (checksums
   verified, resumable) and admits index_klines (the ten core symbols included) into the one research
-  hash; the stored-row revision check applies to every table from this download on. data validate
+  hash, which also covers the sha256 of data/symbols.json (fix pass 4); the stored-row revision check
+  applies to every table from this download on. data validate
   covers every table and adds membership and unit-availability COUNTS (no handle, nothing logged).
 - A program declares `unit = "top30"` (kind portfolio); LANGUAGE.md section 10 states membership,
   in-play, cross-sections and the 90-day lookback limit. Fix pass (2026-11-19): seasoning = first active
@@ -422,18 +423,44 @@ Live risk limits the loop can never change:
   hold the members of every month their evaluated rows touch); the self-check `block_overlap` (stage 1:
   an uncounted kernel fault, stage 2: a counted one) compares each block's warm-up with the previous
   block's result; lookback_hours counts the staleness of mark_close / index_close under a timeframe and
-  under btc(). The core unit is unchanged and bit-identical
+  under btc(). Fix pass 4: G6 in top30 is the paired common-names test (below); a cs_* counts only
+  known AND finite inputs (a known non-finite input is a known NaN); `data universe` fills every hour
+  missing inside a universe symbol's life from the daily files of the same archive (checksum required,
+  pinned in the manifest; an hour already stored must equal the daily row, otherwise the download stops
+  as a revision; the ten core and extended symbols are filled by the same rule inside their stored klines
+  grid, with no top-up and the same snapshot end, and `data update` applies the same fill); the sha256 of
+  data/symbols.json
+  is part of the research hash and of the validation fingerprint; funding8h is known only while its settlement is at most 2 x min(interval, 8) hours old, in
+  every unit (lookback leaf 17), and the in-play freshness caps the interval at 8 hours too; top30
+  programs are probed on a 12-symbol in-play panel. The core unit is unchanged and bit-identical
   to the kernel of commit b12df97 (tests/test_core_identity.py).
 - Engine for top30 and next30: 12.5 bps per side on every symbol; a position whose next bar is missing
-  is closed at its last active close with that cost; targets of unavailable or out-of-play symbols are 0;
+  is closed at its last usable close (possibly a zero-trade bar's frozen price) with that cost; targets of unavailable or out-of-play symbols are 0;
   funding and the mark-price liquidation check per symbol; gross <= 1 across the unit.
-- Gates for top30: G1-G7 and G10 as in section 7; in G6 the whole weight matrix is shifted and every
-  weight that lands on a symbol not in play or without a bar is set to 0 (actual and shifted runs
-  alike). G8: the same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
+- Gates for top30: G1-G5, G7 and G10 as in section 7. G6 (fix pass 4) is a PAIRED test on the common
+  names: VAL row i is decided at the row before VAL start + i and executed at VAL start + i; for every
+  shift k (offsets drawn as in section 7) with source row i' = (i - k) mod L, the names common to the row
+  are those tradable at i (in play at the decision row with a usable bar at the execution row) and in
+  play at the source decision row i'; the actual book A_k holds the actual weights of row i on those
+  names, the shifted book S_k the weights of row i' on the same names; a row whose own set (A: tradable at
+  i; S: in play at i') has a name outside the common names is re-centred (every common name gets the
+  constant (net of the unmasked row - net of the masked row) / number of common names, sums sequential in
+  column order, no gross rescaling); a row with fewer than 10 common names is flat in both books. Both
+  books run through the engine restarted at VAL start (a liquidated run scores -inf); p = (1 + #(S_k >=
+  A_k)) / (N + 1), where S_k >= A_k when the two books are equal within 1e-12 on every cell (a tie, no
+  second engine run) or Sharpe S_k >= Sharpe A_k - 1e-9 (both can only raise p). Where no row of A_k differs from the actual weights the actual run is
+  reused, so without churn the result is the plain shift test bit for bit. The core unit's G6 is
+  unchanged. G8: the same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
 - The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged) and omr.ucalibrate
-  (top30: 30-symbol null worlds A and B built jointly across symbols, constant membership, three
-  hash-locked cross-sectional families, the same screen-and-submit protocol, a cross-sectional noisy
-  oracle at two speeds). Threshold = the largest of the grid whose null pass rate is <= 3% under both
+  (top30, fix pass 4: null worlds on the REAL membership calendar - every symbol ever in top30 keeps
+  its real present and absent hours, trades and volumes, so the kernel's own rule reproduces the real
+  monthly schedule, usable flags and unit sizes; only prices are resampled, as open-relative ratios
+  cumulated from the real first open, a present zero-trade bar flat; null A draws one source day per
+  world day for all symbols, a symbol not fully active on it uses a personal fallback day, funding keeps
+  the real settlement calendar with the source day's rates; null B mirrors every symbol's demeaned path
+  with one coin per day, funding unchanged; three hash-locked cross-sectional families, the same
+  screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds
+  on the same worlds). Threshold = the largest of the grid whose null pass rate is <= 3% under both
   nulls in BOTH units, with oracle power at Sharpe 1.5 >= 50% everywhere.
 - The selftest scores kernel_noise_top30 through the full path as well.
 - Memory (R3, S4): before the pending row of a top30 trial the evaluator estimates stage 2's bytes from

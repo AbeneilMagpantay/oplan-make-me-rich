@@ -4,7 +4,8 @@ Free, uncounted exploration on the DEV region only. Data is loaded with the dev_
 nothing after 2022-06-30 23:00 is visible. The program is parsed and interpreted by the kernel
 (nothing is executed). By default stage 1 runs exactly as in the evaluator (truncation self-check
 and activity_dev); --quick checks only the DEV end. Not a trial. Each run appends one line to
-ledger/sandbox_log.jsonl. A program of unit top30 (KP-015) runs on the DEV universe panel
+ledger/sandbox_log.jsonl BEFORE it prints any metric (a kernel-fault exit writes its line too, status
+kernel_fault). A program of unit top30 (KP-015) runs on the DEV universe panel
 (omr.upipeline; membership from DEV bars only) with the universe engine; its benchmark is the
 equal-weight long of the in-play members.
 Data checks (R4): every stored file the sandbox reads is hashed at read and must equal its manifest
@@ -72,14 +73,23 @@ def main(argv=None):
         core = D.load_frames(C.CORE, D.PROGRAM_EXTRA, upto="dev_end")
         liq = D.load_liqs(C.CORE, upto="dev_end")
         s1 = pipeline.stage1(prog, params, core, core[C.BTC], np.random.default_rng(secrets.randbits(63)), opts)
-    print(f"SANDBOX (DEV only, {C.DEV_START} .. {C.DEV_END}) - not a trial")
-    print(f"program {prog.name}  kind {prog.kind}  params {params}  nodes {prog.node_count}")
-    print(f"canonical form (identity, with the semantic kernel hash and research_hash): {prog.canonical}")
+    try:
+        rel = path.resolve().relative_to(P.ROOT).as_posix()
+    except ValueError:
+        rel = path.name
+    row = {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "file": rel,
+           "source_sha256": ledger.sha256_file(path), "program": prog.name, "canonical": prog.canonical,
+           "params": params, "kernel_hash": kh, "stage1": "quick" if a.quick else "full"}
+    header = [f"SANDBOX (DEV only, {C.DEV_START} .. {C.DEV_END}) - not a trial",
+              f"program {prog.name}  kind {prog.kind}  params {params}  nodes {prog.node_count}",
+              f"canonical form (identity, with the semantic kernel hash and research_hash): {prog.canonical}"]
     if s1.get("code") == "kernel_fault":
-        print("KERNEL FAULT in the truncation self-check: report it; this program cannot be evaluated")
+        # U8: a kernel-fault exit writes its row too (before anything is printed)
+        ledger.append(P.SANDBOX_LOG, dict(row, status="kernel_fault", fault=s1.get("fault")))
+        for line in header:
+            print(line)
+        print(f"KERNEL FAULT in the {s1.get('fault')} self-check: report it; this program cannot be evaluated")
         sys.exit(2)
-    print(f"stage 1: truncation self-check OK ({s1['cuts']} cuts)  direction changes (DEV) {s1['direction_changes_dev']} "
-          f"(need >= {C.MIN_DIRECTION_CHANGES_DEV})  -> {'PASS' if s1['ok'] else 'activity_dev'}")
     W, grid = s1["W"], s1["grid"]
     if prog.unit != "core":
         fp = upipeline.Blocked(ud, "top30", fields=upipeline.program_fields(prog))
@@ -87,7 +97,6 @@ def main(argv=None):
         inplay = fp.inplay()
         k = inplay.sum(axis=1, keepdims=True)
         Wb = np.where(inplay, 1.0 / np.where(k > 0, k, 1), 0.0)
-        print(f"unit {prog.unit}: {len(fp.symbols)} symbols ever in the unit on DEV; lookback {prog.lookback_hours} h")
     else:
         mk = pipeline.Market(core, liq, grid, C.CORE)
         Wb = np.full_like(W, 1.0 / len(C.CORE))
@@ -96,6 +105,15 @@ def main(argv=None):
     daily = run.daily_returns()
     bench = mk.run(Wb, s, e).daily_returns()
     sm = S.summary(daily)
+    # U8: the log row is appended BEFORE any metric is printed
+    ledger.append(P.SANDBOX_LOG, dict(row, status="ok", dev_sharpe=sm["sharpe"], rebalances=run.n_rebalances,
+                                      direction_changes_dev=s1["direction_changes_dev"]))
+    for line in header:
+        print(line)
+    print(f"stage 1: truncation self-check OK ({s1['cuts']} cuts)  direction changes (DEV) {s1['direction_changes_dev']} "
+          f"(need >= {C.MIN_DIRECTION_CHANGES_DEV})  -> {'PASS' if s1['ok'] else 'activity_dev'}")
+    if prog.unit != "core":
+        print(f"unit {prog.unit}: {len(fp.symbols)} symbols ever in the unit on DEV; lookback {prog.lookback_hours} h")
     print(f"DEV Sharpe {sm['sharpe']:.3f}  PSR(0) {sm['psr0']:.3f}  total {sm['total_return']:.3f}  CAGR {sm['cagr']:.3f}  "
           f"maxDD {sm['max_drawdown']:.3f}  Calmar {sm['calmar']:.3f}")
     print(f"rebalances {run.n_rebalances}  avg gross {run.gross.mean():.3f}  avg net {run.net.mean():.3f}  "
@@ -104,16 +122,6 @@ def main(argv=None):
     print("year   days   return   sharpe   maxDD")
     for r in S.per_year(daily):
         print(f"{r['year']}  {r['n_days']:5d}  {r['return']:7.3f}  {r['sharpe']:7.3f}  {r['max_drawdown']:6.3f}")
-    try:
-        rel = path.resolve().relative_to(P.ROOT).as_posix()
-    except ValueError:
-        rel = path.name
-    ledger.append(P.SANDBOX_LOG, {"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                  "file": rel, "source_sha256": ledger.sha256_file(path), "program": prog.name,
-                                  "canonical": prog.canonical, "params": params, "kernel_hash": kh,
-                                  "dev_sharpe": sm["sharpe"], "rebalances": run.n_rebalances,
-                                  "direction_changes_dev": s1["direction_changes_dev"],
-                                  "stage1": "quick" if a.quick else "full"})
 
 
 if __name__ == "__main__":

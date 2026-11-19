@@ -516,10 +516,21 @@ def test_r3_refusal_is_uncounted_and_named(tmp_path, tmp_ledger, ud_dev, ud_full
 
 # ---------------------------------------------------------------- locality with holes (fix pass)
 
+class ConstUData(UP.UData):
+    """Constant membership: every symbol is a top30 member in every month whose 97-day read window lies inside
+    the supplied rows (the pre-fix-pass-4 calibration worlds; kept here as a test panel)."""
+
+    def membership(self, lo_ns: int, hi_ns: int) -> U.Membership:
+        months = U.month_starts(lo_ns, hi_ns)
+        known = np.array([m - U.SEASON_BLOCKS * U.DAY_NS >= lo_ns for m in months], dtype=bool)
+        syms = sorted(self.raw)
+        return U.Membership(months=months, known=known, ranked=[syms if k else [] for k in known],
+                            scores=[{} for _ in known])
+
+
 def _holed_universe(seed=3, n=14):
     from conftest import _pad
     from omr import datasets as D
-    from omr import ucalibrate as UC
     rng = np.random.default_rng(seed)
     tables = {}
     for i in range(n):
@@ -535,7 +546,7 @@ def _holed_universe(seed=3, n=14):
         tables[f"H{i:02d}USDT"] = raw
     btc = D.assemble_frame(tables["H00USDT"], D.PROGRAM_EXTRA)
     ud = UP.udata_from_tables(tables, btc, "2022-06-30 23:00")
-    return UC.ConstUData(acts=ud.acts, raw=ud.raw, btc=ud.btc, end=ud.end, until={})
+    return ConstUData(acts=ud.acts, raw=ud.raw, btc=ud.btc, end=ud.end, until={})
 
 
 @pytest.mark.parametrize("body", ["n = param(24, 12, 48)\nsignal = cs_rank(ret(close, n))\n",

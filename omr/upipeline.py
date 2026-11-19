@@ -94,7 +94,7 @@ def stage2_memory_estimate(prog: L.Program, sizes: dict) -> dict:
     activity rows, and per band and block [rows evaluated, engine rows, symbols]. Per band: the block caches
     (program columns over each block's rows with overlap, engine columns over its own rows), the stored
     tables of one block's symbols while it is built, the interpreter's values on the largest block, and the
-    whole-grid weights, raw signal, known channel and masks (G6's VAL targets for top30). The next30 band
+    whole-grid weights, raw signal, known channel and masks (G6's paired VAL books for top30). The next30 band
     (G8) is evaluated and released first, so the peak is the larger band plus the activity of every symbol."""
     T = int(sizes["rows"])
     f = program_fields(prog)
@@ -110,7 +110,9 @@ def stage2_memory_estimate(prog: L.Program, sizes: dict) -> dict:
         cache = sum(per) if band == "top30" else max(per)          # next30 blocks are streamed (one at a time)
         build = max(k for _, _, k in blocks) * int(sizes["symbol_rows_max"]) * 8 * n_tab
         work = max(k * re for re, _, k in blocks) * 8 * interp
-        glob = T * k_all * (18 if band == "top30" else 17) + (T // 2) * k_all * 24 * (band == "top30")
+        # G6 on the VAL half (U1, paired): the weights, the plain actual targets, A_k, S_k, the source rows, one
+        # engine target copy (6 float64) and four boolean masks per cell
+        glob = T * k_all * (18 if band == "top30" else 17) + (T // 2) * k_all * 52 * (band == "top30")
         out[band] = int(cache + build + work + glob)
     out["bytes"] = int(acts + max(out["top30"], out["next30"]))
     return out
@@ -277,6 +279,8 @@ class FullPanel:
             out[~self.active] = np.nan
             self._c[name] = out
             return out
+        if name == "funding.fresh":                    # U7: funding8h known only while funding is fresh (as R2)
+            return self.fresh
         ds = name.split(".")[0]
         if ds in ("funding", "mark_klines", "index_klines"):
             dset = D.get(ds)
@@ -383,6 +387,8 @@ def field_columns(fields: set) -> list:
         out += ["index_klines.close", "index_klines.new"]
     if "funding8h" in fields or "funding_mean" in fields:
         out += ["funding.rate", "funding.interval_hours", "funding.new"]
+    if "funding8h" in fields:
+        out += ["funding.fresh"]
     return out
 
 
@@ -417,6 +423,7 @@ class Blocked:
         self.plan = U.block_plan(self.mem, self.ns, band, months=months, boundaries=boundaries)
         self.bounds = [(x["b"], x["e"]) for x in self.plan]
         self.keep = keep                              # False: each block is built when used and then dropped
+        self.overlap_cells = 0
         self._blocks = [self._block(k) for k in range(len(self.plan))] if keep else None
 
     @property
@@ -479,28 +486,32 @@ class Blocked:
             return None
         return {"a": a, "z": hi, "syms": list(syms), "raw": rb[a - ev0:].copy(), "kn": kb[a - ev0:].copy()}
 
-    def _check_overlap(self, tail, ev0: int, lo: int, rb, kb, syms, lookback: int):
+    def _check_overlap(self, tail, ev0: int, lo: int, rb, kb, syms, lookback: int) -> int:
         """T1 (e) block_overlap: on the rows from this block's first evaluated row + lookback to the row before
-        the block that the previous block also evaluated, results equal bit for bit, by symbol."""
+        the block that the previous block also evaluated, results equal bit for bit, by symbol. Returns the
+        number of KNOWN cells compared (U8: a check over no known cell is vacuous, and visible as 0)."""
         if tail is None:
-            return
+            return 0
         a, z = max(tail["a"], ev0 + lookback), min(tail["z"], lo - 1)
         if a > z:
-            return
+            return 0
         prev = {x: j for j, x in enumerate(tail["syms"])}
         cur = {x: j for j, x in enumerate(syms)}
         pr, pk = tail["raw"][a - tail["a"]:z - tail["a"] + 1], tail["kn"][a - tail["a"]:z - tail["a"] + 1]
         cr, ck = rb[a - ev0:z - ev0 + 1], kb[a - ev0:z - ev0 + 1]
+        cells = 0
         for x in set(prev) | set(cur):
             if x in prev and x in cur:
                 i, j = prev[x], cur[x]
                 if not (np.array_equal(pk[:, i], ck[:, j]) and np.array_equal(pr[:, i], cr[:, j], equal_nan=True)):
                     raise PL.KernelFault("block_overlap")
+                cells += int(pk[:, i].sum())
             elif x in prev:
                 if pk[:, prev[x]].any():
                     raise PL.KernelFault("block_overlap")
             elif ck[:, cur[x]].any():
                 raise PL.KernelFault("block_overlap")
+        return cells
 
     def _runs(self, prog, params, r0: int, r1: int, literals=None, mem=None, from_row: int | None = None):
         """One RUN on rows r0..r1: yields (bp, lo, hi, ev0, W, raw, known, inplay) block by block, every block
@@ -509,15 +520,17 @@ class Blocked:
         mem = self.run_membership(r0, r1) if mem is None else mem
         L_ = int(prog.lookback_hours)
         tail = None
+        cells = 0
         for bp in self.blocks:
             lo, hi = max(bp.b, r0), min(bp.e - 1, r1)
             if lo > hi or (from_row is not None and hi < from_row):
                 continue
             ev0 = max(r0, bp.s)
             Wb, rb, kb, Pb = self._eval(bp, prog, params, ev0, hi, literals, mem)
-            self._check_overlap(tail, ev0, lo, rb, kb, bp.symbols, L_)
+            cells += self._check_overlap(tail, ev0, lo, rb, kb, bp.symbols, L_)
             tail = self._overlap_tail(bp.k, r0, hi, ev0, rb, kb, bp.symbols, L_)
             yield bp, lo, hi, ev0, Wb, rb, kb, Pb
+        self.overlap_cells = cells                    # U8: known cells the last completed run's check compared
 
     def unit(self, prog, params, start=None, upto=None, literals=None, inplay=False, raw_rows=None):
         """(W, raw, known[, inplay]) on rows start..upto over the global columns, stitched from the blocks of
@@ -702,6 +715,7 @@ def _stage1_u(prog, params, ud_dev, rng, opts, months) -> dict:
     if grid[-1] != T(C.DEV_END):
         raise PL.KernelFault("stage 1 universe data must end at DEV end")
     W, raw, kn = fp.unit(prog, params)
+    cells = int(fp.overlap_cells)                   # U8: known cells the base run's block_overlap check compared
     dev_s = int(grid.get_loc(T(C.DEV_START)))
     dev_e = len(grid) - 1
     pool = np.arange(dev_s - 1, dev_e)
@@ -709,15 +723,17 @@ def _stage1_u(prog, params, ud_dev, rng, opts, months) -> dict:
     for c in cuts:
         _, rt, kt = fp.unit(prog, params, upto=grid[c])
         if not (PL.same_rows(rt, raw[:c + 1]) and np.array_equal(kt, kn[:c + 1])):
-            return {"ok": False, "code": "kernel_fault", "fault": "truncation", "cuts": len(cuts)}
+            return {"ok": False, "code": "kernel_fault", "fault": "truncation", "cuts": len(cuts),
+                    "block_overlap_cells": cells}
     sc = start_cut_positions(fp, rng, opts.start_cuts, C.START_CUT_SPAN, symbol_cut=True)
     if start_cut_check_u(prog, params, fp, raw, kn, sc) is not None:
-        return {"ok": False, "code": "kernel_fault", "fault": "start_cut", "cuts": len(cuts)}
+        return {"ok": False, "code": "kernel_fault", "fault": "start_cut", "cuts": len(cuts),
+                "block_overlap_cells": cells}
     n_dev = PL.direction_changes(W, dev_s - 1, dev_e - 1)
     ok = n_dev >= C.MIN_DIRECTION_CHANGES_DEV
     return {"ok": ok, "code": None if ok else "activity_dev", "cuts": len(cuts), "start_cuts": len(sc),
             "direction_changes_dev": n_dev, "grid": grid, "W": W, "raw": raw, "known": kn,
-            "symbols": list(fp.symbols)}
+            "symbols": list(fp.symbols), "block_overlap_cells": cells}
 
 
 def screen_dev_u(prog: L.Program, params: dict, fp_dev) -> dict:
@@ -806,6 +822,53 @@ def evaluate_weights_u(W: np.ndarray, fp, seed: int, opts: PL.Opts, handle, p_ma
                   variants=[], g8=None, n_params=0)
 
 
+def _seq_rowsum(x: np.ndarray) -> np.ndarray:
+    """Row sums, sequential in column order (not pairwise)."""
+    return np.cumsum(x, axis=1)[:, -1] if x.shape[1] else np.zeros(x.shape[0])
+
+
+def g6_books(Wv0: np.ndarray, D_: np.ndarray, ok: np.ndarray, k: int) -> tuple:
+    """U1: the paired books of shift k on the VAL window (row i decided at val_s-1+i, executed at val_s+i).
+    Source row i' = (i - k) mod L. mask[i] = ok[i] and D[i'] (tradable now and in play at the source row).
+    A_k = the actual weights on mask, S_k = the source row's weights on mask (0 elsewhere). A row whose own
+    set (A: ok[i]; S: D[i']) has a name outside mask is re-centred: every mask name gets the constant
+    (net of the unmasked own row - net of the masked row) / (number of mask names), sums sequential in
+    column order; no gross rescaling. A row with fewer than UNIVERSE_MIN_CS mask names is flat in both."""
+    L_ = len(Wv0)
+    src = (np.arange(L_) - k) % L_
+    Ws, Ds = Wv0[src], D_[src]
+    mask = ok & Ds
+    nm = mask.sum(axis=1)
+    books = []
+    for w, own in ((Wv0, ok), (Ws, Ds)):
+        b = np.where(mask, w, 0.0)
+        rc = np.nonzero((own & ~mask).any(axis=1) & (nm > 0))[0]
+        if len(rc):
+            un = _seq_rowsum(np.where(own[rc], w[rc], 0.0))
+            ms = _seq_rowsum(b[rc])
+            c = (un - ms) / nm[rc]
+            b[rc] = np.where(mask[rc], b[rc] + c[:, None], 0.0)
+        b[nm < C.UNIVERSE_MIN_CS] = 0.0
+        books.append(b)
+    return books[0], books[1]
+
+
+def g6_books_tie(A_k: np.ndarray, S_k: np.ndarray) -> bool:
+    """R-B (1): the shifted book equals the actual book of its pair within G6_PAIRED_BOOK_TIE on every cell."""
+    return bool(np.all(np.abs(S_k - A_k) <= C.G6_PAIRED_BOOK_TIE))
+
+
+def g6_paired_p(actual_sharpes, shifted_sharpes, ties=None) -> float:
+    """p = (1 + number of k with S_k >= A_k) / (N + 1): a tie (R-B (1)) counts; otherwise S_k >= A_k when
+    Sharpe(S_k) >= Sharpe(A_k) - G6_PAIRED_SHARPE_MARGIN (R-B (2)). Both can only raise p."""
+    a = np.asarray(actual_sharpes, dtype=np.float64)
+    s = np.asarray(shifted_sharpes, dtype=np.float64)
+    t = np.zeros(len(s), dtype=bool) if ties is None else np.asarray(ties, dtype=bool)
+    with np.errstate(invalid="ignore"):
+        ge = t | (s >= a - C.G6_PAIRED_SHARPE_MARGIN)       # -inf (liquidated) on both sides counts as >=
+    return (1 + int(np.sum(ge))) / (len(s) + 1)
+
+
 def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_params) -> dict:
     mk = fp
     dev_s, val_s, val_e = mk.pos(C.DEV_START), mk.pos(C.VAL_START), mk.pos(C.VAL_END)
@@ -850,10 +913,12 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
         g["G5"] = {"pass": True, "value": None, "g5_vacuous": True}
     L_ = val_e - val_s + 1
     Wv0 = W[val_s - 1: val_e].copy()
-    # G6 mask: a weight decided at row j-1 lands on bar j; it counts only if the symbol is in play at j-1
-    # and has a bar at j (the in-play mask of the actual calendar)
+    # G6 (U1): row i = decision row val_s-1+i, executed at val_s+i. D = in play at the decision row; ok = D and
+    # a usable bar at the execution row. Each shift k is a PAIRED test on the names common to the actual row
+    # and the shifted row's source (g6_books); the plain actual run is reused when no row of A_k differs.
     inplay = fp.inplay()
-    ok = inplay[val_s - 1: val_e] & fp.eng_rows("av", val_s, val_e)
+    D_ = inplay[val_s - 1: val_e]
+    ok = D_ & fp.eng_rows("av", val_s, val_e)
 
     def vrun(tgt):
         run = fp.run_targets(np.where(ok, tgt, 0.0), val_s, val_e)
@@ -861,10 +926,19 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
             return float("-inf")
         return S.sharpe(run.daily_returns().to_numpy())
 
-    actual = vrun(Wv0)
+    plain = np.where(ok, Wv0, 0.0)
+    actual = vrun(plain)                                  # the unmasked actual (kept in the detail)
     offs = PL.perm_offsets(L_, rng_perm, opts.perm_n)
-    shifted = np.array([vrun(np.roll(Wv0, int(k), axis=0)) for k in offs])
-    p = PL.g6_p(actual, shifted)
+    a_sh, s_sh = np.zeros(len(offs)), np.zeros(len(offs))
+    ties = np.zeros(len(offs), dtype=bool)
+    for j, k in enumerate(offs):
+        A_k, S_k = g6_books(Wv0, D_, ok, int(k))
+        a_sh[j] = actual if np.array_equal(A_k, plain) else vrun(A_k)
+        ties[j] = g6_books_tie(A_k, S_k)                   # R-B (1): no second engine run for a tie
+        s_sh[j] = a_sh[j] if ties[j] else vrun(S_k)
+        del A_k, S_k
+    p = g6_paired_p(a_sh, s_sh, ties)
+    shifted = s_sh
     g["G6"] = {"pass": (bool(p <= p_max + 1e-12) if p_max is not None else None), "value": p, "threshold": p_max}
     buckets = []
     for name, a, b in C.G7_BUCKETS:
@@ -892,7 +966,10 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
            "daily_returns": daily, "n_params": n_params}
     if opts.keep_detail:
         fin = shifted[np.isfinite(shifted)]
+        afin = a_sh[np.isfinite(a_sh)]
         res["detail"] = {"permutation": {"actual_val_sharpe_restarted": actual, "n": int(len(offs)), "p": p,
+                                         "paired": True, "ties": int(ties.sum()),
+                                         "actual_common_mean": float(np.mean(afin)) if len(afin) else None,
                                          "shifted_mean": float(np.mean(fin)) if len(fin) else None,
                                          "shifted_p95": float(np.percentile(fin, 95)) if len(fin) else None},
                          "per_year": PL.dev_only_years(S.per_year(daily)), "buckets": PL.dev_only_buckets(buckets),

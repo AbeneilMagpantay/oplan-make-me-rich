@@ -1,35 +1,44 @@
 """Universe calibration (unit top30, KP-015):
 
     python -m omr.ucalibrate [--worlds 100] [--oracle-worlds 100] [--workers 4]
-    python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic panel; never sealable)
+    python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic universe; never sealable)
 
 The core calibration (omr.calibrate) is unchanged. The seal (omr.kernel_lock seal) applies decide_both:
 the LARGEST G6 threshold whose null pass rate is <= NULL_PASS_MAX under BOTH nulls IN BOTH UNITS, with
 oracle power at true Sharpe 1.5 >= POWER_MIN for both speeds, both nulls, both units.
 
-PANEL: the 30 crypto perpetuals with the most active hours between DEV start and VAL end (ties by name),
-read with a logged calibration handle. POOL: the UTC days from the first day on which all 30 have complete
-history to VAL end. Membership in the null worlds is CONSTANT: all 30 symbols are top30 members in every
-month whose 97-day read window lies inside the world (so the unit is unknown for the first months, as in
-real data, and start cuts behave as in real data).
-NULL A (bootstrap): every world day draws one pool day iid, the SAME source day for all 30 symbols, so the
-  cross-sectional correlation of that day survives; each day keeps its intraday bars and funding.
-NULL B (sign-flip): the pool in real order, aligned so the world's last day is the pool's last day (days
-  before the pool start are drawn iid from the pool); per day ONE fair coin shared by all 30 symbols
-  mirrors every symbol's demeaned hourly log-return path; funding unchanged.
-Mark and index bars of the null worlds are the synthetic last-price bars (no universe family reads them;
-the liquidation check then uses last-price wicks, which are wider than mark wicks: conservative).
-Inactive hours of a source day stay inactive (trades 0) in the world.
+WORLDS ON THE REAL MEMBERSHIP CALENDAR (fix pass 4, U2). PANEL: every symbol ever a top30 member from
+UNIVERSE_START to VAL end (the kernel's own rule on the real bars, read with the logged calibration
+handle). Every symbol keeps its REAL rows: which hours are present or absent, trades, volume, quote volume
+and taker volumes exactly as recorded, so the kernel's own membership rule reproduces the real monthly
+schedule, usable flags and unit sizes in every world (removing symbols never ranked 1 to 30 cannot change
+ranks 1 to 30). Only PRICES are resampled: open-relative ratios (open / previous close, high / open,
+low / open, close / open) cumulated from the symbol's real first open over its own present rows; a present
+zero-trade bar is flat; an absent bar stays absent.
+NULL A (bootstrap): every world day draws one source day iid (pool: the days from UNIVERSE_START to VAL end),
+  shared by all symbols; a symbol uses its own bars of that source day when all 24 of its hours are active
+  there, otherwise a personal fallback day drawn iid from its own fully active days by a per-(world, symbol)
+  generator. Funding keeps the settlement times and intervals of the real day and takes the rates of the
+  source day used for that symbol, in order (cycled if the counts differ; a source day without a
+  settlement is replaced by a day with one, drawn by the same generator): funding persistence is
+  destroyed, the calendar kept.
+NULL B (sign-flip): the real order; per day ONE fair coin shared by all symbols mirrors each symbol's
+  demeaned hourly log-return path; funding unchanged.
+Mark and index bars of the null worlds are the synthetic last-price bars of the present rows (no universe
+family reads them; the liquidation check then uses last-price wicks, wider than mark wicks: conservative).
 
 Families: three hash-locked cross-sectional programs (omr/programs/ucal_*.omr): momentum, short-term
 reversal, funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
 the activity rule; the activity passer with the best DEV Sharpe gets the full stage 1 and is SUBMITTED to
-stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds).
-NOISY ORACLE (cross-sectional): per symbol x = rho * z + sqrt(1 - rho^2) * eps, z = the symbol's future
-k-day log return minus the panel mean, standardised per symbol; weights = (x - mean x) / sum |x - mean x|
-over the in-play symbols, re-decided every k days (decided at the 23:00 bar, executed at the next 00:00
-open). Speeds k = 1 and 20 days; rho tuned on the power worlds until the achieved mean VAL Sharpe is
-within RHO_TOL of the level (1.0 and 1.5).
+stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Everything runs on the
+PRODUCTION block path (six-month blocks).
+NOISY ORACLE (cross-sectional, on the same worlds): per symbol x = rho * z + sqrt(1 - rho^2) * eps, z = the
+symbol's future k-day log return minus the cross-sectional mean of the symbols with a return, standardised
+per symbol; weights = (x - mean x) / sum |x - mean x| over the in-play symbols, re-decided every k days
+(decided at the 23:00 bar, executed at the next 00:00 open). Speeds k = 1 and 20 days; rho tuned on the
+power worlds until the achieved mean VAL Sharpe is within RHO_TOL of the level (1.0 and 1.5).
+The source arrays are built once and shared with the workers (multiprocessing shared memory); each world
+builds a symbol's tables only when a block needs them.
 """
 from __future__ import annotations
 
@@ -39,6 +48,7 @@ import json
 import math
 import multiprocessing as mp
 import time
+from multiprocessing import shared_memory
 from pathlib import Path
 
 import numpy as np
@@ -58,14 +68,14 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
-N_PANEL = C.UNIVERSE_TOP
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
 HOUR_NS = U.HOUR_NS
 DAY_NS = U.DAY_NS
 OTHER = ["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]
+KEEP_BEFORE_DAYS = 30                       # world rows kept before UNIVERSE_START (as-of seeds, as load_udata)
 
 
 def T(s) -> pd.Timestamp:
@@ -78,134 +88,294 @@ def family_path(name: str) -> Path:
     return P.PROGRAMS_DIR / f"{name}.omr"
 
 
-# ---------------------------------------------------------------- source
+# ---------------------------------------------------------------- source (the real panel)
 
-def choose_panel(acts: dict) -> list:
-    """The N_PANEL symbols with the most active hours in DEV+VAL (ties by name)."""
-    lo, hi = T(C.DEV_START).value, T(C.VAL_END).value
-    n = {}
-    for s, a in acts.items():
-        i0, i1 = U.rows_in(a, lo, hi)
-        n[s] = int(a.active[i0:i1].sum())
-    return sorted(sorted(n), key=lambda s: -n[s])[:N_PANEL]
+def panel_symbols(acts: dict) -> list:
+    """Every symbol ever a top30 member between UNIVERSE_START and VAL end (the kernel's own rule)."""
+    mem = U.membership(acts, list(acts), T(C.UNIVERSE_START).value, T(C.VAL_END).value)
+    return mem.ever("top30")
+
+
+_ROW_F = ("g", "hr", "lr", "cr") + tuple(OTHER)
+_ROW_B = ("gap", "act")
+_ACT = ("a_active", "a_qv", "a_usable")
+_FUND = ("f_ns", "f_iv", "f_rate", "f_offms")
+_DAY = ("full", "fd_off")
 
 
 class USource:
-    """Whole UTC pool days of the panel symbols as open-relative ratios (as omr.calibrate.Source)."""
+    """The panel's real rows as concatenated arrays (shareable): per row the price ratios, the volume
+    columns, gap and active flags; per symbol its Activity (as omr.universe.activity_of on the real table),
+    its funding settlements and, per local day, whether all 24 hours are active and the day's settlements."""
 
-    def __init__(self, tables: dict):
-        self.symbols = sorted(tables)
-        end_day = T(C.VAL_END).normalize()
-        first = max((tables[s]["klines"].index[0] + pd.Timedelta(hours=23)).normalize() + pd.Timedelta(days=1)
-                    for s in self.symbols)
-        self.pool_start = first
-        days = pd.date_range(first, end_day, freq="D").as_unit("ns")
-        self.nd = len(days)
-        if self.nd < 60:
-            raise RuntimeError("the calibration pool is shorter than 60 days")
-        self.days = days
-        self.sym = {}
-        a, b = first, T(C.VAL_END)
-        for s in self.symbols:
-            kl = tables[s]["klines"]
-            seg = kl.loc[a:b]
-            if len(seg) != self.nd * 24:
-                raise RuntimeError(f"{s}: the pool is not covered by whole days")
-            o, h, lo, c = (seg[k].to_numpy(dtype=np.float64) for k in ("open", "high", "low", "close"))
-            pc = np.r_[kl.loc[:a - pd.Timedelta(hours=1), "close"].iloc[-1], c[:-1]]
-            gap = seg["is_gap"].to_numpy(dtype=bool) | ~(seg["trades"].to_numpy(dtype=np.float64) > 0)
+    def __init__(self, meta: dict, arr: dict):
+        self.meta, self.arr = meta, arr
+        self.symbols = [m["name"] for m in meta["symbols"]]
+        self.k = {s: i for i, s in enumerate(self.symbols)}
+        self.D0, self.ND = int(meta["D0"]), int(meta["ND"])
+        self.until = {m["name"]: m["until"] for m in meta["symbols"]}
+
+    @classmethod
+    def build(cls, symbols, get_tables, until: dict | None = None, btc_symbol: str | None = None) -> "USource":
+        """get_tables(symbol) -> {"klines", "funding"} (one symbol in memory at a time)."""
+        until = dict(until or {})
+        cap = T(C.VAL_END)
+        parts = {n: [] for n in _ROW_F + _ROW_B + _ACT + _FUND + _DAY}
+        metas, off, aoff, foff, doff, full_off = [], 0, 0, 0, 0, 0
+        for s in sorted(symbols):
+            t = get_tables(s)
+            kl = t["klines"][t["klines"].index <= cap]
+            fu = t["funding"]
+            fu = fu[D.get("funding").visible_from(fu) <= cap]
+            ns = data.ns_int(kl.index)
+            n = len(ns)
+            gap = kl["is_gap"].to_numpy(dtype=bool)
+            tr = kl["trades"].to_numpy(dtype=np.float64)
+            act = (~gap) & np.isfinite(tr) & (tr > 0)
+            o, h, lo, c = (kl[x].to_numpy(dtype=np.float64) for x in ("open", "high", "low", "close"))
+            pc = np.r_[np.nan, c[:-1]]
             with np.errstate(divide="ignore", invalid="ignore"):
-                lr = np.log(c / pc)
-            fu = tables[s]["funding"].loc[a:b]
-            ft = data.ns_int(fu.index)
-            fday = ((ft - a.value) // DAY_NS).astype(np.int64)
-            order = np.argsort(fday, kind="mergesort")
-            fday = fday[order]
-            self.sym[s] = {"g": (o / pc).reshape(-1, 24), "hr": (h / o).reshape(-1, 24), "lr": (lo / o).reshape(-1, 24),
-                           "cr": (c / o).reshape(-1, 24), "other": seg[OTHER].to_numpy(dtype=np.float64).reshape(-1, 24, 5),
-                           "gap": gap.reshape(-1, 24), "m": float(np.mean(lr[np.isfinite(lr) & ~gap])) if (~gap).any() else 0.0,
-                           "p0": float(pc[0]), "fhour": ((ft[order] % DAY_NS) // HOUR_NS).astype(np.int64),
-                           "frate": fu["rate"].to_numpy()[order], "fint": fu["interval_hours"].to_numpy()[order],
-                           "offs": np.searchsorted(fday, np.arange(self.nd + 1))}
+                g = np.where(act, o / pc, 1.0)
+                g[0] = 1.0
+                hr, lr, cr = np.where(act, h / o, 1.0), np.where(act, lo / o, 1.0), np.where(act, c / o, 1.0)
+                lrt = np.log(g * cr)
+            ok = act & np.isfinite(lrt)
+            ok[0] = False
+            fv = data.ns_int(D.get("funding").visible_from(fu))
+            order = np.argsort(fv, kind="mergesort")
+            fv = fv[order]
+            day_r = ns // DAY_NS
+            sd0 = int(min(day_r[0], fv[0] // DAY_NS if len(fv) else day_r[0]))
+            sd1 = int(max(day_r[-1], fv[-1] // DAY_NS if len(fv) else day_r[-1]))
+            nd = sd1 - sd0 + 1
+            full = np.bincount(day_r[act] - sd0, minlength=nd)[:nd] == 24
+            fd_off = np.searchsorted(fv // DAY_NS - sd0, np.arange(nd + 1), side="left").astype(np.int64)
+            a = U.activity_of(kl, until.get(s))
+            for name, v in zip(_ROW_F, (g, hr, lr, cr) + tuple(kl[x].to_numpy(dtype=np.float64) for x in OTHER)):
+                parts[name].append(v)
+            parts["gap"].append(gap)
+            parts["act"].append(act)
+            parts["a_active"].append(a.active)
+            parts["a_qv"].append(a.qv)
+            parts["a_usable"].append(a.usable)
+            parts["f_ns"].append(fv)
+            for name, col in (("f_iv", "interval_hours"), ("f_rate", "rate"), ("f_offms", "offset_ms")):
+                parts[name].append(fu[col].to_numpy(dtype=np.float64)[order])
+            parts["full"].append(full)
+            parts["fd_off"].append(fd_off)
+            metas.append({"name": s, "start": int(ns[0]), "n": n, "off": off, "first_open": float(o[0]),
+                          "m": float(np.mean(lrt[ok])) if ok.any() else 0.0, "sd0": sd0, "nd": nd, "doff": doff,
+                          "full_off": full_off, "f_off": foff, "f_n": int(len(fv)), "a_start": int(a.start),
+                          "a_n": int(len(a.active)), "a_off": aoff, "until": until.get(s)})
+            off, aoff, foff = off + n, aoff + len(a.active), foff + len(fv)
+            doff, full_off = doff + nd + 1, full_off + nd
+            del t, kl, fu
+        D0 = min(m["sd0"] for m in metas)
+        ND = int(T(C.VAL_END).value // DAY_NS) - D0 + 1
+        arr = {k: np.concatenate(v) if v else np.zeros(0) for k, v in parts.items()}
+        names = [m["name"] for m in metas]
+        btc = btc_symbol if btc_symbol in names else (C.BTC if C.BTC in names else names[0])
+        meta = {"symbols": metas, "D0": D0, "ND": ND, "pool_lo": int(T(C.UNIVERSE_START).value // DAY_NS) - D0,
+                "btc": btc}
+        return cls(meta, arr)
+
+    # ---- sharing with the workers
+    def to_shared(self) -> tuple:
+        """(spec, blocks): the arrays copied into shared-memory blocks; the caller keeps `blocks` open while
+        workers run and closes / unlinks them afterwards."""
+        spec, blocks = {"meta": self.meta, "arrays": {}}, []
+        for k, v in self.arr.items():
+            v = np.ascontiguousarray(v)
+            shm = shared_memory.SharedMemory(create=True, size=max(1, v.nbytes))
+            np.ndarray(v.shape, dtype=v.dtype, buffer=shm.buf)[...] = v
+            spec["arrays"][k] = (shm.name, v.shape, v.dtype.str)
+            blocks.append(shm)
+        return spec, blocks
+
+    @classmethod
+    def from_shared(cls, spec) -> tuple:
+        arr, blocks = {}, []
+        for k, (name, shape, dtype) in spec["arrays"].items():
+            shm = shared_memory.SharedMemory(name=name)
+            a = np.ndarray(tuple(shape), dtype=np.dtype(dtype), buffer=shm.buf)
+            a.flags.writeable = False
+            arr[k], blocks = a, blocks + [shm]
+        return cls(spec["meta"], arr), blocks
+
+    # ---- per symbol
+    def sym(self, s: str) -> dict:
+        return self.meta["symbols"][self.k[s]]
+
+    def rows(self, s: str, name: str) -> np.ndarray:
+        m = self.sym(s)
+        return self.arr[name][m["off"]:m["off"] + m["n"]]
+
+    def activity(self, s: str, cap_ns: int) -> U.Activity:
+        """The symbol's real Activity cut at cap (a prefix: usable_of looks backwards only)."""
+        m = self.sym(s)
+        n = m["a_n"] if m["a_n"] == 0 else max(0, min(m["a_n"], (cap_ns - m["a_start"]) // HOUR_NS + 1))
+        sl = slice(m["a_off"], m["a_off"] + n)
+        return U.Activity(m["a_start"] if n else 0, self.arr["a_active"][sl], self.arr["a_qv"][sl],
+                          self.arr["a_usable"][sl])
+
+    def acts(self, cap_ns: int) -> dict:
+        out = {}
+        for s in self.symbols:
+            a = self.activity(s, cap_ns)
+            if len(a.active):
+                out[s] = a
+        return out
 
 
-def _synth_tables(v: dict, src: np.ndarray, flip: np.ndarray, start: pd.Timestamp) -> dict:
-    nd = len(src)
-    g, hr, lr, cr = (v[k][src].copy() for k in ("g", "hr", "lr", "cr"))
-    F = flip[:, None]
-    g = np.where(F, np.exp(2 * v["m"]) / g, g)
-    hr, lr = np.where(F, 1.0 / lr, hr), np.where(F, 1.0 / hr, lr)
-    cr = np.where(F, 1.0 / cr, cr)
-    g, hr, lr, cr = (x.reshape(-1) for x in (g, hr, lr, cr))
-    step = g * cr
-    prev_c = v["p0"] * np.r_[1.0, np.cumprod(step)[:-1]]
-    o = prev_c * g
-    idx = pd.date_range(start, periods=nd * 24, freq="h").as_unit("ns")
-    idx.name = "open_time"
-    kl = pd.DataFrame({"open": o, "high": o * hr, "low": o * lr, "close": o * cr}, index=idx)
-    oth = v["other"][src].reshape(nd * 24, 5)
-    gap = v["gap"][src].reshape(-1)
-    for j, c in enumerate(OTHER):
-        kl[c] = np.where(gap, 0.0, oth[:, j])
-    kl["is_gap"] = gap
-    mark = kl[["open", "high", "low", "close"]].copy()
-    mark["samples"] = 3600.0
-    mark = mark[~gap]
-    sel = np.concatenate([np.arange(v["offs"][p], v["offs"][p + 1]) for p in src])
-    day_of = np.concatenate([np.full(v["offs"][p + 1] - v["offs"][p], i) for i, p in enumerate(src)])
-    ft = start.value + day_of * DAY_NS + v["fhour"][sel] * HOUR_NS
-    fu = pd.DataFrame({"rate": v["frate"][sel], "interval_hours": v["fint"][sel], "offset_ms": 0.0},
-                      index=pd.DatetimeIndex(pd.to_datetime(ft, unit="ns", utc=True)).as_unit("ns"))
-    fu.index.name = "settle_time"
-    return {"klines": kl, "funding": fu, "mark_klines": mark, "index_klines": mark}
+# ---------------------------------------------------------------- null worlds
+
+class UWorld:
+    """The draws of one null world (shared by all symbols); a symbol's tables are built on demand."""
+
+    def __init__(self, src: USource, null: str, seed: int):
+        if null not in ("A", "B"):
+            raise ValueError(null)
+        self.src, self.null, self.seed = src, null, int(seed)
+        rng = np.random.default_rng([seed, 21 if null == "A" else 22])
+        ND = src.ND
+        if null == "A":
+            self.pick = rng.integers(src.meta["pool_lo"], ND, ND)
+            self.flip = np.zeros(ND, dtype=bool)
+        else:
+            self.pick = np.arange(ND)
+            self.flip = rng.uniform(size=ND) < 0.5
+        self.fallback_days = 0
+        self._cache = {}
+
+    def source_days(self, s: str) -> np.ndarray:
+        """Per local day of the symbol: the GLOBAL source day it uses (null A: the world's draw if all 24 of
+        the symbol's hours are active there, else its personal fallback; null B: the day itself)."""
+        src, m = self.src, self.src.sym(s)
+        shift = m["sd0"] - src.D0
+        gd = np.arange(m["nd"]) + shift
+        if self.null == "B":
+            return gd
+        full = src.arr["full"][m["full_off"]:m["full_off"] + m["nd"]]
+        p = self.pick[gd]
+        lp = p - shift
+        inside = (lp >= 0) & (lp < m["nd"])
+        ok = inside & full[np.clip(lp, 0, m["nd"] - 1)]
+        fulld = np.nonzero(full)[0] + shift
+        if len(fulld) == 0:                                        # no fully active day: its own days
+            return gd
+        rs = np.random.default_rng([self.seed, 21, self.src.k[s]])
+        fb = fulld[rs.integers(0, len(fulld), m["nd"])]
+        self.fallback_days += int((~ok).sum())
+        return np.where(ok, p, fb)
+
+    def tables(self, s: str, cap_ns: int | None = None, trim: bool = True) -> dict:
+        key = (s, cap_ns, trim)
+        if key in self._cache:
+            return self._cache[key]
+        out = self._build(s, cap_ns, trim)
+        if len(self._cache) >= 6:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[key] = out
+        return out
+
+    def _build(self, s: str, cap_ns, trim: bool) -> dict:
+        src, m = self.src, self.src.sym(s)
+        n, start = m["n"], m["start"]
+        g, hr, lr, cr = (src.rows(s, x) for x in ("g", "hr", "lr", "cr"))
+        gap, act = src.rows(s, "gap"), src.rows(s, "act")
+        r = np.arange(n, dtype=np.int64)
+        tns = start + HOUR_NS * r
+        ld = tns // DAY_NS - m["sd0"]
+        hour = (tns // HOUR_NS) % 24
+        sd = self.source_days(s)
+        shift = m["sd0"] - src.D0
+        if self.null == "A":
+            ai = np.nonzero(act)[0]
+            sr = ((sd[ld[ai]] + src.D0) * DAY_NS + hour[ai] * HOUR_NS - start) // HOUR_NS
+            G, HR, LR, CR = (np.ones(n) for _ in range(4))
+            G[ai], HR[ai], LR[ai], CR[ai] = g[sr], hr[sr], lr[sr], cr[sr]
+        else:
+            F = self.flip[ld + shift] & act
+            G = np.where(F, np.exp(2.0 * m["m"]) / g, g)
+            HR, LR = np.where(F, 1.0 / lr, hr), np.where(F, 1.0 / hr, lr)
+            CR = np.where(F, 1.0 / cr, cr)
+        G = np.where(act, G, 1.0)
+        G[0] = 1.0                                                  # cumulated from the real first open
+        HR, LR, CR = np.where(act, HR, 1.0), np.where(act, LR, 1.0), np.where(act, CR, 1.0)
+        c = m["first_open"] * np.cumprod(G * CR)
+        o = np.r_[m["first_open"], c[:-1]] * G
+        idx = pd.DatetimeIndex(pd.to_datetime(tns, unit="ns", utc=True)).as_unit("ns")
+        idx.name = "open_time"
+        kl = pd.DataFrame({"open": o, "high": o * HR, "low": o * LR, "close": c}, index=idx)
+        for x in OTHER:
+            kl[x] = src.rows(s, x)
+        kl["is_gap"] = np.asarray(gap, dtype=bool)
+        mark = kl.loc[~kl["is_gap"].to_numpy(), ["open", "high", "low", "close"]].copy()
+        mark["samples"] = 3600.0
+        fu = self._funding(s, sd)
+        keep_lo = T(C.UNIVERSE_START).value - KEEP_BEFORE_DAYS * DAY_NS if trim else None
+        if keep_lo is not None or cap_ns is not None:
+            lo = keep_lo if keep_lo is not None else -(2 ** 62)
+            hi = cap_ns if cap_ns is not None else 2 ** 62
+            kl = kl[(kl.index.asi8 >= lo) & (kl.index.asi8 <= hi)]
+            mark = mark[(mark.index.asi8 >= lo) & (mark.index.asi8 <= hi)]
+            fu = fu[fu.index.asi8 <= hi]
+        return {"klines": kl, "funding": fu, "mark_klines": mark, "index_klines": mark}
+
+    def _funding(self, s: str, sd: np.ndarray) -> pd.DataFrame:
+        src, m = self.src, self.src.sym(s)
+        fsl = slice(m["f_off"], m["f_off"] + m["f_n"])
+        fns, iv, rate, offms = (src.arr[x][fsl] for x in _FUND)
+        if self.null == "A" and len(fns):
+            doff = m["doff"]
+            fd = np.asarray(src.arr["fd_off"][doff:doff + m["nd"] + 1], dtype=np.int64)
+            cnt = fd[1:] - fd[:-1]
+            ld = fns // DAY_NS - m["sd0"]
+            kk = np.arange(len(fns)) - fd[ld]                        # its place in its real day
+            shift = m["sd0"] - src.D0
+            sl = sd[ld] - shift                                     # the source day (local)
+            sl_ok = (sl >= 0) & (sl < m["nd"])
+            sl = np.clip(sl, 0, m["nd"] - 1)
+            bad = ~sl_ok | (cnt[sl] == 0)
+            if bad.any():
+                have = np.nonzero(cnt > 0)[0]
+                rs = np.random.default_rng([self.seed, 23, src.k[s]])
+                alt = have[rs.integers(0, len(have), m["nd"])]
+                sl = np.where(bad, alt[ld], sl)
+            rate = rate[fd[sl] + kk % cnt[sl]]
+        idx = pd.DatetimeIndex(pd.to_datetime(np.asarray(fns), unit="ns", utc=True)).as_unit("ns")
+        idx.name = "settle_time"
+        return pd.DataFrame({"rate": np.asarray(rate, dtype=np.float64), "interval_hours": np.asarray(iv),
+                             "offset_ms": np.asarray(offms)}, index=idx)
 
 
-class ConstUData(UP.UData):
-    """Null-world universe data: every panel symbol is a top30 member in every month whose 97-day read
-    window lies inside the supplied rows (constant membership)."""
-
-    def membership(self, lo_ns: int, hi_ns: int) -> U.Membership:
-        months = U.month_starts(lo_ns, hi_ns)
-        known = np.array([m - U.SEASON_BLOCKS * DAY_NS >= lo_ns for m in months], dtype=bool)
-        syms = sorted(self.raw)
-        return U.Membership(months=months, known=known, ranked=[syms if k else [] for k in known],
-                            scores=[{} for _ in known])
-
-
-def build_uworld(src: USource, null: str, seed: int, end: str = C.VAL_END) -> ConstUData:
-    rng = np.random.default_rng([seed, 21 if null == "A" else 22])
-    start = T(C.UNIVERSE_START)
-    cal = pd.date_range(start, T(C.VAL_END).normalize(), freq="D")
-    n = len(cal)
-    if null == "A":
-        pick = rng.integers(0, src.nd, n)
-        flips = np.zeros(n, dtype=bool)
-    elif null == "B":
-        k = min(n, src.nd)
-        pick = np.r_[rng.integers(0, src.nd, n - k), np.arange(src.nd - k, src.nd)]
-        flips = rng.uniform(size=n) < 0.5
-    else:
-        raise ValueError(null)
-    tables = {s: _synth_tables(src.sym[s], pick, flips, start) for s in src.symbols}
-    b = src.symbols[0]
-    btc = D.assemble_frame(tables[b], D.PROGRAM_EXTRA)
-    ud = UP.udata_from_tables(tables, btc, end)
-    return ConstUData(acts=ud.acts, raw=ud.raw, btc=ud.btc, end=ud.end, until={})
+def world_udata(src: USource, null: str, seed: int, end: str = C.VAL_END, world: UWorld | None = None) -> UP.UData:
+    """A null world as universe data: the real Activity of every panel symbol (so the kernel's own rule gives
+    the real membership), price tables built per symbol when a block needs them."""
+    w = world if world is not None else UWorld(src, null, seed)
+    cap = T(end)
+    ud = UP.UData(acts=src.acts(cap.value), raw={}, btc=None, end=cap, until=dict(src.until),
+                  loader=lambda s: w.tables(s, cap.value))
+    ud.loadable = frozenset(src.symbols)
+    ud.btc = D.assemble_frame(w.tables(src.meta["btc"], cap.value, trim=False), D.PROGRAM_EXTRA)
+    ud.world = w
+    return ud
 
 
-def dev_view(ud: ConstUData) -> ConstUData:
-    cap = T(C.DEV_END)
-    raw = {s: {d: (t[t.index <= cap] if d != "funding" else t[t.index.floor("h") <= cap]) for d, t in r.items()}
-           for s, r in ud.raw.items()}
-    acts = {s: U.activity_of(raw[s]["klines"]) for s in raw}
-    return ConstUData(acts=acts, raw=raw, btc=ud.btc[ud.btc.index <= cap], end=cap, until={})
+def build_uworld(src: USource, null: str, seed: int, end: str = C.VAL_END) -> UP.UData:
+    return world_udata(src, null, seed, end)
+
+
+def dev_view(src: USource, null: str, seed: int) -> UP.UData:
+    """The same world under the DEV ceiling (identical rows up to DEV end; membership from DEV bars)."""
+    return world_udata(src, null, seed, C.DEV_END)
 
 
 # ---------------------------------------------------------------- oracle
 
 class UOracle:
-    def __init__(self, ud: ConstUData, k_days: int, eps_seed):
-        self.bu = UP.Blocked(ud, "top30", months=None)              # one block (30 symbols)
+    def __init__(self, ud: UP.UData, k_days: int, eps_seed):
+        self.bu = UP.Blocked(ud, "top30", fields=set())             # production blocks; engine columns only
         self.inplay = self.bu.inplay()
         self.dev_s, self.val_e = self.bu.pos(C.DEV_START), self.bu.pos(C.VAL_END)
         step = 24 * k_days
@@ -215,10 +385,15 @@ class UOracle:
         self.shape = op.shape
         with np.errstate(divide="ignore", invalid="ignore"):
             R = np.log(op[self.ends] / op[self.starts])
-        R = np.where(np.isfinite(R), R, 0.0)
-        R = R - R.mean(axis=1, keepdims=True)
-        sd = R.std(axis=0, ddof=1)
-        self.z = np.where(sd > 0, (R - R.mean(axis=0)) / np.where(sd > 0, sd, 1.0), 0.0)
+        fin = np.isfinite(R)
+        cnt = fin.sum(axis=1, keepdims=True)
+        R = np.where(fin, R, 0.0)
+        R = np.where(fin, R - R.sum(axis=1, keepdims=True) / np.where(cnt > 0, cnt, 1), 0.0)
+        n = fin.sum(axis=0)
+        mu = R.sum(axis=0) / np.where(n > 0, n, 1)
+        var = np.where(fin, (R - mu) ** 2, 0.0).sum(axis=0) / np.where(n > 1, n - 1, 1)
+        sd = np.sqrt(var)
+        self.z = np.where(fin & (sd > 0) & (n > 1), (R - mu) / np.where(sd > 0, sd, 1.0), 0.0)
         self.eps = np.random.default_rng(eps_seed).standard_normal(self.z.shape)
         self.rows = np.arange(self.starts[0] - 1, self.ends[-1] - 1)
         self.block = np.repeat(np.arange(len(self.starts)), self.ends - self.starts)
@@ -239,40 +414,103 @@ class UOracle:
         return PL.val_sharpe_of(self.bu.run(self.weights(rho), self.dev_s, self.val_e))
 
 
+# ---------------------------------------------------------------- the dry run's synthetic universe
+
+def synthetic_churn_universe(seed: int = 9, n_sym: int = 100, early: int = 30, start: str = "2019-08-01 00:00",
+                             end: str = C.VAL_END, scale_sd: float = 0.35, regime_half_life_days: float = 60.0,
+                             regime_sd: float = 0.6) -> tuple:
+    """(tables, symbols table): a FULLY synthetic universe with membership churn (no real bar is read):
+    `early` symbols listed in the first 120 days, the rest staggered over 2020-2024; every symbol lives 700
+    to 2200 days (then delisted: no further rows); hourly log return = market factor + per-symbol drift +
+    noise; quote volume follows price (its close over its own 90-day mean close: a fading symbol falls in
+    rank) times a mean-reverting per-symbol volume regime; funding every 8 hours. Membership comes from the
+    kernel's own rule."""
+    from scipy.signal import lfilter
+    phi = math.exp(-math.log(2.0) / (24.0 * regime_half_life_days))
+    rng = np.random.default_rng(seed)
+    t0, tend = T(start), T(end)
+    grid = pd.date_range(t0, tend, freq="h").as_unit("ns")
+    H = pd.Timedelta(hours=1)
+    mkt = 0.006 * rng.standard_normal(len(grid))
+    tables, table = {}, {"symbols": {}}
+    for i in range(n_sym):
+        if i < early:
+            lst = t0 + pd.Timedelta(days=int(rng.integers(0, 120)))
+        else:
+            lst = T("2020-01-01 00:00") + pd.Timedelta(days=int(rng.integers(0, 365 * 4 + 300)))
+        last = min(lst + pd.Timedelta(days=int(rng.integers(700, 2200))), tend)
+        i0, i1 = int((lst - t0) / H), int((last - t0) / H) + 1
+        if i1 - i0 < 48:
+            i0 = max(0, i1 - 48)
+        n = i1 - i0
+        lr = mkt[i0:i1] + 0.00008 * rng.standard_normal() + 0.008 * rng.standard_normal(n)
+        p0 = float(np.exp(rng.normal(2.0, 1.5)))
+        close = p0 * np.exp(np.cumsum(lr))
+        opn = np.r_[p0, close[:-1]]
+        spr = np.abs(0.004 * rng.standard_normal(n)) * close
+        idx = grid[i0:i1]
+        regime = lfilter([1.0], [1.0, -phi], regime_sd * math.sqrt(1.0 - phi * phi) * rng.standard_normal(n))
+        rel = close / pd.Series(close).rolling(24 * 90, min_periods=1).mean().to_numpy()
+        qv = float(np.exp(rng.normal(0.0, scale_sd))) * 1e4 * rel * np.exp(regime + 0.3 * rng.standard_normal(n))
+        kl = pd.DataFrame({"open": opn, "high": np.maximum(opn, close) + spr, "low": np.minimum(opn, close) - spr,
+                           "close": close, "volume": qv / close, "quote_volume": qv,
+                           "trades": rng.integers(10, 100, n).astype(float), "taker_buy_volume": 0.5 * qv / close,
+                           "taker_buy_quote_volume": 0.5 * qv, "is_gap": np.zeros(n, dtype=bool)}, index=idx)
+        kl.index.name = "open_time"
+        mk = kl[["open", "high", "low", "close"]].copy()
+        mk["samples"] = 3600.0
+        mk.index.name = "open_time"
+        ft = idx[idx.hour % 8 == 0]
+        fu = pd.DataFrame({"rate": 0.0001 + 0.0001 * rng.standard_normal(len(ft)), "interval_hours": 8.0,
+                           "offset_ms": 0.0}, index=ft)
+        fu.index.name = "settle_time"
+        s = f"W{i:03d}USDT"
+        tables[s] = {"klines": kl, "funding": fu, "mark_klines": mk, "index_klines": mk.copy()}
+        table["symbols"][s] = {"class": "crypto_perpetual", "until": None, "n_months": 1}
+    return tables, table
+
+
+DRY_RUN_SYMBOLS = 170                        # about 140 ever in top30 (UNIVERSE_START to VAL end)
+
+
+def synthetic_source(seed: int = 9, n_sym: int = DRY_RUN_SYMBOLS) -> USource:
+    tables, _ = synthetic_churn_universe(seed=seed, n_sym=n_sym)
+    acts = {s: U.activity_of(t["klines"]) for s, t in tables.items()}
+    panel = panel_symbols({s: a for s, a in acts.items() if len(a.active)})
+    return USource.build(panel, lambda s: tables[s])
+
+
+def load_source(handle, log=print) -> USource:
+    """The real panel, read with the logged calibration handle (one table in memory at a time)."""
+    table = U.load_symbols()
+    acts, until = {}, {}
+    for s in U.crypto_symbols(table):
+        try:
+            kl = D.load_raw("klines", s, upto="val_end", handle=handle, cache=False)
+        except FileNotFoundError:
+            continue
+        until[s] = table["symbols"][s].get("until")
+        a = U.activity_of(kl, until[s])
+        if len(a.active):
+            acts[s] = a
+        del kl
+    panel = panel_symbols(acts)
+    log(f"panel: {len(panel)} symbols ever in top30 ({C.UNIVERSE_START} .. {C.VAL_END})")
+
+    def get(s):
+        return {d: D.load_raw(d, s, upto="val_end", handle=handle, cache=False) for d in ("klines", "funding")}
+    return USource.build(panel, get, until={s: until.get(s) for s in panel})
+
+
 # ---------------------------------------------------------------- workers
 
 _W = {}
 
 
-def synthetic_panel_tables(seed: int = 9, n: int = N_PANEL) -> dict:
-    """Fully synthetic panel tables for the dry run (no real bar is read)."""
-    from omr import probe
-    rng = np.random.default_rng(seed)
-    hours = int((T(C.VAL_END) - T("2019-11-01 00:00")) / pd.Timedelta(hours=1)) + 1
-    return {f"S{i:02d}USDT": probe.synthetic_symbol(rng, float(np.exp(rng.normal(2.0, 1.5))), start="2019-11-01 00:00",
-                                                    hours=hours) for i in range(n)}
-
-
-def _init(families, handle, synthetic=False, tables=None):
+def _init(families, handle, spec):
     _W["handle"] = handle
-    if tables is None:
-        tables = synthetic_panel_tables() if synthetic else load_panel_tables(handle)[0]
-    _W["src"] = USource(tables)
+    _W["src"], _W["blocks"] = USource.from_shared(spec)
     _W["progs"] = {f: L.parse_file(family_path(f)) for f in families}
-
-
-def load_panel_tables(handle) -> tuple:
-    table = U.load_symbols()
-    acts = {}
-    for s in U.crypto_symbols(table):
-        try:
-            kl = D.load_raw("klines", s, upto="val_end", handle=handle)
-        except FileNotFoundError:
-            continue
-        acts[s] = U.activity_of(kl, table["symbols"][s].get("until"))
-    panel = choose_panel(acts)
-    tables = {s: {d: D.load_raw(d, s, upto="val_end", handle=handle) for d in ("klines", "funding")} for s in panel}
-    return tables, panel
 
 
 def dev_sharpe_u(fp_dev, W) -> float:
@@ -282,11 +520,12 @@ def dev_sharpe_u(fp_dev, W) -> float:
 
 def task_null(args) -> list:
     null, world_seed = args
-    ud = build_uworld(_W["src"], null, world_seed)
-    udd = dev_view(ud)
-    fp_dev = UP.Blocked(udd, "top30", months=None)
+    src = _W["src"]
+    ud = build_uworld(src, null, world_seed)
+    udd = dev_view(src, null, world_seed)
     out = []
     for fam, prog in _W["progs"].items():
+        fp_dev = UP.Blocked(udd, "top30", fields=UP.program_fields(prog))   # production blocks
         rng = np.random.default_rng(CB._seed("udraws", null, fam, world_seed))
         best, best_sh, codes = None, float("-inf"), {}
         for _ in range(CB.N_DRAWS):
@@ -299,17 +538,16 @@ def task_null(args) -> list:
             sh = dev_sharpe_u(fp_dev, sc["W"])
             if best is None or sh > best_sh:
                 best, best_sh = q, sh
+        del fp_dev
         base = {"null": null, "family": fam, "world_seed": world_seed, "stage1": codes}
         if best is None:
             out.append(dict(base, submitted=False, status="not_submitted"))
             continue
-        s1 = UP.stage1_u(prog, best, udd, np.random.default_rng(CB._seed("us1", null, fam, world_seed)), OPTS,
-                         months=None)
+        s1 = UP.stage1_u(prog, best, udd, np.random.default_rng(CB._seed("us1", null, fam, world_seed)), OPTS)
         if not s1["ok"]:
             out.append(dict(base, submitted=False, status=f"stage1_{s1['code']}", params=best, fault=s1.get("fault")))
             continue
-        res = UP.stage2_u(prog, best, ud, s1, OPTS, _W["handle"], CB._seed("unull", null, fam, world_seed), None,
-                          months=None)
+        res = UP.stage2_u(prog, best, ud, s1, OPTS, _W["handle"], CB._seed("unull", null, fam, world_seed), None)
         out.append(CB.summarise(res, dict(base, submitted=True, params=best, best_dev_sharpe_of_passers=best_sh)))
     return out
 
@@ -332,6 +570,7 @@ def task_oracle_power(args) -> list:
                                         _W["handle"], None)
             out.append(CB.summarise(res, {"null": null, "speed": speed, "level": lvl, "rho": rho,
                                           "world_seed": world_seed}))
+        del ob
     return out
 
 
@@ -430,47 +669,55 @@ def main(argv=None):
     k = kernel_lock.read_lock() if lock_ok else kernel_lock.compute()
     synthetic = bool(a.unlocked_dry_run)
     if synthetic:
-        rh, panel = "synthetic-dry-run", sorted(synthetic_panel_tables())
-        handle = access.for_calibration(f"universe calibration DRY RUN, semantic {k['semantic'][:16]}: synthetic panel")
+        rh = "synthetic-dry-run"
+        handle = access.for_calibration(f"universe calibration DRY RUN, semantic {k['semantic'][:16]}: synthetic universe")
+        src = synthetic_source()
     else:
         if not data.validation_ok():
             raise SystemExit("data not validated: run python -m omr.data validate")
         rh = data.load_manifest()["research_hash"]
         handle = access.for_calibration(f"universe calibration v{PROTOCOL_VERSION}, semantic {k['semantic'][:16]}: "
-                                        "null worlds built from DEV+VAL bars of a 30-symbol panel")
-        panel = load_panel_tables(handle)[1]
+                                        "null worlds on the real membership calendar of the top30 panel")
+        src = load_source(handle, log)
     fams = list(FAMILIES)
     nulls, oracle = {}, {}
-    with mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(fams, handle, synthetic)) as pool:
-        for null in ("A", "B"):
-            rows = []
-            for i, rr in enumerate(pool.imap_unordered(task_null, [(null, SEEDS[null] + i) for i in range(a.worlds)])):
-                rows.extend(rr)
-                if (i + 1) % 10 == 0:
-                    log(f"  null {null}: {i + 1}/{a.worlds} worlds ({time.time() - t0:.0f} s)")
-            rows.sort(key=lambda r: (r["world_seed"], r["family"]))
-            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
-        for null in ("A", "B"):
-            seeds = [SEEDS[f"oracle_{null}"] + i for i in range(a.oracle_worlds)]
-            rhos, tuning = {}, {}
-            for speed in CB.SPEEDS:
-                tuning[speed] = tune_rho(pool, null, speed, seeds, log)
-                for lvl in CB.LEVELS:
-                    rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
-            rows = []
-            for rr in pool.imap_unordered(task_oracle_power, [(null, s, rhos) for s in seeds]):
-                rows.extend(rr)
-            rows.sort(key=lambda r: (r["world_seed"], r["speed"], r["level"]))
-            oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": CB.oracle_summary(rows)}
+    spec, blocks = src.to_shared()
+    try:
+        with mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(fams, handle, spec)) as pool:
+            for null in ("A", "B"):
+                rows = []
+                for i, rr in enumerate(pool.imap_unordered(task_null, [(null, SEEDS[null] + i) for i in range(a.worlds)])):
+                    rows.extend(rr)
+                    if (i + 1) % 10 == 0:
+                        log(f"  null {null}: {i + 1}/{a.worlds} worlds ({time.time() - t0:.0f} s)")
+                rows.sort(key=lambda r: (r["world_seed"], r["family"]))
+                nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
+            for null in ("A", "B"):
+                seeds = [SEEDS[f"oracle_{null}"] + i for i in range(a.oracle_worlds)]
+                rhos, tuning = {}, {}
+                for speed in CB.SPEEDS:
+                    tuning[speed] = tune_rho(pool, null, speed, seeds, log)
+                    for lvl in CB.LEVELS:
+                        rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
+                rows = []
+                for rr in pool.imap_unordered(task_oracle_power, [(null, s, rhos) for s in seeds]):
+                    rows.extend(rr)
+                rows.sort(key=lambda r: (r["world_seed"], r["speed"], r["level"]))
+                oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": CB.oracle_summary(rows)}
+    finally:
+        for b in blocks:
+            b.close()
+            b.unlink()
     verdict = CB.decide(nulls, oracle)
     out = {"protocol_version": PROTOCOL_VERSION, "unit": "top30", "kernel_hash": k["combined"],
            "semantic_hash": k["semantic"], "text_hash": k["text"], "kernel_lock_verified": lock_ok and not synthetic,
-           "synthetic_dry_run": synthetic, "research_hash": rh, "panel": panel,
+           "synthetic_dry_run": synthetic, "research_hash": rh, "panel": src.symbols,
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,
                         "speeds_days": CB.SPEEDS, "levels": list(CB.LEVELS), "seeds": SEEDS,
-                        "membership": "constant (all 30 panel symbols)", "reduced_pipeline": "G8 not run"},
+                        "membership": "the real monthly schedule (the kernel's rule on the real activity)",
+                        "blocks": "production (six-month blocks)", "reduced_pipeline": "G8 not run"},
            "nulls": nulls, "oracle": oracle, "verdict_unit_only": verdict, "wall_seconds": round(time.time() - t0, 1)}
     path = Path(a.out) if a.out else P.LEDGER_DIR / f"ucalibration_{k['semantic'][:16]}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

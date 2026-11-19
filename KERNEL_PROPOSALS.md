@@ -233,3 +233,18 @@ rates, status.
   was unknown). Now a run has one membership and every block uses it; block panels hold the members of
   every month their evaluated rows touch; the self-check `block_overlap`; lookback_hours counts a leaf's
   staleness under a timeframe and under btc(). Permanent tests in tests/test_blocks.py.
+- Fix pass 4 (2026-11-20, audit round 6): G6 in top30 is a paired test on the common names (A_k: the actual
+  book on the names tradable now and in play at the source row; S_k: the source row's book on the same
+  names; re-centred to the unmasked row's net, flat under 10 names; the plain shift test bit for bit when
+  there is no churn); universe calibration worlds keep the REAL rows of every symbol ever in top30 (the
+  kernel's own rule reproduces the real membership calendar; only prices are resampled) and run on the
+  production block path; cs_* count known AND finite inputs; `data universe` fills archive holes from the
+  daily files (checksum required, pinned, revision check); the symbol table is in the research hash and the
+  validation fingerprint; top30 programs are probed on 12 in-play symbols; funding8h is known only while
+  its settlement is at most 2 x min(interval, 8) hours old in every unit (lookback leaf 17; the in-play
+  freshness caps the interval too); sandbox log row before any metric; rekey tolerates an old seal;
+  block_overlap_cells recorded. Follow-up rulings: R-A the ten core / extended symbols are hole-filled by
+  the same rule (core identity still proved on the same stored data); R-B G6 ties (books within 1e-12 =
+  tie, else a 1e-9 Sharpe margin). Open: an equal-weight basket still gets p = 0.52 on a churn panel with
+  delistings (A_k's own set drops a delisting name's weight, S_k's does not); A_k's own set = in play at
+  the decision row would make every shift a tie. Evidence: notes/kp015_build_evidence.md.

@@ -251,7 +251,8 @@ def make_disk_data(root, symbols=C.ALL_SYMBOLS, end="2025-06-30 23:00", universe
         p.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(p)
         man["datasets"].setdefault(ds, {})[s] = {"sha256": data.sha256_file(p)}
-    man["research_hash"] = data.compute_research_hash(tables)
+    man["research_hash"] = data.compute_research_hash(
+        tables, symbols_sha=man["universe"]["symbols_sha256"] if universe else None)
     import json
     (root / "manifest.json").write_text(json.dumps(man), encoding="ascii")
     return man["research_hash"]

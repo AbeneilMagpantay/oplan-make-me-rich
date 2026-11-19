@@ -50,6 +50,11 @@ Fix pass 2 done (S1 bounded funding_mean in every unit, S2 cross-sections over t
 known input, S3 zero-trade bars usable up to 24 in a row, S4 six-month blocks). The R3 preflight stays.
 Fix pass 3 (2026-11-20): one membership per run (blocks were not equal to the whole panel for a window over
 a cs_* result), the block_overlap self-check, and the lookback of stale leaves under a timeframe or btc().
+Fix pass 4 (2026-11-20): paired common-names G6 in top30, calibration worlds on the real membership
+calendar, finite-only cross-sections, daily-file hole fill in `data universe` for every symbol including the
+ten (data rewritten; research hash 28d9084a8c5c7659...), symbol table in the research hash, 12-symbol top30
+probe, bounded funding8h, G6 ties (R-B), small items (KERNEL_PROPOSALS KP-015; notes/kp015_build_evidence.md).
+Open: the R-B basket counterexample (a delisting row makes A_k and S_k differ) awaits a ruling.
 Next: audit, approval, re-key, both calibrations (core and top30), seal, selftest.
 
 ## Open decisions for the human

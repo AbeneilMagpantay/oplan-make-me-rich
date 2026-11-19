@@ -154,12 +154,14 @@ def _frame_bytes(df: pd.DataFrame, cols) -> list:
     return out
 
 
-def compute_research_hash(tables: dict, only: str | None = None) -> str:
+def compute_research_hash(tables: dict, only: str | None = None, symbols_sha: str | None = None) -> str:
     """sha256 over every stored row visible at or before VAL_END.
 
     tables: {(dataset, symbol): DataFrame}. Rows are cut at VAL_END by index
     (for every v1 dataset the index is the bar from which the row is visible).
     only: restrict to one dataset (per-dataset revision hash).
+    symbols_sha: the sha256 of data/symbols.json when the universe is stored (U5): folded in after the
+    tables, so a rebuilt symbol table changes the research hash (and with it every trial id).
     """
     cut = ts(C.VAL_END)
     h = hashlib.sha256()
@@ -172,7 +174,21 @@ def compute_research_hash(tables: dict, only: str | None = None) -> str:
         h.update(f"{dataset}/{symbol}/{len(df)}\n".encode("ascii"))
         for b in _frame_bytes(df, cols):
             h.update(b)
+    if only is None and symbols_sha is not None:
+        h.update(_symbols_line(symbols_sha))
     return h.hexdigest()
+
+
+def _symbols_line(symbols_sha: str) -> bytes:
+    return f"symbols.json/{symbols_sha}\n".encode("ascii")
+
+
+def symbols_sha(manifest: dict) -> str | None:
+    """U5: sha256 of the symbol table ON DISK when the manifest stores the universe (else None)."""
+    if not manifest.get("universe", {}).get("symbols_sha256"):
+        return None
+    from omr import universe as U
+    return sha256_file(U.SYMBOLS_FILE)
 
 
 def dataset_hashes(tables: dict) -> dict:
@@ -195,9 +211,10 @@ def _hash_table(h, dataset: str, symbol: str, df: pd.DataFrame, cut) -> None:
         h.update(b)
 
 
-def hashes_streaming(keys, get) -> tuple:
+def hashes_streaming(keys, get, symbols_sha: str | None = None) -> tuple:
     """(research_hash, dataset_hashes) over the tables `get(dataset, symbol)` for `keys`, one table in
-    memory at a time; identical to compute_research_hash / dataset_hashes over the same tables."""
+    memory at a time; identical to compute_research_hash / dataset_hashes over the same tables
+    (symbols_sha folded into the research hash only, as there)."""
     cut = ts(C.VAL_END)
     h_all = hashlib.sha256()
     per = {}
@@ -205,6 +222,8 @@ def hashes_streaming(keys, get) -> tuple:
         df = get(dataset, symbol)
         _hash_table(h_all, dataset, symbol, df, cut)
         _hash_table(per.setdefault(dataset, hashlib.sha256()), dataset, symbol, df, cut)
+    if symbols_sha is not None:
+        h_all.update(_symbols_line(symbols_sha))
     return h_all.hexdigest(), {d: per[d].hexdigest() for d in sorted(per)}
 
 
@@ -213,19 +232,25 @@ def _manifest_keys(manifest: dict) -> list:
 
 
 def research_hash_from_disk(manifest: dict | None = None) -> str:
-    """Streaming: every stored table is read (hash-checked at read) and hashed one at a time."""
+    """Streaming: every stored table is read (hash-checked at read) and hashed one at a time; the
+    sha256 of data/symbols.json on disk is folded in when the universe is stored (U5)."""
     manifest = manifest or load_manifest()
-    rh, _ = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False))
+    rh, _ = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False),
+                             symbols_sha(manifest))
     return rh
 
 
 def data_fingerprint(manifest: dict | None = None) -> str:
-    """sha256 over the research_hash and every stored file's manifest sha256 (binds validation)."""
+    """sha256 over the research_hash, every stored file's manifest sha256 and (universe stored) the
+    sha256 of data/symbols.json on disk (U5): binds validation, and through it the seal."""
     manifest = manifest or load_manifest()
     parts = [manifest["research_hash"]]
     for dataset in sorted(manifest["datasets"]):
         for s in sorted(manifest["datasets"][dataset]):
             parts.append(f"{dataset}/{s}:{manifest['datasets'][dataset][s]['sha256']}")
+    sym = symbols_sha(manifest)
+    if sym is not None:
+        parts.append(f"symbols.json:{sym}")
     return hashlib.sha256("\n".join(parts).encode("ascii")).hexdigest()
 
 
@@ -944,6 +969,16 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
         for n in names:
             tables[(n, s)] = res[n]
             metas[n][s] = res["meta"][n]
+    # R-A: the same daily-file hole fill as `data universe` (else an update would re-open the filled holes and
+    # the revision check would refuse it); a failed fetch or a revised hour stops before anything is written
+    hf = _HoleFill(False, 8)
+    for s in C.ALL_SYMBOLS:
+        bars = ("klines", "mark_klines", "index_klines")
+        t, m = fill_core_tables(s, {n: tables[(n, s)] for n in bars}, {n: metas[n][s] for n in bars}, hf)
+        for n in bars:
+            tables[(n, s)], metas[n][s] = t[n], m[n]
+    if hf.failed:
+        raise RuntimeError(f"daily files failed ({len(hf.failed)}): rerun to resume. Nothing written.")
 
     for s in C.CORE:
         first = tables[("klines", s)].index[0]
@@ -954,7 +989,8 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
     # kept as stored and hashed from disk (streaming), so the research hash covers all research-region data
     kept = [k for k in (_manifest_keys(old) if old is not None else []) if k not in tables]
     rh, new_hashes = hashes_streaming(list(tables) + kept,
-                                      lambda d, s: tables[(d, s)] if (d, s) in tables else _read_stored(d, s, old, cache=False))
+                                      lambda d, s: tables[(d, s)] if (d, s) in tables else _read_stored(d, s, old, cache=False),
+                                      symbols_sha(old) if old is not None else None)
     if old is not None:
         for d, hsh in new_hashes.items():
             if d in old_hashes:
@@ -1078,36 +1114,190 @@ def _bars_table(raw: pd.DataFrame, cols) -> pd.DataFrame:
     return df
 
 
-def build_universe_symbol(s: str, items: list, until) -> dict:
-    """Tables of one universe symbol from its cached monthly bulk files (no REST): klines gridded from its
-    first to its last archive bar (gap rows flagged, as for the core), funding settlements, mark and index
-    bars (actual rows only). Rows at or after `until` are dropped."""
+def _universe_raw(s: str, items: list, until) -> dict:
+    """The parsed monthly rows of one universe symbol (the slow part: reading the zips), `until` applied."""
     by = {ds: [it for it in items if it[0] == ds] for ds in UNIVERSE_DATASETS}
-    out, meta = {}, {}
-    rk = _until_cut(_parse_bars(by["klines"], parse_kline_bytes), until, "open_time_ms")
-    if len(rk) == 0:
-        return {"tables": {}, "meta": {"klines": {"rows": 0}}}
-    last = ts(str(pd.Timestamp(int(rk.open_time_ms.max()), unit="ms", tz="UTC")))
-    kl, info = _grid_klines(rk, last)
-    out["klines"] = kl
-    meta["klines"] = {"rows": int(len(kl)), "first_bar": str(kl.index[0]), "last_bar": str(kl.index[-1]),
-                      "monthly_files": sum(1 for it in by["klines"] if it[3].exists()), **info}
+    raws = {"klines": _until_cut(_parse_bars(by["klines"], parse_kline_bytes), until, "open_time_ms")}
     fparts = [parse_funding_bytes(_read_zip_csv(it[3]))[0] for it in by["funding"] if it[3].exists()]
     fr = pd.concat(fparts, ignore_index=True) if fparts else pd.DataFrame(
         {"time_ms": np.zeros(0, dtype=np.int64), "interval_hours": np.zeros(0), "rate": np.zeros(0)})
-    fr = _until_cut(fr, until, "time_ms").sort_values("time_ms").drop_duplicates("time_ms", keep="first")
-    fd, finfo = _table_funding(fr.reset_index(drop=True), last + pd.Timedelta(hours=1))
-    out["funding"] = fd
-    meta["funding"] = {"rows": int(len(fd)), "monthly_files": len(fparts), **finfo}
+    raws["funding"] = _until_cut(fr, until, "time_ms").sort_values("time_ms").drop_duplicates("time_ms", keep="first")
     for ds in PRICE_BAR_DATASETS:
-        raw = _until_cut(_parse_bars(by[ds], parse_mark_bytes), until, "open_time_ms")
+        raws[ds] = _until_cut(_parse_bars(by[ds], parse_mark_bytes), until, "open_time_ms")
+    files = {ds: sum(1 for it in by[ds] if it[3].exists()) for ds in UNIVERSE_DATASETS}
+    return {"raw": raws, "monthly_files": files}
+
+
+def _universe_tables(parsed: dict, daily: dict | None = None) -> dict:
+    """Tables of one universe symbol from its parsed monthly rows, with the holes inside its life filled
+    from the daily files in `daily` ({dataset: [items]}, U4; see fill_from_daily)."""
+    raws, files = parsed["raw"], parsed["monthly_files"]
+    daily = daily or {}
+    out, meta, fills = {}, {}, {}
+    rk = raws["klines"]
+    if len(rk) == 0:
+        return {"tables": {}, "meta": {"klines": {"rows": 0}}, "fills": {}}
+    lo_ms, hi_ms = int(rk.open_time_ms.min()), int(rk.open_time_ms.max())
+    last = ts(str(pd.Timestamp(hi_ms, unit="ms", tz="UTC")))
+    rk, fills["klines"] = fill_from_daily("klines", rk, daily.get("klines", []), lo_ms, hi_ms)
+    kl, info = _grid_klines(rk, last)
+    out["klines"] = kl
+    meta["klines"] = {"rows": int(len(kl)), "first_bar": str(kl.index[0]), "last_bar": str(kl.index[-1]),
+                      "monthly_files": files["klines"], **info}
+    fd, finfo = _table_funding(raws["funding"].reset_index(drop=True), last + pd.Timedelta(hours=1))
+    out["funding"] = fd
+    meta["funding"] = {"rows": int(len(fd)), "monthly_files": files["funding"], **finfo}
+    for ds in PRICE_BAR_DATASETS:
+        raw = raws[ds]
+        if len(raw):                                             # a dataset absent from the archive stays absent
+            raw, fills[ds] = fill_from_daily(ds, raw, daily.get(ds, []), lo_ms, hi_ms)
         df = _bars_table(raw, MARK_COLS) if len(raw) else pd.DataFrame(
             {c: np.zeros(0) for c in MARK_COLS}, index=ns_index(pd.DatetimeIndex([], tz="UTC")))
         df.index.name = "open_time"
         out[ds] = df
-        meta[ds] = {"rows": int(len(df)), "monthly_files": sum(1 for it in by[ds] if it[3].exists()),
+        meta[ds] = {"rows": int(len(df)), "monthly_files": files[ds],
                     "first_bar": str(df.index[0]) if len(df) else None, "last_bar": str(df.index[-1]) if len(df) else None}
-    return {"tables": out, "meta": meta}
+    for ds, f in fills.items():
+        if f["daily_files"]:
+            meta[ds]["daily_files"] = f["daily_files"]
+            meta[ds]["daily_rows_filled"] = f["filled"]
+    return {"tables": out, "meta": meta, "fills": fills}
+
+
+def build_universe_symbol(s: str, items: list, until, daily: dict | None = None) -> dict:
+    """Tables of one universe symbol from its cached monthly bulk files (no REST): klines gridded from its
+    first to its last archive bar (gap rows flagged, as for the core), funding settlements, mark and index
+    bars (actual rows only). Rows at or after `until` are dropped. `daily`: the U4 hole fill."""
+    return _universe_tables(_universe_raw(s, items, until), daily)
+
+
+# ---- U4: archive holes inside a symbol's life are filled from the daily files of the same archive
+
+_DAILY_PARSER = {"klines": parse_kline_bytes, "mark_klines": parse_mark_bytes, "index_klines": parse_mark_bytes}
+_DAILY_COLS = {"klines": KLINE_FLOAT_COLS, "mark_klines": MARK_COLS, "index_klines": MARK_COLS}
+
+
+def _checksum_path(dest: Path) -> Path:
+    return dest.with_name(dest.name + ".CHECKSUM")
+
+
+def _missing_marker(dest: Path) -> Path:
+    return dest.with_name(dest.name + ".missing")
+
+
+def daily_file_ok(dest: Path) -> bool:
+    """A cached daily file is used only with its published CHECKSUM stored beside it and matching."""
+    chk = _checksum_path(dest)
+    if not (dest.exists() and chk.exists()):
+        return False
+    expected = chk.read_bytes().decode("ascii", "replace").split()[0].strip().lower()
+    if sha256_file(dest) != expected:
+        raise DataIntegrityError(f"cached daily file does not match its CHECKSUM: {dest.name}")
+    return True
+
+
+def fetch_daily(url: str, dest: Path) -> str:
+    """U4: one daily bulk zip, verified against its published sha256 CHECKSUM (required: a file without
+    one is not stored and its hours stay holes). Returns cached, ok, missing (404, remembered by a marker
+    so a rerun does not ask again: cached-missing) or nochecksum."""
+    if daily_file_ok(dest):
+        return "cached"
+    if _missing_marker(dest).exists():
+        return "cached-missing"
+    body = http_get(url)
+    if body is None:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        _missing_marker(dest).write_bytes(b"")
+        return "missing"
+    chk = http_get(url + ".CHECKSUM")
+    if chk is None:
+        return "nochecksum"
+    expected = chk.decode("ascii", "replace").split()[0].strip().lower()
+    if hashlib.sha256(body).hexdigest() != expected:
+        raise RuntimeError(f"checksum mismatch for {url}")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    for path, content in ((_checksum_path(dest), chk), (dest, body)):
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_bytes(content)
+        tmp.replace(path)
+    return "ok"
+
+
+def _fetch_daily_polite(item) -> str:
+    try:
+        st = fetch_daily(item[2], item[3])
+    except Exception as e:                                       # network or checksum failure: retried on resume
+        st = f"failed:{type(e).__name__}"
+    if not st.startswith("cached"):                             # a network request was made: the usual pause
+        time.sleep(C.DOWNLOAD_PAUSE_S)
+    return st
+
+
+def missing_hours(dataset: str, table: pd.DataFrame, life: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """The hours inside the symbol's life (its klines grid) with no stored row: klines gap rows; mark or
+    index grid hours without a bar (a dataset with no row at all is absent from the archive, not holed)."""
+    if dataset == "klines":
+        return table.index[table["is_gap"].to_numpy(dtype=bool)]
+    if len(table) == 0:
+        return table.index[:0]
+    return life[~life.isin(table.index)]
+
+
+def daily_items_for(symbol: str, dataset: str, hours: pd.DatetimeIndex) -> list:
+    """The daily files covering `hours` (one per UTC day)."""
+    labs = sorted(set(hours.strftime("%Y-%m-%d"))) if len(hours) else []
+    return [it for lab in labs for it in _daily_items(symbol, lab, (dataset,))]
+
+
+class DailyRevision(RuntimeError):
+    """A stored hour differs from the daily file's row for the same hour (U4: stop and report)."""
+
+
+def fill_from_daily(dataset: str, base: pd.DataFrame, items: list, lo_ms: int, hi_ms: int) -> tuple:
+    """(merged raw rows, info). `base`: the raw rows (open_time_ms + columns) already held for the symbol;
+    `items`: daily files (only those present with a matching CHECKSUM are read). Rows of the daily files
+    inside [lo_ms, hi_ms] (the symbol's life) at hours `base` does not hold are added; an hour `base`
+    holds must be equal in value in every column, else DailyRevision. Hours no daily file has stay holes."""
+    cols = _DAILY_COLS[dataset]
+    info = {"filled": 0, "daily_files": {}, "compared": 0}
+    parts = []
+    for it in items:
+        if not daily_file_ok(it[3]):
+            continue
+        parts.append(_DAILY_PARSER[dataset](_read_zip_csv(it[3]))[0])
+        info["daily_files"][it[4]] = sha256_file(it[3])
+    if not parts:
+        return base, info
+    d = pd.concat(parts, ignore_index=True).sort_values("open_time_ms", kind="mergesort")
+    d = d[~d.duplicated("open_time_ms", keep="first")]
+    if int((d.open_time_ms % HOUR_MS != 0).sum()):
+        raise RuntimeError(f"{dataset}: daily bar open times not on the hour")
+    d = d[(d.open_time_ms >= lo_ms) & (d.open_time_ms <= hi_ms)]
+    b = base[~base.duplicated("open_time_ms", keep="first")]
+    held = d.open_time_ms.isin(b.open_time_ms).to_numpy()
+    both = d[held].merge(b, on="open_time_ms", suffixes=("_d", "_b"))
+    info["compared"] = int(len(both))
+    for c in cols:
+        x, y = both[c + "_d"].to_numpy(dtype=np.float64), both[c + "_b"].to_numpy(dtype=np.float64)
+        bad = ~((x == y) | (np.isnan(x) & np.isnan(y)))
+        if bad.any():
+            h = pd.Timestamp(int(both.open_time_ms.to_numpy()[bad][0]), unit="ms", tz="UTC")
+            raise DailyRevision(f"{dataset}: stored hour {h} differs from the daily file in {c} "
+                                f"({int(bad.sum())} rows)")
+    new = d[~held]
+    info["filled"] = int(len(new))
+    merged = pd.concat([base, new[base.columns]], ignore_index=True).sort_values("open_time_ms", kind="mergesort")
+    return merged.reset_index(drop=True), info
+
+
+def _region_counts(hours: pd.DatetimeIndex) -> dict:
+    out = {}
+    for name, lo, hi in (("warmup", None, C.DEV_START), ("dev", C.DEV_START, C.DEV_END),
+                         ("val", C.VAL_START, C.VAL_END), ("after_val", C.VAL_END, None)):
+        n = int(_region_mask(hours, lo, hi, "after_vault" if name == "after_val" else name).sum())
+        if n:
+            out[name] = n
+    return out
 
 
 def _revised(dataset: str, prev: pd.DataFrame, new: pd.DataFrame) -> bool:
@@ -1166,50 +1356,232 @@ def download_universe(log=print, workers: int = 6, end_month: str | None = None,
         return {"download": dl, "stored": False}
     manifest = json.loads(json.dumps(old))
     built, revisions, empty = 0, [], []
+    fill = _HoleFill(build_only, workers)
+    staged = []                                                 # (staged file, final path, dataset, symbol, meta)
     for s in sorted(plan):
         until = table["symbols"][s].get("until")
-        if s in C.ALL_SYMBOLS:
-            kl = _read_stored("klines", s, old, cache=False)
-            md, info = build_mark(s, core_end, {s: plan[s]}, kl, log, "index_klines")
-            res = {"tables": {"index_klines": md}, "meta": {"index_klines": info}}
-        else:
-            res = build_universe_symbol(s, plan[s], until)
+        try:
+            if s in C.ALL_SYMBOLS:
+                res = _core_filled(s, old, core_end, plan[s], fill, log)
+            else:
+                res = _universe_filled(s, plan[s], until, fill)
+        except DailyRevision as e:                               # U4: stop and report; nothing is written
+            fill.revisions.append(f"{s}: {e}")
+            continue
         if not res["tables"]:
             empty.append(s)
             continue
         for ds, df in res["tables"].items():
             if s in old["datasets"].get(ds, {}):
-                if _revised(ds, _read_stored(ds, s, old, cache=False), df):
+                prev = _read_stored(ds, s, old, cache=False)
+                if _revised(ds, prev, df):
                     revisions.append(f"{ds}/{s}")
+                    continue
+                if _same_table(prev, df):                         # unchanged: the stored file and its pin stay
                     continue
             p = stored_path(ds, s)
             p.parent.mkdir(parents=True, exist_ok=True)
-            tmp = p.with_suffix(".parquet.tmp")
-            df.to_parquet(tmp)
-            tmp.replace(p)
-            m = {k: v for k, v in res["meta"][ds].items() if k in ("rows", "first_bar", "last_bar", "monthly_files",
-                                                                   "gap_count", "gap_runs", "ohlc_violations",
-                                                                   "duplicates_dropped", "first_settlement",
-                                                                   "last_settlement", "source", "bulk_files",
-                                                                   "rest_backfill_rows", "rest_topup_rows")}
-            m["sha256"] = sha256_file(p)
-            manifest["datasets"].setdefault(ds, {})[s] = m
+            new = p.with_suffix(".parquet.new")
+            df.to_parquet(new)
+            if res.get("full_meta"):                              # the ten: every stored meta key is kept
+                m = {k: v for k, v in res["meta"][ds].items() if k != "sha256"}
+            else:
+                m = {k: v for k, v in res["meta"][ds].items() if k in (
+                    "rows", "first_bar", "last_bar", "monthly_files", "gap_count", "gap_runs", "ohlc_violations",
+                    "duplicates_dropped", "first_settlement", "last_settlement", "source", "bulk_files",
+                    "rest_backfill_rows", "rest_topup_rows", "daily_files", "daily_rows_filled")}
+            m["sha256"] = sha256_file(new)
+            staged.append((new, p, ds, s, m))
         built += 1
         if built % 100 == 0:
-            log(f"  built {built}/{len(plan)}")
+            log(f"  built {built}/{len(plan)} ({fill.progress()})")
+    report = fill.report()
+    log("hole fill: " + json.dumps({k: v for k, v in report.items() if k != "unfilled"}, sort_keys=True))
+    if fill.failed or fill.revisions:
+        for new, *_ in staged:
+            new.unlink(missing_ok=True)
+        if fill.failed:
+            log(f"FAILED daily files (rerun to resume): {len(fill.failed)}: " + ", ".join(fill.failed[:10]))
+        if fill.revisions:
+            log("STOP: a stored hour differs from the daily file (revision); nothing written: "
+                + "; ".join(fill.revisions[:10]))
+        return {"download": dl, "stored": False, "hole_fill": report, "daily_revisions": fill.revisions}
+    for new, p, ds, s, m in staged:
+        new.replace(p)
+        manifest["datasets"].setdefault(ds, {})[s] = m
     if revisions:
         log(f"REVISION detected (stored rows changed), not written: {revisions[:10]}")
-    rh, dh = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False))
+    rh, dh = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False),
+                              sym_sha)
     manifest["research_hash"] = rh
     manifest["dataset_hashes"] = dh
     manifest["admitted_this_snapshot"] = sorted(set(dh) - set(old.get("dataset_hashes", {}))) + ["universe"]
     manifest["updated_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     manifest["universe"] = {"symbols_file": "data/symbols.json", "symbols_sha256": sym_sha, "end_month": end_month,
                             "symbols_stored": built, "symbols_without_rows": empty, "revisions": revisions,
-                            "download": dl, "built_at": manifest["updated_at"]}
+                            "download": dl, "built_at": manifest["updated_at"],
+                            "hole_fill": {k: v for k, v in report.items() if k != "unfilled"}}
     MANIFEST.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="ascii")
-    log(f"stored {built} symbols; research_hash = {rh}")
-    return {"download": dl, "stored": True, "research_hash": rh, "revisions": revisions}
+    log(f"stored {built} symbols ({len(staged)} tables rewritten); research_hash = {rh}")
+    return {"download": dl, "stored": True, "research_hash": rh, "revisions": revisions, "hole_fill": report}
+
+
+def _same_table(a: pd.DataFrame, b: pd.DataFrame) -> bool:
+    if len(a) != len(b) or list(a.columns) != list(b.columns) or not a.index.equals(b.index):
+        return False
+    return all(np.array_equal(a[c].to_numpy(), b[c].to_numpy(),
+                              equal_nan=a[c].dtype.kind == "f") for c in a.columns)
+
+
+class _HoleFill:
+    """U4 bookkeeping: fetch the daily files a symbol's holes need, count holes before and after."""
+
+    def __init__(self, build_only: bool, workers: int):
+        self.build_only, self.workers = build_only, workers
+        self.status, self.failed, self.revisions = {}, [], []
+        self.before, self.after, self.filled, self.absent = {}, {}, {}, {}
+        self.unfilled = {}                                      # dataset -> {(symbol, day)}
+        self.core = {}                                          # R-A: symbol -> dataset -> filled / left hours
+
+    def fetch(self, items: list) -> None:
+        if self.build_only or not items:
+            for it in items:
+                self.status[it[3]] = "build_only"
+            return
+        with ThreadPoolExecutor(max_workers=self.workers) as ex:
+            for it, st in zip(items, ex.map(_fetch_daily_polite, items)):
+                self.status[it[3]] = st
+                if st.startswith("failed"):
+                    self.failed.append(it[2].rsplit("/", 1)[1])
+
+    def count(self, which: dict, dataset: str, hours: pd.DatetimeIndex) -> None:
+        agg = which.setdefault(dataset, {})
+        for k, v in _region_counts(hours).items():
+            agg[k] = agg.get(k, 0) + v
+
+    def left(self, s: str, dataset: str, hours: pd.DatetimeIndex) -> None:
+        self.count(self.after, dataset, hours)
+        if len(hours):
+            self.unfilled.setdefault(dataset, set()).update((s, d) for d in set(hours.strftime("%Y-%m-%d")))
+
+    def progress(self) -> str:
+        c = {}
+        for v in self.status.values():
+            c[v.split(":")[0]] = c.get(v.split(":")[0], 0) + 1
+        return " ".join(f"{k}={v}" for k, v in sorted(c.items()))
+
+    def report(self) -> dict:
+        c = {}
+        for v in self.status.values():
+            c[v.split(":")[0]] = c.get(v.split(":")[0], 0) + 1
+        return {"missing_hours_before": self.before, "missing_hours_after": self.after,
+                "rows_filled": self.filled, "daily_files": c, "tables_absent_from_archive": self.absent,
+                "unfilled_symbol_days": {ds: len(v) for ds, v in self.unfilled.items()},
+                "core_symbols": self.core,
+                "unfilled": {ds: sorted(v) for ds, v in self.unfilled.items()}}
+
+
+def _universe_filled(s: str, items: list, until, fill: _HoleFill) -> dict:
+    """A universe symbol (not one of the ten): monthly tables, then every hole inside its life (klines
+    grid) filled from the daily files of klines, mark and index price klines (U4)."""
+    parsed = _universe_raw(s, items, until)
+    res0 = _universe_tables(parsed)
+    if not res0["tables"]:
+        return res0
+    life = res0["tables"]["klines"].index
+    daily = {}
+    for ds in ("klines",) + PRICE_BAR_DATASETS:
+        t = res0["tables"][ds]
+        if ds != "klines" and len(t) == 0:
+            fill.absent[ds] = fill.absent.get(ds, 0) + 1
+            continue
+        miss = missing_hours(ds, t, life)
+        fill.count(fill.before, ds, miss)
+        daily[ds] = daily_items_for(s, ds, miss)
+    fill.fetch([it for ds in daily for it in daily[ds]])
+    res = _universe_tables(parsed, daily) if any(daily.values()) else res0
+    for ds in daily:
+        fill.left(s, ds, missing_hours(ds, res["tables"][ds], life))
+        n = res["fills"].get(ds, {}).get("filled", 0)
+        fill.filled[ds] = fill.filled.get(ds, 0) + n
+    return res
+
+
+def _bars_raw(md: pd.DataFrame, cols) -> pd.DataFrame:
+    return pd.DataFrame({"open_time_ms": (ns_int(md.index) // 10 ** 6).astype(np.int64),
+                         **{c: md[c].to_numpy(dtype=np.float64) for c in cols}})
+
+
+def fill_core_tables(s: str, tables: dict, metas: dict, fill: _HoleFill) -> tuple:
+    """R-A: the holes inside the life (the stored klines grid, same snapshot end, no top-up) of one of the ten
+    core / extended symbols, filled by the U4 rule: klines gap rows and grid hours without a mark or index bar,
+    from the daily files of the same archive (checksum required); an hour already stored with a real bar must
+    equal the daily row (DailyRevision otherwise). tables / metas: {"klines", "mark_klines", "index_klines"}.
+    Returns (tables, metas); a table nothing was filled in is returned as given."""
+    kl = tables["klines"]
+    life = kl.index
+    lo_ms, hi_ms = int(life[0].value // 10 ** 6), int(life[-1].value // 10 ** 6)
+    out_t = dict(tables)
+    out_m = {ds: {k: v for k, v in metas.get(ds, {}).items() if k != "sha256"} for ds in tables}
+    before, daily = {}, {}
+    for ds in ("klines",) + PRICE_BAR_DATASETS:
+        if ds not in tables:
+            continue
+        before[ds] = missing_hours(ds, tables[ds], life)
+        fill.count(fill.before, ds, before[ds])
+        daily[ds] = daily_items_for(s, ds, before[ds])
+    fill.fetch([it for v in daily.values() for it in v])
+    present = ~kl["is_gap"].to_numpy(dtype=bool)
+    base = pd.DataFrame({"open_time_ms": (ns_int(kl.index[present]) // 10 ** 6).astype(np.int64),
+                         **{c: kl[c].to_numpy(dtype=np.float64)[present] for c in KLINE_FLOAT_COLS}})
+    merged, f = fill_from_daily("klines", base, daily.get("klines", []), lo_ms, hi_ms)
+    fills = {"klines": f}
+    if f["filled"]:
+        k2, info = _grid_klines(merged, life[-1])
+        if not k2.index.equals(life):
+            raise RuntimeError(f"{s}: the filled klines grid differs from the stored grid")
+        out_t["klines"] = k2
+        out_m["klines"].update({k: info[k] for k in ("gap_count", "gap_runs", "ohlc_violations")}, rows=int(len(k2)))
+    for ds in PRICE_BAR_DATASETS:
+        if ds not in tables or len(tables[ds]) == 0:
+            continue
+        merged, f = fill_from_daily(ds, _bars_raw(tables[ds], MARK_COLS), daily.get(ds, []), lo_ms, hi_ms)
+        fills[ds] = f
+        if f["filled"]:
+            md = _bars_table(merged, MARK_COLS)
+            out_t[ds] = md
+            out_m[ds].update(rows=int(len(md)), first_bar=str(md.index[0]), last_bar=str(md.index[-1]),
+                             partial_bars_samples_lt_3600=int((md["samples"] < 3600).sum()), **mark_coverage(md, life))
+    rec = fill.core.setdefault(s, {})
+    for ds, f in fills.items():
+        if f["filled"]:
+            m = out_m[ds]
+            m["daily_files"] = {**m.get("daily_files", {}), **f["daily_files"]}
+            m["daily_rows_filled"] = int(m.get("daily_rows_filled", 0)) + f["filled"]
+        left = missing_hours(ds, out_t[ds], life)
+        fill.left(s, ds, left)
+        fill.filled[ds] = fill.filled.get(ds, 0) + f["filled"]
+        rec[ds] = {"filled_hours": _region_counts(before[ds][~before[ds].isin(left)]),
+                   "left_hours": _region_counts(left)}
+    return out_t, out_m
+
+
+def _core_filled(s: str, old: dict, core_end, items: list, fill: _HoleFill, log) -> dict:
+    """One of the ten (R-A): its stored klines and mark bars and its index bars (the stored index table is kept
+    when it reaches the core klines' last bar, so no REST), every hole inside the stored klines grid filled
+    from the daily files (fill_core_tables). Nothing else about the core snapshot changes."""
+    kl = _read_stored("klines", s, old, cache=False)
+    prev = old["datasets"].get("index_klines", {}).get(s)
+    if prev is not None and prev.get("last_bar") and ts(prev["last_bar"]) >= kl.index[-1]:
+        md = _read_stored("index_klines", s, old, cache=False)
+        info = {k: v for k, v in prev.items() if k != "sha256"}
+    else:
+        md, info = build_mark(s, core_end, {s: items}, kl, log, "index_klines")
+    tables = {"klines": kl, "mark_klines": _read_stored("mark_klines", s, old, cache=False), "index_klines": md}
+    metas = {"klines": old["datasets"]["klines"][s], "mark_klines": old["datasets"]["mark_klines"][s],
+             "index_klines": info}
+    t, m = fill_core_tables(s, tables, metas, fill)
+    return {"tables": t, "meta": m, "full_meta": True}
 
 
 def verify(log=print) -> bool:
@@ -1255,6 +1627,13 @@ def main(argv=None):
         summary()
     elif cmd == "universe":
         r = download_universe(log=lambda s: print(s, flush=True), build_only="--build-only" in argv)
+        for ds, days in r.get("hole_fill", {}).get("unfilled", {}).items():
+            months = {}
+            for _, d in days:
+                months[d[:7]] = months.get(d[:7], 0) + 1
+            print(f"unfilled {ds}: {len(days)} symbol-days; by month " + json.dumps(months, sort_keys=True))
+            if ds == "klines":
+                print("unfilled klines symbol-days: " + ", ".join(f"{s} {d}" for s, d in days[:200]))
         sys.exit(0 if r.get("stored") else 1)
     elif cmd == "verify":
         sys.exit(0 if verify() else 1)

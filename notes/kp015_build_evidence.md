@@ -357,3 +357,165 @@ churn, tables on disk loaded per block, default options, ucal_xs_momentum, top30
 largest blocks 52 / 60): process peak 737 MiB, stage 2 107 s (the machine was shared with the auditor's run).
 Unit availability unchanged (DEV 18,985 and VAL 26,303 unit hours, 100% at every lookback under S2).
 Full suite after this pass: 759 passed, 0 failed, 0 skipped (906 s). python -m omr.ledger verify: OK.
+
+# FIX PASS 4 (2026-11-20): rulings U1-U8 (audit round 6) and the follow-up rulings R-A, R-B
+
+Base 973e413 (kp015-build). Build and test only: no re-key, calibration, seal, selftest or `omr.universe
+members`; no git writes; the ledger untouched. `python -m omr.data universe` (three runs) and `data validate`
+were run for U4 / R-A (they rewrote data/manifest.json, data/validation.json and stored tables).
+
+U5 (omr/data.py): the sha256 of data/symbols.json (the file on disk, when the manifest stores the universe) is
+folded into the research hash after the tables (compute_research_hash, hashes_streaming, research_hash_from_disk,
+snapshot, download_universe) and into data_fingerprint, so a rebuilt table changes every trial id and unbinds
+validation (and the seal). tests/test_data_integrity.py::test_u5_the_symbol_table_is_in_the_research_hash_and_the
+_fingerprint: one class changed, then one `until` changed: two new research hashes, a new fingerprint,
+validation_ok() False, a new trial id; the original file restores all of them. conftest make_disk_data folds it.
+
+U4 + R-A (omr/data.py): `data universe` builds each universe symbol from its monthly files, finds every hour
+missing inside its life (klines gap rows; grid hours without a mark or index bar), fetches the daily files of the
+same archive for those days (fetch_daily: the published CHECKSUM is required and stored beside the zip and
+re-verified at every use; a 404 is remembered by a marker; a file without CHECKSUM is not stored), and fills only
+hours the table does not hold, inside the life (fill_from_daily). An hour already stored must be equal in every
+column to the daily row, else DailyRevision: the run stops and nothing is written (tables are staged as
+.parquet.new and moved only when no fetch failed and no revision was found). The sha256 of every daily file used
+is pinned in the table's manifest entry (daily_files) with daily_rows_filled. R-A: the ten core / extended symbols
+are filled by the same rule inside their stored klines grid (fill_core_tables: same snapshot end, no top-up, the
+stored index table kept, every stored manifest key kept); `data update` (snapshot) applies the same fill so a
+later update reproduces the filled tables. A table nothing was filled in is not rewritten (its pin stays).
+Runs: run 1 stopped on 12 transient fetch failures (all KAVAUSDT; nothing written; a probe then fetched them
+fine); run 2 stored the universe fill (1,302 tables rewritten); run 3 (after R-A) rewrote 13 tables (the ten mark
+tables, LTCUSDT / SOLUSDT / XRPUSDT klines). No revision anywhere (every compared held hour equal). Daily files:
+3,058 present and CHECKSUM-verified, 29,328 absent (404). research_hash now 28d9084a8c5c7659... (was d1b6ce5b8d0a0380).
+Missing hours inside the lives, all stored symbols (before -> after), by region:
+- klines: DEV 5,856 -> 0; VAL 1,970 -> 194; after VAL 57 -> 57 (60 symbols / 335 symbol-days -> 12 / 17).
+- mark: warm-up 3,166 -> 3,166; DEV 9,021 -> 0; VAL 8,611 -> 31; after VAL 15,809 -> 41.
+- index: warm-up 3,166 -> 3,166; DEV 1,197 -> 0; VAL 51,941 -> 36,257; after VAL 676,148 -> 662,684.
+Core / extended symbols (hours filled by region): LTCUSDT, SOLUSDT, XRPUSDT klines DEV 120 each (2022-02-26..28,
+2022-04-01..02); every other core klines table unchanged (BTCUSDT and ETHUSDT klines did NOT change). Mark bars
+filled: BTCUSDT 216 (DEV 120, VAL 72, after VAL 24); ETHUSDT 72 (VAL 48, after VAL 24); AVAX, BNB, LINK 216
+(DEV 120, VAL 72, after 24); SOL, XRP 192 (DEV 120, VAL 48, after 24); ADA, DOGE, LTC 72 (VAL 48, after 24).
+BTCUSDT mark 2,538 and ETHUSDT mark 628 warm-up hours stay missing (before the archive's mark history; daily
+files absent), and the same for their index bars.
+Holes that could not be filled, up to VAL end: klines AERGOUSDT 2025-04-16 (11 h), BNXUSDT 2023-02-22 (14),
+CTKUSDT 2025-04-30 (10), CVCUSDT 2025-05-16 (8), ICPUSDT 2022-09-22..27 (122), MAVIAUSDT 2025-03-26 (17),
+TLMUSDT 2023-03-30 (12); mark AERGO, CTK, CVC the same days (11, 11, 9 h); index: 2019-09..12 pre-history and whole
+months the archive does not have (DEV+VAL: BTCSTUSDT 16,820 h, COCOSUSDT 7,252, HNTUSDT 7,252, TOMOUSDT 4,321,
+INITUSDT 196, SXTUSDT 148, NEWTUSDT 120, BABYUSDT 117, AERGO / CTK / CVC 11 / 11 / 9); after VAL 29k symbol-days,
+mostly whole months of about 94 delisted names. The ACTIVE and seasoning rules are unchanged.
+Membership (DEV bars only, no VAL row read): eligible 2022-02..07 = 128, 128, 131, 131, 131, 131 (was 128, 84,
+131, 86, 131, 131). LUNAUSDT top30 every month 2021-05 .. 2022-05 (was 2021-05 .. 2022-02 and 2022-04).
+SOLUSDT next30 2021-01, 2021-02, top30 every month 2021-03 .. 2022-07 (was out in 2022-03 and 2022-05; SOL ranks
+4-5). data validate PASSED (0 failing counts); distinct top30 DEV 75 (was 78), DEV+VAL 134 (was 137); unit
+availability unchanged (DEV 18,985, VAL 26,303 unit hours, 100% at every lookback).
+Tests (tests/test_holefill.py): a hole filled from its daily file and a day without one staying a hole; a held
+hour that differs stops (DailyRevision); only checksum-verified files are read, a bad checksum raises, nothing
+outside the life is added; fetch_daily needs the CHECKSUM and remembers a 404 (no second request); the per-symbol
+path counts holes before and after; R-A: a core table filled, every other row bit-identical, the grid and the
+meta keys kept, a revised held bar stops.
+
+U1 + R-B (omr/upipeline.py g6_books, g6_books_tie, g6_paired_p, ugates; constants G6_PAIRED_BOOK_TIE 1e-12,
+G6_PAIRED_SHARPE_MARGIN 1e-9): as ruled. Detail keeps actual_val_sharpe_restarted (unmasked), adds
+actual_common_mean (mean A_k Sharpe), shifted_mean (mean S_k), shifted_p95, ties. R-B: a pair within 1e-12 on
+every cell is a tie (S >= A, no S run); otherwise S >= A when Sharpe(S) >= Sharpe(A) - 1e-9.
+Tests (tests/test_g6_paired.py): random churn calendar (5 shifts, rows under 10 names and re-centred rows both
+present): A_k and S_k hold exactly the mask names on every live row, their row nets equal the unmasked rows'
+nets (1e-12), rows under 10 common names are flat in both, gross never exceeds the unmasked row's; the same on a
+56-symbol synthetic churn panel; bit-identity with the pass-3 rule on a constant-membership 14-symbol panel (p,
+the unmasked actual, the shifted mean equal; no tie and no shifted Sharpe inside the 1e-9 band, so the margin did
+not change p); the spy: no weight on a symbol out of play or without a bar in any G6 run; ties and margin only
+raise p.
+STOP CASE (R-B): the equal-weight basket on the churn panel gives p = 0.524, not 1. Cause: 27 VAL rows where a
+member is in play at the decision row but has no bar at the execution row (delistings). A_k's own set (tradable
+now) drops that name's weight (row net 29/30) while S_k's own set (in play at the source row) keeps the full net
+(1), so the books differ by about 1/30 per row there (max |A - S| 0.003-0.007): no tie, Sharpe(S) - Sharpe(A)
+about +-1e-3. With A's own set = in play at the decision row (symmetric with S), 20 of 20 shifts are ties (p = 1);
+scratchpad scripts rb_basket_diag.py and rb_variant.py. The basket test is xfail(strict) pending a ruling;
+test_u1_the_basket_counterexample_to_r_b documents the case.
+
+U3 (omr/interp.py cross_inplay): a cs_* is computed across the in-play symbols with a known AND finite input; the
+at-least-10 rule counts those; an in-play symbol with a known non-finite input stays known with value NaN. Core
+_cross unchanged. tests/test_cs_nonfinite.py (8): 0/0 for one symbol keeps the row (11 finite values equal the
+direct cross-section of the 11, the 0/0 symbol a known NaN) for cs_mean / demean / scale / rank; a zero-volume
+hour for every symbol makes the row unknown for everyone; three symbols 0/0 with 11 finite: known, the three NaN;
+five 0/0 (9 finite): unknown. LANGUAGE section 10 updated.
+
+U6 (omr/probe.py universe_panel): top30 programs are probed on 12 deterministic synthetic symbols (core A and B
+first), all in play, unit known, through the in-play cross-section code; the core probe is unchanged.
+tests/test_probe_top30.py (5): abs(cs_rank(x)) and cs_rank(x) * cs_rank(x) parse in top30 (and are rejected by the
+two-symbol core probe); cs_rank(x) / cs_rank(x) and cs_demean(x) + hour / hour are still rejected; panel shape.
+
+U7: funding8h is known only while the latest visible settlement is at most 2 x min(its interval, 8) hours old, in
+every unit, computed where frames and panels are assembled from the full funding table (datasets.assemble_frame
+column funding.fresh; FullPanel col funding.fresh = the R2 freshness); universe.funding_fresh caps the interval at
+8 hours for R2 too; lookback leaf funding8h = 17. tests/test_funding_fresh.py (7): a 72-hour gap makes funding8h
+unknown from 17 hours after the last settlement to the next one, and a window over it waits n rows; a 24-hour
+interval is capped (known 16 hours); universe panels carry the same freshness and a window over funding8h waits
+after a 3-month funding gap; lookback 17 / 36 / 17 / 37. tests/test_core_identity.py: 3 passed (synthetic world
+and REAL DEV frames, after the R-A data and U7): the core unit stays bit-identical to b12df97 (no core funding gap
+over 2 x min(interval, 8) in DEV for the ten).
+
+U8: sandbox appends its log row before printing anything (status ok / kernel_fault with the fault); kernel_lock.
+rekey copies seal keys with .get; Blocked counts the known cells block_overlap compared (stage-1 result
+block_overlap_cells; the pending row's stage1 dict and top level, the final row for top30). Documents K4-K7:
+costs "last usable close", inplay_matrix docstring, the research hash covers symbols.json, rekey. Tests:
+tests/test_sandbox_log.py (2), tests/test_ledger_lock.py::test_u8_a_text_only_rekey_keeps_a_seal_made_before_the_
+universe_keys, tests/test_blocks.py::test_u8_block_overlap_cells_are_counted_and_recorded (> 0 with blocks, 0 for
+one block, equal in the evaluated and pending rows). Memory estimate: G6's VAL term 24 -> 52 bytes per cell.
+
+U2 (omr/ucalibrate.py, rewritten): null worlds on the REAL membership calendar. Panel = every symbol ever in top30
+from UNIVERSE_START to VAL end (the kernel's own rule on the real activity of every crypto perpetual, read with
+the logged calibration handle; 134 symbols on the current data). USource keeps each symbol's real rows as
+concatenated arrays (price ratios open / previous close, high / open, low / open, close / open; the five volume
+columns; gap and active flags; the real Activity as activity_of computes it; funding settlements; per local day
+whether all 24 hours are active and the day's settlements) and is shared with the workers through
+multiprocessing shared memory (no copy per worker). UWorld draws one world (null A: one source day per world day
+from the days UNIVERSE_START .. VAL end, shared by all symbols; a symbol not fully active on it takes a personal
+fallback day from its own fully active days, generator [seed, 21, symbol index]; funding keeps the real day's
+settlement times and intervals and takes the source day's rates in order, cycled, a source day without a
+settlement replaced by one with, generator [seed, 23, symbol index]; null B: real order, one coin per day for all
+symbols mirrors each symbol's demeaned path, funding unchanged) and builds a symbol's tables only when a block
+asks for them (prices cumulated from the real first open; a present zero-trade bar flat; absent bars absent; mark
+= index = the synthetic last-price bars of the present rows). world_udata gives the kernel the REAL Activity, so
+its own membership rule reproduces the real calendar; dev_view is the same world under DEV end. Screening,
+stage 1, stage 2 and the oracle run on the production six-month blocks; the oracle's z is demeaned across the
+symbols with a return and standardised per symbol, weights over the in-play symbols. ConstUData is gone (a copy
+lives in tests/test_universe.py as a test panel). The unlocked dry run builds a fully synthetic churn universe
+(synthetic_churn_universe: staggered listings and delistings, volume = own price over its 90-day mean x a
+mean-reverting regime; 170 symbols -> 149 ever in top30).
+Tests (tests/test_ucalibrate.py, 11): families; for null A and B the world keeps every real row (index, the five
+volume columns, is_gap, funding times and intervals) and gives exactly the real top30 members per month and the
+same in-play mask (usable flags, unit sizes); null A: the world's day where a symbol is fully active, else one of
+its own full days, close / open equal to the source hour's; zero-trade bars flat, absent bars absent, prices start
+at the real first open; null A funding takes the source day's rates (cycled) on the real calendar; null B one coin
+per day for every symbol (share 0.35-0.65), funding unchanged; the DEV view equals the full world under DEV end;
+the shared-memory source gives identical worlds; one null world runs the protocol and every Blocked in it uses
+the production months; the oracle on the same worlds is market neutral over in-play symbols, foresight pays, and
+evaluate_weights_u runs on production blocks.
+Measurement (scratchpad u2_measure.py; each task in its own spawned process attached to the shared source like a
+worker; synthetic churn universe, 149 symbols ever in top30, 3.67 M source rows, source arrays 309 MiB shared):
+- null world A 488.5 s, peak working set 1,318 MiB (peak private 1,440 MiB); null world B 511.3 s, 1,340 MiB
+  (1,459 MiB). A worker's base after imports: 578 MiB private; after attaching the source 256 MiB working set.
+- oracle (engine columns only in the oracle's blocks, a change made after the first measurement cut the peak from
+  1,453 to 1,022 MiB with identical Sharpes): curve with 2 rhos 17.6 s, with 81 rhos 52.2 s (world + oracle build
+  16.7 s, 0.44 s per rho), peak 1,022 MiB (1,168 private); power task (4 oracle evaluations with the paired G6,
+  200 shifts) 472.8 s, peak 1,202 MiB (1,321 private).
+- per oracle world: 2 speeds x (3 tuning calls x 16.7 s + 165 rhos x 0.44 s) + power = about 718 s.
+Estimates (null world 500 s, oracle world 718 s; worker-hours, then wall time): (a) 150 worlds per null and 100
+oracle worlds per null: 2 x 150 x 500 + 2 x 100 x 718 = 293,600 s = 81.6 worker-hours: about 20.4 h with 4
+workers, 81.6 h with 1. (b) 300 and 200: 587,200 s = 163 worker-hours: about 41 h with 4 workers, 163 h with 1.
+Workers: a worker peaks at about 1.46 GiB private (1.34 GiB working set), the shared source adds 0.31 GiB once and
+the parent about 0.5 GiB. This machine has 14.8 GiB and 4 cores / 8 threads: with the auditor and other processes
+closed (about 11 GiB free) memory allows 6-7 workers and the 4 cores make 4 the useful number; with today's
+1.6-2.6 GiB free only 1 worker is safe.
+Memory estimates for top30 trials (R3, new validation sizes, G6 term 52 bytes per VAL cell): ucal_xs_momentum /
+reversal 809 MiB (was 730), carry 866 (789), kernel_noise_top30 1,012 (936); largest blocks top30 60, next30 88.
+
+Full suite after this pass: 801 passed, 1 xfailed (the R-B basket test, strict), 0 failed, 0 skipped (1,155 s).
+python -m omr.ledger verify: OK (ledger untouched). Core unit: tests/test_core_identity.py passed (synthetic world
+and real DEV frames).
+Files touched: omr/constants.py, data.py, datasets.py, evaluate.py, interp.py, kernel_lock.py, lang.py, probe.py,
+sandbox.py, ucalibrate.py, universe.py, upipeline.py; tests/conftest.py, test_blocks.py, test_data_integrity.py,
+test_ledger_lock.py, test_ucalibrate.py, test_universe.py and new test_cs_nonfinite.py, test_funding_fresh.py,
+test_g6_paired.py, test_holefill.py, test_probe_top30.py, test_sandbox_log.py; CONSTITUTION.md, LANGUAGE.md,
+KERNEL_PROPOSALS.md, STATE.md, notes/kp015_build_evidence.md; data/manifest.json, data/validation.json and the
+stored tables (data universe / validate).

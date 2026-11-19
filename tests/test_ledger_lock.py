@@ -301,3 +301,25 @@ def test_decide_rule_and_oracle_bound():
     v = K.verdict_from_rows(a)
     assert v["STOP"] and v["oracle_level_outside_bound"] == ["A/slow|1.5"]
     assert C.G6_GRID == (0.025, 0.05, 0.10) and C.NULL_PASS_MAX == 0.03 and C.POWER_MIN == 0.5
+
+
+def test_u8_a_text_only_rekey_keeps_a_seal_made_before_the_universe_keys(tmp_path):
+    """A seal kept from before KP-015 has no universe_calibration_* keys: the re-key must not raise and the
+    kernel must still verify."""
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    k.seal(k.write_art(artifact(lock, tmp_path)))
+    old = KL.read_lock(k.lock)
+    seal = {kk: v for kk, v in old["seal"].items() if not kk.startswith("universe_")}
+    k.lock.write_text(json.dumps(dict(old, seal=seal)))
+    rows = LG.read_rows(k.hist)
+    last = {kk: v for kk, v in rows[-1].items() if not kk.startswith("universe_") and kk not in ("prev_hash", "row_hash")}
+    k.hist.write_text("")
+    for r in rows[:-1]:
+        LG.append(k.hist, {kk: v for kk, v in r.items() if kk not in ("prev_hash", "row_hash")})
+    LG.append(k.hist, last)
+    assert k.verify() == []
+    (tmp_path / "LANGUAGE.md").write_text("grammar, reworded\n")
+    l2 = k.rekey("text only, old seal")
+    assert l2["seal"] == seal and LG.read_rows(k.hist)[-1]["seal_kept"] is True
+    assert LG.read_rows(k.hist)[-1]["universe_calibration_file"] is None and k.verify() == []

@@ -253,3 +253,19 @@ def test_the_old_timeframe_rule_under_reports():
         rc, kc = X.evaluate_full(prog, {}, [f.iloc[c:]])
         bad |= not np.array_equal(kc[old - 1:], kn[c + old - 1:])
     assert bad
+
+
+# ---------------------------------------------------------------- U8: the check's coverage is recorded
+
+def test_u8_block_overlap_cells_are_counted_and_recorded(tmp_path, tmp_ledger, ud_dev, ud_full):
+    prog = top30(WINDOWS_OVER_CS["sma_over_cs_demean"])
+    q = L.default_params(prog)
+    opts = PL.Opts(truncation_cuts=1, start_cuts=1)
+    s1 = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts)
+    one = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts, months=None)
+    assert s1["block_overlap_cells"] > 0 and one["block_overlap_cells"] == 0      # one block: nothing compared
+    row, ledger = _evaluate(tmp_path, tmp_ledger, ud_dev, ud_full, WINDOWS_OVER_CS["sma_over_cs_demean"])
+    assert row["status"] == "evaluated" and row["block_overlap_cells"] == s1["block_overlap_cells"]
+    from omr import paths as P
+    pend = [r for r in ledger.read_rows(P.TRIALS_JSONL) if r["status"] == "pending"][0]
+    assert pend["stage1"]["block_overlap_cells"] == pend["block_overlap_cells"] == s1["block_overlap_cells"]

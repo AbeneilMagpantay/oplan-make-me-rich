@@ -278,7 +278,7 @@ def rekey(reason: str, approved_by: str, root: Path = None, lock_path: Path = No
            "new_semantic": cur["semantic"], "new_text": cur["text"], "changed_files": changed,
            "seal_kept": kept is not None}
     if kept is not None:
-        row.update({k: kept[k] for k in SEAL_KEYS})
+        row.update({k: kept.get(k) for k in SEAL_KEYS})       # U8: a seal kept from before KP-015 has no universe keys
     ledger.append(history_path, row)
     return lock
 

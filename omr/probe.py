@@ -20,6 +20,9 @@ used as a scale) and thresholds hidden by multiplying both sides of a comparison
 Those are deliberate and visible; the coordinator's source read catches them (KERNEL_PROPOSALS
 KP-010). Boolean nodes are not probed. An exception raised while probing is `probe_fault` (a kernel
 bug, not the researcher's syntax). The panel is built once per process; nothing here reads real data.
+Unit top30 programs (KP-015 U6) are probed on a panel of UNIVERSE_PROBE_SYMBOLS (12) deterministic
+synthetic symbols, all in play, through the in-play cross-section code (a two-symbol cross-section makes
+abs(cs_rank(x)) a false constant); the core probe is unchanged.
 """
 from __future__ import annotations
 
@@ -95,6 +98,42 @@ def panel():
     return _PANEL
 
 
+UNIVERSE_PROBE_SYMBOLS = 12          # >= UNIVERSE_MIN_CS: the in-play cross-section is known on every row
+_UPANEL = None
+
+
+def universe_panel():
+    """(Panel, BTC frame) for unit top30 programs (U6): UNIVERSE_PROBE_SYMBOLS deterministic synthetic
+    symbols (symbol A and B of the core panel first, then ten more from a second fixed seed), every one in
+    play and the unit known on every row, evaluated through the in-play cross-section code."""
+    global _UPANEL
+    if _UPANEL is None:
+        from omr import interp as X
+        a, b, btc = panel()
+        rng = np.random.default_rng(SEED + 1)
+        extra = [D.assemble_frame(synthetic_symbol(rng, float(np.exp(rng.normal(2.0, 1.5)))), D.PROGRAM_EXTRA)
+                 for _ in range(UNIVERSE_PROBE_SYMBOLS - 2)]
+        frames = [a, b] + extra
+        T = len(a.index)
+        cols = {}
+
+        def get(name):
+            if name not in cols:
+                cols[name] = np.column_stack([f[name].to_numpy() for f in frames])
+            return cols[name]
+        p = X.Panel(a.index, [f"P{i:02d}USDT" for i in range(len(frames))], get,
+                    np.ones((T, len(frames)), dtype=bool), np.ones(T, dtype=bool))
+        _UPANEL = (p, btc)
+    return _UPANEL
+
+
+def _probe_frames(prog: L.Program):
+    if prog.unit == "top30":
+        return universe_panel()
+    a, b, btc = panel()
+    return ([a] if prog.kind == "single" else [a, b]), btc
+
+
 def window_params(prog: L.Program) -> set:
     """Params used as a window / lag / count / horizon argument anywhere in the program."""
     import ast
@@ -150,8 +189,7 @@ def _constant_value(s):
 
 def check(prog: L.Program) -> None:
     from omr import interp as X
-    a, b, btc = panel()
-    frames = [a] if prog.kind == "single" else [a, b]
+    frames, btc = _probe_frames(prog)
     rec = []
     X.evaluate_full(prog, L.default_params(prog), frames, btc, record=rec)
     suspects = []
