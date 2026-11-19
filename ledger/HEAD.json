@@ -7,6 +7,10 @@
   "head": "dc0c17b6f2cef65e0c04944c963b7d6628724795a76de90895c70167b91bc65b",
   "rows": 8
  },
+ "sandbox_log.jsonl": {
+  "head": "7a72423494239f4c49462a77dc3fc99ceb1e273f46374ef5ac3823fb12931df3",
+  "rows": 18
+ },
  "stage1_log.jsonl": {
   "head": "82ed669d66c817d0c47011e1115fa7c22632242d08ec50e541c49de7b34fa060",
   "rows": 1

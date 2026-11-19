@@ -1,0 +1,18 @@
+# Generation 1, H3 (generations/gen001/PLAN.md). Selective long after a forced-deleveraging drop.
+# The trigger mixes a daily series with the hourly funding series, so it lives on the hourly grid and
+# hold_n counts hours (240 = 10 days).
+name = "gen001_capitulation_long"
+family = "meanrev"
+kind = "single"
+hypothesis = "Capitulation rebound: when the drop_n-day return is over 2 standard deviations below its own look-day history and mean funding over the last fund_n settlements is negative (shorts paying, longs flushed), go long for hold_n hours after the last trigger; else flat. Mechanism: forced deleveraging overshoots. Falsified if VAL PSR(0) < 0.90, no timing skill, or gains sit in one year."
+
+drop_n = param(5, 3, 10)
+look = param(120, 60, 240)
+fund_n = param(9, 6, 21)
+hold_n = param(240, 120, 480)
+
+d = daily(close)
+deep = zscore(ret(d, drop_n), look) < -2
+crowded_short = funding_mean(fund_n) < 0
+trigger = where(deep and crowded_short, 1, 0)
+signal = where(rmax(trigger, hold_n) > 0, 1, 0)

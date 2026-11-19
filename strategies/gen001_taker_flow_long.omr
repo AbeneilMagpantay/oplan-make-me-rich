@@ -1,0 +1,13 @@
+# Generation 1, H5 (generations/gen001/PLAN.md). Long-or-flat on persistent aggressive buying.
+# The taker-buy share is the SIGNAL, compared with its own trailing average; it is not a constant,
+# threshold or scale.
+name = "gen001_taker_flow_long"
+family = "flow"
+kind = "single"
+hypothesis = "Persistent order flow: long while the share of taker (aggressive) buying in daily volume, averaged over the last fast days, is above its slow-day average; flat otherwise. Mechanism: determined buyers split demand over days and pay the spread; passive sellers reprice gradually, so the impact of persistent flow is not complete on the day. Falsified if VAL PSR(0) < 0.90, 2x costs turn it negative, or no timing skill."
+
+fast = param(3, 2, 6)
+slow = param(30, 15, 60)
+
+share = daily(taker_buy_volume) / daily(volume)
+signal = where(sma(share, fast) > sma(share, slow), 1, 0)

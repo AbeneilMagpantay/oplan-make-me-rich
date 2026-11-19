@@ -1,0 +1,13 @@
+# DIAGNOSTIC CONTROL ONLY - NOT A CANDIDATE - DO NOT SUBMIT (generations/gen001/PLAN.md amendment A1).
+# Always long, volatility-sized: the DEV control for H1 (vol_n=30) and H4 (vol_n=10). It never changes
+# direction, so stage 1 rejects it as activity_dev; it exists only to be read in the sandbox.
+name = "gen001_diag_volsized_long"
+family = "other"
+kind = "single"
+hypothesis = "DIAGNOSTIC CONTROL, not a hypothesis and never to be submitted: always long, sized to min(1, target / realised volatility). Used only in the DEV sandbox to measure how much of the long-or-flat programs' DEV Sharpe comes from volatility sizing alone."
+
+vol_n = param(30, 5, 60)
+target = param(0.5, 0.25, 1.0)
+
+d = daily(close)
+signal = min2(1, target / realised_vol(d, vol_n))

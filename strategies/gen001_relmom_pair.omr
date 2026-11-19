@@ -1,0 +1,11 @@
+# Generation 1, H2 (generations/gen001/PLAN.md). Market-neutral relative momentum inside the pair.
+name = "gen001_relmom_pair"
+family = "relative"
+kind = "portfolio"
+hypothesis = "Relative momentum inside the pair: long the coin whose trailing n-day log return, in units of its own n-day volatility, is higher and short the other (+0.5 / -0.5). Mechanism: capital rotates between coins slowly; volatility scaling stops it simply picking the higher-beta coin. Market drift is removed. Falsified if VAL PSR(0) < 0.90, no timing skill in the permutation test, or the alt pairs disagree."
+
+n = param(21, 10, 42)
+
+d = daily(close)
+strength = logret(d, n) / realised_vol(d, n)
+signal = cs_rank(strength)

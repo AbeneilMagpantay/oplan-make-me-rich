@@ -1,0 +1,15 @@
+# Generation 1, H4 (generations/gen001/PLAN.md). Long-or-flat on volatility state only.
+name = "gen001_calm_long"
+family = "volatility"
+kind = "single"
+hypothesis = "Volatility state times exposure: long, sized to an annualised volatility target, while short-term realised volatility is below long-term realised volatility; flat while it is above. No price direction is used. Mechanism: rising volatility forces margin and risk-limit selling, falling volatility lets holders add. Falsified if VAL PSR(0) < 0.90, no timing skill in the permutation test, or funding stress turns it negative."
+
+fast = param(10, 5, 20)
+slow = param(60, 30, 120)
+target = param(0.5, 0.25, 1.0)
+
+d = daily(close)
+vf = realised_vol(d, fast)
+vs = realised_vol(d, slow)
+size = min2(1, target / vf)
+signal = where(vf < vs, size, 0)
