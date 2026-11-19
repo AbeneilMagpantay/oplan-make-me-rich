@@ -1,0 +1,162 @@
+KP-015 FEASIBILITY TABLES  (generated 2026-11-19 03:12 UTC)
+Source: data.binance.vision S3 listing (fresh, cached under downloads\listings_v2), sample files with
+verified CHECKSUMs, fapi.binance.com public market-data responses, developers.binance.com docs.
+
+== 1. METRICS  data/futures/um/daily/metrics/<SYM>/  (daily files only; no monthly folder exists)
+interval 5 min (288 rows/day; checked on 4 sample days); columns: create_time, symbol, sum_open_interest,
+sum_open_interest_value, count_toptrader_long_short_ratio (=top-trader ACCOUNT ratio), sum_toptrader_long_short_ratio
+(=top-trader POSITION ratio), count_long_short_ratio (=all-account ratio), sum_taker_long_short_vol_ratio (=taker
+buy/sell volume ratio). Mapping verified against REST for BTCUSDT 2026-11-16: 288/288 rows agree.
+symbol    first      last       files missing     MB  days with file <60% median size (ratio columns empty where sampled)
+BTCUSDT   2020-09-01 2026-11-17  2269       0   26.3  21: 2021-06-22, 2021-12-31..2022-01-18, 2024-02-16
+ETHUSDT   2021-12-01 2026-11-17  1813       0   21.4  20: 2021-12-31..2022-01-18, 2024-02-16
+SOLUSDT   2021-12-01 2026-11-17  1813       0   20.4  22: 2021-12-31..2022-01-19, 2022-03-07, 2024-02-16
+BNBUSDT   2021-12-01 2026-11-17  1813       0   20.5  19: 2021-12-31..2022-01-18
+XRPUSDT   2021-12-01 2026-11-17  1813       0   21.2  21: 2021-12-31..2022-01-19, 2024-02-16
+ADAUSDT   2021-12-01 2026-11-17  1813       0   20.6  21: 2021-12-31..2022-01-18, 2022-03-07, 2024-02-16
+DOGEUSDT  2021-12-01 2026-11-17  1813       0   21.2  22: 2021-12-31..2022-01-19, 2022-03-07, 2024-02-16
+LTCUSDT   2021-12-01 2026-11-17  1813       0   21.2  20: 2021-12-31..2022-01-18, 2024-02-16
+LINKUSDT  2021-12-01 2026-11-17  1813       0   21.1  20: 2021-12-31..2022-01-18, 2024-02-16
+AVAXUSDT  2021-12-01 2026-11-17  1813       0   19.9  22: 2021-12-31..2022-01-19, 2022-03-07, 2024-02-16
+LastModified (same pattern for all 10): 2021-12-01..2023-07-02 first written 2023-06-16..07-03 (backfill);
+BTCUSDT 2020-09-01..2021-11-30 first written 2026-03-18 (every row duplicated in the sampled day);
+2023-07-03..2024-03-03 written about 1 day after each day; 2024-03-04..2026-06-09 re-written 2026-07-15..08-24,
+and 2024-03-04..2024-04-09 re-written again 2026-11-16..18; from 2026-06-10 written about 1 day after each day.
+Recent files: rows not in time order (33 backward steps on 2026-11-16) but all 288 slots present.
+
+== 2. PREMIUM-INDEX and INDEX-PRICE klines, 1h  (monthly and daily folders)
+columns (no header, 12 fields): open_time(ms), open, high, low, close, 0, close_time, 0, count, 0, 0, 0
+count = samples per hour (premium: 60, index: 3600). BTCUSDT 2020-01: 744/744 hours in both; identical to REST.
+symbol    kind     monthly 1h        miss daily 1h                 miss  MB(m)
+BTCUSDT   premium  2020-01..2026-10     0 2019-12-24..2026-11-17     6   1.35
+BTCUSDT   index    2020-01..2026-10     0 2019-12-23..2026-11-17    57   1.95
+ETHUSDT   premium  2020-01..2026-10     0 2019-12-24..2026-11-17    37   1.35
+ETHUSDT   index    2020-01..2026-10     0 2019-12-23..2026-11-17   400   1.78
+SOLUSDT   premium  2020-09..2026-10     0 2020-09-14..2026-11-17    30   1.19
+SOLUSDT   index    2020-09..2026-10     0 2021-01-01..2026-11-17    53   1.61
+BNBUSDT   premium  2020-02..2026-10     0 2020-02-10..2026-11-17    36   1.30
+BNBUSDT   index    2020-02..2026-10     0 2020-01-01..2026-11-17    64   1.83
+XRPUSDT   premium  2020-01..2026-10     0 2020-01-06..2026-11-17    34   1.30
+XRPUSDT   index    2020-01..2026-10     0 2020-01-19..2026-11-17   387   1.50
+ADAUSDT   premium  2020-01..2026-10     0 2020-01-31..2026-11-17    34   1.26
+ADAUSDT   index    2020-01..2026-10     0 2020-01-19..2026-11-17   384   1.49
+DOGEUSDT  premium  2020-07..2026-10     0 2020-07-10..2026-11-17    42   1.22
+DOGEUSDT  index    2020-07..2026-10     0 2020-07-21..2026-11-17   211   1.29
+LTCUSDT   premium  2020-01..2026-10     0 2020-01-09..2026-11-17    39   1.28
+LTCUSDT   index    2020-01..2026-10     0 2020-01-19..2026-11-17   392   1.62
+LINKUSDT  premium  2020-01..2026-10     0 2020-01-17..2026-11-17    34   1.29
+LINKUSDT  index    2020-01..2026-10     0 2020-01-15..2026-11-17    30   1.63
+AVAXUSDT  premium  2020-09..2026-10     0 2020-09-23..2026-11-17    42   1.17
+AVAXUSDT  index    2020-09..2026-10     0 2020-09-22..2026-11-17    46   1.54
+Monthly files: no missing month from each symbol's listing month to 2026-10. Daily folders have gaps (e.g. index
+ETHUSDT 400 missing days) but are only needed for the current month. Monthly LastModified: 2020-01/02 written
+2021-03-29/30, 2020-03..12 written 2021-06-28, later months about 1 day after month end; no later rewrites seen.
+
+== 3. UNIVERSE  data/futures/um/monthly/klines/  (1080 monthly + 1083 daily symbol folders, union 1083)
+Name classes: 924 '*USDT' without underscore; 52 dated delivery (*_YYMMDD); 42 *USDC; 41 *BUSD; 3 *USD1; 1 ETHBTC;
+20 odd folders (*USDTSETTLED, *USDTSETTLEDSETTLED, ICPUSDT_SETTLED, BTCU, ETHU). Of the 924 '*USDT' names, live
+exchangeInfo (2026-11-19) types 237 as TRADIFI_PERPETUAL (equities, metals, oil, FX, Korea/HK/China shares),
+3 INDEX (DEFIUSDT, BTCDOMUSDT, ALLUSDT), 1 PREMARKET (PREDICTUSDT); 29 are absent from exchangeInfo.
+Crypto USDT perpetual contract names with any 1h file: 686 (683 + NUUSDT, ANTUSDT, MDTUSDT reused by TradFi).
+Padding: after delisting, the archive keeps writing monthly 1h kline files of flat price, zero volume, zero trades
+(SCUSDT 2023-01 sampled: 744 rows at 0.003653, volume 0). Detected as trailing files < 6000 bytes; for 128 of 137
+SETTLING contracts in exchangeInfo, padding starts the month after the exchange's delisting month (other 9:
+delisted Oct/Nov 2026, or on the 1st of a month).
+Jan 1  live crypto USDT perps  strict  naive (files, all USDT names)
+2020                        3       3                              -   BTCUSDT, ETHUSDT, BCHUSDT (daily files from 2020-01-01; onboard dates)
+2021                       79      79                             80
+2022                      134     134                            137
+2023                      146     144                            154
+2024                      242     241                            253
+2025                      344     338                            370
+2026                      538     537                            611
+(live = non-padded 1h file for both December and January; strict also drops mid-series padded months.)
+Ended crypto contracts (last non-padded month before 2026-10): 159; by year of last active month:
+   2020: 1, 2021: 3, 2022: 14, 2023: 3, 2024: 29, 2025: 46, 2026: 63; plus 8 delisted in Oct/Nov 2026.
+   141 have padded (flat, zero-volume) files after their last active month: 129 still listed in exchangeInfo as
+   SETTLING are padded through 2026-10 (their folders look live); 12 absent from exchangeInfo were padded until their
+   files stopped (mostly 2024-05). 18 have files that simply stop. Renames (LEND, BTT, MATIC, RNDR, FTM, EOS, MKR ...)
+   are counted as ended contracts here, because a new symbol starts.
+Verified examples of ended contracts still in the archive (listing + 1 download):
+   LUNAUSDT    files 2021-01..2022-05  last active 2022-05  padding from None  exchangeInfo: absent 
+   LENDUSDT    files 2020-07..2020-11  last active 2020-10  padding from 2020-11  exchangeInfo: absent 
+   BTTUSDT     files 2021-04..2022-01  last active 2022-01  padding from None  exchangeInfo: absent 
+   KEEPUSDT    files 2021-06..2022-02  last active 2022-02  padding from None  exchangeInfo: absent 
+   SRMUSDT     files 2020-09..2024-05  last active 2022-11  padding from 2022-12  exchangeInfo: absent 
+   MATICUSDT   files 2020-10..2024-09  last active 2024-08  padding from 2024-09  exchangeInfo: absent 
+   RNDRUSDT    files 2023-02..2024-07  last active 2024-07  padding from None  exchangeInfo: absent 
+   FTTUSDT     files 2022-04..2026-10  last active 2022-11  padding from 2022-12  exchangeInfo: SETTLING 2022-11-14
+   SCUSDT      files 2021-04..2026-10  last active 2022-06  padding from 2022-07  exchangeInfo: SETTLING 2022-06-17
+   AGIXUSDT    files 2023-02..2026-10  last active 2024-06  padding from 2024-07  exchangeInfo: SETTLING 2024-06-25
+   OCEANUSDT   files 2020-11..2026-10  last active 2024-06  padding from 2024-07  exchangeInfo: SETTLING 2024-06-25
+   FTMUSDT     files 2020-09..2026-10  last active 2025-01  padding from 2025-02  exchangeInfo: SETTLING 2025-01-06
+   EOSUSDT     files 2020-01..2025-05  last active 2025-05  padding from None  exchangeInfo: absent 
+   MKRUSDT     files 2020-08..2026-10  last active 2025-09  padding from 2025-10  exchangeInfo: SETTLING 2025-09-08
+   LUNAUSDT-1h-2022-05.zip downloaded: 295 rows, last bar 2022-05-13 06:00, final bars flat at 0.008, volume 0.
+Naming traps:
+   * TradFi perps share the '*USDT' pattern (237 names; first files 2025-12 XAUUSDT, 2026-01 TSLAUSDT, XAGUSDT).
+   * Name reuse in one folder: NUUSDT (crypto 2021-10..2022-02; TradFi onboard 2026-11-12), ANTUSDT (crypto
+     2021-12..2024-03 + 2 padded months; TradFi onboard 2026-11-17), MDTUSDT (crypto 2023-06..2024-05, padded
+     2024-06..2026-09, then TradFi onboard 2026-10-21 writes into the same series; 2026-10 file 11.5 KB).
+   * Relisting under the same name with padded months between listings: CTKUSDT, CVCUSDT, CVXUSDT, ICPUSDT, LITUSDT,
+     MAVIAUSDT, MDTUSDT, SLPUSDT, TLMUSDT; parts of the old series sit in *USDTSETTLED / ICPUSDT_SETTLED folders;
+     AERGO was settled twice (AERGOUSDTSETTLED, AERGOUSDTSETTLEDSETTLED).
+   * Multiplier prefixes (16): 1000SHIB, 1000XEC, 1000BTTC, 1000LUNC, 1000PEPE, 1000FLOKI, 1000BONK, 1000RATS, 1000SATS,
+     1MBABYDOGE, 1000CAT, 1000CHEEMS, 1000WHY, 1000X, 1000000MOG, 1000000BOB. Two coexist with an unprefixed folder:
+     1000CATUSDT (2024-10..) with CATUSDT (2026-07..); 1000000BOBUSDT (2025-06..) with BOBUSDT (2025-11..).
+   * Name-change successions (inferred from names and dates; folders and dates verified):
+       LENDUSDT   last active 2020-10  ->  AAVEUSDT     first 2020-10
+       BTTUSDT    last active 2022-01  ->  1000BTTCUSDT first 2022-01
+       KEEPUSDT   last active 2022-02  ->  TUSDT        first 2023-02
+       LUNAUSDT   last active 2022-05  ->  LUNA2USDT    first 2022-09
+       LUNAUSDT   last active 2022-05  ->  1000LUNCUSDT first 2022-09
+       TOMOUSDT   last active 2023-11  ->  VICUSDT      first 2025-03
+       RNDRUSDT   last active 2024-07  ->  RENDERUSDT   first 2024-07
+       MATICUSDT  last active 2024-08  ->  POLUSDT      first 2024-09
+       GALUSDT    last active 2024-07  ->  GUSDT        first 2024-08
+       FTMUSDT    last active 2025-01  ->  SUSDT        first 2025-01
+       EOSUSDT    last active 2025-05  ->  AUSDT        first 2025-05
+       MKRUSDT    last active 2025-09  ->  SKYUSDT      first 2025-09
+   * Index and other non-coin contracts named '*USDT': DEFIUSDT (2020-08..), BTCDOMUSDT (2021-06..), ALLUSDT,
+     FOOTBALLUSDT, BLUEBIRDUSDT (the last two absent from exchangeInfo, files stop 2024-05).
+   * Different quote assets: BTCU, ETHU folders (quote 'U', 2026-07..), *USD1, *USDC, *BUSD.
+
+== 4. LIVE AVAILABILITY (public, no key)
+open interest   GET /fapi/v1/openInterest (current only); GET /futures/data/openInterestHist (5m..1d)
+                docs: 'Only the data of the latest 1 month is available.' Probe: start 31 days back -> HTTP 400
+                code -1130 'parameter startTime is invalid'; 30 days back accepted; 1d period returns 31 rows.
+long/short      GET /futures/data/globalLongShortAccountRatio  docs: 'Only the data of the latest 30 days is available.'
+                GET /futures/data/topLongShortAccountRatio, /futures/data/topLongShortPositionRatio
+taker ratio     GET /futures/data/takerlongshortRatio  (REST timestamp = period START, archive create_time = END)
+                for these three the docs text could not be retrieved (page truncated); probe: 31 days -> HTTP 400,
+                29 days accepted.
+premium/index   GET /fapi/v1/premiumIndex (current mark, index, last funding; no history)
+                GET /fapi/v1/premiumIndexKlines, /fapi/v1/indexPriceKlines: limit default 500, max 1500, no history
+                limit stated; probe: 2020-01 served in full, identical to the archive file.
+basis           GET /futures/data/basis  docs: 'Only the data of the latest 30 days is available.' Probe: returned
+                data for 2020-01-01, 2021-06-01, 2022-07-01, 2023-11-19, 2024-11-19 (contradicts the docs).
+rate limits     REQUEST_WEIGHT 2400/min (exchangeInfo); docs for the long/short endpoint: 'IP rate limit 1000 requests/5min'
+freshness       at 03:02:25 UTC the 1h openInterestHist row stamped 03:00 was already served.
+
+== 5. SIZE
+(i) 10 symbols: metrics 18586 daily zips, 213.6 MB zipped, ~5.35 M rows (5 min);
+    premium 1h monthly 797 zips 12.7 MB; index 1h monthly 797 zips 16.2 MB; ~582 k hourly rows each.
+(ii) crypto USDT perps (686 names), monthly 1h klines: 21978 zips (1787 padded), 645 MB zipped (exact,
+     from the listing); active hourly rows ~14.7 M. Mark 1h ~0.54 x klines bytes = ~346 MB and
+     funding ~0.036 x = ~23 MB (ratios from a 28-symbol listing sample). Total ~1.01 GB zipped,
+     ~66 k files (each with a .CHECKSUM). Plus the current month as daily files.
+
+== 6. ADMISSION COVERAGE  (DEV 2020-01-01..2022-06-30 = 912 days; VAL 2022-07-01..2025-06-30 = 1096 days)
+symbol    listed     | metrics DEV cal% DEV own%  VAL% | premium/index DEV own%  VAL%
+BTCUSDT   2019-09-08 |            73.2%    73.2%  100% |                   100%  100%
+ETHUSDT   2019-11-27 |            23.2%    23.2%  100% |                   100%  100%
+SOLUSDT   2020-09-14 |            23.2%    32.4%  100% |                   100%  100%
+BNBUSDT   2020-02-10 |            23.2%    24.3%  100% |                   100%  100%
+XRPUSDT   2020-01-06 |            23.2%    23.4%  100% |                   100%  100%
+ADAUSDT   2020-01-31 |            23.2%    24.0%  100% |                   100%  100%
+DOGEUSDT  2020-07-10 |            23.2%    29.4%  100% |                   100%  100%
+LTCUSDT   2020-01-09 |            23.2%    23.5%  100% |                   100%  100%
+LINKUSDT  2020-01-17 |            23.2%    23.7%  100% |                   100%  100%
+AVAXUSDT  2020-09-23 |            23.2%    32.8%  100% |                   100%  100%
+metrics: a further ~19-22 days per symbol in DEV (2021-12-31..2022-01-18/19, some 2022-03-07) have no ratio columns.
+universe: point-in-time membership is derivable from 2020-01 (3 contracts on 2020-01-01, 79 on 2021-01-01).

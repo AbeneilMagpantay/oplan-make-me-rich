@@ -36,6 +36,10 @@ recommendation is KP-015 (a point-in-time universe for market-neutral rules, and
 long/short ratios and basis as new data) before spending many more counted trials on the current
 two-coin instrument. KP-015 changes the kernel and needs the human's approval.
 
+KP-015 feasibility (2026-11-19, `notes/kp015_feasibility.md`): open interest and long/short ratios are
+not admissible for backtests (short history, archive rewritten); index price is admissible; a
+point-in-time universe is feasible if membership comes from kline activity. The build has not started.
+
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human

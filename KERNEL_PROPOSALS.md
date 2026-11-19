@@ -184,4 +184,18 @@ rates, status.
 - Effect: every earlier trial identity is orphaned (the five trials stay counted in M under the old
   semantic hash); the role of G8 changes once the extended coins are tradable; the calibration needs
   null worlds for the wider unit.
-- Status: open - needs the human's approval.
+- Feasibility study, 2026-11-19 (`notes/kp015_feasibility.md`, tables in `notes/kp015_tables_v2.txt`):
+  - Open interest and long/short ratios are NOT admissible as research data: history starts
+    2021-12 for nine of the ten symbols (23% of DEV), and the archive was backfilled and rewritten, so
+    "not revised after the fact" cannot be shown. They can only be used forward, from copies the
+    project stores itself with first-seen hashes.
+  - Index price (basis) is admissible: complete from each listing month, and served live.
+  - A point-in-time universe is feasible, but membership must come from trading activity in the
+    klines: delisted contracts are padded with frozen, zero-volume files, 237 TradFi perpetuals share
+    the naming, and names are reused and relisted. Only three contracts existed before September 2020.
+- Revised proposal: (1) a point-in-time top-K unit for kind portfolio, built from kline activity with a
+  seasoning period and an explicit contract classification; (2) admit the index price as a field;
+  (3) do not admit open interest or the ratios, and start storing them now for forward-only use.
+- Status: open. On 2026-11-19 the human replied "continue" to the coordinator's recommendation and
+  its question whether to go ahead; the coordinator reads that as approval of the direction and will
+  state the exact change again before any re-key.
