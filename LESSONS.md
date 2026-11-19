@@ -20,6 +20,21 @@ on synthetic worlds. No lesson recommends a parameter value.
    changes in DEV, floor 20), at no cost to M. Stage-1 log row fcdaf8a31244afb1. Certain (a rule
    applied as designed).
 
+## From generation 1 (same kernel; generations/gen001/REPORT.md)
+
+8. Dropping the short side of a volatility-sized trend rule raised the VAL Sharpe from 0.384 to
+   0.830, but the long-or-flat rule still trailed holding (0.921) and failed only the timing
+   permutation (p 0.279). Trials 992b1aacbef67bb1, 24778ca0881b6c26. WEAK: two trials, one period.
+9. A long-biased rule can pass every gate except G6 on the market's drift alone: eight of nine gates
+   passed with no measurable timing. Trial 24778ca0881b6c26. WEAK as evidence about markets; it shows
+   what G6 is for, and that more "long when X" variants mostly re-test the same question.
+10. Of five pre-registered ideas only one survived the DEV screen: the rare-event rule could not reach
+    the activity floor anywhere on its pre-registered grid, the market-neutral pair flipped sign at a
+    neighbouring lookback, and two long-only switches added little over an always-long control.
+    generations/gen001/PLAN.md run log. WEAK: DEV only, one researcher session.
+11. An always-long, volatility-sized control is a cheap DEV check for any long-only switch: the
+    switch has to beat the control, not zero. Process lesson from the same run log.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)

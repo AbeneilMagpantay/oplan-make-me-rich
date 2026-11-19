@@ -1,0 +1,217 @@
+{
+ "buckets": [
+  {
+   "bucket": "2020",
+   "n_days": 366,
+   "return": 2.063379956559329
+  },
+  {
+   "bucket": "2021",
+   "n_days": 365,
+   "return": 0.6707808615140094
+  },
+  {
+   "bucket": "2022",
+   "n_days": 365
+  },
+  {
+   "bucket": "2023",
+   "n_days": 365
+  },
+  {
+   "bucket": "2024",
+   "n_days": 366
+  },
+  {
+   "bucket": "2025H1",
+   "n_days": 181
+  }
+ ],
+ "dsr": {
+  "M": 5,
+  "N": 4.861069700366302,
+  "V": 0.0012206304584250595,
+  "dsr": 0.531647205092891,
+  "rho": 0.03473257490842434,
+  "sr0_daily": 0.041066508354253316
+ },
+ "extended": [
+  {
+   "code": null,
+   "sharpe": 1.897619963898742,
+   "unit": "SOLUSDT",
+   "years": 4.8
+  },
+  {
+   "code": null,
+   "sharpe": 0.9100035466359687,
+   "unit": "BNBUSDT",
+   "years": 5.39
+  },
+  {
+   "code": null,
+   "sharpe": 0.7797183455720337,
+   "unit": "XRPUSDT",
+   "years": 5.49
+  },
+  {
+   "code": null,
+   "sharpe": 1.038303198543416,
+   "unit": "ADAUSDT",
+   "years": 5.42
+  },
+  {
+   "code": null,
+   "sharpe": 1.417687901044696,
+   "unit": "DOGEUSDT",
+   "years": 4.98
+  },
+  {
+   "code": null,
+   "sharpe": -0.11988990849707414,
+   "unit": "LTCUSDT",
+   "years": 5.48
+  },
+  {
+   "code": null,
+   "sharpe": 0.5043447642470269,
+   "unit": "LINKUSDT",
+   "years": 5.46
+  },
+  {
+   "code": null,
+   "sharpe": 0.9148944473729242,
+   "unit": "AVAXUSDT",
+   "years": 4.77
+  }
+ ],
+ "gates": {
+  "G1": {
+   "pass": true,
+   "value": 0.9259738934081766
+  },
+  "G10": {
+   "pass": true,
+   "value": 193
+  },
+  "G2": {
+   "pass": true,
+   "value": 0.7457590356814479
+  },
+  "G3": {
+   "pass": true,
+   "value": 1.7402866814631646
+  },
+  "G4": {
+   "pass": true,
+   "value": 0.7596509251419502
+  },
+  "G5": {
+   "g5_vacuous": false,
+   "pass": true,
+   "value": {
+    "frac_positive": 1.0,
+    "median": 0.8419818758316726,
+    "n": 12
+   }
+  },
+  "G6": {
+   "pass": false,
+   "threshold": 0.1,
+   "value": 0.27860696517412936
+  },
+  "G7": {
+   "pass": true,
+   "value": {
+    "largest_share": 0.47071173429743773,
+    "n_positive": 5
+   }
+  },
+  "G8": {
+   "pass": true,
+   "value": {
+    "frac_positive": 0.875,
+    "median": 0.9124489970044465,
+    "n": 8
+   }
+  }
+ },
+ "info": {
+  "benchmark_dev_sharpe": 0.9485617896057631,
+  "benchmark_val_max_drawdown": 0.4879047617738055,
+  "benchmark_val_sharpe": 0.9214392856906813,
+  "vs_benchmark_alpha_ann": 0.04805469785727536,
+  "vs_benchmark_beta": 0.44066449794936163,
+  "vs_benchmark_resid_psr0": 0.6468349364885158,
+  "vs_benchmark_resid_sharpe": 0.21766565544044342
+ },
+ "metrics": {
+  "avg_gross_exposure": 0.44802683365021934,
+  "avg_net_exposure": 0.44802683365021934,
+  "costs_total": 0.5527709942576644,
+  "deploy_scale": 0.5238949001960596,
+  "dev": {
+   "cagr": 0.7782853997457293,
+   "calmar": 2.688940245749229,
+   "kurtosis": 6.178564785954718,
+   "max_drawdown": 0.28943945518167247,
+   "n_days": 912,
+   "psr0": 0.9970603120644677,
+   "sharpe": 1.7402866814631646,
+   "skew": 0.15824004618823626,
+   "total_return": 3.2136764919299265
+  },
+  "dev_val_max_drawdown": 0.3817559589244963,
+  "direction_changes_dev": 116,
+  "direction_changes_val": 193,
+  "funding_paid_total": 2.1811875601476274,
+  "n_daily": 2008,
+  "rebalances": 1047,
+  "turnover_per_year": 26.04683821609929,
+  "val": {
+   "cagr": 0.24550708607657246,
+   "calmar": 0.6430995517875555,
+   "kurtosis": 10.583236456170779,
+   "max_drawdown": 0.381755958924497,
+   "n_days": 1096,
+   "psr0": 0.9259738934081766,
+   "sharpe": 0.8301505461345939,
+   "skew": 0.37640943488173906,
+   "total_return": 0.9333025804871018
+  },
+  "val_sharpe_daily": 0.043452065519817736
+ },
+ "per_year": [
+  {
+   "max_drawdown": 0.18139163854282792,
+   "n_days": 366,
+   "return": 2.063379956559329,
+   "sharpe": 2.9350136493604384,
+   "year": 2020
+  },
+  {
+   "max_drawdown": 0.16590296980204722,
+   "n_days": 365,
+   "return": 0.6707808615140094,
+   "sharpe": 1.5310230464451824,
+   "year": 2021
+  }
+ ],
+ "permutation": {
+  "actual_val_sharpe_restarted": 0.8301505461346018,
+  "n": 200,
+  "p": 0.27860696517412936,
+  "shifted_mean": 0.5889111135476782,
+  "shifted_p95": 1.215583462381717
+ },
+ "seed": "1380663144343077752",
+ "stage1": {
+  "direction_changes_dev": 116,
+  "truncation_cuts": 25
+ },
+ "stress": {
+  "cost2x_val_sharpe": 0.7596509251419502,
+  "funding_stress_val_sharpe": 0.7457590356814479
+ },
+ "trial_id": "24778ca0881b6c26"
+}

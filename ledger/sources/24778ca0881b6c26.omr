@@ -1,0 +1,13 @@
+# Generation 1, H1 (generations/gen001/PLAN.md). Long-or-flat time-series momentum, volatility-sized.
+name = "gen001_tsmom_long_flat"
+family = "trend"
+kind = "single"
+hypothesis = "Time-series momentum without the short side: long, sized to an annualised volatility target, when the daily close is above its close n days ago; flat otherwise. Mechanism: slow diffusion of information and leverage that builds in up-moves and is cut abruptly in down-moves. Falsified if VAL PSR(0) < 0.90, the timing permutation shows no timing skill, or funding stress turns it negative."
+
+n = param(28, 14, 56)
+vol_n = param(30, 15, 60)
+target = param(0.5, 0.25, 1.0)
+
+d = daily(close)
+size = min2(1, target / realised_vol(d, vol_n))
+signal = where(ret(d, n) > 0, size, 0)

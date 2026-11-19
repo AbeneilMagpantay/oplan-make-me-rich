@@ -166,3 +166,22 @@ rates, status.
   and 12); consider requiring forward days before pool-to-live promotion to scale with the number of
   counted trials of the family.
 - Status: open (documentation of a residual risk).
+
+## 2026-11-19 (coordinator, after generation 1) KP-015 Widen the tradable universe and add futures-native data
+
+- Problem: after five counted trials on two coins, every rule with a positive VAL Sharpe was
+  long-biased and failed on timing (LESSONS 8 and 9), and the one market-neutral idea had only two
+  instruments to choose between (LESSONS 10). Rules that do not depend on the market's direction need
+  a cross-section, and questions about crowding and positioning need data the kernel does not have.
+- Proposed change (a semantic re-key, a new calibration and seal, and an independent audit before
+  any trial):
+  1. a point-in-time universe of USDT perpetuals as a second tradable unit for kind portfolio:
+     membership decided only from data available at the time, delisted contracts included, with
+     listing-age and liquidity filters;
+  2. futures-native datasets under the admission rules (history covering DEV and VAL, a
+     knowable-as-of timestamp, the same source available live): open interest, long/short account
+     ratios, and basis against the index.
+- Effect: every earlier trial identity is orphaned (the five trials stay counted in M under the old
+  semantic hash); the role of G8 changes once the extended coins are tradable; the calibration needs
+  null worlds for the wider unit.
+- Status: open - needs the human's approval.

@@ -1,4 +1,4 @@
-# STATE (2026-11-19: generation 0 complete)
+# STATE (2026-11-19: generations 0 and 1 complete)
 
 ## Where things stand
 
@@ -6,33 +6,40 @@
   (32 files), text `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files),
   G6 threshold 0.10 from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth
   audit; artifact, calibration-log row and seal are in commit d2c2d4f.
-- Generation 0 ran on that kernel (commit d2c2d4f, 2026-11-19). Results in
-  `generations/gen000/REPORT.md`: SMA cross rejected in stage 1 (`activity_dev`, uncounted);
-  Donchian, RSI mean reversion, vol-target trend and funding carry evaluated, none Tier 1; the
-  vol-target trend was the only positive VAL Sharpe (0.384; benchmark 0.921).
-- Ledger: M = 4 counted trials (generation 0: 4 of 5), N = 4.00, Tier 1: 0, pool 0 of 5, one
-  uncounted stage-1 rejection; all chains verify.
+- Generation 0 (`generations/gen000/REPORT.md`): five textbook baselines; SMA cross rejected in
+  stage 1 (uncounted); four evaluated, none Tier 1; best VAL Sharpe 0.384.
+- Generation 1 (`generations/gen001/REPORT.md`): five pre-registered hypotheses, 18 DEV sandbox runs,
+  one counted submission. gen001_tsmom_long_flat (24778ca0881b6c26): VAL Sharpe 0.830, PSR(0) 0.926,
+  passes eight gates and fails G6 (p 0.279). Not Tier 1.
+- Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1), N = 4.86, Tier 1: 0, pool 0 of 5,
+  one uncounted stage-1 rejection; all chains verify.
+- Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
 - Data: research_hash `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`, validated.
-- Repository: git, branch main, private GitHub remote; the coordinator commits and pushes at gates.
-  Research sessions make no git writes.
+- Repository: git, branch main, private GitHub remote; the coordinator commits and pushes at gates
+  (`tools/git_gate.ps1`). Research sessions make no git writes.
 
-## Next session does first
+## How a generation runs (as done in generation 1)
 
-Generation 1:
-1. Read LESSONS.md, generations/gen000/REPORT.md, `python -m omr.ledger summary`, `python -m
-   omr.status` (trial rows and status only; never ledger/returns or ledger/trials/).
-2. Write generations/gen001/PLAN.md with 3 to 5 pre-registered hypotheses (rule as program text,
-   mechanism, falsifier, relation to earlier trials) BEFORE any evaluation.
-3. Explore on DEV only with `python -m omr.sandbox`.
-4. The coordinator reads each program's source for near-constants and hidden thresholds
-   (RESEARCH_PLAYBOOK section 5) before any counted submission.
-5. At most 5 counted submissions: `python -m omr.evaluate strategies/gen001_<idea>.omr --generation 1`;
-   then generations/gen001/REPORT.md.
+1. A fresh researcher session reads LANGUAGE.md, RESEARCH_PLAYBOOK.md, LESSONS.md, the last two
+   REPORTs, trial rows and `python -m omr.status` (never ledger/returns, ledger/trials/ or data/).
+2. It writes generations/genNNN/PLAN.md with 3 to 5 hypotheses BEFORE its first sandbox run, then
+   explores on DEV only with `python -m omr.sandbox` (at most 60 runs, every run logged in the plan).
+3. The coordinator commits and pushes the plan and programs BEFORE scoring, reads each candidate's
+   source (RESEARCH_PLAYBOOK section 5), and runs every counted `python -m omr.evaluate` itself.
+4. REPORT.md, LESSONS.md and this file are updated; the coordinator commits and pushes.
+
+## Next
+
+Generation 2 can open (generations/gen001/REPORT.md exists). The evidence so far (LESSONS 8 to 10)
+says single-coin timing rules on two instruments mostly collect the market's drift. The coordinator's
+recommendation is KP-015 (a point-in-time universe for market-neutral rules, and open interest,
+long/short ratios and basis as new data) before spending many more counted trials on the current
+two-coin instrument. KP-015 changes the kernel and needs the human's approval.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
-   confirmation pending": the human has not yet confirmed the kernel.
-2. KP-014 (text-only LANGUAGE.md additions from the fifth audit) is open: a text-only re-key keeps the
-   seal and trial ids, but needs the human's approval now that trials exist.
-3. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
+   confirmation pending".
+2. KP-015: widen the universe and add futures-native data (semantic re-key, calibration, audit).
+3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
+4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
