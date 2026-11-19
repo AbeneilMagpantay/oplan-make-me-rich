@@ -6,17 +6,23 @@ point-in-time universe panel (omr.universe) with the universe engine (omr.engine
 Data (UData): the activity of every crypto perpetual under one ceiling (membership needs all of them),
 the stored tables of the symbols that are ever members of top30 or next30, and the core BTCUSDT frame
 (btc(...)). A band's PANEL is the hourly grid UNIVERSE_START .. ceiling with one column per symbol that is
-ever a member of that band (sorted by name). Every evaluation, including each truncation and start cut,
-recomputes the membership from the bars inside its own row range, so a cut can only make the unit
-unknown, never different. Klines fields are NaN (unknown) on inactive rows; mark / index / funding
+ever a member of that band (sorted by name). Every RUN (the base evaluation and each truncation cut, start
+cut and jitter variant) computes the membership ONCE from the bars inside its own row range, so a cut can
+only make the unit unknown, never different; the blocks of a run all use that one membership (see BLOCKS).
+Klines fields are NaN (unknown) where the bar is not usable (omr.universe, S3); mark / index / funding
 columns are aligned as of each bar exactly as in program frames (omr.datasets.align_to_grid).
 
-BLOCKS (S4): a band is evaluated in blocks of UNIVERSE_BLOCK_MONTHS calendar months (boundaries at the
-first hour of January and July); each block's panel holds only the symbols that are members somewhere in
-that block or the previous one, and is evaluated from OVERLAP_HOURS (the 97 days the membership rule reads,
-longer than the 90-day lookback limit) before the block's first row. Every value is local, so the stitched
-weights, raw signal and known channel equal the whole-panel evaluation bit for bit; the engine runs block
-after block carrying positions, equity and the funding total (tests/test_universe.py proves both).
+BLOCKS (S4, fix pass 3): a band is evaluated in blocks of UNIVERSE_BLOCK_MONTHS calendar months (top30;
+boundaries at the first hour of January and July) or UNIVERSE_BLOCK_MONTHS_G8 (next30, G8). A RUN (the base
+evaluation, a truncation cut, a start cut, a jitter variant) computes its membership ONCE from the bars of
+its own rows r0..r1, exactly as the whole-panel path does; every block of the run takes its in-play mask
+from that one membership. A block is only a computation chunk: its panel holds the band's members of every
+month touched by the decision rows of its evaluated range (warm-up included), and it is evaluated from
+OVERLAP_HOURS (97 days, at least the 90-day lookback limit plus 7 days) before the first hour of the month
+of its first row. Self-check `block_overlap`: on the rows from (a block's first evaluated row + the
+program's lookback_hours) to the row before the block, its own warm-up result must equal the previous
+block's result bit for bit (a fault means the program's true memory exceeds its recorded lookback).
+The engine runs block after block carrying positions, equity and the funding total.
 
 stage1_u   DEV-only, uncounted: signals, truncation cuts (24 random + DEV end), start cuts (6 random over
            the first 60% of the grid, plus one that removes the first 31 hours of a panel symbol's history),
@@ -362,7 +368,9 @@ def start_cut_check_u(prog, params, fp, raw, kn, cuts) -> int | None:
 
 # ---------------------------------------------------------------- blocks (S4)
 
-OVERLAP_HOURS = U.READ_DAYS * 24               # >= the 90-day lookback limit (D3) and the membership read window
+OVERLAP_HOURS = U.OVERLAP_HOURS               # 97 days: the membership read window
+if OVERLAP_HOURS < C.LOOKBACK_MAX_HOURS + 168:   # fix pass 3 (d): a week beyond the 90-day lookback limit
+    raise RuntimeError("OVERLAP_HOURS must be at least LOOKBACK_MAX_HOURS + 168")
 ENGINE_COLS = ("open", "close", "liq_dn", "liq_up", "funding_rate")
 
 
@@ -417,23 +425,6 @@ class Blocked:
             return self._blocks
         return (self._block(k) for k in range(len(self.plan)))
 
-    def _eval_start(self, b: int) -> int:
-        """First row a block starting at row b is evaluated from: 97 days before the first hour of the month
-        that holds row b's decision time (so every membership the block's rows use is known, and every
-        window of at most 90 days is complete)."""
-        t = pd.Timestamp(int(self.ns[b]) + HOUR_NS, tz="UTC")
-        m = pd.Timestamp(year=t.year, month=t.month, day=1, tz="UTC").value
-        return max(0, int((m - OVERLAP_HOURS * HOUR_NS - self.ns[0]) // HOUR_NS))
-
-    def _members(self, r0: int, r1: int) -> set:
-        """Members of the band in the months of decision rows r0..r1."""
-        mi = np.searchsorted(self.mem.months, self.ns[r0:r1 + 1] + HOUR_NS, side="right") - 1
-        out = set()
-        for i in np.unique(mi):
-            if i >= 0:
-                out.update(self.mem.members(self.band, int(i)))
-        return out
-
     def _block(self, k: int) -> BlockPanel:
         """Block k from the stored tables of its symbols, sliced to the block's window."""
         names = field_columns(self.fields)
@@ -459,10 +450,14 @@ class Blocked:
         r1 = len(self.ns) - 1 if upto is None else int(np.searchsorted(self.ns, T(upto).value, side="right")) - 1
         return r0, r1
 
-    def _eval(self, bp: BlockPanel, prog, params, r0: int, r1: int, literals):
+    def run_membership(self, r0: int, r1: int) -> U.Membership:
+        """T1 (a): the ONE membership of a run on rows r0..r1, from the bars of those rows."""
+        return self.ud.membership(int(self.ns[r0]), int(self.ns[r1]))
+
+    def _eval(self, bp: BlockPanel, prog, params, r0: int, r1: int, literals, mem):
+        """Block bp on global rows r0..r1 with the run's membership `mem`."""
         i0, i1 = r0 - bp.s, r1 - bp.s + 1
         ns = self.ns[r0:r1 + 1]
-        mem = self.ud.membership(int(ns[0]), int(ns[-1]))
         P_, uk = U.inplay_matrix(mem, self.band, ns, bp.symbols, bp.usable[i0:i1] & bp.fresh[i0:i1])
 
         def get(name):
@@ -474,9 +469,60 @@ class Blocked:
         raw, kn = X.evaluate_full(prog, params, panel, btc, literals)
         return uweights(raw), raw, kn, P_
 
+    def _overlap_tail(self, k: int, r0: int, hi: int, ev0: int, rb, kb, syms, lookback: int):
+        """The rows of block k's result the next block will compare (from the next block's first evaluated
+        row + lookback to hi), or None."""
+        if k + 1 >= len(self.plan):
+            return None
+        a = max(max(r0, self.plan[k + 1]["s0"]) + lookback, ev0)
+        if a > hi:
+            return None
+        return {"a": a, "z": hi, "syms": list(syms), "raw": rb[a - ev0:].copy(), "kn": kb[a - ev0:].copy()}
+
+    def _check_overlap(self, tail, ev0: int, lo: int, rb, kb, syms, lookback: int):
+        """T1 (e) block_overlap: on the rows from this block's first evaluated row + lookback to the row before
+        the block that the previous block also evaluated, results equal bit for bit, by symbol."""
+        if tail is None:
+            return
+        a, z = max(tail["a"], ev0 + lookback), min(tail["z"], lo - 1)
+        if a > z:
+            return
+        prev = {x: j for j, x in enumerate(tail["syms"])}
+        cur = {x: j for j, x in enumerate(syms)}
+        pr, pk = tail["raw"][a - tail["a"]:z - tail["a"] + 1], tail["kn"][a - tail["a"]:z - tail["a"] + 1]
+        cr, ck = rb[a - ev0:z - ev0 + 1], kb[a - ev0:z - ev0 + 1]
+        for x in set(prev) | set(cur):
+            if x in prev and x in cur:
+                i, j = prev[x], cur[x]
+                if not (np.array_equal(pk[:, i], ck[:, j]) and np.array_equal(pr[:, i], cr[:, j], equal_nan=True)):
+                    raise PL.KernelFault("block_overlap")
+            elif x in prev:
+                if pk[:, prev[x]].any():
+                    raise PL.KernelFault("block_overlap")
+            elif ck[:, cur[x]].any():
+                raise PL.KernelFault("block_overlap")
+
+    def _runs(self, prog, params, r0: int, r1: int, literals=None, mem=None, from_row: int | None = None):
+        """One RUN on rows r0..r1: yields (bp, lo, hi, ev0, W, raw, known, inplay) block by block, every block
+        with the run's one membership, checking block_overlap between consecutive evaluated blocks. from_row:
+        skip the blocks that end before it (they are not evaluated)."""
+        mem = self.run_membership(r0, r1) if mem is None else mem
+        L_ = int(prog.lookback_hours)
+        tail = None
+        for bp in self.blocks:
+            lo, hi = max(bp.b, r0), min(bp.e - 1, r1)
+            if lo > hi or (from_row is not None and hi < from_row):
+                continue
+            ev0 = max(r0, bp.s)
+            Wb, rb, kb, Pb = self._eval(bp, prog, params, ev0, hi, literals, mem)
+            self._check_overlap(tail, ev0, lo, rb, kb, bp.symbols, L_)
+            tail = self._overlap_tail(bp.k, r0, hi, ev0, rb, kb, bp.symbols, L_)
+            yield bp, lo, hi, ev0, Wb, rb, kb, Pb
+
     def unit(self, prog, params, start=None, upto=None, literals=None, inplay=False, raw_rows=None):
-        """(W, raw, known[, inplay]) on rows start..upto over the global columns, stitched from the blocks.
-        raw_rows: None = raw and known on every row; an int n = on the first n rows only (memory)."""
+        """(W, raw, known[, inplay]) on rows start..upto over the global columns, stitched from the blocks of
+        ONE run (one membership). raw_rows: None = raw and known on every row; an int n = on the first n rows
+        only (memory)."""
         r0, r1 = self.rows(start, upto)
         n, K = r1 - r0 + 1, len(self.symbols)
         nr = n if raw_rows is None else min(int(raw_rows), n)
@@ -484,12 +530,7 @@ class Blocked:
         raw = np.full((nr, K), np.nan)
         kn = np.zeros((nr, K), dtype=bool)
         P_ = np.zeros((n, K), dtype=bool) if inplay else None
-        for bp in self.blocks:
-            lo, hi = max(bp.b, r0), min(bp.e - 1, r1)
-            if lo > hi:
-                continue
-            ev0 = max(r0, bp.s)
-            Wb, rb, kb, Pb = self._eval(bp, prog, params, ev0, hi, literals)
+        for bp, lo, hi, ev0, Wb, rb, kb, Pb in self._runs(prog, params, r0, r1, literals):
             t = slice(lo - ev0, hi - ev0 + 1)
             rows = np.arange(lo - r0, hi - r0 + 1)[:, None]
             cols = np.array([self.col[x] for x in bp.symbols], dtype=np.int64)[None, :]
@@ -504,16 +545,16 @@ class Blocked:
 
     def start_cut_agrees(self, prog, params, c: int) -> bool:
         """The start-cut self-check block by block: wherever the run cut at row c is known, the base run is
-        known and bit-identical (the base block evaluation is recomputed, so no whole-grid raw is kept)."""
-        for bp in self.blocks:
-            lo, hi = max(bp.b, c), bp.e - 1
-            if lo > hi:
-                continue
-            ev_cut, ev_base = max(c, bp.s), bp.s
-            _, rc, kc, _ = self._eval(bp, prog, params, ev_cut, hi, None)
-            _, rb, kb, _ = self._eval(bp, prog, params, ev_base, hi, None)
-            rc, kc = rc[lo - ev_cut:], kc[lo - ev_cut:]
-            rb, kb = rb[lo - ev_base:], kb[lo - ev_base:]
+        known and bit-identical. The cut run uses the cut run's membership (rows c..end), the base run the
+        base run's (every row); the base blocks are recomputed, so no whole-grid raw is kept."""
+        T1 = len(self.ns) - 1
+        cut = self._runs(prog, params, c, T1)
+        base = self._runs(prog, params, 0, T1, mem=self.mem, from_row=c)
+        for (bp, lo, hi, ev_c, _, rc, kc, _), (bq, lo_b, hi_b, ev_b, _, rb, kb, _) in zip(cut, base):
+            if bp.k != bq.k or hi != hi_b:
+                raise PL.KernelFault("start-cut blocks out of step")
+            rc, kc = rc[lo - ev_c:], kc[lo - ev_c:]
+            rb, kb = rb[lo - ev_b:], kb[lo - ev_b:]
             if not PL.start_cut_agrees(rc, kc, rb, kb):
                 return False
         return True
@@ -597,18 +638,17 @@ class Blocked:
     def inplay(self, start=None, upto=None) -> np.ndarray:
         """The in-play mask (membership, usable bar, fresh funding) on rows start..upto, global columns."""
         r0, r1 = self.rows(start, upto)
+        mem = self.run_membership(r0, r1)                 # one membership for the run
         out = np.zeros((r1 - r0 + 1, len(self.symbols)), dtype=bool)
         for bp in self.blocks:
             lo, hi = max(bp.b, r0), min(bp.e - 1, r1)
             if lo > hi:
                 continue
-            ev0 = max(r0, bp.s)
-            ns = self.ns[ev0:hi + 1]
-            mem = self.ud.membership(int(ns[0]), int(ns[-1]))
-            i0, i1 = ev0 - bp.s, hi - bp.s + 1
+            ns = self.ns[lo:hi + 1]
+            i0, i1 = lo - bp.s, hi - bp.s + 1
             P_, _ = U.inplay_matrix(mem, self.band, ns, bp.symbols, bp.usable[i0:i1] & bp.fresh[i0:i1])
             cols = np.array([self.col[x] for x in bp.symbols], dtype=np.int64)[None, :]
-            out[np.arange(lo - r0, hi - r0 + 1)[:, None], cols] = P_[lo - ev0:]
+            out[np.arange(lo - r0, hi - r0 + 1)[:, None], cols] = P_
         return out
 
     def run(self, W: np.ndarray, s: int, e: int, cost_mult=1.0, pay=1.0, recv=1.0) -> E.Run:
@@ -647,6 +687,16 @@ class UMarket:
 
 def stage1_u(prog: L.Program, params: dict, ud_dev: UData, rng, opts: PL.Opts = PL.Opts(),
              months=C.UNIVERSE_BLOCK_MONTHS) -> dict:
+    """Stage 1 of a top30 program; the block_overlap self-check fails it as an (uncounted) kernel fault."""
+    try:
+        return _stage1_u(prog, params, ud_dev, rng, opts, months)
+    except PL.KernelFault as e:
+        if str(e) != "block_overlap":
+            raise
+        return {"ok": False, "code": "kernel_fault", "fault": "block_overlap", "cuts": 0}
+
+
+def _stage1_u(prog, params, ud_dev, rng, opts, months) -> dict:
     fp = Blocked(ud_dev, "top30", months=months, fields=program_fields(prog))
     grid = fp.grid
     if grid[-1] != T(C.DEV_END):
@@ -714,8 +764,19 @@ def next30_score(prog: L.Program, params: dict, ud: UData, months=C.UNIVERSE_BLO
 
 def stage2_u(prog: L.Program, params: dict, ud: UData, s1: dict | None, opts: PL.Opts, handle, seed: int,
              p_max: float | None, months=C.UNIVERSE_BLOCK_MONTHS) -> dict:
-    """COUNTED. Raises on unexpected errors (the evaluator turns that into a kernel_fault row)."""
+    """COUNTED. Raises on unexpected errors (the evaluator turns that into a kernel_fault row); the
+    block_overlap self-check (any blocked run: base, start cuts, jitter variants, G8) ends it as the counted
+    kernel fault `block_overlap`."""
     access.require(handle, "upipeline.stage2_u")
+    try:
+        return _stage2_u(prog, params, ud, s1, opts, handle, seed, p_max, months)
+    except PL.KernelFault as e:
+        if str(e) != "block_overlap":
+            raise
+        return {"status": "kernel_fault", "reason": "block_overlap"}
+
+
+def _stage2_u(prog, params, ud, s1, opts, handle, seed, p_max, months) -> dict:
     if ud.end != T(C.VAL_END):
         raise PL.KernelFault("stage 2 universe data must end at VAL end")
     g8m = C.UNIVERSE_BLOCK_MONTHS_G8 if months == C.UNIVERSE_BLOCK_MONTHS else months

@@ -228,3 +228,8 @@ rates, status.
   zero-trade bars are usable while their zero-trade run is <= 24 (membership still counts trades only); S4:
   six-month blocks, bit-identical to the whole panel for signals, weights, engine output and every gate
   (boundaries inside a hole and inside a member's first month tested).
+- Fix pass 3 (2026-11-20): the coordinator's review found blocks NOT equal to the whole panel for programs
+  with a window over a cs_* result (each block recomputed the membership from its own rows, so its warm-up
+  was unknown). Now a run has one membership and every block uses it; block panels hold the members of
+  every month their evaluated rows touch; the self-check `block_overlap`; lookback_hours counts a leaf's
+  staleness under a timeframe and under btc(). Permanent tests in tests/test_blocks.py.

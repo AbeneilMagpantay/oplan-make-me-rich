@@ -284,3 +284,76 @@ now has weights on all 18,985 DEV unit hours). Stage 2 on the synthetic universe
 (kernel_noise_top30); a real stage 2 adds the 44 s research-hash check and per-block disk reads, and has
 larger blocks, so about 2 to 4 minutes per top30 evaluation is expected. The universe calibration runs one
 block per world (30 symbols), so its estimate is unchanged (about 10 CPU-hours for 100 worlds per null).
+
+# FIX PASS 3 (2026-11-20): one membership per run, block_overlap, lookback of stale leaves
+
+Defect (coordinator's review, confirmed by scratchpad/fable_probe_blocks.py): blocks were NOT equal to the whole
+panel for programs with a window over a cs_* result. Blocked._eval recomputed the membership from each block's own
+rows, so the warm-up rows had no known unit and every window reading a cs_* value across the block start was
+unknown for window - 2 hours after each block start (46, 70 and 166 hours in the probe).
+
+T1 (omr/upipeline.py, omr/universe.py):
+a. A RUN on rows r0..r1 (base, truncation cut, start cut, jitter variant, G8) computes its membership once
+   (Blocked.run_membership = ud.membership(ns[r0], ns[r1])); every block of the run takes its in-play mask from
+   it (Blocked._eval(..., mem)). Blocked.inplay() uses the run's membership; start_cut_agrees() uses the cut
+   run's for the cut run and the base run's for the base run.
+b. universe.block_plan: a block's symbols are the band's members (full-grid membership) of every month touched by
+   the decision rows of its evaluated range s0..e-1, warm-up included; no dependence on the previous block.
+   Residual engine positions keep using Blocked._extra.
+c. G8 (next30_score) goes through Blocked.unit, so it follows the same rule.
+d. upipeline raises at import unless OVERLAP_HOURS (97 x 24 = 2,328) >= LOOKBACK_MAX_HOURS + 168 (2,328).
+e. Self-check block_overlap (Blocked._runs / _check_overlap / _overlap_tail): in every blocked run, for each block
+   after the first evaluated one, on the rows from (its first evaluated row + prog.lookback_hours) to the row
+   before the block that the previous block also evaluated, raw and known are compared by symbol on the global
+   columns (a symbol outside one block's panel must be unknown in the other); only the previous block's tail is
+   kept. A mismatch raises KernelFault("block_overlap"): stage1_u returns code kernel_fault, fault block_overlap
+   (uncounted), stage2_u returns status kernel_fault, reason block_overlap (counted).
+The coordinator's probe after T1: all five programs IDENTICAL (control, sma over cs_demean, hold on cs_rank,
+window over cs_mean, lag of cs_rank).
+
+Checked and REFUTED before building on it: "a timeframe window counts complete bins only, so its memory is
+unbounded in time across holes". Universe panels (and core frames) sit on a contiguous hourly grid: every bin
+exists; a bin with an unknown hour is an UNKNOWN bar, not a dropped one, and to_h1 never falls back to an older
+bar. A constructed case (scratchpad/tf_bins_counterexample.py: a January member with eight 6-day holes in
+Oct-Nov, sma(daily(close), 70), lookback 2,039 h) was identical under half-year blocks. No stop was needed.
+
+T3 (omr/lang.py lookback_hours): leaf hours: an hourly field, hour, weekday 1; mark_close, index_close 7 (the
+6-hour staleness); funding8h 8; btc(f) = leaf f (was 1 for every btc(...)). A timeframe of h hours over a leaf of
+l hours: 2h - 2 + l (was 2h - 1, which ignored the leaf's staleness under a timeframe). The rest of the table was
+checked against the interpreter's knownness rules (known_run widths): rolling n - 1, ema 5n - 1, rsi and atr 10n
+(m + 1 rows), lags and realised_vol n (n + 1 rows), corr n - 1, hold h - 1, funding_mean 8n (S1), windows over a
+timeframe series (n - 1) x h, cs_* none, elementwise / where / comparisons the max of their inputs: no other row
+under-reports. No existing program's lookback changed (strategies/*.omr and omr/programs/*.omr).
+
+T2 tests (tests/test_blocks.py, all permanent):
+- test_whole_panel_equals_blocks_for_windows_over_cross_sections (6 programs: sma over cs_demean, ema over cs_rank,
+  hold on cs_rank, a window over cs_mean, zscore over cs_demean of a daily series, a program at the 2,160-hour
+  limit): W, raw and known equal for one block, the production half-years, custom boundaries (mid-month, inside
+  a hole, inside a member's first month back, a 10-day block; blocks built lazily) and the original FullPanel
+  path; next30_score equal for months=None and months=3 (two programs).
+- test_the_lookback_limit_program_is_at_the_limit: lookback_hours == 2,160.
+- test_stage1_and_stage2_with_blocks_equal_one_block: W, raw, known of stage 1; every gate, metric, info and the
+  daily returns of stage 2.
+- test_the_old_per_block_membership_is_caught: with Blocked._eval monkeypatched to recompute the membership per
+  block, the blocked run differs from the whole panel or raises block_overlap.
+- test_block_overlap_fires_when_the_recorded_lookback_is_too_short (lookback forced to 3 h, true 144 h) and
+  test_block_overlap_fires_when_a_window_under_reports (sma's extra rows forced to 0: recorded 49 h): both end
+  through evaluate_file as stage-1 kernel_fault, fault block_overlap, nothing counted.
+- test_block_overlap_is_silent_on_kernel_and_strategy_programs: every omr/programs and strategies/*.omr program
+  that parses as top30 (the four top30 kernel programs, kernel_kitchen_sink, kernel_noise_portfolio,
+  gen001_relmom_pair) runs blocked with no fault and equal to one block.
+- test_lookback_is_a_true_upper_bound (10 programs: daily(mark_close), h4(index_close), daily(btc(mark_close)),
+  btc(mark_close), sma over daily(mark_close), rsi, ema over mark_close, atr, hold over lags and mark_close,
+  funding_mean + realised_vol; frames with mark and index gaps; 5 cuts each): from row c + lookback - 1 on the
+  cut run is known exactly where the whole run is, with equal values.
+- test_the_old_timeframe_rule_under_reports: with 2h - 1 for daily(mark_close), a cut before a mark gap is
+  unknown in the cut run at a row the old lookback calls complete (the assertion can fail).
+
+T4: data validate PASSED (0 failing counts; rewrote data/validation.json). Block sizes (real data): top30 12
+six-month blocks, largest 60 symbols (was 66 with the previous-block union); next30 23 three-month blocks,
+largest 88 (was 78: warm-up months' members are now included). Stage-2 estimates (real sizes): momentum /
+reversal 730 MiB, carry 789 MiB, kernel_noise_top30 936 MiB. Measured (synthetic universe of 140 coins with
+churn, tables on disk loaded per block, default options, ucal_xs_momentum, top30 85 / next30 115 distinct,
+largest blocks 52 / 60): process peak 737 MiB, stage 2 107 s (the machine was shared with the auditor's run).
+Unit availability unchanged (DEV 18,985 and VAL 26,303 unit hours, 100% at every lookback under S2).
+Full suite after this pass: 759 passed, 0 failed, 0 skipped (906 s). python -m omr.ledger verify: OK.

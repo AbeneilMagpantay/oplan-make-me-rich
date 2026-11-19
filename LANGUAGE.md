@@ -289,16 +289,26 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   summed sequentially in symbol-name order).
 - LOOKBACK (D3, `lookback_exceeds_seasoning`): the program's total lookback, the longest chain of
   windows through the inlined tree with every window param at its `high` bound (ema 5n - 1, rsi / atr
-  10n, lags and realised_vol n, other windows n - 1 extra rows; a timeframe bar 2 x its hours - 1;
-  rows of a timeframe series count as that many hours; funding_mean(n) 8n hours; mark_close and
-  index_close 7, funding8h 8), must not exceed 90 days (2,160 hours). Every program's lookback is
-  recorded in its trial row (`lookback_hours`), in both units.
+  10n, lags and realised_vol n, other windows n - 1 extra rows; leaves: an hourly field, hour and
+  weekday 1, mark_close and index_close 7 (their 6-hour staleness), funding8h 8, btc(f) the same as f;
+  a timeframe of h hours over a leaf of l hours 2h - 2 + l (its bin, the wait for the next bin's close and
+  the leaf's own reach); rows of a timeframe series count as that many hours; funding_mean(n) 8n hours),
+  must not exceed 90 days (2,160 hours). It is a true upper bound of a value's memory: from a frame's
+  first row + lookback - 1 on, a value equals the whole run's (tests/test_blocks.py). Every program's
+  lookback is recorded in its trial row (`lookback_hours`), in both units.
 - Costs: 12.5 bps per side on every symbol. A position in a symbol whose next bar is missing is closed
   at its last active close with that cost; a symbol leaving the unit gets weight 0.
-- Locality: the truncation and start-cut self-checks run on the universe panel; every cut recomputes
-  the membership from its own rows (a cut can only make the unit unknown, never different); stage 1
-  adds one start cut that removes the first 31 hours of a panel symbol's history. Every function is
+- Locality: the truncation and start-cut self-checks run on the universe panel; every RUN (the base, a
+  truncation cut, a start cut, a jitter variant) computes its membership once from its own rows (a cut can
+  only make the unit unknown, never different); stage 1 adds one start cut that removes the first 31 hours
+  of a panel symbol's history. Every function is
   bounded in time (funding_mean included), and the membership's 97-day read window keeps a cut run
   unknown longer than the 90-day lookback limit, so a cut cannot change the set a `cs_*` sees.
-- Blocks (S4): the evaluator runs a top30 program in blocks of six calendar months, each evaluated from
-  97 days before its first month; the stitched result is bit-identical to the whole panel.
+- Blocks (S4, fix pass 3): the evaluator runs a top30 program in blocks of six calendar months (G8's
+  next30 in three-month blocks). A block is only a computation chunk of a run: it takes its in-play mask
+  from the run's one membership, holds the members of every month its evaluated rows touch, and is
+  evaluated from 97 days (the 90-day limit plus a week) before the first hour of the month of its first
+  row; the stitched result is bit-identical to the whole panel. Self-check `block_overlap` (a kernel
+  fault): from a block's first evaluated row + lookback_hours to the row before the block, its result
+  must equal the previous block's bit for bit; it fires when a program's true memory exceeds its
+  recorded lookback.

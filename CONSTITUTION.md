@@ -417,7 +417,12 @@ Live risk limits the loop can never change:
   a cs_* computes across the in-play symbols with a known input and is known when at least 10 exist; a
   bar present with zero trades is usable while its zero-trade run is at most 24 (the hour 2024-10-28
   20:00 UTC has zero trades in all 320 listed symbols); a top30 program is evaluated in six-month blocks,
-  bit-identical to the whole panel, with the engine's positions, equity and funding carried across. The core unit is unchanged and bit-identical
+  bit-identical to the whole panel, with the engine's positions, equity and funding carried across. Fix
+  pass 3: a run computes its membership once from its own rows and every block of the run uses it (blocks
+  hold the members of every month their evaluated rows touch); the self-check `block_overlap` (stage 1:
+  an uncounted kernel fault, stage 2: a counted one) compares each block's warm-up with the previous
+  block's result; lookback_hours counts the staleness of mark_close / index_close under a timeframe and
+  under btc(). The core unit is unchanged and bit-identical
   to the kernel of commit b12df97 (tests/test_core_identity.py).
 - Engine for top30 and next30: 12.5 bps per side on every symbol; a position whose next bar is missing
   is closed at its last active close with that cost; targets of unavailable or out-of-play symbols are 0;

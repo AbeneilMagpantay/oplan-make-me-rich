@@ -642,11 +642,12 @@ def _extra_rows(fn: str, n: float) -> float:
 def lookback_hours(prog: Program) -> int:
     """D3: the program's total lookback in hours, every window param at its `high` bound: the longest
     chain of windows through the inlined tree. A row's value depends on at most this many trailing
-    hourly rows (the row itself included). Leaves: an h1 field 1; mark_close / index_close their
-    staleness limit + 1; funding8h 8 (the longest settlement interval); hour / weekday 1; btc(...) 1
-    (the BTCUSDT frame, never a unit member). A timeframe bar adds its bin and the wait for its close
-    (2 x hours - 1); a window over a timeframe series counts each extra row as that timeframe's hours;
-    funding_mean(n) reads n settlements, at most 8 hours apart."""
+    hourly rows (the row itself included). Leaves (leaf_hours): an h1 field 1; mark_close / index_close
+    their staleness limit + 1; funding8h 8 (the longest settlement interval); hour / weekday 1; btc(f) the
+    same as the leaf f (the BTCUSDT frame has the same knownness rules). A timeframe of h hours over a leaf of
+    l hours: 2h - 2 + l (its bin, the wait for the next bin's close, and the leaf's own reach before the bin);
+    a window over a timeframe series counts each extra row as that timeframe's hours; funding_mean(n) is
+    known only when its last n settlements lie inside the last 8n hours."""
     defs = dict(prog.defs)
     memo = {}
 
@@ -661,6 +662,15 @@ def lookback_hours(prog: Program) -> int:
         tf = tfs.pop() if len(tfs) == 1 else (1 if tfs else None)
         return max([k[0] for k in kids] + [0]), tf
 
+    def leaf_hours(name: str) -> int:
+        if name == "mark_close":
+            return C.MARK_MAX_STALE_HOURS + 1
+        if name == "index_close":
+            return C.INDEX_MAX_STALE_HOURS + 1
+        if name == "funding8h":
+            return 8
+        return 1
+
     def lb(node) -> tuple:                                  # (hours, tf hours of the series; None = scalar)
         lit = _literal_value(node)
         if lit is not None:
@@ -673,21 +683,17 @@ def lookback_hours(prog: Program) -> int:
                 if n not in memo:
                     memo[n] = lb(defs[n])
                 return memo[n]
-            if n in ("mark_close",):
-                return C.MARK_MAX_STALE_HOURS + 1, 1
-            if n in ("index_close",):
-                return C.INDEX_MAX_STALE_HOURS + 1, 1
-            if n == "funding8h":
-                return 8, 1
-            return 1, 1
+            return leaf_hours(n), 1
         if isinstance(node, ast.Call):
             fn = node.func.id
             a = node.args
             if fn == "btc":
-                return 1, 1
+                return leaf_hours(a[0].id), 1
             if fn in TIMEFRAMES:
                 h = TIMEFRAMES[fn]
-                return 2 * h - 1, h
+                arg = a[0]
+                leaf = arg.args[0].id if isinstance(arg, ast.Call) else arg.id      # field or btc(field)
+                return 2 * h - 2 + leaf_hours(leaf), h
             if fn == "funding_mean":
                 return 8 * win(a[0]), 1
             if fn in WINDOW_FUNCS:

@@ -440,14 +440,15 @@ def inplay_matrix(mem: Membership, band: str, grid_ns: np.ndarray, panel: list, 
     return P_ & active, uk
 
 
-OVERLAP_HOURS = READ_DAYS * 24
+OVERLAP_HOURS = READ_DAYS * 24                  # S4 block warm-up (upipeline checks it)
 
 
 def block_plan(mem: Membership, grid_ns: np.ndarray, band: str, months=C.UNIVERSE_BLOCK_MONTHS,
                boundaries=None) -> list:
     """S4 blocks of a band's panel on grid_ns: [{b, e, s0, symbols}] with rows [b, e) evaluated from row s0
     (97 days before the first hour of the month holding row b's decision time) and the symbols that are
-    members in the months of decision rows b-1 .. e-1 or in the previous block's."""
+    members (full-grid membership) in any month touched by the decision rows of the evaluated range
+    s0 .. e-1, warm-up included (fix pass 3: no dependence on the previous block)."""
     Tn = len(grid_ns)
     cuts = [0]
     if boundaries is not None:
@@ -458,21 +459,20 @@ def block_plan(mem: Membership, grid_ns: np.ndarray, band: str, months=C.UNIVERS
             if grid_ns[0] < m <= grid_ns[-1] and (t.month - 1) % months == 0:
                 cuts.append(int((m - grid_ns[0]) // HOUR_NS))
     cuts.append(Tn)
-    out, prev = [], set()
+    out = []
     for k, (b, e) in enumerate((a, c) for a, c in zip(cuts[:-1], cuts[1:]) if c > a):
-        mi = np.searchsorted(mem.months, grid_ns[max(b - 1, 0):e] + HOUR_NS, side="right") - 1
-        cur = set()
-        for i in np.unique(mi):
-            if i >= 0:
-                cur.update(mem.members(band, int(i)))
         if k == 0:
             s0 = 0
         else:
             t = pd.Timestamp(int(grid_ns[b]) + HOUR_NS, tz="UTC")
             m0 = pd.Timestamp(year=t.year, month=t.month, day=1, tz="UTC").value
             s0 = max(0, int((m0 - OVERLAP_HOURS * HOUR_NS - grid_ns[0]) // HOUR_NS))
-        out.append({"b": int(b), "e": int(e), "s0": s0, "symbols": cur | prev})
-        prev = cur
+        mi = np.searchsorted(mem.months, grid_ns[s0:e] + HOUR_NS, side="right") - 1
+        syms = set()
+        for i in np.unique(mi):
+            if i >= 0:
+                syms.update(mem.members(band, int(i)))
+        out.append({"b": int(b), "e": int(e), "s0": s0, "symbols": syms})
     return out
 
 

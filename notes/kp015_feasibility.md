@@ -35,7 +35,12 @@ Conclusion: admissible, subject to the project's own stored-row revision check f
 ## 3. A point-in-time universe of USDT perpetuals
 
 - 686 crypto USDT perpetuals have files. Live at each January 1st: 3 (2020), 79 (2021), 134 (2022),
-  146 (2023), 242 (2024), 344 (2025), 538 (2026). Only BTC, ETH and BCH existed until September 2020.
+  146 (2023), 242 (2024), 344 (2025), 538 (2026).
+  CORRECTION (2026-11-19, from the downloaded data): this note first said that only BTC, ETH and BCH
+  existed until September 2020. That was wrong; they were only the three live on 2020-01-01. The archive
+  has monthly files from 2020-01 for 11 names and from 2020-02 for 13 more (24 by February 2020, 42 by
+  August 2020). The commit message of 521687f repeats the wrong sentence and cannot be changed. With the
+  90-day seasoning rule the first month with a top30 unit is 2020-05 (11 members); 30 members from 2020-10.
 - 159 contracts ended before 2026-10; their files are still in the archive (LUNAUSDT downloaded and
   checked; SCUSDT, FTTUSDT, AGIXUSDT, OCEANUSDT, SRMUSDT, LENDUSDT, MATICUSDT, EOSUSDT listed).
 - Traps that would corrupt a naive universe:

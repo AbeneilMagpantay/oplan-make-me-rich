@@ -48,6 +48,8 @@ was rewritten by `data validate`. Ledger untouched. Fix pass done the same day (
 fresh funding, R3 memory refusal, R4 sandbox data checks); R1b awaits a ruling (KERNEL_PROPOSALS KP-015).
 Fix pass 2 done (S1 bounded funding_mean in every unit, S2 cross-sections over the in-play symbols with a
 known input, S3 zero-trade bars usable up to 24 in a row, S4 six-month blocks). The R3 preflight stays.
+Fix pass 3 (2026-11-20): one membership per run (blocks were not equal to the whole panel for a window over
+a cs_* result), the block_overlap self-check, and the lookback of stale leaves under a timeframe or btc().
 Next: audit, approval, re-key, both calibrations (core and top30), seal, selftest.
 
 ## Open decisions for the human
