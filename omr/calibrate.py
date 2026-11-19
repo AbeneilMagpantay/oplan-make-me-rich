@@ -220,7 +220,7 @@ def _synth_symbol(v: dict, src_days: np.ndarray, flip: np.ndarray):
     fu = pd.DataFrame({"rate": v["frate"][sel], "interval_hours": v["fint"][sel], "offset_ms": 0.0},
                       index=pd.DatetimeIndex(pd.to_datetime(ft, unit="ns", utc=True)).as_unit("ns"))
     fu.index.name = "settle_time"
-    raw = {"klines": kl, "funding": fu, "mark_klines": mark}
+    raw = {"klines": kl, "funding": fu, "mark_klines": mark, "index_klines": mark}   # no core family reads index_close
     return D.assemble_frame(raw, D.PROGRAM_EXTRA), D.liquidation_ratios(kl, mark)
 
 

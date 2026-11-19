@@ -43,7 +43,8 @@ from omr import paths as P
 
 KERNEL_DIRS = ("omr", "tests")
 KERNEL_FILES = ("CONSTITUTION.md", "LANGUAGE.md", "requirements.txt")
-SEAL_KEYS = ("g6_threshold", "calibration_file", "calibration_sha256", "semantic_hash")
+SEAL_KEYS = ("g6_threshold", "calibration_file", "calibration_sha256", "semantic_hash",
+             "universe_calibration_file", "universe_calibration_sha256")
 
 
 def is_semantic(rel: str) -> bool:
@@ -207,6 +208,13 @@ def verify(root: Path = None, lock_path: Path = None, history_path: Path = None,
                 problems.append("sealed calibration artifact missing or changed")
             if not _logged_artifact(calibration_log, seal["calibration_file"], seal["calibration_sha256"]):
                 problems.append("sealed calibration artifact has no row in ledger/calibration_log.jsonl")
+            if seal.get("universe_calibration_file"):
+                ua = Path(root) / seal["universe_calibration_file"]
+                if not ua.exists() or ledger.sha256_file(ua) != seal["universe_calibration_sha256"]:
+                    problems.append("sealed universe calibration artifact missing or changed")
+                if not _logged_artifact(calibration_log, seal["universe_calibration_file"],
+                                        seal["universe_calibration_sha256"]):
+                    problems.append("sealed universe calibration artifact has no row in ledger/calibration_log.jsonl")
         elif last.get("calibration_sha256"):
             problems.append("kernel_history says sealed but kernel.lock has no seal")
         problems.extend(ledger.verify_chain(history_path))
@@ -301,10 +309,52 @@ def check_artifact(art: dict, lock: dict, research_hash: str) -> list:
     return bad
 
 
+def check_universe_artifact(art: dict, lock: dict, research_hash: str) -> list:
+    """Reasons the universe (top30) artifact cannot be sealed (empty = acceptable input to the rule)."""
+    from omr import ucalibrate
+    bad = []
+    if art.get("unit") != "top30":
+        bad.append("universe artifact: unit is not top30")
+    if art.get("kernel_lock_verified") is not True:
+        bad.append("universe artifact was not produced on a verified kernel lock")
+    if art.get("semantic_hash") != lock.get("semantic"):
+        bad.append("universe artifact semantic_hash does not equal the locked semantic kernel")
+    if art.get("research_hash") != research_hash:
+        bad.append("universe artifact research_hash does not equal the stored data")
+    fams = art.get("families") or {}
+    if sorted(fams) != sorted(ucalibrate.FAMILIES):
+        bad.append("universe artifact families are not the kernel's three universe families")
+    for f, h in fams.items():
+        if lock["files"].get(f"omr/programs/{f}.omr") != h:
+            bad.append(f"universe artifact family {f} hash does not equal the locked kernel program")
+    for k in ("nulls", "oracle"):
+        if k not in art:
+            bad.append(f"universe artifact has no {k}")
+    return bad
+
+
+def _logged_bytes(path, root, calibration_log, what: str):
+    ap = Path(path)
+    if not ap.is_absolute():
+        ap = Path(root) / ap
+    try:
+        rel = ap.resolve().relative_to(Path(root).resolve()).as_posix()
+    except ValueError:
+        raise SealRefused(f"the {what} artifact must live inside the project folder")
+    raw = ap.read_bytes()
+    sha = hashlib.sha256(raw).hexdigest()
+    if not _logged_artifact(calibration_log, rel, sha):
+        raise SealRefused(f"the {what} artifact's bytes have no row in ledger/calibration_log.jsonl (only an artifact "
+                          "exactly as the calibration wrote it can be sealed)")
+    return rel, sha, json.loads(raw.decode("ascii"))
+
+
 def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path: Path = None,
-         research_hash: str | None = None, log=print, check_env: bool = True, calibration_log: Path = None) -> dict:
-    """Apply the calibration rule in code to a LOGGED calibration artifact and write the G6 threshold."""
-    from omr import calibrate
+         research_hash: str | None = None, log=print, check_env: bool = True, calibration_log: Path = None,
+         universe_artifact=None) -> dict:
+    """Apply the calibration rule in code to the LOGGED calibration artifacts of BOTH units (core:
+    omr.calibrate; top30: omr.ucalibrate) and write the G6 threshold (omr.ucalibrate.decide_both)."""
+    from omr import ucalibrate
     from omr import data
     root = P.ROOT if root is None else root
     history_path = P.KERNEL_HISTORY if history_path is None else history_path
@@ -315,29 +365,22 @@ def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path:
     lock = read_lock(lock_path)
     if lock.get("seal") is not None:
         raise SealRefused("kernel.lock is already sealed (a semantic re-key removes the seal)")
-    ap = Path(artifact_path)
-    if not ap.is_absolute():
-        ap = Path(root) / ap
-    try:
-        rel = ap.resolve().relative_to(Path(root).resolve()).as_posix()
-    except ValueError:
-        raise SealRefused("the calibration artifact must live inside the project folder")
-    raw = ap.read_bytes()
-    sha = hashlib.sha256(raw).hexdigest()
-    if not _logged_artifact(calibration_log, rel, sha):
-        raise SealRefused("the artifact's bytes have no row in ledger/calibration_log.jsonl (only an artifact "
-                          "exactly as omr.calibrate wrote it can be sealed)")
-    art = json.loads(raw.decode("ascii"))
+    if universe_artifact is None:
+        raise SealRefused("the seal needs the calibrations of BOTH units (KP-015): pass the universe artifact "
+                          "(--universe-calibration)")
+    rel, sha, art = _logged_bytes(artifact_path, root, calibration_log, "core calibration")
+    urel, usha, uart = _logged_bytes(universe_artifact, root, calibration_log, "universe calibration")
     rh = research_hash if research_hash is not None else data.load_manifest()["research_hash"]
-    bad = check_artifact(art, lock, rh)
+    bad = check_artifact(art, lock, rh) + check_universe_artifact(uart, lock, rh)
     if bad:
         raise SealRefused("; ".join(bad))
-    verdict = calibrate.verdict_from_rows(art)
+    verdict = ucalibrate.decide_both(art, uart)
     if verdict.get("chosen_threshold") is None or verdict.get("STOP"):
         raise SealRefused("calibration rule: " + json.dumps(ledger.clean({k: verdict.get(k) for k in
                                                                           ("chosen_threshold", "reason",
                                                                            "below_power_min", "null_pass_rate")})))
     s = {"g6_threshold": verdict["chosen_threshold"], "calibration_file": rel, "calibration_sha256": sha,
+         "universe_calibration_file": urel, "universe_calibration_sha256": usha,
          "semantic_hash": lock["semantic"], "sealed_at": _now(), "rule": verdict["rule"],
          "null_pass_rate": verdict["null_pass_rate"], "power_at_1_5": verdict["power_at_1_5_chosen"]}
     lock["seal"] = s
@@ -383,6 +426,7 @@ def main(argv=None):
     rk.add_argument("--approved-by", required=True)
     se = sub.add_parser("seal")
     se.add_argument("--calibration", required=True)
+    se.add_argument("--universe-calibration", required=True)
     a = ap.parse_args(argv)
     if a.cmd == "verify":
         pr = verify()
@@ -405,7 +449,7 @@ def main(argv=None):
               + ("seal KEPT (semantic unchanged)" if lock.get("seal") else "(not sealed)"))
     else:
         try:
-            seal(a.calibration)
+            seal(a.calibration, universe_artifact=a.universe_calibration)
         except SealRefused as e:
             print(f"SEAL REFUSED: {e}")
             sys.exit(2)

@@ -2,6 +2,10 @@
 data/*
 !data/manifest.json
 !data/validation.json
+!data/symbols.json
+!data/raw/
+data/raw/*
+!data/raw/exchange_info_*.json
 __pycache__/
 *.pyc
 *.nbi

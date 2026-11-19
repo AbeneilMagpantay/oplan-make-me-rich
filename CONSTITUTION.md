@@ -399,3 +399,45 @@ Live risk limits the loop can never change:
   `sma(hour, 25)`, sums of such ratios used as a scale) or thresholds hidden by multiplying both sides
   of a comparison by the same series; these are deliberate, visible in the text, and left to the
   coordinator's source read before every counted submission (KP-010).
+
+## 13. KP-015: the universe unit top30 (built 2026-11-19; NOT in force until the human approves the re-key)
+
+- Data: data/symbols.json (python -m omr.universe symbols; pinned by sha256 in the manifest) classifies
+  every USDT-quoted perpetual name of the archive; only crypto perpetuals can be members. python -m
+  omr.data universe downloads their monthly 1h klines, funding, mark and index klines (checksums
+  verified, resumable) and admits index_klines (the ten core symbols included) into the one research
+  hash; the stored-row revision check applies to every table from this download on. data validate
+  covers every table and adds membership and unit-availability COUNTS (no handle, nothing logged).
+- A program declares `unit = "top30"` (kind portfolio); LANGUAGE.md section 10 states membership,
+  in-play, cross-sections and the 90-day lookback limit. Fix pass (2026-11-19): seasoning = first active
+  bar at least 90 days before the month and no 7-day run without an active bar inside those 90 days (a
+  shorter archive hole does not restart it); in play also needs fresh funding (latest settlement no older
+  than twice its interval); no *_SETTLED folder is read. Fix pass 2: funding_mean is known only when its
+  last n settlements fall inside the last 8n hours, in every unit (the core stays bit-identical); in top30
+  a cs_* computes across the in-play symbols with a known input and is known when at least 10 exist; a
+  bar present with zero trades is usable while its zero-trade run is at most 24 (the hour 2024-10-28
+  20:00 UTC has zero trades in all 320 listed symbols); a top30 program is evaluated in six-month blocks,
+  bit-identical to the whole panel, with the engine's positions, equity and funding carried across. The core unit is unchanged and bit-identical
+  to the kernel of commit b12df97 (tests/test_core_identity.py).
+- Engine for top30 and next30: 12.5 bps per side on every symbol; a position whose next bar is missing
+  is closed at its last active close with that cost; targets of unavailable or out-of-play symbols are 0;
+  funding and the mark-price liquidation check per symbol; gross <= 1 across the unit.
+- Gates for top30: G1-G7 and G10 as in section 7; in G6 the whole weight matrix is shifted and every
+  weight that lands on a symbol not in play or without a bar is set to 0 (actual and shifted runs
+  alike). G8: the same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
+- The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged) and omr.ucalibrate
+  (top30: 30-symbol null worlds A and B built jointly across symbols, constant membership, three
+  hash-locked cross-sectional families, the same screen-and-submit protocol, a cross-sectional noisy
+  oracle at two speeds). Threshold = the largest of the grid whose null pass rate is <= 3% under both
+  nulls in BOTH units, with oracle power at Sharpe 1.5 >= 50% everywhere.
+- The selftest scores kernel_noise_top30 through the full path as well.
+- Memory (R3, S4): before the pending row of a top30 trial the evaluator estimates stage 2's bytes from
+  counts in data/validation.json (rows, distinct top30 and next30 symbols, the symbols of every block) and
+  the program's fields and statements, and refuses, UNCOUNTED (`memory_insufficient` in the stage-1 log),
+  unless the operating system reports at least 1.5 times that as available. Only the columns the program
+  and the engine read are loaded, per block and per symbol window; G8's next30 blocks are evaluated one at
+  a time and dropped before the top30 blocks are built.
+- Data checks (R4): omr.evaluate recomputes the research hash over every stored table on every run;
+  the sandbox relies on the per-file sha256 check at read.
+- Open interest and long/short ratios are NOT research data; tools/record_metrics.py (outside the
+  kernel) stores them forward with first-seen hashes; the kernel never reads them.

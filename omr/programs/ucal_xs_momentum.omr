@@ -1,0 +1,10 @@
+# Kernel universe calibration family (never a trial): cross-sectional momentum on unit top30.
+name = "ucal_xs_momentum"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Calibration family: coins with the highest past n-day return keep outperforming the rest of the unit; market neutral."
+
+n = param(14, 3, 60)
+
+signal = cs_scale(cs_demean(ret(daily(close), n)))

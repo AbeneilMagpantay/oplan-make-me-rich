@@ -38,7 +38,17 @@ two-coin instrument. KP-015 changes the kernel and needs the human's approval.
 
 KP-015 feasibility (2026-11-19, `notes/kp015_feasibility.md`): open interest and long/short ratios are
 not admissible for backtests (short history, archive rewritten); index price is admissible; a
-point-in-time universe is feasible if membership comes from kline activity. The build has not started.
+point-in-time universe is feasible if membership comes from kline activity.
+
+KP-015 build (2026-11-19): built and tested on the WORKING TREE only (KERNEL_PROPOSALS KP-015,
+CONSTITUTION section 13, LANGUAGE.md section 10). The kernel lock therefore does NOT verify until the
+human approves the re-key; nothing may be evaluated until then. The data store now holds the universe
+(678 crypto perpetuals, index_klines for all; research hash d1b6ce5b8d0a0380...), data/validation.json
+was rewritten by `data validate`. Ledger untouched. Fix pass done the same day (R1a seasoning, R2
+fresh funding, R3 memory refusal, R4 sandbox data checks); R1b awaits a ruling (KERNEL_PROPOSALS KP-015).
+Fix pass 2 done (S1 bounded funding_mean in every unit, S2 cross-sections over the in-play symbols with a
+known input, S3 zero-trade bars usable up to 24 in a row, S4 six-month blocks). The R3 preflight stays.
+Next: audit, approval, re-key, both calibrations (core and top30), seal, selftest.
 
 ## Open decisions for the human
 

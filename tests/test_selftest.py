@@ -4,7 +4,7 @@ import re
 
 from omr import paths as P
 from omr import selftest
-from conftest import SynthProvider, synth_world
+from conftest import SynthProvider, synth_udata, synth_world
 
 LATE = ["2020-09-14 00:00", "2020-02-10 00:00", "2020-01-06 00:00", "2020-01-31 00:00", "2020-07-10 00:00",
         "2020-01-09 00:00", "2020-01-17 00:00", "2020-09-23 00:00"]
@@ -12,8 +12,9 @@ LATE = ["2020-09-14 00:00", "2020-02-10 00:00", "2020-01-06 00:00", "2020-01-31 
 
 def test_selftest_ok_and_cleans_up(tmp_path):
     w = synth_world(seed=41, extended=8, ext_start=LATE)
+    uni = (synth_udata(end="2022-06-30 23:00", n=52), synth_udata(end="2025-06-30 23:00", n=52))
     with P.temporary_ledger(tmp_path / "outer"):
-        out = selftest.run(provider=SynthProvider(w), require_lock=False, p_max=0.05, tmp_parent=tmp_path)
+        out = selftest.run(provider=SynthProvider(w, universe=uni), require_lock=False, p_max=0.05, tmp_parent=tmp_path)
         from omr import ledger
         log = ledger.read_rows(P.VAL_ACCESS_LOG)
     assert out == "OK"

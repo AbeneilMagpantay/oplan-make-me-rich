@@ -4,7 +4,12 @@ Free, uncounted exploration on the DEV region only. Data is loaded with the dev_
 nothing after 2022-06-30 23:00 is visible. The program is parsed and interpreted by the kernel
 (nothing is executed). By default stage 1 runs exactly as in the evaluator (truncation self-check
 and activity_dev); --quick checks only the DEV end. Not a trial. Each run appends one line to
-ledger/sandbox_log.jsonl.
+ledger/sandbox_log.jsonl. A program of unit top30 (KP-015) runs on the DEV universe panel
+(omr.upipeline; membership from DEV bars only) with the universe engine; its benchmark is the
+equal-weight long of the in-play members.
+Data checks (R4): every stored file the sandbox reads is hashed at read and must equal its manifest
+sha256; the full research-hash recomputation over every stored table (44 s with the universe) is done
+only by omr.evaluate.
 """
 from __future__ import annotations
 
@@ -24,6 +29,7 @@ from omr import ledger
 from omr import paths as P
 from omr import pipeline
 from omr import stats as S
+from omr import upipeline
 
 
 def parse_sets(items, prog: L.Program) -> dict:
@@ -58,10 +64,14 @@ def main(argv=None):
         print(f"REJECTED: {e.rule} at line {e.line} col {e.col}: {e.msg}")
         sys.exit(1)
     params = parse_sets(a.set, prog)
-    core = D.load_frames(C.CORE, D.PROGRAM_EXTRA, upto="dev_end")
-    liq = D.load_liqs(C.CORE, upto="dev_end")
     opts = pipeline.Opts(truncation_cuts=0 if a.quick else C.TRUNCATION_CUTS)
-    s1 = pipeline.stage1(prog, params, core, core[C.BTC], np.random.default_rng(secrets.randbits(63)), opts)
+    if prog.unit != "core":
+        ud = upipeline.load_udata("dev_end", fields=upipeline.program_fields(prog))
+        s1 = upipeline.stage1_u(prog, params, ud, np.random.default_rng(secrets.randbits(63)), opts)
+    else:
+        core = D.load_frames(C.CORE, D.PROGRAM_EXTRA, upto="dev_end")
+        liq = D.load_liqs(C.CORE, upto="dev_end")
+        s1 = pipeline.stage1(prog, params, core, core[C.BTC], np.random.default_rng(secrets.randbits(63)), opts)
     print(f"SANDBOX (DEV only, {C.DEV_START} .. {C.DEV_END}) - not a trial")
     print(f"program {prog.name}  kind {prog.kind}  params {params}  nodes {prog.node_count}")
     print(f"canonical form (identity, with the semantic kernel hash and research_hash): {prog.canonical}")
@@ -71,17 +81,26 @@ def main(argv=None):
     print(f"stage 1: truncation self-check OK ({s1['cuts']} cuts)  direction changes (DEV) {s1['direction_changes_dev']} "
           f"(need >= {C.MIN_DIRECTION_CHANGES_DEV})  -> {'PASS' if s1['ok'] else 'activity_dev'}")
     W, grid = s1["W"], s1["grid"]
-    mk = pipeline.Market(core, liq, grid, C.CORE)
+    if prog.unit != "core":
+        fp = upipeline.Blocked(ud, "top30", fields=upipeline.program_fields(prog))
+        mk = fp
+        inplay = fp.inplay()
+        k = inplay.sum(axis=1, keepdims=True)
+        Wb = np.where(inplay, 1.0 / np.where(k > 0, k, 1), 0.0)
+        print(f"unit {prog.unit}: {len(fp.symbols)} symbols ever in the unit on DEV; lookback {prog.lookback_hours} h")
+    else:
+        mk = pipeline.Market(core, liq, grid, C.CORE)
+        Wb = np.full_like(W, 1.0 / len(C.CORE))
     s, e = mk.pos(C.DEV_START), mk.pos(C.DEV_END)
     run = mk.run(W, s, e)
     daily = run.daily_returns()
-    bench = mk.run(np.full_like(W, 1.0 / len(C.CORE)), s, e).daily_returns()
+    bench = mk.run(Wb, s, e).daily_returns()
     sm = S.summary(daily)
     print(f"DEV Sharpe {sm['sharpe']:.3f}  PSR(0) {sm['psr0']:.3f}  total {sm['total_return']:.3f}  CAGR {sm['cagr']:.3f}  "
           f"maxDD {sm['max_drawdown']:.3f}  Calmar {sm['calmar']:.3f}")
     print(f"rebalances {run.n_rebalances}  avg gross {run.gross.mean():.3f}  avg net {run.net.mean():.3f}  "
           f"funding paid {run.funding_paid:.4f}  costs {run.ev_cost.sum():.4f}  liquidated {run.liquidated}")
-    print(f"benchmark (long 1/K each) DEV Sharpe {S.sharpe(bench):.3f}  maxDD {S.max_drawdown(bench):.3f}")
+    print(f"benchmark (long 1/K each; top30: in-play members) DEV Sharpe {S.sharpe(bench):.3f}  maxDD {S.max_drawdown(bench):.3f}")
     print("year   days   return   sharpe   maxDD")
     for r in S.per_year(daily):
         print(f"{r['year']}  {r['n_days']:5d}  {r['return']:7.3f}  {r['sharpe']:7.3f}  {r['max_drawdown']:6.3f}")

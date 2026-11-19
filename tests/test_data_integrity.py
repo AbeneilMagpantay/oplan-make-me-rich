@@ -18,7 +18,7 @@ def datadir(tmp_path, monkeypatch):
     data._CACHE.clear()
     raw = synth_raw(start="2019-12-20 00:00", end="2022-07-10 23:00", seed=3)
     write_all(tmp_path, {("klines", "BTCUSDT"): raw["klines"], ("funding", "BTCUSDT"): raw["funding"],
-                         ("mark_klines", "BTCUSDT"): raw["mark_klines"]})
+                         ("mark_klines", "BTCUSDT"): raw["mark_klines"], ("index_klines", "BTCUSDT"): raw["index_klines"]})
     yield tmp_path
     data._CACHE.clear()
 
@@ -71,7 +71,7 @@ def test_validate_counts_and_binding(datadir):
     kl = raw["klines"].copy()
     kl.iloc[700, kl.columns.get_loc("low")] = -1.0                               # a non-positive price
     write_all(datadir, {("klines", "BTCUSDT"): kl, ("funding", "BTCUSDT"): raw["funding"],
-                        ("mark_klines", "BTCUSDT"): raw["mark_klines"]})
+                        ("mark_klines", "BTCUSDT"): raw["mark_klines"], ("index_klines", "BTCUSDT"): raw["index_klines"]})
     data._CACHE.clear()
     assert not data.validation_ok()
     bad = data.validate(log=lambda s: None)

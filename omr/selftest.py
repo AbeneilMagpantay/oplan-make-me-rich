@@ -8,11 +8,12 @@ into a temporary ledger that is deleted afterwards. No metric leaves this module
 1. Interpreter smoke: the five baseline programs and the kitchen-sink program (every field,
    timeframe and function) on real DEV+VAL frames. Shape, alignment, finiteness and bounds only;
    nothing is scored.
-2. Pipeline smoke: kernel_noise_single and kernel_noise_portfolio through the complete evaluate
-   path (generation rules, stage 1, pending row, stage 2, result files, final row) on a temporary
-   ledger. Asserts: status evaluated; every metric and gate input finite; every G8 unit scored, with
-   the expected unit count; G6 p in (0, 1]; activity above both thresholds; the daily-return length;
-   stage-2 DEV rows equal to stage 1 (no kernel_fault); `ledger verify` clean on the temporary ledger.
+2. Pipeline smoke: kernel_noise_single, kernel_noise_portfolio and kernel_noise_top30 (unit top30,
+   KP-015) through the complete evaluate path (generation rules, stage 1, pending row, stage 2, result
+   files, final row) on a temporary ledger. Asserts: status evaluated; every metric and gate input
+   finite; every G8 unit scored, with the expected unit count (top30: the next30 unit scored); G6 p in
+   (0, 1]; activity above both thresholds; the daily-return length; stage-2 DEV rows equal to stage 1
+   (no kernel_fault); the row's unit and lookback; `ledger verify` clean on the temporary ledger.
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ from omr import pipeline
 
 SMOKE_PROGRAMS = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls", "gen000_voltarget_trend_ls",
                   "gen000_funding_carry", "kernel_kitchen_sink")
-NOISE_PROGRAMS = ("kernel_noise_single", "kernel_noise_portfolio")
+NOISE_PROGRAMS = ("kernel_noise_single", "kernel_noise_portfolio", "kernel_noise_top30")
 HOUR_NS = 3_600_000_000_000
 
 
@@ -90,6 +91,15 @@ class _Cached:
 
     def val_world(self, handle):
         return self.base.val_world(handle)
+
+    def udev(self):
+        return self.base.udev()
+
+    def uval(self, handle, fields=None):
+        return self.base.uval(handle, fields=fields)
+
+    def universe_sizes(self):
+        return self.base.universe_sizes()
 
 
 def interpreter_smoke(world: pipeline.World):
@@ -143,10 +153,16 @@ def pipeline_smoke(provider, p_max: float, tmp: Path):
             check(sum(1 for r in rows if r["trial_id"] == row["trial_id"] and r["status"] == "pending") == 1,
                   f"one_pending_row_{stem}")
             detail = json.loads((P.TRIAL_DETAIL_DIR / f"{row['trial_id']}.json").read_text(encoding="ascii"))
-            units = detail.get("extended") or []
-            n_expected = len(C.EXTENDED) if prog.kind == "single" else len(C.EXTENDED) // len(C.CORE)
-            check(len(units) == n_expected, f"g8_unit_count_{stem}")
-            check(all(u.get("code") is None and math.isfinite(u["sharpe"]) for u in units), f"g8_every_unit_scored_{stem}")
+            check(row.get("unit") == prog.unit and row.get("lookback_hours") == prog.lookback_hours, f"unit_row_{stem}")
+            if prog.unit == "core":
+                units = detail.get("extended") or []
+                n_expected = len(C.EXTENDED) if prog.kind == "single" else len(C.EXTENDED) // len(C.CORE)
+                check(len(units) == n_expected, f"g8_unit_count_{stem}")
+                check(all(u.get("code") is None and math.isfinite(u["sharpe"]) for u in units),
+                      f"g8_every_unit_scored_{stem}")
+            else:
+                nx = detail.get("next30") or {}
+                check(nx.get("code") is None and math.isfinite(nx.get("sharpe", float("nan"))), f"g8_next30_scored_{stem}")
             check(_finite_numbers(detail["metrics"]) and _finite_numbers(detail["info"]), f"finite_metrics_{stem}")
             check(row["direction_changes_dev"] >= C.MIN_DIRECTION_CHANGES_DEV, f"activity_dev_{stem}")
             check(row["direction_changes_val"] >= C.G10_MIN_DIRECTION_CHANGES_VAL, f"activity_val_{stem}")
@@ -155,7 +171,7 @@ def pipeline_smoke(provider, p_max: float, tmp: Path):
         lines = []
         ok = ledger.verify_all(log=lines.append)
         check(ok and not any(x.startswith(("FAIL", "BAD", "INCOMPLETE")) for x in lines), "temp_ledger_verify_clean")
-        check(len(ledger.counted_ids()) == len(NOISE_PROGRAMS), "temp_ledger_counted_two")
+        check(len(ledger.counted_ids()) == len(NOISE_PROGRAMS), "temp_ledger_counted_three")
 
 
 def run(provider=None, require_lock: bool = True, p_max: float | None = None, tmp_parent=None) -> str:

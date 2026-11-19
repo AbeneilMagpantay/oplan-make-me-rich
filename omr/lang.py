@@ -27,6 +27,7 @@ def _program_name_ok(s: str) -> bool:
     return isinstance(s, str) and s.isascii() and re.fullmatch(PROGRAM_NAME_PATTERN, s) is not None
 
 HEADER = ("name", "family", "kind", "hypothesis")
+OPTIONAL_HEADER = ("unit",)          # unit: "core" (default) or "top30" (kind portfolio)
 FAMILIES = ("trend", "meanrev", "carry", "volatility", "relative", "flow", "other")
 MAX_PARAMS = C.MAX_PARAMS
 MAX_BODY = 30
@@ -41,7 +42,7 @@ _PV = (("P", 1), ("V", 1))     # quote volume = price x base volume
 # field -> (unit: sorted ((base, exponent), ...), () = dimensionless; aggregation for timeframes or None)
 FIELDS = {
     "open": (_P, "first"), "high": (_P, "max"), "low": (_P, "min"), "close": (_P, "last"),
-    "mark_close": (_P, "last"), "volume": (_V, "sum"), "taker_buy_volume": (_V, "sum"),
+    "mark_close": (_P, "last"), "index_close": (_P, "last"), "volume": (_V, "sum"), "taker_buy_volume": (_V, "sum"),
     "quote_volume": (_PV, "sum"), "taker_buy_quote_volume": (_PV, "sum"), "trades": (_N, "sum"),
     "funding8h": ((), None), "hour": ((), None), "weekday": ((), None),
 }
@@ -66,7 +67,7 @@ ARITY = {**{f: 2 for f in ROLLING}, **{f: 2 for f in LAGS}, **{f: 1 for f in ELE
          "corr": 3, "rsi": 2, "atr": 4, "realised_vol": 2, "funding_mean": 1, "clip": 3, "min2": 2, "max2": 2,
          "where": 3, "hold": 5, "btc": 1}
 MAX_INLINED_NODES = 4000      # the canonical (fully inlined) tree; guards against exponential reuse
-RESERVED = set(FIELDS) | FUNCTIONS | set(HEADER) | {"param"}
+RESERVED = set(FIELDS) | FUNCTIONS | set(HEADER) | set(OPTIONAL_HEADER) | {"param"}
 
 
 def literal_key(node) -> tuple:
@@ -111,6 +112,7 @@ class Program:
     canonical: str = ""
     param_order: list = field(default_factory=list)  # params in order of first use in the inlined tree
     literals: list = field(default_factory=list)     # [(source key, base value)] jitterable literals, source order
+    lookback_hours: int = 0                          # D3: total lookback with every window param at its high bound
 
     @property
     def n_literals(self):
@@ -119,6 +121,10 @@ class Program:
     @property
     def kind(self):
         return self.header["kind"]
+
+    @property
+    def unit(self):
+        return self.header.get("unit", "core")
 
     @property
     def name(self):
@@ -188,7 +194,7 @@ def _parse(text: str, stem: str, probe: bool = True) -> Program:
         if name in seen:
             raise LangError("reassigned", st, f"{name} assigned twice")
         seen.add(name)
-        if name in HEADER:
+        if name in HEADER or name in OPTIONAL_HEADER:
             if params or defs:
                 raise LangError("header_order", st, "header keys come before any other statement")
             v = _str_literal(st.value)
@@ -196,7 +202,7 @@ def _parse(text: str, stem: str, probe: bool = True) -> Program:
                 raise LangError("header_value", st, f"{name} must be a string literal")
             header[name] = v
             continue
-        if len(header) != len(HEADER):
+        if not all(k in header for k in HEADER):
             raise LangError("header_missing", st, f"header needs {', '.join(HEADER)} before other statements")
         if name in RESERVED and name != "signal":
             raise LangError("shadowing", st, f"{name} is a field, function or header key")
@@ -213,6 +219,10 @@ def _parse(text: str, stem: str, probe: bool = True) -> Program:
         raise LangError("header_family", None, f"family must be one of {', '.join(FAMILIES)}")
     if header["kind"] not in ("single", "portfolio"):
         raise LangError("header_kind", None, "kind must be single or portfolio")
+    if header.get("unit", "core") not in C.UNITS:
+        raise LangError("header_unit", None, f"unit must be one of {', '.join(C.UNITS)}")
+    if header.get("unit") == "top30" and header["kind"] != "portfolio":
+        raise LangError("header_unit", None, "unit top30 needs kind portfolio")
     h = header["hypothesis"]
     if len(h) > 500 or not all(32 <= ord(ch) <= 126 for ch in h) or len(h.strip()) < 10:
         raise LangError("header_hypothesis", None, "hypothesis: 10 to 500 printable ASCII characters")
@@ -228,6 +238,11 @@ def _parse(text: str, stem: str, probe: bool = True) -> Program:
     _check_body(prog)
     _canonicalise(prog)
     _check_unit_windows(prog)
+    prog.lookback_hours = lookback_hours(prog)
+    if prog.unit == "top30" and prog.lookback_hours > C.LOOKBACK_MAX_HOURS:
+        raise LangError("lookback_exceeds_seasoning", None, f"total lookback {prog.lookback_hours} hours (every window "
+                        f"param at its high bound) exceeds the {C.UNIVERSE_SEASONING_DAYS}-day seasoning period "
+                        f"({C.LOOKBACK_MAX_HOURS} hours)")
     if probe:
         from omr import probe as _probe                     # late import: the probe uses the interpreter
         try:
@@ -607,7 +622,83 @@ def _canonicalise(prog: Program):
         typ = "int" if p.is_int else "float"
         ps.append(f"${i}:{typ}({_fmt_num(p.default, p.is_int)},{_fmt_num(p.low, p.is_int)},{_fmt_num(p.high, p.is_int)})")
     prog.param_order = order
-    prog.canonical = f"kind={prog.kind};signal={tree};params=[{','.join(ps)}]"
+    unit = "" if prog.unit == "core" else f"unit={prog.unit};"        # core: the canonical form is unchanged
+    prog.canonical = f"{unit}kind={prog.kind};signal={tree};params=[{','.join(ps)}]"
+
+
+# rows of history a window function reads beyond its input's own lookback, per unit of the window argument
+# n (knownness rules of omr.interp): rolling n-1, ema 5n-1, rsi / atr 10n, lags n, realised_vol n, corr n-1,
+# hold h-1
+def _extra_rows(fn: str, n: float) -> float:
+    if fn == "ema":
+        return C.EMA_MEMORY * n - 1
+    if fn in ("rsi", "atr"):
+        return (C.RSI_MEMORY if fn == "rsi" else C.ATR_MEMORY) * n
+    if fn in LAGS or fn == "realised_vol":
+        return n
+    return n - 1
+
+
+def lookback_hours(prog: Program) -> int:
+    """D3: the program's total lookback in hours, every window param at its `high` bound: the longest
+    chain of windows through the inlined tree. A row's value depends on at most this many trailing
+    hourly rows (the row itself included). Leaves: an h1 field 1; mark_close / index_close their
+    staleness limit + 1; funding8h 8 (the longest settlement interval); hour / weekday 1; btc(...) 1
+    (the BTCUSDT frame, never a unit member). A timeframe bar adds its bin and the wait for its close
+    (2 x hours - 1); a window over a timeframe series counts each extra row as that timeframe's hours;
+    funding_mean(n) reads n settlements, at most 8 hours apart."""
+    defs = dict(prog.defs)
+    memo = {}
+
+    def win(node) -> float:
+        lit = _literal_value(node)
+        if lit is not None:
+            return lit[0]
+        return prog.params[node.id].high
+
+    def join(kids) -> tuple:                               # as _tf_join: one timeframe, else hourly
+        tfs = {k[1] for k in kids if k[1] is not None}
+        tf = tfs.pop() if len(tfs) == 1 else (1 if tfs else None)
+        return max([k[0] for k in kids] + [0]), tf
+
+    def lb(node) -> tuple:                                  # (hours, tf hours of the series; None = scalar)
+        lit = _literal_value(node)
+        if lit is not None:
+            return 0, None
+        if isinstance(node, ast.Name):
+            n = node.id
+            if n in prog.params:
+                return 0, None
+            if n in defs:
+                if n not in memo:
+                    memo[n] = lb(defs[n])
+                return memo[n]
+            if n in ("mark_close",):
+                return C.MARK_MAX_STALE_HOURS + 1, 1
+            if n in ("index_close",):
+                return C.INDEX_MAX_STALE_HOURS + 1, 1
+            if n == "funding8h":
+                return 8, 1
+            return 1, 1
+        if isinstance(node, ast.Call):
+            fn = node.func.id
+            a = node.args
+            if fn == "btc":
+                return 1, 1
+            if fn in TIMEFRAMES:
+                h = TIMEFRAMES[fn]
+                return 2 * h - 1, h
+            if fn == "funding_mean":
+                return 8 * win(a[0]), 1
+            if fn in WINDOW_FUNCS:
+                wi = WINDOW_FUNCS[fn]
+                hrs, tf = join([lb(x) for i, x in enumerate(a) if i != wi])
+                tf = 1 if tf is None else tf
+                return hrs + _extra_rows(fn, win(a[wi])) * tf, tf
+            return join([lb(x) for x in a])
+        return join([lb(x) for x in ast.iter_child_nodes(node) if isinstance(x, ast.expr)])
+
+    return int(math.ceil(lb(defs["signal"])[0]))
 
 
 def trial_id(prog: Program, semantic_hash: str, research_hash: str) -> str:

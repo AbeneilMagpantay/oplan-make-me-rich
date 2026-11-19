@@ -1,0 +1,10 @@
+# Kernel universe calibration family (never a trial): short-term cross-sectional reversal on unit top30.
+name = "ucal_xs_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Calibration family: coins that rose most over the last h hours fall back relative to the unit; market neutral."
+
+h = param(24, 4, 96)
+
+signal = cs_scale(cs_demean(-ret(close, h)))

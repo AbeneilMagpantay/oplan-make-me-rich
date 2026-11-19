@@ -96,6 +96,12 @@ def for_census(purpose: str = "census of the paper pool") -> ValHandle:
     return _logged(purpose, "census")
 
 
+def for_membership(purpose: str) -> ValHandle:
+    """The universe membership builder and data validate-style counts (omr.universe): reads klines of every
+    region as kernel code and prints COUNTS only; no program is evaluated."""
+    return _logged(purpose, "membership")
+
+
 def for_selftest(purpose: str = "selftest") -> ValHandle:
     """The kernel selftest (omr.selftest): reads real DEV+VAL bars, scores only kernel noise programs
     into a temporary ledger and returns no metric. The single exception to 'any scored run on VAL

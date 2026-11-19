@@ -12,6 +12,7 @@ import pytest
 from omr import calibrate as K
 from omr import constants as C
 from omr import kernel_lock as KL
+from omr import ucalibrate as UC
 from omr import ledger as LG
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +41,7 @@ class Kern:
         (root / "tests").mkdir()
         (root / "omr" / "a.py").write_text("X = 1\n")
         (root / "tests" / "test_a.py").write_text("def test(): pass\n")
-        for f in K.FAMILIES:
+        for f in K.FAMILIES + UC.FAMILIES:
             shutil.copyfile(ROOT / "omr" / "programs" / f"{f}.omr", root / "omr" / "programs" / f"{f}.omr")
         (root / "CONSTITUTION.md").write_text("rules\n")
         (root / "LANGUAGE.md").write_text("grammar\n")
@@ -54,9 +55,11 @@ class Kern:
     def verify(self):
         return KL.verify(self.root, self.lock, self.hist, check_env=False, calibration_log=self.clog)
 
-    def seal(self, art, rh="r" * 64):
+    def seal(self, art, rh="r" * 64, uart="default"):
+        if uart == "default":
+            uart = self.write_art(uartifact(KL.read_lock(self.lock), self.root), name="ucalibration_x.json")
         return KL.seal(art, root=self.root, lock_path=self.lock, history_path=self.hist, research_hash=rh,
-                       log=lambda s: None, check_env=False, calibration_log=self.clog)
+                       log=lambda s: None, check_env=False, calibration_log=self.clog, universe_artifact=uart)
 
     def write_art(self, art, name="calibration_x.json", logged=True):
         p = self.root / "ledger" / name
@@ -137,11 +140,11 @@ def test_environment_pins(tmp_path):
 
 # ---------------------------------------------------------------- seal
 
-def null_rows(n, passes_010, passes_005):
+def null_rows(n, passes_010, passes_005, families=K.FAMILIES):
     rows = []
     for i in range(n):
         p = 0.08 if i < passes_010 - passes_005 else (0.04 if i < passes_010 else 0.5)
-        rows.append({"family": K.FAMILIES[i % 5], "world_seed": i, "submitted": True, "status": "evaluated",
+        rows.append({"family": families[i % len(families)], "world_seed": i, "submitted": True, "status": "evaluated",
                      "params": {}, "val_sharpe": 0.1, "perm_p": p, "stage1": {"passed": 20},
                      "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}})
     return rows
@@ -165,6 +168,48 @@ def artifact(lock, root, passes_010=4, passes_005=2, power=0.8, verified=True):
             "families": {f: LG.sha256_file(root / "omr" / "programs" / f"{f}.omr") for f in K.FAMILIES},
             "nulls": {n: {"rows": null_rows(100, passes_010, passes_005)} for n in ("A", "B")},
             "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
+
+
+def uartifact(lock, root, passes_010=2, passes_005=1, power=0.8, verified=True):
+    return {"unit": "top30", "kernel_lock_verified": verified, "semantic_hash": lock["semantic"],
+            "research_hash": "r" * 64,
+            "families": {f: LG.sha256_file(root / "omr" / "programs" / f"{f}.omr") for f in UC.FAMILIES},
+            "nulls": {n: {"rows": null_rows(90, passes_010, passes_005, UC.FAMILIES)} for n in ("A", "B")},
+            "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
+
+
+def test_the_seal_needs_both_units_and_takes_the_stricter(tmp_path):
+    """KP-015: the threshold is the largest one that keeps the null pass rate <= 3% in BOTH units."""
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1))     # core alone: 0.10 qualifies
+    with pytest.raises(KL.SealRefused):
+        k.seal(art, uart=None)
+    ua = uartifact(lock, tmp_path, passes_010=6, passes_005=2)                 # top30: 6.7% at 0.10, 2.2% at 0.05
+    v = UC.decide_both(json.loads(art.read_text()), ua)
+    assert v["qualifying"] == [0.025, 0.05] and v["chosen_threshold"] == 0.05 and not v["STOP"]
+    k.seal(art, uart=k.write_art(ua, name="ucalibration_y.json"))
+    sealed = KL.read_lock(k.lock)["seal"]
+    assert sealed["g6_threshold"] == 0.05 and sealed["universe_calibration_file"] == "ledger/ucalibration_y.json"
+    assert k.verify() == []
+    (tmp_path / "ledger" / "ucalibration_y.json").write_text("{}")                # the universe artifact changed
+    assert any("universe calibration" in x for x in k.verify())
+
+
+@pytest.mark.parametrize("case", ["low_power", "wrong_family", "unverified", "unlogged", "wrong_unit"])
+def test_the_seal_refuses_a_bad_universe_artifact(tmp_path, case):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = k.write_art(artifact(lock, tmp_path))
+    ua = uartifact(lock, tmp_path, power=0.3 if case == "low_power" else 0.8, verified=case != "unverified")
+    if case == "wrong_family":
+        ua["families"]["ucal_xs_carry"] = "0" * 64
+    if case == "wrong_unit":
+        ua["unit"] = "core"
+    p = k.write_art(ua, name="ucalibration_z.json", logged=case != "unlogged")
+    with pytest.raises(KL.SealRefused):
+        k.seal(art, uart=p)
+    assert "seal" not in KL.read_lock(k.lock)
 
 
 def test_seal_applies_the_rule_and_records_it(tmp_path):

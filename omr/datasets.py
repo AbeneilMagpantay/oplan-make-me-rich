@@ -6,8 +6,9 @@ fields it exposes, and the rule for WHEN a row becomes knowable, expressed as
 be used. `align_to_grid` is the only function that puts dataset rows on the 1h
 grid; it never lets a row appear before its visible_from bar.
 
-v1 datasets: klines (the 1h base grid), funding, and mark_klines (admitted
-2026-11-18; used by the engine's liquidation check). New datasets are added only
+v1 datasets: klines (the 1h base grid), funding, mark_klines (admitted
+2026-11-18; used by the engine's liquidation check) and index_klines (KP-015: the
+index price, field index_close; complete from each listing month and served live). New datasets are added only
 by a human-approved kernel re-key after the data-admission checks in
 CONSTITUTION.md. Nothing in the engine or evaluator names a dataset except
 through this registry.
@@ -73,14 +74,21 @@ MARK_KLINES = _Klines(
     fields=("open", "high", "low", "close"),
 )
 
-REGISTRY = {d.name: d for d in (KLINES, FUNDING, MARK_KLINES)}
+INDEX_KLINES = _Klines(
+    name="index_klines", freq="1h", history_start="2019-12-23",
+    source="Binance USD-M bulk indexPriceKlines 1h (data.binance.vision); REST fapi.binance.com for backfill and top-up",
+    knowable_rule="index-price bar known at its close; visible from its own bar; missing bars stay missing",
+    fields=("open", "high", "low", "close"),
+)
+
+REGISTRY = {d.name: d for d in (KLINES, FUNDING, MARK_KLINES, INDEX_KLINES)}
 LIQ = "mark_klines"   # dataset used by the engine's liquidation check
 BASE = "klines"
 # Every frame carries funding_rate (rate settled at that bar's open, else 0; used by the engine).
 ALWAYS = ("funding",)
 # Datasets exposed to the interpreter as '<name>.<field>' columns (fields funding8h, mark_close,
-# funding_mean). Every program frame is assembled with these.
-PROGRAM_EXTRA = ("funding", "mark_klines")
+# index_close, funding_mean). Every program frame is assembled with these.
+PROGRAM_EXTRA = ("funding", "mark_klines", "index_klines")
 
 
 def get(name: str) -> Dataset:
@@ -98,11 +106,12 @@ def _check_access(upto: str, handle, what: str) -> None:
         access.note_val_read(handle)
 
 
-def load_raw(name: str, symbol: str, upto: str, handle=None) -> pd.DataFrame:
-    """Stored rows of one dataset for one symbol whose visible_from bar <= the ceiling."""
+def load_raw(name: str, symbol: str, upto: str, handle=None, cache: bool = True) -> pd.DataFrame:
+    """Stored rows of one dataset for one symbol whose visible_from bar <= the ceiling. cache=False: the
+    parsed table is not kept in the data layer's cache (universe loads touch hundreds of tables)."""
     _check_access(upto, handle, "load_raw")
     ds = get(name)
-    rows = data._read_stored(name, symbol)
+    rows = data._read_stored(name, symbol, cache=cache)
     cap = data.ceiling_ts(upto)
     if cap is not None:
         rows = rows[ds.visible_from(rows) <= cap]

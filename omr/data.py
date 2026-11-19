@@ -53,7 +53,8 @@ KLINE_COLS = KLINE_FLOAT_COLS + ["is_gap"]
 FUNDING_COLS = ["rate", "interval_hours", "offset_ms"]
 MARK_COLS = ["open", "high", "low", "close", "samples"]   # samples = seconds sampled in the hour (3600 = full)
 FUNDING_DEFAULT_INTERVAL_H = 8.0   # declared default settlement interval of the funding dataset
-DATASET_COLS = {"klines": KLINE_COLS, "funding": FUNDING_COLS, "mark_klines": MARK_COLS}
+DATASET_COLS = {"klines": KLINE_COLS, "funding": FUNDING_COLS, "mark_klines": MARK_COLS, "index_klines": MARK_COLS}
+PRICE_BAR_DATASETS = ("mark_klines", "index_klines")       # stored as actual rows only; missing bars stay missing
 
 # Ceilings for every loader. "latest" = no ceiling (census and this data layer only).
 CEILINGS = {
@@ -100,11 +101,12 @@ class DataIntegrityError(RuntimeError):
     pass
 
 
-def _read_stored(dataset: str, symbol: str, manifest: dict | None = None) -> pd.DataFrame:
+def _read_stored(dataset: str, symbol: str, manifest: dict | None = None, cache: bool = True) -> pd.DataFrame:
     """Read the full stored table for (dataset, symbol). PRIVATE to the data layer.
 
     The file's bytes are hashed at the moment they are read and must equal the manifest's sha256
     (the same bytes are then parsed, so nothing can change in between). Callers slice by ceiling.
+    cache=False: parse without keeping a copy (streaming passes over every stored table).
     """
     p = stored_path(dataset, symbol)
     if not p.exists():
@@ -117,6 +119,8 @@ def _read_stored(dataset: str, symbol: str, manifest: dict | None = None) -> pd.
         raise DataIntegrityError(f"stored {dataset}/{symbol} has no sha256 in data/manifest.json")
     if want != digest:
         raise DataIntegrityError(f"stored {dataset}/{symbol} does not match data/manifest.json")
+    if not cache:
+        return _CACHE[digest].copy() if digest in _CACHE else pd.read_parquet(io.BytesIO(raw))
     if digest not in _CACHE:
         _CACHE.clear() if len(_CACHE) > 64 else None
         _CACHE[digest] = pd.read_parquet(io.BytesIO(raw))
@@ -184,9 +188,35 @@ def _tables_from_disk(manifest: dict) -> dict:
     return tables
 
 
+def _hash_table(h, dataset: str, symbol: str, df: pd.DataFrame, cut) -> None:
+    df = df[df.index <= cut]
+    h.update(f"{dataset}/{symbol}/{len(df)}\n".encode("ascii"))
+    for b in _frame_bytes(df, DATASET_COLS[dataset]):
+        h.update(b)
+
+
+def hashes_streaming(keys, get) -> tuple:
+    """(research_hash, dataset_hashes) over the tables `get(dataset, symbol)` for `keys`, one table in
+    memory at a time; identical to compute_research_hash / dataset_hashes over the same tables."""
+    cut = ts(C.VAL_END)
+    h_all = hashlib.sha256()
+    per = {}
+    for (dataset, symbol) in sorted(keys):
+        df = get(dataset, symbol)
+        _hash_table(h_all, dataset, symbol, df, cut)
+        _hash_table(per.setdefault(dataset, hashlib.sha256()), dataset, symbol, df, cut)
+    return h_all.hexdigest(), {d: per[d].hexdigest() for d in sorted(per)}
+
+
+def _manifest_keys(manifest: dict) -> list:
+    return [(d, s) for d, per in manifest["datasets"].items() for s in per]
+
+
 def research_hash_from_disk(manifest: dict | None = None) -> str:
+    """Streaming: every stored table is read (hash-checked at read) and hashed one at a time."""
     manifest = manifest or load_manifest()
-    return compute_research_hash(_tables_from_disk(manifest))
+    rh, _ = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False))
+    return rh
 
 
 def data_fingerprint(manifest: dict | None = None) -> str:
@@ -213,55 +243,116 @@ def _region_mask(idx: pd.DatetimeIndex, lo, hi, name) -> np.ndarray:
     return m
 
 
-def validate(log=print) -> dict:
-    """Check every region of every stored table; print COUNTS only; write data/validation.json."""
-    manifest = load_manifest()
-    tables = _tables_from_disk(manifest)
-    counts, fails = {}, 0
-    for (dataset, s), df in sorted(tables.items()):
-        idx = ns_index(df.index)
-        steps = np.diff(ns_int(idx))
-        ts_bad = int((steps <= 0).sum()) + int((ns_int(idx) % (3_600_000_000_000) != 0).sum())
+_FAIL_KEYS = ("nonfinite_price", "nonpositive_price", "ohlc_inconsistent", "nonfinite_volume", "negative_volume",
+              "nonfinite_funding", "nonpositive_interval")
+
+
+def _validate_table(dataset: str, df: pd.DataFrame, kl_index) -> tuple:
+    """(counts per region, timestamps_bad) of one stored table. kl_index: the symbol's klines grid
+    (coverage of the price-bar datasets)."""
+    idx = ns_index(df.index)
+    steps = np.diff(ns_int(idx))
+    ts_bad = int((steps <= 0).sum()) + int((ns_int(idx) % (3_600_000_000_000) != 0).sum())
+    if dataset == "klines":
+        ts_bad += int((steps != 3_600_000_000_000).sum())
+    out = {}
+    for region, lo, hi in _REGIONS:
+        m = _region_mask(idx, lo, hi, region)
+        d = df[m]
+        c = {"rows": int(len(d))}
+        if dataset in ("klines",) + PRICE_BAR_DATASETS:
+            px = d[["open", "high", "low", "close"]].to_numpy(dtype=np.float64)
+            c["nonfinite_price"] = int((~np.isfinite(px)).sum())
+            c["nonpositive_price"] = int((px <= 0).sum())
+            o, h, l_, cl = px.T if len(px) else (np.zeros(0),) * 4
+            c["ohlc_inconsistent"] = int(((h < np.maximum(o, cl)) | (l_ > np.minimum(o, cl)) | (h < l_)).sum())
         if dataset == "klines":
-            ts_bad += int((steps != 3_600_000_000_000).sum())
-        for region, lo, hi in _REGIONS:
-            m = _region_mask(idx, lo, hi, region)
-            d = df[m]
-            c = {"rows": int(len(d))}
-            if dataset in ("klines", "mark_klines"):
-                px = d[["open", "high", "low", "close"]].to_numpy(dtype=np.float64)
-                c["nonfinite_price"] = int((~np.isfinite(px)).sum())
-                c["nonpositive_price"] = int((px <= 0).sum())
-                o, h, l_, cl = px.T if len(px) else (np.zeros(0),) * 4
-                c["ohlc_inconsistent"] = int(((h < np.maximum(o, cl)) | (l_ > np.minimum(o, cl)) | (h < l_)).sum())
-            if dataset == "klines":
-                vol = d[["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]].to_numpy(dtype=np.float64)
-                c["nonfinite_volume"] = int((~np.isfinite(vol)).sum())
-                c["negative_volume"] = int((vol < 0).sum())
-                c["gap_bars"] = int(d["is_gap"].sum())
-            if dataset == "funding":
-                fv = d[["rate", "interval_hours"]].to_numpy(dtype=np.float64)
-                c["nonfinite_funding"] = int((~np.isfinite(fv)).sum())
-                c["nonpositive_interval"] = int((d["interval_hours"] <= 0).sum())
-            if dataset == "mark_klines":
-                kl = tables[("klines", s)]
-                g = ns_index(kl.index)
-                gm = g[_region_mask(g, lo, hi, region)]
-                c["grid_bars"] = int(len(gm))
-                c["mark_bars_on_grid"] = int(gm.isin(idx[m]).sum())
-            bad = sum(v for k, v in c.items() if k in ("nonfinite_price", "nonpositive_price", "ohlc_inconsistent",
-                                                       "nonfinite_volume", "negative_volume", "nonfinite_funding",
-                                                       "nonpositive_interval"))
+            vol = d[["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]].to_numpy(dtype=np.float64)
+            c["nonfinite_volume"] = int((~np.isfinite(vol)).sum())
+            c["negative_volume"] = int((vol < 0).sum())
+            c["gap_bars"] = int(d["is_gap"].sum())
+            c["active_bars"] = int(((~d["is_gap"].to_numpy(dtype=bool)) & (d["trades"].to_numpy(dtype=np.float64) > 0)).sum())
+        if dataset == "funding":
+            fv = d[["rate", "interval_hours"]].to_numpy(dtype=np.float64)
+            c["nonfinite_funding"] = int((~np.isfinite(fv)).sum())
+            c["nonpositive_interval"] = int((d["interval_hours"] <= 0).sum())
+        if dataset in PRICE_BAR_DATASETS and kl_index is not None:
+            g = kl_index
+            gm = g[_region_mask(g, lo, hi, region)]
+            c["grid_bars"] = int(len(gm))
+            c[f"{'mark' if dataset == 'mark_klines' else 'index'}_bars_on_grid"] = int(gm.isin(idx[m]).sum())
+        out[region] = c
+    return out, ts_bad
+
+
+def validate(log=print) -> dict:
+    """Check every region of every stored table (streaming, one symbol at a time); print COUNTS only;
+    write data/validation.json. The ten core/extended symbols get per-symbol counts; the universe
+    symbols are summed per dataset and region, with the symbols that have any failing count listed."""
+    manifest = load_manifest()
+    by_sym = {}
+    for d, s in _manifest_keys(manifest):
+        by_sym.setdefault(s, []).append(d)
+    counts, uni, uni_fail, fails = {}, {}, {}, 0
+    n_uni = {}
+    table, acts, fund, presence = None, {}, {}, {}
+    if manifest.get("universe", {}).get("symbols_sha256"):
+        from omr import universe as U
+        table = U.load_symbols()
+        crypto = set(U.crypto_symbols(table))
+    for s in sorted(by_sym):
+        kl = _read_stored("klines", s, manifest, cache=False) if "klines" in by_sym[s] else None
+        kl_index = ns_index(kl.index) if kl is not None else None
+        if table is not None and kl is not None and s in crypto:
+            kv = kl[kl.index <= ts(C.VAL_END)]
+            a = U.activity_of(kv, table["symbols"][s].get("until"))
+            if len(a.active):
+                acts[s] = a
+                i0 = int(np.searchsorted(ns_int(kv.index), a.start))
+                gp = kv["is_gap"].to_numpy(dtype=bool)[i0:i0 + len(a.active)]
+                presence[s] = (a.start, ~gp, a.active)
+        for dataset in sorted(by_sym[s]):
+            df = kl if dataset == "klines" else _read_stored(dataset, s, manifest, cache=False)
+            if dataset == "funding" and s in acts:
+                f = df[df.index <= ts(C.VAL_END)]
+                fund[s] = (ns_int(ns_index(f.index).floor("h")), f["interval_hours"].to_numpy(dtype=np.float64))
+            regions, ts_bad = _validate_table(dataset, df, kl_index)
+            bad = ts_bad + sum(v for c in regions.values() for k, v in c.items() if k in _FAIL_KEYS)
             fails += bad
-            counts[f"{dataset}/{s}/{region}"] = c
-        counts[f"{dataset}/{s}/timestamps_bad"] = {"count": ts_bad}
-        fails += ts_bad
+            if s in C.ALL_SYMBOLS:
+                for region, c in regions.items():
+                    counts[f"{dataset}/{s}/{region}"] = c
+                counts[f"{dataset}/{s}/timestamps_bad"] = {"count": ts_bad}
+            else:
+                n_uni[dataset] = n_uni.get(dataset, 0) + 1
+                for region, c in regions.items():
+                    agg = uni.setdefault(f"{dataset}/universe/{region}", {})
+                    for k, v in c.items():
+                        agg[k] = agg.get(k, 0) + int(v)
+                agg = uni.setdefault(f"{dataset}/universe/timestamps_bad", {})
+                agg["count"] = agg.get("count", 0) + ts_bad
+                if bad:
+                    uni_fail[f"{dataset}/{s}"] = int(bad)
+    for d, n in n_uni.items():
+        uni[f"{d}/universe/symbols"] = {"count": int(n)}
     out = {"data_fingerprint": data_fingerprint(manifest), "research_hash": manifest["research_hash"],
-           "passed": fails == 0, "failures": int(fails), "counts": counts,
+           "passed": fails == 0, "failures": int(fails), "counts": counts, "universe_counts": uni,
+           "universe_failing_tables": uni_fail,
            "validated_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    if acts:
+        out["universe_membership"] = U.membership_counts(acts, ts(C.UNIVERSE_START).value, ts(C.VAL_END).value,
+                                                         funding=fund)
+        um = out["universe_membership"]
+        um["market_wide_inactive_hours"] = U.market_wide_hours(presence, ts(C.DEV_START).value, ts(C.VAL_END).value)
+        log(f"hours with no trade in any symbol (DEV+VAL): {um['market_wide_inactive_hours']}")
+        log(f"universe membership: first top30 month {um['first_top30_month']}; distinct {um['distinct_symbols']}")
+        for reg, row in um["top30_unit_availability"].items():
+            log(f"top30 unit availability {reg}: " + " ".join(f"{k}={v}" for k, v in row.items()))
     VALIDATION.write_text(json.dumps(out, indent=1, sort_keys=True), encoding="ascii")
-    for k, c in counts.items():
+    for k, c in list(counts.items()) + sorted(uni.items()):
         log(f"{k}: " + " ".join(f"{a}={b}" for a, b in c.items()))
+    if uni_fail:
+        log(f"universe tables with failing counts: {len(uni_fail)}")
     log(("PASSED" if out["passed"] else "FAILED") + f" data validation ({fails} failing counts)")
     return out
 
@@ -425,13 +516,19 @@ def rest_klines(symbol: str, start_ms: int, end_ms: int) -> pd.DataFrame:
     return out[(out.open_time_ms >= start_ms) & (out.open_time_ms <= end_ms)]
 
 
-def rest_mark_klines(symbol: str, start_ms: int, end_ms: int) -> pd.DataFrame:
+def rest_index_klines(symbol: str, start_ms: int, end_ms: int) -> pd.DataFrame:
+    """Closed 1h index-price klines (pair = symbol) with open_time in [start_ms, end_ms] from the public REST API."""
+    return rest_mark_klines(symbol, start_ms, end_ms, endpoint="indexPriceKlines", key="pair")
+
+
+def rest_mark_klines(symbol: str, start_ms: int, end_ms: int, endpoint: str = "markPriceKlines",
+                     key: str = "symbol") -> pd.DataFrame:
     """Closed 1h mark-price klines with open_time in [start_ms, end_ms] from the public REST API."""
     rows = []
     cur = start_ms
     while cur <= end_ms:
-        data = http_get(f"{FAPI}/markPriceKlines", params={"symbol": symbol, "interval": "1h",
-                                                            "startTime": cur, "endTime": end_ms, "limit": 1500})
+        data = http_get(f"{FAPI}/{endpoint}", params={key: symbol, "interval": "1h",
+                                                       "startTime": cur, "endTime": end_ms, "limit": 1500})
         if data is None:
             break
         batch = json.loads(data)
@@ -520,6 +617,9 @@ def _bulk_plan(symbol: str, snapshot_end: pd.Timestamp):
         plan.append(("mark_klines", "monthly",
                      f"{BULK}/monthly/markPriceKlines/{symbol}/1h/{symbol}-1h-{lab}.zip",
                      RAW_DIR / "mark_klines" / symbol / f"{symbol}-1h-{lab}.zip", lab))
+        plan.append(("index_klines", "monthly",
+                     f"{BULK}/monthly/indexPriceKlines/{symbol}/1h/{symbol}-1h-{lab}.zip",
+                     RAW_DIR / "index_klines" / symbol / f"{symbol}-1h-{lab}.zip", lab))
     day = pd.Timestamp(year=cur[0], month=cur[1], day=1, tz="UTC")
     last_full_day = snapshot_end.normalize() - pd.Timedelta(days=1)
     if snapshot_end.hour == 23:
@@ -531,10 +631,10 @@ def _bulk_plan(symbol: str, snapshot_end: pd.Timestamp):
     return plan
 
 
-_BULK_KIND = {"klines": "klines", "mark_klines": "markPriceKlines"}
+_BULK_KIND = {"klines": "klines", "mark_klines": "markPriceKlines", "index_klines": "indexPriceKlines"}
 
 
-def _daily_items(symbol: str, lab: str, datasets=("klines", "mark_klines")):
+def _daily_items(symbol: str, lab: str, datasets=("klines", "mark_klines", "index_klines")):
     return [(ds, "daily", f"{BULK}/daily/{_BULK_KIND[ds]}/{symbol}/1h/{symbol}-1h-{lab}.zip",
              RAW_DIR / ds / symbol / "daily" / f"{symbol}-1h-{lab}.zip", lab) for ds in datasets]
 
@@ -730,11 +830,15 @@ def mark_coverage(mark: pd.DataFrame, grid: pd.DatetimeIndex) -> dict:
             "coverage_all": have_all / len(grid) if len(grid) else None}
 
 
-def build_mark(symbol: str, snapshot_end: pd.Timestamp, results: dict, kl: pd.DataFrame, log):
+def build_mark(symbol: str, snapshot_end: pd.Timestamp, results: dict, kl: pd.DataFrame, log,
+               dataset_name: str = "mark_klines"):
+    """Mark-price (or, with dataset_name='index_klines', index-price) 1h bars from bulk files plus REST
+    backfill and top-up; stored as actual rows only."""
+    rest = rest_mark_klines if dataset_name == "mark_klines" else rest_index_klines
     end_ms = int(snapshot_end.value // 10 ** 6)
     parts, n_us, files_used, missing = [], 0, {"monthly": 0, "daily": 0}, []
     for (dataset, kind, url, dest, lab) in results[symbol]:
-        if dataset != "mark_klines":
+        if dataset != dataset_name:
             continue
         if not dest.exists():
             missing.append(f"{kind}:{lab}")
@@ -747,10 +851,10 @@ def build_mark(symbol: str, snapshot_end: pd.Timestamp, results: dict, kl: pd.Da
     bulk = pd.concat(parts, ignore_index=True).sort_values("open_time_ms") if parts else empty
     if len(bulk):
         first_b, last_b = int(bulk.open_time_ms.iloc[0]), int(bulk.open_time_ms.iloc[-1])
-        back = rest_mark_klines(symbol, REST_HISTORY_START_MS, first_b - HOUR_MS)
-        top = rest_mark_klines(symbol, last_b + HOUR_MS, end_ms) if last_b < end_ms else empty
+        back = rest(symbol, REST_HISTORY_START_MS, first_b - HOUR_MS)
+        top = rest(symbol, last_b + HOUR_MS, end_ms) if last_b < end_ms else empty
     else:
-        back = rest_mark_klines(symbol, REST_HISTORY_START_MS, end_ms)
+        back = rest(symbol, REST_HISTORY_START_MS, end_ms)
         top = empty
     allm = pd.concat([back, bulk, top], ignore_index=True).sort_values("open_time_ms", kind="mergesort")
     dup = allm.duplicated("open_time_ms", keep="first")
@@ -763,8 +867,8 @@ def build_mark(symbol: str, snapshot_end: pd.Timestamp, results: dict, kl: pd.Da
     md = md[md.index <= snapshot_end]
     o, h, l, c_ = (md[k].to_numpy() for k in ("open", "high", "low", "close"))
     viol = int(((h < np.maximum(o, c_) - 1e-9) | (l > np.minimum(o, c_) + 1e-9) | (l <= 0)).sum())
-    log(f"  {symbol} mark_klines: bulk {len(bulk)} rows, rest backfill {len(back)}, rest top-up {len(top)}")
-    info = {"source": "binance_usdm_bulk markPriceKlines 1h (data.binance.vision); rest(fapi.binance.com) "
+    log(f"  {symbol} {dataset_name}: bulk {len(bulk)} rows, rest backfill {len(back)}, rest top-up {len(top)}")
+    info = {"source": f"binance_usdm_bulk {_BULK_KIND[dataset_name]} 1h (data.binance.vision); rest(fapi.binance.com) "
                       "for backfill and top-up",
             "bulk_files": files_used, "missing_bulk_files": missing, "rest_backfill_rows": int(len(back)),
             "rest_topup_rows": int(len(top)), "duplicates_dropped": int(dup.sum()), "us_rows": n_us,
@@ -812,7 +916,7 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
             statuses[(s, item[3])] = st
     # monthly kline / mark files missing after the symbol's first available month -> daily fallback
     for s in C.ALL_SYMBOLS:
-        for ds in ("klines", "mark_klines"):
+        for ds in ("klines", "mark_klines", "index_klines"):
             have = [it for it in plan[s] if it[0] == ds and it[1] == "monthly" and statuses[(s, it[3])] != "missing"]
             if not have:
                 continue
@@ -831,10 +935,12 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
         f"{sum(1 for v in statuses.values() if v == 'cached')} cached, "
         f"{sum(1 for v in statuses.values() if v == 'missing')} missing (mostly pre-listing months)")
 
-    names = ("klines", "funding", "mark_klines")
+    names = ("klines", "funding", "mark_klines", "index_klines")
     tables, metas = {}, {n: {} for n in names}
     for s in C.ALL_SYMBOLS:
         res = build_symbol(s, snapshot_end, plan, log)
+        res["index_klines"], res["meta"]["index_klines"] = build_mark(s, snapshot_end, plan, res["klines"], log,
+                                                                      "index_klines")
         for n in names:
             tables[(n, s)] = res[n]
             metas[n][s] = res["meta"][n]
@@ -844,8 +950,11 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
         if first > ts(C.DEV_START):
             raise RuntimeError(f"core symbol {s} starts {first}, after DEV start: STOP")
 
-    rh = compute_research_hash(tables)
-    new_hashes = dataset_hashes(tables)
+    # every table already in the manifest that this snapshot does not rebuild (the universe symbols) is
+    # kept as stored and hashed from disk (streaming), so the research hash covers all research-region data
+    kept = [k for k in (_manifest_keys(old) if old is not None else []) if k not in tables]
+    rh, new_hashes = hashes_streaming(list(tables) + kept,
+                                      lambda d, s: tables[(d, s)] if (d, s) in tables else _read_stored(d, s, old, cache=False))
     if old is not None:
         for d, hsh in new_hashes.items():
             if d in old_hashes:
@@ -877,6 +986,8 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
         metas[dataset][s]["sha256"] = sha256_file(p)
 
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for (d, s) in kept:
+        metas.setdefault(d, {})[s] = old["datasets"][d][s]
     manifest = {
         "kernel_data_version": 1,
         "created_at": old["created_at"] if old else now,
@@ -890,10 +1001,215 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
         "admitted_this_snapshot": sorted(d for d in new_hashes if old is not None and d not in old_hashes),
         "datasets": metas,
     }
+    if old is not None and "universe" in old:
+        manifest["universe"] = old["universe"]
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     MANIFEST.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="ascii")
     log(f"research_hash = {rh}")
     return manifest
+
+
+# ---------------------------------------------------------------- universe download (KP-015, A3)
+
+UNIVERSE_DATASETS = ("klines", "funding", "mark_klines", "index_klines")
+_MONTHLY_PATH = {"klines": "monthly/klines/{s}/1h/{s}-1h-{lab}.zip",
+                 "mark_klines": "monthly/markPriceKlines/{s}/1h/{s}-1h-{lab}.zip",
+                 "index_klines": "monthly/indexPriceKlines/{s}/1h/{s}-1h-{lab}.zip",
+                 "funding": "monthly/fundingRate/{s}/{s}-fundingRate-{lab}.zip"}
+
+
+def _monthly_item(ds: str, s: str, lab: str):
+    url = f"{BULK}/" + _MONTHLY_PATH[ds].format(s=s, lab=lab)
+    return (ds, "monthly", url, RAW_DIR / ds / s / url.rsplit("/", 1)[1], lab)
+
+
+def _fetch_polite(item):
+    """fetch_bulk with a short pause after every network fetch; errors become a status, never an exception."""
+    url, dest = item[2], item[3]
+    try:
+        st = fetch_bulk(url, dest)
+    except Exception as e:                                       # network or checksum failure: retried on resume
+        st = f"failed:{type(e).__name__}"
+    if st != "cached":
+        time.sleep(C.DOWNLOAD_PAUSE_S)
+    return st
+
+
+def universe_plan(table: dict, end_month: str) -> dict:
+    """{symbol: [bulk items]}: monthly klines, funding, mark and index files of every crypto perpetual for
+    the months its klines folder holds (up to end_month and before `until`); for the ten core/extended
+    symbols (stored already) only the index files are planned here."""
+    plan = {}
+    for s, r in sorted(table["symbols"].items()):
+        if r["class"] != "crypto_perpetual" or not r.get("months"):
+            continue
+        last = end_month
+        if r.get("until"):
+            last = min(last, ts(r["until"]).strftime("%Y-%m"))
+        labs = [m for m in r["months"] if m <= last]
+        dsets = ("index_klines",) if s in C.ALL_SYMBOLS else UNIVERSE_DATASETS
+        plan[s] = [_monthly_item(ds, s, lab) for lab in labs for ds in dsets]
+    return plan
+
+
+def _until_cut(df: pd.DataFrame, until, col: str | None = None) -> pd.DataFrame:
+    if until is None or df is None or len(df) == 0:
+        return df
+    lim = ts(until)
+    if col is not None:
+        return df[df[col] < lim.value // 10 ** 6]
+    return df[df.index < lim]
+
+
+def _parse_bars(items, parser) -> pd.DataFrame:
+    parts = [parser(_read_zip_csv(it[3]))[0] for it in items if it[3].exists()]
+    if not parts:
+        return pd.DataFrame({"open_time_ms": np.zeros(0, dtype=np.int64)})
+    return pd.concat(parts, ignore_index=True).sort_values("open_time_ms", kind="mergesort")
+
+
+def _bars_table(raw: pd.DataFrame, cols) -> pd.DataFrame:
+    raw = raw[~raw.duplicated("open_time_ms", keep="first")]
+    if int((raw.open_time_ms % HOUR_MS != 0).sum()):
+        raise RuntimeError("bar open times not on the hour")
+    idx = ns_index(pd.to_datetime(raw.open_time_ms.to_numpy().astype(np.int64), unit="ms", utc=True))
+    df = pd.DataFrame({c: raw[c].to_numpy(dtype=np.float64) for c in cols}, index=idx)
+    df.index.name = "open_time"
+    return df
+
+
+def build_universe_symbol(s: str, items: list, until) -> dict:
+    """Tables of one universe symbol from its cached monthly bulk files (no REST): klines gridded from its
+    first to its last archive bar (gap rows flagged, as for the core), funding settlements, mark and index
+    bars (actual rows only). Rows at or after `until` are dropped."""
+    by = {ds: [it for it in items if it[0] == ds] for ds in UNIVERSE_DATASETS}
+    out, meta = {}, {}
+    rk = _until_cut(_parse_bars(by["klines"], parse_kline_bytes), until, "open_time_ms")
+    if len(rk) == 0:
+        return {"tables": {}, "meta": {"klines": {"rows": 0}}}
+    last = ts(str(pd.Timestamp(int(rk.open_time_ms.max()), unit="ms", tz="UTC")))
+    kl, info = _grid_klines(rk, last)
+    out["klines"] = kl
+    meta["klines"] = {"rows": int(len(kl)), "first_bar": str(kl.index[0]), "last_bar": str(kl.index[-1]),
+                      "monthly_files": sum(1 for it in by["klines"] if it[3].exists()), **info}
+    fparts = [parse_funding_bytes(_read_zip_csv(it[3]))[0] for it in by["funding"] if it[3].exists()]
+    fr = pd.concat(fparts, ignore_index=True) if fparts else pd.DataFrame(
+        {"time_ms": np.zeros(0, dtype=np.int64), "interval_hours": np.zeros(0), "rate": np.zeros(0)})
+    fr = _until_cut(fr, until, "time_ms").sort_values("time_ms").drop_duplicates("time_ms", keep="first")
+    fd, finfo = _table_funding(fr.reset_index(drop=True), last + pd.Timedelta(hours=1))
+    out["funding"] = fd
+    meta["funding"] = {"rows": int(len(fd)), "monthly_files": len(fparts), **finfo}
+    for ds in PRICE_BAR_DATASETS:
+        raw = _until_cut(_parse_bars(by[ds], parse_mark_bytes), until, "open_time_ms")
+        df = _bars_table(raw, MARK_COLS) if len(raw) else pd.DataFrame(
+            {c: np.zeros(0) for c in MARK_COLS}, index=ns_index(pd.DatetimeIndex([], tz="UTC")))
+        df.index.name = "open_time"
+        out[ds] = df
+        meta[ds] = {"rows": int(len(df)), "monthly_files": sum(1 for it in by[ds] if it[3].exists()),
+                    "first_bar": str(df.index[0]) if len(df) else None, "last_bar": str(df.index[-1]) if len(df) else None}
+    return {"tables": out, "meta": meta}
+
+
+def _revised(dataset: str, prev: pd.DataFrame, new: pd.DataFrame) -> bool:
+    """True when a previously stored row differs (klines: gap rows excluded), as in snapshot()."""
+    common = prev.index.intersection(new.index)
+    a_, b_ = prev.loc[common], new.loc[common]
+    if dataset == "klines":
+        keep = ~prev.loc[common, "is_gap"].to_numpy()
+        a_, b_ = a_[keep], b_[keep]
+    return not np.array_equal(a_.to_numpy(dtype=float), b_.to_numpy(dtype=float), equal_nan=True)
+
+
+def download_universe(log=print, workers: int = 6, end_month: str | None = None, build_only: bool = False) -> dict:
+    """A3: download (resumable, checksums verified, cached under data/raw) and store every crypto perpetual
+    of data/symbols.json; admit index_klines (ten core symbols included) and the universe into the
+    manifest; recompute the research hash over all stored tables. A table already in the manifest is
+    rewritten only if none of its stored rows changed (revision check)."""
+    from omr import universe as U
+    old = load_manifest()
+    table = U.load_symbols(check=False)
+    sym_sha = sha256_file(U.SYMBOLS_FILE)
+    now = dt.datetime.now(dt.timezone.utc)
+    if end_month is None:
+        first_of_month = pd.Timestamp(year=now.year, month=now.month, day=1, tz="UTC")
+        end_month = (first_of_month - pd.Timedelta(days=1)).strftime("%Y-%m")
+    plan = universe_plan(table, end_month)
+    core_end = ts(old["datasets"]["klines"][C.BTC]["last_bar"])
+    for s in C.ALL_SYMBOLS:                                    # current month of the core index: daily files
+        day = pd.Timestamp(f"{end_month}-01", tz="UTC") + pd.offsets.MonthBegin(1)
+        while day + pd.Timedelta(hours=23) <= core_end:
+            plan.setdefault(s, []).extend(_daily_items(s, day.strftime("%Y-%m-%d"), ("index_klines",)))
+            day += pd.Timedelta(days=1)
+    items = [it for s in plan for it in plan[s]]
+    log(f"universe plan: {len(plan)} symbols, {len(items)} bulk files (end month {end_month})")
+    statuses = {}
+    if not build_only:
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for i, (it, st) in enumerate(zip(items, ex.map(_fetch_polite, items))):
+                statuses[it[3]] = st
+                if (i + 1) % 2000 == 0:
+                    log(f"  {i + 1}/{len(items)} files  ({time.time() - t0:.0f} s)")
+    else:
+        statuses = {it[3]: ("cached" if it[3].exists() else "missing") for it in items}
+    failed = [str(k) for k, v in statuses.items() if v.startswith("failed")]
+    n_bytes = sum(k.stat().st_size for k, v in statuses.items() if v.startswith("ok"))
+    dl = {"planned": len(items), "downloaded_now": sum(1 for v in statuses.values() if v.startswith("ok")),
+          "without_checksum": sum(1 for v in statuses.values() if v == "ok-nochecksum"),
+          "cached": sum(1 for v in statuses.values() if v == "cached"),
+          "missing_404": sum(1 for v in statuses.values() if v == "missing"),
+          "failed": len(failed), "bytes_downloaded_now": int(n_bytes),
+          "bytes_cached_total": int(sum(k.stat().st_size for k in statuses if k.exists()))}
+    log("download: " + " ".join(f"{k}={v}" for k, v in dl.items()))
+    if failed:
+        log("FAILED files (rerun to resume): " + ", ".join(failed[:10]) + (" ..." if len(failed) > 10 else ""))
+        return {"download": dl, "stored": False}
+    manifest = json.loads(json.dumps(old))
+    built, revisions, empty = 0, [], []
+    for s in sorted(plan):
+        until = table["symbols"][s].get("until")
+        if s in C.ALL_SYMBOLS:
+            kl = _read_stored("klines", s, old, cache=False)
+            md, info = build_mark(s, core_end, {s: plan[s]}, kl, log, "index_klines")
+            res = {"tables": {"index_klines": md}, "meta": {"index_klines": info}}
+        else:
+            res = build_universe_symbol(s, plan[s], until)
+        if not res["tables"]:
+            empty.append(s)
+            continue
+        for ds, df in res["tables"].items():
+            if s in old["datasets"].get(ds, {}):
+                if _revised(ds, _read_stored(ds, s, old, cache=False), df):
+                    revisions.append(f"{ds}/{s}")
+                    continue
+            p = stored_path(ds, s)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_suffix(".parquet.tmp")
+            df.to_parquet(tmp)
+            tmp.replace(p)
+            m = {k: v for k, v in res["meta"][ds].items() if k in ("rows", "first_bar", "last_bar", "monthly_files",
+                                                                   "gap_count", "gap_runs", "ohlc_violations",
+                                                                   "duplicates_dropped", "first_settlement",
+                                                                   "last_settlement", "source", "bulk_files",
+                                                                   "rest_backfill_rows", "rest_topup_rows")}
+            m["sha256"] = sha256_file(p)
+            manifest["datasets"].setdefault(ds, {})[s] = m
+        built += 1
+        if built % 100 == 0:
+            log(f"  built {built}/{len(plan)}")
+    if revisions:
+        log(f"REVISION detected (stored rows changed), not written: {revisions[:10]}")
+    rh, dh = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False))
+    manifest["research_hash"] = rh
+    manifest["dataset_hashes"] = dh
+    manifest["admitted_this_snapshot"] = sorted(set(dh) - set(old.get("dataset_hashes", {}))) + ["universe"]
+    manifest["updated_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    manifest["universe"] = {"symbols_file": "data/symbols.json", "symbols_sha256": sym_sha, "end_month": end_month,
+                            "symbols_stored": built, "symbols_without_rows": empty, "revisions": revisions,
+                            "download": dl, "built_at": manifest["updated_at"]}
+    MANIFEST.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="ascii")
+    log(f"stored {built} symbols; research_hash = {rh}")
+    return {"download": dl, "stored": True, "research_hash": rh, "revisions": revisions}
 
 
 def verify(log=print) -> bool:
@@ -917,10 +1233,14 @@ def summary(log=print):
     m = load_manifest()
     log(f"snapshot_end {m['snapshot_end']}  vault_end {m['vault_end']}  research_hash {m['research_hash'][:16]}")
     for s, k in m["datasets"]["klines"].items():
+        if s not in C.ALL_SYMBOLS:
+            continue
         f = m["datasets"]["funding"][s]
         log(f"{s:9s} klines {k['first_bar'][:16]} .. {k['last_bar'][:16]} rows {k['rows']:6d} gaps {k['gap_count']:4d} "
             f"(runs {k['gap_runs']}) | funding {str(f['first_settlement'])[:16]} .. {str(f['last_settlement'])[:16]} rows {f['rows']}")
     for s, mk in m["datasets"].get("mark_klines", {}).items():
+        if s not in C.ALL_SYMBOLS:
+            continue
         log(f"{s:9s} mark {str(mk['first_bar'])[:16]} .. {str(mk['last_bar'])[:16]} rows {mk['rows']:6d}  "
             f"coverage DEV+VAL {mk['mark_bars_dev_val']}/{mk['grid_bars_dev_val']} = {mk['coverage_dev_val']:.6f}  "
             f"all {mk['mark_bars_all']}/{mk['grid_bars_all']} = {mk['coverage_all']:.6f}  partial {mk['partial_bars_samples_lt_3600']}")
@@ -933,6 +1253,9 @@ def main(argv=None):
         admit = tuple(argv[argv.index("--admit") + 1].split(",")) if "--admit" in argv else ()
         snapshot(cmd, log=lambda s: print(s, flush=True), admit=admit)
         summary()
+    elif cmd == "universe":
+        r = download_universe(log=lambda s: print(s, flush=True), build_only="--build-only" in argv)
+        sys.exit(0 if r.get("stored") else 1)
     elif cmd == "verify":
         sys.exit(0 if verify() else 1)
     elif cmd == "validate":

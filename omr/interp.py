@@ -7,13 +7,21 @@ btc the BTCUSDT frame (aligned to the panel index). Nothing is compiled or execu
 LOCALITY BY CONSTRUCTION (LANGUAGE.md section 7). Every series carries a VALUE array and a KNOWN
 array. A definite value at row t is a function of a bounded trailing window of data; whether that
 window's history exists is the known channel, which a program cannot observe:
-- fields are known where their row exists (mark_close only where a mark bar exists, funding8h once a
-  settlement exists; hour and weekday always);
+- fields are known where their row exists (mark_close / index_close only while their last mark / index
+  bar is recent, funding8h once a settlement exists; hour and weekday always);
 - an elementwise result is known only where every input is known; a windowed result only where its
   input is known on every row of the window; a timeframe bar only if its bin is complete and every
   hour in it is known; where() only where the condition and BOTH branches are known; hold() only
   where its four inputs are known on all h rows; cs_* only where every symbol is known in that row;
 - the final weight is 0 where the signal is not known (or its value is NaN).
+UNIVERSE PANELS (unit top30 / next30, omr.upipeline): the input is a Panel of per-field arrays with an
+IN-PLAY mask (omr.universe.inplay_matrix). cs_* (KP-015 S2) compute across the symbols that are in play
+AND whose input is known at that row (sums are sequential in panel column order, so a column outside that
+set changes nothing); the result is known for those symbols when the unit's membership is known and at
+least UNIVERSE_MIN_CS of them exist, otherwise unknown for everyone; the final signal of a symbol that is
+not in play is unknown (weight 0). A cs_* over a timeframe series uses the in-play mask of the hour at
+which each of its bars becomes visible. funding_mean is known only when its last n settlements all fall
+inside the last 8n hours (S1), so every function is bounded in time.
 So a program is flat until every subexpression has its history (one uniform warm-up), and nothing
 can switch on later than anything else. Values keep the arithmetic rules (division by zero and
 non-finite results give NaN; a comparison with a NaN value is False). Every recursive function has
@@ -42,6 +50,40 @@ PERIODS_PER_YEAR = {"h1": 8760.0, "h2": 4380.0, "h3": 2920.0, "h4": 2190.0, "h6"
 TF_HOURS = {"h1": 1, **L.TIMEFRAMES}
 ROLL_OP = {"sma": WN.MEAN, "std": WN.STD, "rmin": WN.MIN, "rmax": WN.MAX, "rsum": WN.SUM, "median": WN.MEDIAN,
            "zscore": WN.ZSCORE, "rank": WN.RANK}
+
+
+class Panel:
+    """Universe panel: lazy per-field (T x K) float arrays on one hourly index (col(name) -> array, the
+    same column names as a program frame), the in-play mask (T x K) and unit_known (T)."""
+
+    def __init__(self, index, symbols, getter, inplay, unit_known):
+        self.index = pd.DatetimeIndex(index).as_unit("ns")
+        self.symbols = list(symbols)
+        self._get = getter
+        self._cache = {}
+        self.inplay = np.asarray(inplay, dtype=bool)
+        self.unit_known = np.asarray(unit_known, dtype=bool)
+
+    def __len__(self):
+        return len(self.symbols)
+
+    def col(self, name: str) -> np.ndarray:
+        if name not in self._cache:
+            self._cache[name] = self._get(name)
+        return self._cache[name]
+
+
+def _stack(frames, col: str) -> np.ndarray:
+    if isinstance(frames, Panel):
+        return np.asarray(frames.col(col), dtype=np.float64)
+    return np.column_stack([f[col].to_numpy(dtype=np.float64) for f in frames])
+
+
+def _stack_true(frames, col: str) -> np.ndarray:
+    if isinstance(frames, Panel):
+        v = frames.col(col)
+        return np.asarray(v == True, dtype=bool)  # noqa: E712
+    return np.column_stack([_is_true(f[col]) for f in frames])
 
 
 @dataclass
@@ -83,10 +125,15 @@ class Context:
                 raise ValueError("one value per jitterable literal is required")
             self.lits = {k: float(v) for (k, _), v in zip(prog.literals, literals)}
         self.frames = frames
-        idx = pd.DatetimeIndex(frames[0].index).as_unit("ns")
-        for f in frames[1:]:
-            if not pd.DatetimeIndex(f.index).as_unit("ns").equals(idx):
-                raise ValueError("panel frames must share one hourly index")
+        self.inplay = None
+        if isinstance(frames, Panel):
+            idx = frames.index
+            self.inplay, self.unit_known = frames.inplay, frames.unit_known
+        else:
+            idx = pd.DatetimeIndex(frames[0].index).as_unit("ns")
+            for f in frames[1:]:
+                if not pd.DatetimeIndex(f.index).as_unit("ns").equals(idx):
+                    raise ValueError("panel frames must share one hourly index")
         self.idx = idx
         self.ns = idx.asi8
         self.k = len(frames)
@@ -111,24 +158,30 @@ class Context:
             dec = self.idx + pd.Timedelta(hours=1)                 # decision time = bar close
             v = np.asarray(dec.hour if name == "hour" else dec.day_of_week, dtype=np.float64)
             return np.repeat(v[:, None], len(frames), axis=1), np.ones((n, len(frames)), dtype=bool)
-        if name == "mark_close":
-            # the close of the LAST mark bar at or before the row, taken from this frame's own mark rows
-            # (mark_klines.new marks them); known while that bar is at most MARK_MAX_STALE_HOURS old
-            col = np.column_stack([f["mark_klines.close"].to_numpy(dtype=np.float64) for f in frames])
-            new = np.column_stack([_is_true(f["mark_klines.new"]) for f in frames]) & np.isfinite(col)
+        if name in ("mark_close", "index_close"):
+            # the close of the LAST mark (index) bar at or before the row, taken from this frame's own rows
+            # (<dataset>.new marks them); known while that bar is at most MARK (INDEX)_MAX_STALE_HOURS old
+            ds, stale = (("mark_klines", C.MARK_MAX_STALE_HOURS) if name == "mark_close"
+                         else ("index_klines", C.INDEX_MAX_STALE_HOURS))
+            col = _stack(frames, f"{ds}.close")
+            new = _stack_true(frames, f"{ds}.new") & np.isfinite(col)
             rows = np.arange(n)[:, None]
             last = np.maximum.accumulate(np.where(new, rows, -1), axis=0)
             has = last >= 0
             lp = np.where(has, last, 0)
             v = np.take_along_axis(col, lp, axis=0)
             age = self.ns[:, None] - self.ns[lp]
-            kn = has & (age <= C.MARK_MAX_STALE_HOURS * HOUR_NS)
+            kn = has & (age <= stale * HOUR_NS)
         elif name == "funding8h":
-            v = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
-                                 for f in frames])
+            if isinstance(frames, Panel):
+                with np.errstate(all="ignore"):
+                    v = _stack(frames, "funding.rate") * 8.0 / _stack(frames, "funding.interval_hours")
+            else:
+                v = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
+                                     for f in frames])
             kn = np.isfinite(v)
         else:
-            v = np.column_stack([f[name].to_numpy(dtype=np.float64) for f in frames])
+            v = _stack(frames, name)
             kn = np.isfinite(v)
         return np.where(kn, v, np.nan), kn
 
@@ -344,6 +397,8 @@ class Context:
             return S(st, WN.known_run(el.kn & xl.kn & es.kn & xs.kn, h), el.tf, el.idx)
         if fn in L.CROSS:
             v = self.ev(a[0])
+            if self.inplay is not None:
+                return self.cross_inplay(fn, v)
             kn = np.repeat(v.kn.all(axis=1, keepdims=True), v.kn.shape[1], axis=1)
             return S(_clean(_cross(fn, v.arr)), kn, v.tf, v.idx)
         raise ValueError(f"unknown function {fn}")
@@ -371,13 +426,44 @@ class Context:
                 r = np.where(q > 0, np.log(np.where(q > 0, q, 1.0)), np.nan)
         return S(_clean(r), kn, x.tf, x.idx)
 
+    def cross_inplay(self, fn: str, v: S) -> S:
+        """cs_* across the in-play symbols (universe panels); see the module docstring."""
+        if v.tf == "h1":
+            P_, uk = self.inplay, self.unit_known
+        else:
+            vis = v.idx.asi8 + TF_HOURS[v.tf] * HOUR_NS - HOUR_NS
+            pos = np.searchsorted(self.ns, vis)
+            ok = (pos < len(self.ns)) & (self.ns[np.minimum(pos, len(self.ns) - 1)] == vis)
+            pos = np.minimum(pos, len(self.ns) - 1)
+            P_ = self.inplay[pos] & ok[:, None]
+            uk = self.unit_known[pos] & ok
+        # S2 (R1b): across the in-play (tradable) symbols whose input is known at that row; known for those
+        # symbols when at least UNIVERSE_MIN_CS of them exist, otherwise unknown for everyone
+        S_ = P_ & v.kn
+        row_kn = uk & (S_.sum(axis=1) >= C.UNIVERSE_MIN_CS)
+        kn = S_ & row_kn[:, None]
+        vals = _cross_inplay(fn, np.asarray(v.arr, dtype=np.float64), S_)
+        return S(np.where(kn, _clean(vals), np.nan), kn, v.tf, v.idx)
+
     def funding_mean(self, n: int) -> S:
-        new = np.column_stack([_is_true(f["funding.new"]) for f in self.frames])
-        r8 = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
-                              for f in self.frames])
+        new = _stack_true(self.frames, "funding.new")
+        if isinstance(self.frames, Panel):
+            with np.errstate(all="ignore"):
+                r8 = _stack(self.frames, "funding.rate") * 8.0 / _stack(self.frames, "funding.interval_hours")
+        else:
+            r8 = np.column_stack([(f["funding.rate"] * 8.0 / f["funding.interval_hours"]).to_numpy(dtype=np.float64)
+                                  for f in self.frames])
         new = new & np.isfinite(r8)
         vals, kn = WN.event_mean(_f64(r8), new, n)
-        return S(_clean(vals), kn, "h1", self.idx)
+        # S1 (KP-015): known only when its last n settlements all fall inside the last 8n hours (rows), so
+        # funding_mean is bounded in time like every other function (a long funding gap makes it unknown)
+        w = 8 * n
+        cnt = np.cumsum(new, axis=0, dtype=np.int64)
+        prev = np.zeros_like(cnt)
+        if len(cnt) > w:
+            prev[w:] = cnt[:-w]
+        kn = kn & ((cnt - prev) >= n)
+        return S(np.where(kn, _clean(vals), np.nan), kn, "h1", self.idx)
 
 
 def _cross(fn, a: np.ndarray) -> np.ndarray:
@@ -400,14 +486,35 @@ def _cross(fn, a: np.ndarray) -> np.ndarray:
         return out
 
 
-def evaluate_full(prog: L.Program, params: dict, frames: list, btc: pd.DataFrame | None = None,
+def _cross_inplay(fn: str, a: np.ndarray, P_: np.ndarray) -> np.ndarray:
+    """cs_* values across the in-play columns P_ of each row (values of other columns are not used)."""
+    k = P_.sum(axis=1, keepdims=True).astype(np.float64)
+    with np.errstate(all="ignore"):
+        if fn in ("cs_mean", "cs_demean"):
+            tot = np.cumsum(np.where(P_, a, 0.0), axis=1)[:, -1:]          # sequential, in column order
+            m = np.where(k > 0, tot / np.where(k > 0, k, 1.0), np.nan)
+            return np.broadcast_to(m, a.shape).copy() if fn == "cs_mean" else a - m
+        if fn == "cs_scale":
+            tot = np.cumsum(np.where(P_, np.abs(a), 0.0), axis=1)[:, -1:]
+            return np.where(tot > 0, a / np.where(tot > 0, tot, 1.0), np.nan)
+        r = pd.DataFrame(np.where(P_, a, np.nan)).rank(axis=1, method="average").to_numpy()
+        out = 2.0 * (r - 1.0) / np.where(k > 1, k - 1.0, 1.0) - 1.0
+        bad = (k[:, 0] < 2) | ~np.all(np.isfinite(a) | ~P_, axis=1)
+        out[bad] = np.nan
+        return out
+
+
+def evaluate_full(prog: L.Program, params: dict, frames, btc: pd.DataFrame | None = None,
                   literals=None, record=None):
-    """(raw, known) on the panel's hourly index, shape (T, k). raw is NaN wherever not known."""
+    """(raw, known) on the panel's hourly index, shape (T, k). raw is NaN wherever not known. frames: a
+    list of symbol frames (core unit) or a Panel (universe units: not-in-play symbols are unknown)."""
     ctx = Context(prog, params, frames, btc, literals, record)
     for name, node in prog.defs:
         ctx.values[name] = ctx.ev(node)
     sig = ctx.to_h1(ctx.values["signal"])
     kn = np.asarray(sig.kn, dtype=bool)
+    if ctx.inplay is not None:
+        kn = kn & ctx.inplay
     raw = np.where(kn, sig.arr.astype(np.float64), np.nan)
     return raw, kn
 

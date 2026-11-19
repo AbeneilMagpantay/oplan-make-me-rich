@@ -25,7 +25,7 @@ NOISE = prog_text("n = param(20, 10, 40)\nv = daily(volume)\nsignal = 2 * rank(v
 @pytest.fixture(scope="module")
 def disk_root(tmp_path_factory):
     root = tmp_path_factory.mktemp("disk_data")
-    rh = make_disk_data(root)
+    rh = make_disk_data(root, universe=True)
     return root, rh
 
 
@@ -34,6 +34,9 @@ def disk(disk_root, monkeypatch):
     root, rh = disk_root
     monkeypatch.setattr(data, "DATA_DIR", root)
     monkeypatch.setattr(data, "MANIFEST", root / "manifest.json")
+    from omr import universe as U
+    monkeypatch.setattr(U, "SYMBOLS_FILE", root / "symbols.json")
+    monkeypatch.setattr(data, "VALIDATION", root / "validation.json")
     data._CACHE.clear()
 
     class DiskLike(evaluate.DiskProvider):
@@ -101,5 +104,5 @@ def test_a_synthetic_provider_logs_nothing(tmp_path, tmp_ledger):
 def test_one_selftest_on_disk_data_leaves_exactly_three_rows(tmp_path, disk):
     out = selftest.run(provider=disk, require_lock=False, p_max=0.05, tmp_parent=tmp_path)
     assert out == "OK"
-    assert kinds() == ["selftest", "temp_ledger_trial", "temp_ledger_trial"]
+    assert kinds() == ["selftest", "temp_ledger_trial", "temp_ledger_trial", "temp_ledger_trial"]
     assert list(tmp_path.iterdir()) == []

@@ -93,3 +93,26 @@ POWER_MIN = 0.50              # oracle power at true Sharpe 1.5, both speeds, bo
 
 # ---------------------------------------------------------------- pool
 POOL_MAX = 5
+
+# ---------------------------------------------------------------- universe units (KP-015)
+# Header `unit`: "core" (default; the two-coin unit above, unchanged) or "top30" (kind portfolio).
+UNITS = ("core", "top30")
+UNIVERSE_START = "2019-12-31 00:00"     # first hour of every universe panel: one day before DEV start (the
+                                        # first DEV bar needs a decision row); membership is known from the
+                                        # first month at least 97 days later
+UNIVERSE_SEASONING_DAYS = 90            # B2: first active bar at least this many days before the month
+UNIVERSE_RELIST_GAP_DAYS = 7            # R1a: 7+ consecutive days without an active bar inside those 90 days
+                                        # restart the seasoning (a relisting); a shorter hole does not
+UNIVERSE_ACTIVE_DAYS = 30               # B2: activity measured over the previous 30 days ...
+UNIVERSE_ACTIVE_FRAC = 0.95             # ... active on at least 95% of those hours
+UNIVERSE_LIQ_DAYS = 90                  # B3: median daily quote volume over the previous 90 days
+UNIVERSE_TOP = 30                       # top30 = ranks 1-30, next30 = ranks 31-60
+UNIVERSE_MIN_MEMBERS = 10               # fewer eligible members -> no unit that month (programs flat)
+UNIVERSE_MIN_CS = 10                    # S2: a cs_ result needs >= 10 in-play symbols with a known input
+UNIVERSE_ZERO_TRADE_MAX = 24            # S3: a zero-trade bar is usable while its zero-trade run is <= 24
+UNIVERSE_BLOCK_MONTHS = 6               # S4: universe units are evaluated in blocks of 6 calendar months
+UNIVERSE_BLOCK_MONTHS_G8 = 3            # G8's next30 blocks (evaluated once, streamed): 3 calendar months
+UNIVERSE_COST_RATE = 0.00055 + 0.0007   # C2: 12.5 bps per side on every symbol of top30 / next30
+LOOKBACK_MAX_HOURS = UNIVERSE_SEASONING_DAYS * 24   # D3: a top30 program's total lookback limit
+INDEX_MAX_STALE_HOURS = 6               # index_close: known while its index bar is at most this old
+DOWNLOAD_PAUSE_S = 0.05                 # pause after every archive request (per worker)

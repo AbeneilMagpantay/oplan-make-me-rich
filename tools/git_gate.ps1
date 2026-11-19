@@ -4,10 +4,12 @@
 #
 # It refuses to commit when:
 #   - the kernel lock or the ledger chain does not verify (unless -SkipVerify, for mid-build snapshots);
-#   - anything under data\ other than manifest.json and validation.json is staged;
-#   - a staged file is larger than 5 MB;
+#   - anything under data\ other than manifest.json, validation.json, symbols.json and the pinned
+#     raw\exchange_info_*.json response is staged;
+#   - a staged file is larger than 5 MB (25 MB for calibration artifacts);
 #   - the private-detail scan (tools\scan_private.py) finds anything.
-# After a successful commit it pushes with tools\git_push.ps1 (unless -NoPush).
+# After a successful commit it pushes the CURRENT branch with tools\git_push.ps1 (unless -NoPush).
+# An unapproved kernel change is committed on its own branch; main carries only approved, verifying states.
 param(
     [Parameter(Mandatory = $true)][string]$MessageFile,
     [switch]$SkipVerify,
@@ -45,8 +47,10 @@ Write-Output '--- staged ---'
 $staged | ForEach-Object { $_ }
 
 $paths = @(git diff --cached --name-only --diff-filter=AM)
-$keep = @('data/manifest.json', 'data/validation.json')
-$bad = @($paths | Where-Object { $_ -match '^data/' -and $_ -notin $keep })
+$keep = @('data/manifest.json', 'data/validation.json', 'data/symbols.json')
+$bad = @($paths | Where-Object {
+        $_ -match '^data/' -and $_ -notin $keep -and $_ -notmatch '^data/raw/exchange_info_[0-9TZ]+\.json$'
+    })
 if ($bad.Count -gt 0) { Write-Output 'ABORT: data files are staged:'; $bad; exit 8 }
 # Calibration artifacts hold one record per simulated pair and may reach a few MB; everything else stays small.
 $big = @($paths | Where-Object {
@@ -67,5 +71,7 @@ if ($LASTEXITCODE -ne 0) { Write-Output "ABORT: commit exit $LASTEXITCODE"; exit
 Write-Output ("committed: " + (git rev-parse HEAD))
 
 if ($NoPush) { exit 0 }
-& (Join-Path $proj 'tools\git_push.ps1') -Branch main
+$branch = (git rev-parse --abbrev-ref HEAD)
+if ($LASTEXITCODE -ne 0 -or -not $branch -or $branch -eq 'HEAD') { Write-Output 'ABORT: no current branch to push'; exit 12 }
+& (Join-Path $proj 'tools\git_push.ps1') -Branch $branch
 exit $LASTEXITCODE

@@ -280,7 +280,438 @@
    "nonpositive_interval": 0,
    "rows": 0
   },
+  "index_klines/ADAUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/ADAUSDT/dev": {
+   "grid_bars": 21160,
+   "index_bars_on_grid": 21160,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21447
+  },
+  "index_klines/ADAUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/ADAUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/ADAUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/ADAUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/AVAXUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/AVAXUSDT/dev": {
+   "grid_bars": 15497,
+   "index_bars_on_grid": 15449,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 15471
+  },
+  "index_klines/AVAXUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/AVAXUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26040,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26040
+  },
+  "index_klines/AVAXUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/AVAXUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/BNBUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/BNBUSDT/dev": {
+   "grid_bars": 20920,
+   "index_bars_on_grid": 20896,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21864
+  },
+  "index_klines/BNBUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/BNBUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26040,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26040
+  },
+  "index_klines/BNBUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/BNBUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "index_klines/BTCUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/BTCUSDT/dev": {
+   "grid_bars": 21888,
+   "index_bars_on_grid": 21864,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21864
+  },
+  "index_klines/BTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/BTCUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26040,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26040
+  },
+  "index_klines/BTCUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/BTCUSDT/warmup": {
+   "grid_bars": 2743,
+   "index_bars_on_grid": 205,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "index_klines/DOGEUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/DOGEUSDT/dev": {
+   "grid_bars": 17295,
+   "index_bars_on_grid": 17295,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 17346
+  },
+  "index_klines/DOGEUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/DOGEUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/DOGEUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/DOGEUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/ETHUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/ETHUSDT/dev": {
+   "grid_bars": 21888,
+   "index_bars_on_grid": 21888,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "index_klines/ETHUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/ETHUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/ETHUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/ETHUSDT/warmup": {
+   "grid_bars": 833,
+   "index_bars_on_grid": 205,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "index_klines/LINKUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/LINKUSDT/dev": {
+   "grid_bars": 21496,
+   "index_bars_on_grid": 21496,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21549
+  },
+  "index_klines/LINKUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/LINKUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26208,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26208
+  },
+  "index_klines/LINKUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/LINKUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/LTCUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/LTCUSDT/dev": {
+   "grid_bars": 21688,
+   "index_bars_on_grid": 21688,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "index_klines/LTCUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/LTCUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/LTCUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/LTCUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
+  "index_klines/SOLUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/SOLUSDT/dev": {
+   "grid_bars": 15713,
+   "index_bars_on_grid": 15713,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 16452
+  },
+  "index_klines/SOLUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/SOLUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/SOLUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/SOLUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/XRPUSDT/after_vault": {
+   "grid_bars": 1,
+   "index_bars_on_grid": 1,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1
+  },
+  "index_klines/XRPUSDT/dev": {
+   "grid_bars": 21760,
+   "index_bars_on_grid": 21760,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 21888
+  },
+  "index_klines/XRPUSDT/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/XRPUSDT/val": {
+   "grid_bars": 26304,
+   "index_bars_on_grid": 26232,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 26232
+  },
+  "index_klines/XRPUSDT/vault": {
+   "grid_bars": 12130,
+   "index_bars_on_grid": 12106,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 12106
+  },
+  "index_klines/XRPUSDT/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 205
+  },
   "klines/ADAUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -290,6 +721,7 @@
    "rows": 1
   },
   "klines/ADAUSDT/dev": {
+   "active_bars": 21160,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -302,6 +734,7 @@
    "count": 0
   },
   "klines/ADAUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -311,6 +744,7 @@
    "rows": 26304
   },
   "klines/ADAUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -320,6 +754,7 @@
    "rows": 12130
   },
   "klines/ADAUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -329,6 +764,7 @@
    "rows": 0
   },
   "klines/AVAXUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -338,6 +774,7 @@
    "rows": 1
   },
   "klines/AVAXUSDT/dev": {
+   "active_bars": 15497,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -350,6 +787,7 @@
    "count": 0
   },
   "klines/AVAXUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -359,6 +797,7 @@
    "rows": 26304
   },
   "klines/AVAXUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -368,6 +807,7 @@
    "rows": 12130
   },
   "klines/AVAXUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -377,6 +817,7 @@
    "rows": 0
   },
   "klines/BNBUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -386,6 +827,7 @@
    "rows": 1
   },
   "klines/BNBUSDT/dev": {
+   "active_bars": 20920,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -398,6 +840,7 @@
    "count": 0
   },
   "klines/BNBUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -407,6 +850,7 @@
    "rows": 26304
   },
   "klines/BNBUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -416,6 +860,7 @@
    "rows": 12130
   },
   "klines/BNBUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -425,6 +870,7 @@
    "rows": 0
   },
   "klines/BTCUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -434,6 +880,7 @@
    "rows": 1
   },
   "klines/BTCUSDT/dev": {
+   "active_bars": 21888,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -446,6 +893,7 @@
    "count": 0
   },
   "klines/BTCUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -455,6 +903,7 @@
    "rows": 26304
   },
   "klines/BTCUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -464,6 +913,7 @@
    "rows": 12130
   },
   "klines/BTCUSDT/warmup": {
+   "active_bars": 2740,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -473,6 +923,7 @@
    "rows": 2743
   },
   "klines/DOGEUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -482,6 +933,7 @@
    "rows": 1
   },
   "klines/DOGEUSDT/dev": {
+   "active_bars": 17295,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -494,6 +946,7 @@
    "count": 0
   },
   "klines/DOGEUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -503,6 +956,7 @@
    "rows": 26304
   },
   "klines/DOGEUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -512,6 +966,7 @@
    "rows": 12130
   },
   "klines/DOGEUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -521,6 +976,7 @@
    "rows": 0
   },
   "klines/ETHUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -530,6 +986,7 @@
    "rows": 1
   },
   "klines/ETHUSDT/dev": {
+   "active_bars": 21888,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -542,6 +999,7 @@
    "count": 0
   },
   "klines/ETHUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -551,6 +1009,7 @@
    "rows": 26304
   },
   "klines/ETHUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -560,6 +1019,7 @@
    "rows": 12130
   },
   "klines/ETHUSDT/warmup": {
+   "active_bars": 832,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -569,6 +1029,7 @@
    "rows": 833
   },
   "klines/LINKUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -578,6 +1039,7 @@
    "rows": 1
   },
   "klines/LINKUSDT/dev": {
+   "active_bars": 21496,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -590,6 +1052,7 @@
    "count": 0
   },
   "klines/LINKUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -599,6 +1062,7 @@
    "rows": 26304
   },
   "klines/LINKUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -608,6 +1072,7 @@
    "rows": 12130
   },
   "klines/LINKUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -617,6 +1082,7 @@
    "rows": 0
   },
   "klines/LTCUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -626,6 +1092,7 @@
    "rows": 1
   },
   "klines/LTCUSDT/dev": {
+   "active_bars": 21568,
    "gap_bars": 120,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -638,6 +1105,7 @@
    "count": 0
   },
   "klines/LTCUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -647,6 +1115,7 @@
    "rows": 26304
   },
   "klines/LTCUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -656,6 +1125,7 @@
    "rows": 12130
   },
   "klines/LTCUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -665,6 +1135,7 @@
    "rows": 0
   },
   "klines/SOLUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -674,6 +1145,7 @@
    "rows": 1
   },
   "klines/SOLUSDT/dev": {
+   "active_bars": 15593,
    "gap_bars": 120,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -686,6 +1158,7 @@
    "count": 0
   },
   "klines/SOLUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -695,6 +1168,7 @@
    "rows": 26304
   },
   "klines/SOLUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -704,6 +1178,7 @@
    "rows": 12130
   },
   "klines/SOLUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -713,6 +1188,7 @@
    "rows": 0
   },
   "klines/XRPUSDT/after_vault": {
+   "active_bars": 1,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -722,6 +1198,7 @@
    "rows": 1
   },
   "klines/XRPUSDT/dev": {
+   "active_bars": 21640,
    "gap_bars": 120,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -734,6 +1211,7 @@
    "count": 0
   },
   "klines/XRPUSDT/val": {
+   "active_bars": 26303,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -743,6 +1221,7 @@
    "rows": 26304
   },
   "klines/XRPUSDT/vault": {
+   "active_bars": 12130,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -752,6 +1231,7 @@
    "rows": 12130
   },
   "klines/XRPUSDT/warmup": {
+   "active_bars": 0,
    "gap_bars": 0,
    "negative_volume": 0,
    "nonfinite_price": 0,
@@ -1191,9 +1671,856 @@
    "rows": 0
   }
  },
- "data_fingerprint": "aaef7e0d16f3fc187edd3dfaf78476b93e75b2751571b3f69ff7569e1834082e",
+ "data_fingerprint": "6af266cb9f2f777db683c9d4640f3d287584a400a8f9ffba570735ea2abc995e",
  "failures": 0,
  "passed": true,
- "research_hash": "cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8",
- "validated_at": "2026-11-18T22:08:37Z"
+ "research_hash": "d1b6ce5b8d0a03809d6264b9b9e0b6d1be5629431c732c56470b25584e1125fd",
+ "universe_counts": {
+  "funding/universe/after_vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "funding/universe/dev": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 213981
+  },
+  "funding/universe/symbols": {
+   "count": 668
+  },
+  "funding/universe/timestamps_bad": {
+   "count": 0
+  },
+  "funding/universe/val": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1075569
+  },
+  "funding/universe/vault": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 1365316
+  },
+  "funding/universe/warmup": {
+   "nonfinite_funding": 0,
+   "nonpositive_interval": 0,
+   "rows": 0
+  },
+  "index_klines/universe/after_vault": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "index_klines/universe/dev": {
+   "grid_bars": 1732942,
+   "index_bars_on_grid": 1731841,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1770056
+  },
+  "index_klines/universe/symbols": {
+   "count": 668
+  },
+  "index_klines/universe/timestamps_bad": {
+   "count": 0
+  },
+  "index_klines/universe/val": {
+   "grid_bars": 6484016,
+   "index_bars_on_grid": 6433395,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6450834
+  },
+  "index_klines/universe/vault": {
+   "grid_bars": 6944249,
+   "index_bars_on_grid": 6268341,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6268448
+  },
+  "index_klines/universe/warmup": {
+   "grid_bars": 0,
+   "index_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/universe/after_vault": {
+   "active_bars": 0,
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "klines/universe/dev": {
+   "active_bars": 1713607,
+   "gap_bars": 5496,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1732942
+  },
+  "klines/universe/symbols": {
+   "count": 668
+  },
+  "klines/universe/timestamps_bad": {
+   "count": 0
+  },
+  "klines/universe/val": {
+   "active_bars": 6066846,
+   "gap_bars": 1970,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6484016
+  },
+  "klines/universe/vault": {
+   "active_bars": 5927526,
+   "gap_bars": 57,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6944249
+  },
+  "klines/universe/warmup": {
+   "active_bars": 0,
+   "gap_bars": 0,
+   "negative_volume": 0,
+   "nonfinite_price": 0,
+   "nonfinite_volume": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/universe/after_vault": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  },
+  "mark_klines/universe/dev": {
+   "grid_bars": 1732942,
+   "mark_bars_on_grid": 1724641,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 1730993
+  },
+  "mark_klines/universe/symbols": {
+   "count": 668
+  },
+  "mark_klines/universe/timestamps_bad": {
+   "count": 0
+  },
+  "mark_klines/universe/val": {
+   "grid_bars": 6484016,
+   "mark_bars_on_grid": 6475981,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6479977
+  },
+  "mark_klines/universe/vault": {
+   "grid_bars": 6944249,
+   "mark_bars_on_grid": 6928680,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 6928783
+  },
+  "mark_klines/universe/warmup": {
+   "grid_bars": 0,
+   "mark_bars_on_grid": 0,
+   "nonfinite_price": 0,
+   "nonpositive_price": 0,
+   "ohlc_inconsistent": 0,
+   "rows": 0
+  }
+ },
+ "universe_failing_tables": {},
+ "universe_membership": {
+  "distinct_symbols": {
+   "next30_dev": 102,
+   "next30_dev_val": 217,
+   "next30_val": 188,
+   "top30_dev": 78,
+   "top30_dev_val": 137,
+   "top30_val": 101
+  },
+  "first_top30_month": "2020-05",
+  "market_wide_inactive_hours": [
+   {
+    "hour": "2024-10-28 20:00:00+00:00",
+    "rows_absent": 0,
+    "rows_present_zero_trades": 320,
+    "symbols_with_history": 320
+   }
+  ],
+  "months": {
+   "2020-01": {
+    "eligible": 0,
+    "known": 0,
+    "next30": 0,
+    "top30": 0
+   },
+   "2020-02": {
+    "eligible": 0,
+    "known": 0,
+    "next30": 0,
+    "top30": 0
+   },
+   "2020-03": {
+    "eligible": 0,
+    "known": 0,
+    "next30": 0,
+    "top30": 0
+   },
+   "2020-04": {
+    "eligible": 0,
+    "known": 0,
+    "next30": 0,
+    "top30": 0
+   },
+   "2020-05": {
+    "eligible": 11,
+    "known": 1,
+    "next30": 0,
+    "top30": 11
+   },
+   "2020-06": {
+    "eligible": 24,
+    "known": 1,
+    "next30": 0,
+    "top30": 24
+   },
+   "2020-07": {
+    "eligible": 24,
+    "known": 1,
+    "next30": 0,
+    "top30": 24
+   },
+   "2020-08": {
+    "eligible": 24,
+    "known": 1,
+    "next30": 0,
+    "top30": 24
+   },
+   "2020-09": {
+    "eligible": 25,
+    "known": 1,
+    "next30": 0,
+    "top30": 25
+   },
+   "2020-10": {
+    "eligible": 31,
+    "known": 1,
+    "next30": 0,
+    "top30": 30
+   },
+   "2020-11": {
+    "eligible": 36,
+    "known": 1,
+    "next30": 0,
+    "top30": 30
+   },
+   "2020-12": {
+    "eligible": 43,
+    "known": 1,
+    "next30": 13,
+    "top30": 30
+   },
+   "2021-01": {
+    "eligible": 60,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-02": {
+    "eligible": 69,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-03": {
+    "eligible": 76,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-04": {
+    "eligible": 79,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-05": {
+    "eligible": 84,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-06": {
+    "eligible": 91,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-07": {
+    "eligible": 105,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-08": {
+    "eligible": 109,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-09": {
+    "eligible": 112,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-10": {
+    "eligible": 114,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-11": {
+    "eligible": 115,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2021-12": {
+    "eligible": 121,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-01": {
+    "eligible": 125,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-02": {
+    "eligible": 128,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-03": {
+    "eligible": 84,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-04": {
+    "eligible": 131,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-05": {
+    "eligible": 86,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-06": {
+    "eligible": 131,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-07": {
+    "eligible": 131,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-08": {
+    "eligible": 135,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-09": {
+    "eligible": 135,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-10": {
+    "eligible": 136,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-11": {
+    "eligible": 136,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2022-12": {
+    "eligible": 134,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-01": {
+    "eligible": 140,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-02": {
+    "eligible": 142,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-03": {
+    "eligible": 141,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-04": {
+    "eligible": 140,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-05": {
+    "eligible": 144,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-06": {
+    "eligible": 158,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-07": {
+    "eligible": 168,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-08": {
+    "eligible": 173,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-09": {
+    "eligible": 181,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-10": {
+    "eligible": 184,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-11": {
+    "eligible": 189,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2023-12": {
+    "eligible": 194,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-01": {
+    "eligible": 199,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-02": {
+    "eligible": 215,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-03": {
+    "eligible": 232,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-04": {
+    "eligible": 238,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-05": {
+    "eligible": 243,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-06": {
+    "eligible": 244,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-07": {
+    "eligible": 247,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-08": {
+    "eligible": 252,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-09": {
+    "eligible": 254,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-10": {
+    "eligible": 258,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-11": {
+    "eligible": 257,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2024-12": {
+    "eligible": 272,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-01": {
+    "eligible": 284,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-02": {
+    "eligible": 289,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-03": {
+    "eligible": 306,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-04": {
+    "eligible": 328,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-05": {
+    "eligible": 344,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-06": {
+    "eligible": 351,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   },
+   "2025-07": {
+    "eligible": 374,
+    "known": 1,
+    "next30": 30,
+    "top30": 30
+   }
+  },
+  "r2_funding_removed": {
+   "dev": {
+    "ICPUSDT": {
+     "member_hours_removed": 6552,
+     "member_months_fully_removed": 9,
+     "member_months_touched": 9
+    },
+    "TLMUSDT": {
+     "member_hours_removed": 744,
+     "member_months_fully_removed": 1,
+     "member_months_touched": 1
+    }
+   },
+   "val": {
+    "SOLUSDT": {
+     "member_hours_removed": 3,
+     "member_months_fully_removed": 0,
+     "member_months_touched": 1
+    }
+   }
+  },
+  "stage2_sizes": {
+   "blocks": {
+    "next30": [
+     [
+      24,
+      24,
+      0
+     ],
+     [
+      2208,
+      2185,
+      0
+     ],
+     [
+      4392,
+      2185,
+      0
+     ],
+     [
+      4536,
+      2209,
+      0
+     ],
+     [
+      4536,
+      2209,
+      30
+     ],
+     [
+      4488,
+      2161,
+      50
+     ],
+     [
+      4512,
+      2185,
+      62
+     ],
+     [
+      4536,
+      2209,
+      65
+     ],
+     [
+      4536,
+      2209,
+      67
+     ],
+     [
+      4488,
+      2161,
+      72
+     ],
+     [
+      4512,
+      2185,
+      72
+     ],
+     [
+      4536,
+      2209,
+      75
+     ],
+     [
+      4536,
+      2209,
+      63
+     ],
+     [
+      4488,
+      2161,
+      56
+     ],
+     [
+      4512,
+      2185,
+      71
+     ],
+     [
+      4536,
+      2209,
+      74
+     ],
+     [
+      4536,
+      2209,
+      75
+     ],
+     [
+      4512,
+      2185,
+      72
+     ],
+     [
+      4512,
+      2185,
+      78
+     ],
+     [
+      4536,
+      2209,
+      76
+     ],
+     [
+      4536,
+      2209,
+      68
+     ],
+     [
+      4488,
+      2161,
+      70
+     ],
+     [
+      4511,
+      2184,
+      66
+     ]
+    ],
+    "top30": [
+     [
+      24,
+      24,
+      0
+     ],
+     [
+      4392,
+      4369,
+      24
+     ],
+     [
+      6744,
+      4417,
+      45
+     ],
+     [
+      6672,
+      4345,
+      59
+     ],
+     [
+      6744,
+      4417,
+      61
+     ],
+     [
+      6672,
+      4345,
+      61
+     ],
+     [
+      6744,
+      4417,
+      59
+     ],
+     [
+      6672,
+      4345,
+      57
+     ],
+     [
+      6744,
+      4417,
+      59
+     ],
+     [
+      6696,
+      4369,
+      62
+     ],
+     [
+      6744,
+      4417,
+      63
+     ],
+     [
+      6671,
+      4344,
+      66
+     ]
+    ]
+   },
+   "crypto_rows": 8682879,
+   "next30": 217,
+   "rows": 48216,
+   "symbol_rows": 6214010,
+   "symbol_rows_max": 48216,
+   "top30": 137
+  },
+  "top30_unit_availability": {
+   "dev": {
+    "all_members_in_play": 12433,
+    "hours_with_unit": 18985,
+    "members_in_play_mean_x100": 2791,
+    "s2_at_least_10_clean_last_168h": 18985,
+    "s2_at_least_10_clean_last_1h": 18985,
+    "s2_at_least_10_clean_last_2160h": 18985,
+    "s2_at_least_10_clean_last_24h": 18985,
+    "s2_at_least_10_clean_last_720h": 18985,
+    "strict_all_in_play_clean_last_168h": 18818,
+    "strict_all_in_play_clean_last_1h": 18985,
+    "strict_all_in_play_clean_last_2160h": 17592,
+    "strict_all_in_play_clean_last_24h": 18962,
+    "strict_all_in_play_clean_last_720h": 18314
+   },
+   "val": {
+    "all_members_in_play": 24723,
+    "hours_with_unit": 26303,
+    "members_in_play_mean_x100": 2994,
+    "s2_at_least_10_clean_last_168h": 26303,
+    "s2_at_least_10_clean_last_1h": 26303,
+    "s2_at_least_10_clean_last_2160h": 26303,
+    "s2_at_least_10_clean_last_24h": 26303,
+    "s2_at_least_10_clean_last_720h": 26303,
+    "strict_all_in_play_clean_last_168h": 26303,
+    "strict_all_in_play_clean_last_1h": 26303,
+    "strict_all_in_play_clean_last_2160h": 26280,
+    "strict_all_in_play_clean_last_24h": 26303,
+    "strict_all_in_play_clean_last_720h": 26303
+   }
+  }
+ },
+ "validated_at": "2026-11-19T08:41:50Z"
 }

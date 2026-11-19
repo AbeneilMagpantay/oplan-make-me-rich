@@ -1,0 +1,12 @@
+# Kernel selftest program (never a trial): a meaningless unit-top30 signal that trades often.
+name = "kernel_noise_top30"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Selftest only: the in-play cross-sectional rank of the daily volume ratio and the basis carries no edge; it exists to drive the full top30 evaluation path."
+
+n = param(20, 10, 40)
+
+v = daily(volume)
+b = (close - index_close) / index_close
+signal = cs_scale(cs_demean(cs_rank(rank(v / lag(v, 1), n)) + 0.5 * cs_rank(b)))

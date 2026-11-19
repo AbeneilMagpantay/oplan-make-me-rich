@@ -1,0 +1,10 @@
+# Kernel universe calibration family (never a trial): cross-sectional funding carry on unit top30.
+name = "ucal_xs_carry"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Calibration family: short the coins whose recent funding is highest and long the lowest, collecting funding; market neutral."
+
+n = param(9, 3, 30)
+
+signal = cs_scale(cs_demean(-funding_mean(n)))

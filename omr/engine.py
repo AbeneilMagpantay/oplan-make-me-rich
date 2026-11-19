@@ -206,6 +206,223 @@ def run(index, op, dn, up, fr, tgt, **kw) -> Run:
     return Run(pd.DatetimeIndex(index), *out)
 
 
+# ---------------------------------------------------------------- universe units (KP-015, C1-C3)
+# The core engine above is untouched. The universe core adds per-symbol AVAILABILITY av[j, i] (bar j of
+# symbol i is active). At every timestamp j, before funding:
+#   0. a held symbol whose bar j is missing is marked to the CLOSE of its last active bar (cl[j-1, i]) and
+#      closed there with the normal cost (C1); the closing notional is a rebalance event.
+# Targets of unavailable symbols are forced to 0; prices of unavailable bars are never read.
+
+def _ucore_impl(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mult, liq_frac, h0, eq0, dead0, t0,
+                fp0):
+    """Rows t0..T-1 are run; row t0-1 (when t0 = 1) only supplies the previous open and close of positions
+    h0 carried in (S4: a continuation block). Returns the run outputs for rows t0.. and the final state."""
+    T, K = op.shape
+    equity = np.zeros(T)
+    pre = np.zeros(T)
+    gross = np.zeros(T)
+    net = np.zeros(T)
+    ev_idx = np.empty(T, np.int64)
+    ev_turn = np.empty(T)
+    ev_cost = np.empty(T)
+    n_ev = 0
+    h = h0.copy()
+    eq = eq0
+    funding_paid = fp0
+    liq_idx = -1
+    dead = dead0
+    for t in range(t0, T):
+        if dead:
+            equity[t] = 0.0
+            pre[t] = 0.0
+            gross[t] = 0.0
+            net[t] = 0.0
+            continue
+        forced = 0.0
+        if t > 0:
+            pnl = 0.0
+            for i in range(K):
+                if h[i] != 0.0:
+                    if av[t, i]:
+                        nv = h[i] * (op[t, i] / op[t - 1, i])
+                    else:
+                        nv = h[i] * (cl[t - 1, i] / op[t - 1, i])
+                    pnl += nv - h[i]
+                    h[i] = nv
+            eq += pnl
+            for i in range(K):
+                if h[i] != 0.0 and not av[t, i]:
+                    forced += abs(h[i])
+                    h[i] = 0.0
+            eq -= forced * cost_rate
+        pay = 0.0
+        for i in range(K):
+            p = h[i] * fr[t, i]
+            if p > 0.0:
+                pay += p * pay_mult
+            elif p < 0.0:
+                pay += p * recv_mult
+        eq -= pay
+        funding_paid += pay
+        if eq <= 0.0:
+            dead = True
+            if liq_idx < 0:
+                liq_idx = t
+            equity[t] = 0.0
+            pre[t] = 0.0
+            gross[t] = 0.0
+            net[t] = 0.0
+            continue
+        pre[t] = eq
+        trade = False
+        for i in range(K):
+            ti = tgt[t, i] if av[t, i] else 0.0
+            if abs(ti - h[i] / eq) > band:
+                trade = True
+                break
+        notional = forced
+        cost = forced * cost_rate
+        if trade:
+            tn = 0.0
+            for i in range(K):
+                ti = tgt[t, i] if av[t, i] else 0.0
+                tn += abs(ti * eq - h[i])
+            c2 = tn * cost_rate
+            eq2 = eq - c2
+            for i in range(K):
+                ti = tgt[t, i] if av[t, i] else 0.0
+                h[i] = ti * eq2
+            notional += tn
+            cost += c2
+            eq = eq2
+        if trade or forced > 0.0:
+            ev_idx[n_ev] = t
+            ev_turn[n_ev] = notional / (eq + cost)
+            ev_cost[n_ev] = cost
+            n_ev += 1
+        g = 0.0
+        n = 0.0
+        worst = eq
+        for i in range(K):
+            g += abs(h[i])
+            n += h[i]
+            if h[i] > 0.0:
+                worst += h[i] * (dn[t, i] - 1.0)
+            elif h[i] < 0.0:
+                worst += h[i] * (up[t, i] - 1.0)
+        if g > 0.0 and worst <= liq_frac * g + 1e-12 * g and liq_idx < 0:
+            liq_idx = t
+        equity[t] = eq
+        gross[t] = g / eq
+        net[t] = n / eq
+    return (equity, gross, net, ev_idx[:n_ev], ev_turn[:n_ev], ev_cost[:n_ev], funding_paid, liq_idx, pre, h, eq,
+            dead)
+
+
+if HAVE_NUMBA:
+    _ucore_fast = numba.njit(cache=False, nogil=True)(_ucore_impl)
+else:  # pragma: no cover
+    _ucore_fast = _ucore_impl
+
+
+def run_arrays_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, band=C.REBALANCE_BAND,
+                 pay_mult=1.0, recv_mult=1.0, liq_frac=C.LIQUIDATION_FRAC, fast=True):
+    """Universe engine on aligned (T x K) arrays; av = bar usable. Prices, ratios and funding are read
+    only where av is True (elsewhere they may be NaN). Returns the core's raw tuple."""
+    return run_block_u(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mult, liq_frac, fast=fast)[:9]
+
+
+def run_block_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, band=C.REBALANCE_BAND,
+                pay_mult=1.0, recv_mult=1.0, liq_frac=C.LIQUIDATION_FRAC, h0=None, eq0=1.0, dead0=False, t0=0, fp0=0.0,
+                fast=True):
+    """run_arrays_u from a state: positions h0 (signed notional per column) and equity eq0 carried in,
+    rows t0.. run (t0 = 1: row 0 is the previous row of a continuation). Returns the raw tuple plus
+    (h, equity, dead) at the end."""
+    av = np.ascontiguousarray(np.asarray(av, dtype=np.bool_))
+    op, cl, dn, up, fr, tgt = (_as2d(x) for x in (op, cl, dn, up, fr, tgt))
+    if not (op.shape == cl.shape == av.shape == dn.shape == up.shape == fr.shape == tgt.shape):
+        raise ValueError("engine inputs must share one shape")
+    if not np.all(np.isfinite(tgt)):
+        raise ValueError("targets must be finite")
+    if not (np.all(np.isfinite(op[av])) and np.all(op[av] > 0) and np.all(np.isfinite(cl[av])) and np.all(cl[av] > 0)):
+        raise ValueError("open and close prices of active bars must be finite and > 0")
+    if not (np.all(np.isfinite(dn[av])) and np.all(np.isfinite(up[av])) and np.all(dn[av] > 0) and np.all(up[av] > 0)):
+        raise ValueError("liquidation ratios of active bars must be finite and > 0")
+    fr = np.where(av, fr, 0.0)
+    if not np.all(np.isfinite(fr)):
+        raise ValueError("funding rates must be finite")
+    z = ~av
+    op, cl, dn, up = (np.where(z, 1.0, x) for x in (op, cl, dn, up))
+    h0 = np.zeros(op.shape[1]) if h0 is None else np.ascontiguousarray(np.asarray(h0, dtype=np.float64))
+    fn = _ucore_fast if fast else _ucore_impl
+    return fn(op, cl, av, dn, up, fr, tgt, float(cost_rate), float(band), float(pay_mult), float(recv_mult),
+              float(liq_frac), h0, float(eq0), bool(dead0), int(t0), float(fp0))
+
+
+def run_u(index, op, cl, av, dn, up, fr, tgt, **kw) -> Run:
+    out = run_arrays_u(op, cl, av, dn, up, fr, tgt, **kw)
+    return Run(pd.DatetimeIndex(index), *out)
+
+
+def run_reference_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, band=C.REBALANCE_BAND,
+                    pay_mult=1.0, recv_mult=1.0, liq_frac=C.LIQUIDATION_FRAC):
+    """Independent pure-Python universe engine (UNITS and cash). A held symbol whose next bar is missing
+    is sold at its last close with the normal cost. Returns (equity list, event index list, liq index)."""
+    av = np.asarray(av, dtype=bool).tolist()
+    op, cl, dn, up, fr, tgt = (_as2d(x).tolist() for x in (op, cl, dn, up, fr, tgt))
+    T, K = len(op), len(op[0])
+    units = [0.0] * K
+    cash = 1.0
+    equity, events = [], []
+    liq = -1
+    dead = False
+    for t in range(T):
+        if dead:
+            equity.append(0.0)
+            continue
+        forced = False
+        for i in range(K):
+            if units[i] != 0.0 and not av[t][i]:
+                v = units[i] * cl[t - 1][i]
+                cash += v - abs(v) * cost_rate
+                units[i] = 0.0
+                forced = True
+        values = [units[i] * op[t][i] if av[t][i] else 0.0 for i in range(K)]
+        pay = 0.0
+        for i in range(K):
+            p = values[i] * (fr[t][i] if av[t][i] else 0.0)
+            pay += p * (pay_mult if p > 0 else recv_mult)
+        cash -= pay
+        eq = cash + sum(values)
+        if eq <= 0:
+            dead = True
+            liq = t if liq < 0 else liq
+            equity.append(0.0)
+            continue
+        tg = [tgt[t][i] if av[t][i] else 0.0 for i in range(K)]
+        traded = False
+        if any(abs(tg[i] - values[i] / eq) > band for i in range(K)):
+            notional = sum(abs(tg[i] * eq - values[i]) for i in range(K))
+            eq_after = eq - notional * cost_rate
+            units = [tg[i] * eq_after / op[t][i] if av[t][i] else 0.0 for i in range(K)]
+            cash = eq_after - sum(units[i] * op[t][i] for i in range(K) if av[t][i])
+            eq = eq_after
+            traded = True
+        if traded or forced:
+            events.append(t)
+        gross_val = sum(abs(units[i] * op[t][i]) for i in range(K) if av[t][i])
+        worst = eq
+        for i in range(K):
+            if units[i] > 0:
+                worst += units[i] * op[t][i] * (dn[t][i] - 1.0)
+            elif units[i] < 0:
+                worst += units[i] * op[t][i] * (up[t][i] - 1.0)
+        if gross_val > 0 and worst <= liq_frac * gross_val + LIQ_EPS * gross_val and liq < 0:
+            liq = t
+        equity.append(eq)
+    return equity, events, liq
+
+
 def day_points(index: pd.DatetimeIndex) -> np.ndarray:
     """Positions where a daily interval starts: the first bar of the run and every later 00:00 bar."""
     idx = pd.DatetimeIndex(index)

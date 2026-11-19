@@ -71,7 +71,18 @@ def synthetic_symbol(rng, price0: float, start: str = START, hours: int = DAYS *
     rate = 0.0002 + 0.0007 * np.sin(2 * np.pi * day / 60.0) + 0.0001 * rng.standard_normal(len(ft))
     fu = pd.DataFrame({"rate": rate, "interval_hours": 8.0, "offset_ms": 0.0}, index=ft)
     fu.index.name = "settle_time"
-    return {"klines": kl, "funding": fu, "mark_klines": mark}
+    return {"klines": kl, "funding": fu, "mark_klines": mark, "index_klines": index_bars(kl)}
+
+
+def index_bars(kl: pd.DataFrame) -> pd.DataFrame:
+    """A deterministic index-price series near the last price (no random draw): a small daily basis cycle."""
+    t = np.arange(len(kl), dtype=np.float64)
+    f = 1.0 - 0.0004 * np.sin(2 * np.pi * t / 24.0) - 0.0002 * np.sin(2 * np.pi * t / 500.0)
+    o, h, l_, c = (kl[k].to_numpy(dtype=np.float64) * f for k in ("open", "high", "low", "close"))
+    out = pd.DataFrame({"open": o, "high": np.maximum(h, np.maximum(o, c)), "low": np.minimum(l_, np.minimum(o, c)),
+                        "close": c, "samples": 3600.0}, index=kl.index)
+    out.index.name = "open_time"
+    return out
 
 
 def panel():

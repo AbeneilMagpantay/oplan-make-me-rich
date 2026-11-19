@@ -17,6 +17,8 @@ Order (count before exposure):
 4. Stage 2 on DEV+VAL frames. Result files are written, then the final row: `evaluated` (with
    tier), `liquidated`, or `kernel_fault` (any unexpected exception, or stage-2 DEV rows differing
    from stage 1; no metrics). A pending row is never left behind by an exception.
+A program of unit top30 (KP-015) goes through the same steps on the universe panel (omr.upipeline).
+Every row records the program's unit and its total lookback in hours (lookback_hours).
 Trial identity = sha256(canonical program + SEMANTIC kernel hash + research_hash)[:16].
 """
 from __future__ import annotations
@@ -43,6 +45,7 @@ from omr import ledger
 from omr import paths as P
 from omr import pipeline
 from omr import stats as S
+from omr import upipeline
 
 
 def versions() -> dict:
@@ -78,6 +81,20 @@ class DiskProvider:
         ext = D.load_frames(C.EXTENDED, D.PROGRAM_EXTRA, upto="val_end", handle=handle)
         liq = D.load_liqs(C.ALL_SYMBOLS, upto="val_end", handle=handle)
         return pipeline.World(core=core, extended=ext, btc=core[C.BTC], liq=liq, symbols=C.CORE)
+
+    def udev(self) -> upipeline.UData:
+        """Unit top30: the universe under the DEV ceiling (no handle)."""
+        return upipeline.load_udata("dev_end")
+
+    def uval(self, handle, fields=None) -> upipeline.UData:
+        """Unit top30: the universe under the VAL ceiling (the trial's handle), needed columns only."""
+        return upipeline.load_udata("val_end", handle=handle, fields=fields)
+
+    def universe_sizes(self) -> dict:
+        """R3 sizes for the stage-2 memory estimate, from data/validation.json (counts made by data validate,
+        bound to the data fingerprint): no bar after DEV end is read here."""
+        v = json.loads(data.VALIDATION.read_text(encoding="ascii"))
+        return v["universe_membership"]["stage2_sizes"]
 
 
 def dsr_for(trial_id: str, daily: pd.Series) -> dict:
@@ -216,15 +233,26 @@ def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts
 def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max):
     params = L.default_params(prog)
     seed = secrets.randbits(63)                       # fresh OS entropy; stored after the fact
-    ident = dict(base, trial_id=tid, program=prog.name, family=prog.header["family"], kind=prog.kind)
-    frames_dev, btc_dev = provider.dev_frames()
+    ident = dict(base, trial_id=tid, program=prog.name, family=prog.header["family"], kind=prog.kind,
+                 unit=prog.unit, lookback_hours=prog.lookback_hours)
+    universe = prog.unit != "core"
     try:
-        s1 = pipeline.stage1(prog, params, frames_dev, btc_dev, np.random.default_rng([seed, 1]), opts)
+        if universe:
+            s1 = upipeline.stage1_u(prog, params, provider.udev(), np.random.default_rng([seed, 1]), opts)
+        else:
+            frames_dev, btc_dev = provider.dev_frames()
+            s1 = pipeline.stage1(prog, params, frames_dev, btc_dev, np.random.default_rng([seed, 1]), opts)
     except Exception as e:                           # an interpreter error on a checked program is a kernel fault
         return stage1_log(dict(ident, code="kernel_fault", error_type=type(e).__name__), quiet)
     if not s1["ok"]:
         return stage1_log(dict(ident, code=s1["code"], fault=s1.get("fault"),
                                direction_changes_dev=s1.get("direction_changes_dev")), quiet)
+
+    if universe:                                     # R3: refuse, uncounted, when stage 2 may not fit in memory
+        mc = upipeline.memory_check(prog, provider.universe_sizes())
+        if not mc["ok"]:
+            return stage1_log(dict(ident, code="memory_insufficient", estimate_bytes=mc["estimate_bytes"],
+                                   available_bytes=mc["available_bytes"]), quiet)
 
     # ---- COUNTED from here on: the pending row is on disk before any VAL bar is read
     P.TRIAL_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
@@ -236,13 +264,17 @@ def _evaluate_locked(p, prog, tid, base, plan_sha, provider, opts, quiet, p_max)
                stage1={"truncation_cuts": s1["cuts"], "start_cuts": s1["start_cuts"],
                        "direction_changes_dev": s1["direction_changes_dev"]})
     pending, handle = ledger.append_pending(row)
-    keep = ("trial_id", "generation", "program", "family", "kind", "kernel_hash", "semantic_hash", "text_hash",
-            "research_hash", "params", "node_count", "n_literals", "born_at")
+    keep = ("trial_id", "generation", "program", "family", "kind", "unit", "lookback_hours", "kernel_hash",
+            "semantic_hash", "text_hash", "research_hash", "params", "node_count", "n_literals", "born_at")
     final = {k: row[k] for k in keep}
     final.update(pending_hash=pending["row_hash"], g6_threshold=p_max, seed=str(seed))
     try:
-        world = provider.val_world(handle)
-        res = pipeline.stage2(prog, params, world, s1, opts, handle, seed, p_max)
+        if universe:
+            res = upipeline.stage2_u(prog, params, provider.uval(handle, fields=upipeline.program_fields(prog)), s1,
+                                     opts, handle, seed, p_max)
+        else:
+            world = provider.val_world(handle)
+            res = pipeline.stage2(prog, params, world, s1, opts, handle, seed, p_max)
         if res["status"] == "kernel_fault":
             final.update(status="kernel_fault", reason=res["reason"])
         elif res["status"] == "liquidated":

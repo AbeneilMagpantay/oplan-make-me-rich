@@ -25,7 +25,9 @@ a function, a header key or `param` (`shadowing`).
 1. Header, first, each key exactly once, string literals (`header_missing`, `header_value`,
    `header_order`): `name` (`^[a-z0-9_]{3,64}$`, equal to the file stem, `header_name`); `family`
    (trend, meanrev, carry, volatility, relative, flow, other); `kind` (`single` or `portfolio`);
-   `hypothesis` (10 to 500 printable ASCII characters).
+   `hypothesis` (10 to 500 printable ASCII characters). One OPTIONAL key (KP-015): `unit`, `core`
+   (the default: the two-coin unit, exactly as before) or `top30` (needs kind `portfolio`;
+   `header_unit`); see section 10.
 2. Params: `x = param(default, low, high)` with three numeric literals (an optional leading minus);
    an integer param when all three are integer literals. At most 6 params. `low <= default <= high`,
    `low < high`, `default != 0`, and the range contains the whole jitter range 0.8 x default to
@@ -109,6 +111,7 @@ the decision time. Every series carries a VALUE and a KNOWN flag per row.
 |---|---|---|---|
 | open, high, low, close | P | first, max, min, last | the bar exists |
 | mark_close | P (Binance mark price): the close of the LAST mark bar at or before the row, from the frame's own mark rows | last | that bar is at most 6 hours old (MARK_MAX_STALE_HOURS) |
+| index_close | P (Binance index price, KP-015): the close of the LAST index-price bar at or before the row; basis = `(close - index_close) / index_close` | last | that bar is at most 6 hours old (INDEX_MAX_STALE_HOURS) |
 | volume, taker_buy_volume | V | sum | the bar exists |
 | quote_volume, taker_buy_quote_volume | P V | sum | the bar exists |
 | trades | N | sum | the bar exists |
@@ -144,14 +147,14 @@ its last completed bar (value and known).
 | rsi(x, n) | FINITE, centred: (G - L) / (G + L) over the last m = 10n changes (rows t-m .. t), G and L the sums of gains and losses with weight (1 - 1/n)^k for the change k rows back; NaN when G + L = 0. Equal to (RSI - 50) / 50 for Wilder's smoothing truncated at m changes | dimensionless |
 | atr(h, l, c, n) | FINITE: the same weights over the last m = 10n true ranges max(h - l, abs(h - prev c), abs(l - prev c)) (rows t-m .. t), normalised; three inputs of identical unit and timeframe | of h |
 | realised_vol(x, n) | std (ddof 1, two-pass) of the last n log ratios log(x_t / x_t-1) (rows t-n .. t) x sqrt(periods per year of x's timeframe: 8760 hourly ... 365 daily, 365/7 weekly) | dimensionless |
-| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known once n settlements exist | dimensionless |
+| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known only when those n settlements all fall inside the last 8n hours (bounded in time like every other function; KP-015 S1) | dimensionless |
 | hold(enter_long, exit_long, enter_short, exit_short, h) | WINDOWED: the state in {-1, 0, +1} reached by running the transition rules FROM FLAT over rows t-h+1 .. t, recomputed for every t (no phase anchored anywhere). From flat: enter_long and not enter_short -> +1; enter_short and not enter_long -> -1. Long: enter_short -> -1, else exit_long -> 0. Short: enter_long -> +1, else exit_short -> 0. Known only where all four inputs are known on all h rows. It equals the unbounded state machine whenever a position re-synchronises within h bars | dimensionless |
 | abs, sign | elementwise; sign is dimensionless | of x / none |
 | sqrt, log, exp, tanh | elementwise on a dimensionless input; invalid -> NaN | dimensionless |
 | clip(x, lo, hi) | x clipped to [min(lo, hi), max(lo, hi)]; lo, hi scalars | dimensionless |
 | min2(x, y), max2(x, y) | elementwise min / max (NaN propagates) | of x |
 | where(c, x, y) | x where c is True, else y; known only where c AND BOTH branches are known | of x |
-| cs_mean, cs_demean, cs_rank, cs_scale (x) | portfolio only (`cross_section_single`): across the unit's symbols at each row: mean; x - mean; average rank mapped to [-1, 1]; x / sum(abs(x)); known only where every symbol is known in that row | dimensionless |
+| cs_mean, cs_demean, cs_rank, cs_scale (x) | portfolio only (`cross_section_single`): across the unit's symbols at each row: mean; x - mean; average rank mapped to [-1, 1]; x / sum(abs(x)); core unit: known only where every symbol is known in that row (unit top30: section 10) | dimensionless |
 
 ## 7. Semantics: locality by construction
 
@@ -186,7 +189,8 @@ its last completed bar (value and known).
 
 ## 8. Identity
 
-Canonical form: `kind=<kind>;signal=<signal tree with every body name inlined>;params=[...]`,
+Canonical form: `kind=<kind>;signal=<signal tree with every body name inlined>;params=[...]`
+(a unit other than core is prefixed: `unit=top30;kind=...`),
 params renamed `$0, $1, ...` in order of first use in the inlined tree, each with its type and
 (default, low, high). Comments, layout, body names and param names do not change it. Trial id =
 sha256(canonical + "\n" + SEMANTIC kernel hash + "\n" + research_hash)[:16]: any change to the code,
@@ -256,3 +260,45 @@ signal = where(f > hi, -1, where(f < lo, 1, 0))
 Known tie behaviour versus the Python versions: the Python SMA cross and trend direction mapped an
 exact tie to -1, `sign` maps it to 0; the Python vol target sized a zero volatility as 1, the
 language gives NaN (flat). Neither occurred on the synthetic or real DEV data tested.
+
+## 10. Units: core and top30 (KP-015)
+
+`unit = "core"` (or no `unit` key) is the two-coin unit of every section above, unchanged. `unit =
+"top30"` trades a point-in-time cross-section of USDT perpetuals:
+- MEMBERSHIP (omr/universe.py): reconstituted at the first hour of each calendar month (UTC) from bars
+  strictly before it (it reads the 97 days before the month). Eligible: a crypto perpetual
+  (data/symbols.json; never a TradFi, index or other contract) whose first active bar (a bar with trades)
+  is at least 90 days before the month with no run of 7 or more consecutive days without an active bar
+  inside those 90 days (a relisting or a delisting gap restarts the seasoning; a shorter archive hole does
+  not), and that was active on at least 95% of the previous 720 hours. Ranked by the median
+  daily quote volume of the previous 90 days: `top30` = ranks 1 to 30 (G8 uses `next30` = ranks 31 to
+  60). A month with fewer than 10 such members has no unit: every signal is unknown (flat).
+- USABLE BARS (S3): a bar with trades is usable; a bar present with zero trades is usable (fields as
+  recorded) while the run of consecutive bars without trades ending at it is at most 24 (counted
+  backwards only); from the 25th on, and for a bar absent from the archive, the fields are unknown.
+  Membership counts bars with trades only.
+- IN PLAY (TRADABLE): a symbol is in play at a row when it is a member for the month containing the
+  row's decision time (its close), its bar at that row is usable, and its latest funding settlement is no
+  older than twice its own funding interval (a symbol the engine cannot charge funding on is not held).
+- `cs_*` (S2) compute across the symbols that are in play AND whose input is known at that row; the result
+  is known for those symbols when at least 10 of them exist, otherwise unknown for everyone. A symbol whose
+  window holds a hole simply drops out of the cross-section until its window is clean. The final signal of a
+  symbol not in play is unknown (weight 0). A `cs_*` over a
+  timeframe series uses the in-play symbols of the hour at which each of its bars becomes visible. The
+  portfolio weight rule (clip to [-1, 1], scale down when gross exceeds 1) applies across the unit (gross
+  summed sequentially in symbol-name order).
+- LOOKBACK (D3, `lookback_exceeds_seasoning`): the program's total lookback, the longest chain of
+  windows through the inlined tree with every window param at its `high` bound (ema 5n - 1, rsi / atr
+  10n, lags and realised_vol n, other windows n - 1 extra rows; a timeframe bar 2 x its hours - 1;
+  rows of a timeframe series count as that many hours; funding_mean(n) 8n hours; mark_close and
+  index_close 7, funding8h 8), must not exceed 90 days (2,160 hours). Every program's lookback is
+  recorded in its trial row (`lookback_hours`), in both units.
+- Costs: 12.5 bps per side on every symbol. A position in a symbol whose next bar is missing is closed
+  at its last active close with that cost; a symbol leaving the unit gets weight 0.
+- Locality: the truncation and start-cut self-checks run on the universe panel; every cut recomputes
+  the membership from its own rows (a cut can only make the unit unknown, never different); stage 1
+  adds one start cut that removes the first 31 hours of a panel symbol's history. Every function is
+  bounded in time (funding_mean included), and the membership's 97-day read window keeps a cut run
+  unknown longer than the 90-day lookback limit, so a cut cannot change the set a `cs_*` sees.
+- Blocks (S4): the evaluator runs a top30 program in blocks of six calendar months, each evaluated from
+  97 days before its first month; the stitched result is bit-identical to the whole panel.

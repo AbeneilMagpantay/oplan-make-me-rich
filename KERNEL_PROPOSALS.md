@@ -199,3 +199,32 @@ rates, status.
 - Status: open. On 2026-11-19 the human replied "continue" to the coordinator's recommendation and
   its question whether to go ahead; the coordinator reads that as approval of the direction and will
   state the exact change again before any re-key.
+- Build (2026-11-19, working tree only; NOT re-keyed, calibrated or sealed): data/symbols.json and the
+  universe download (678 crypto perpetuals, index_klines admitted for all, research hash d1b6ce5b...);
+  omr/universe.py (symbol table, activity, membership), omr/upipeline.py (unit top30 pipeline, G8 on
+  next30), the universe engine in omr/engine.py, `unit` header, `index_close` and the 90-day lookback
+  rule in omr/lang.py, in-play cross-sections in omr/interp.py, omr/ucalibrate.py (written, tested on
+  synthetic panels only), a seal over both units, kernel_noise_top30 in the selftest,
+  tools/record_metrics.py (forward-only metrics, outside the kernel). The core unit is bit-identical to
+  commit b12df97 (tests/test_core_identity.py). Two refinements of the order's text, to be confirmed by
+  the audit: a member is IN PLAY only on rows where its bar is active (not merely a member), and
+  seasoning is read as "at least one active bar in each of the 91 days before the month" (so a
+  relisting, a delisting gap or a missing day restarts it). Next: independent audit of the working
+  tree, the human's approval, re-key, both calibrations, seal.
+- Fix pass (2026-11-19): R1a seasoning (first active bar >= 90 days before the month, no 7-day run without
+  an active bar inside those 90 days); R2 tradable = member + active bar + latest funding settlement no
+  older than twice its interval (ICP 9 and TLM 1 member-months out of play in DEV; SOL 3 hours in VAL);
+  R3 memory estimate and uncounted `memory_insufficient` refusal, needed columns only, G8 panel first;
+  R4 the sandbox relies on per-file hashes at read. R1b (cross-sections over the in-play symbols whose
+  input is known, known when >= 10) NOT adopted: a start cut can change that set through funding_mean,
+  whose "last n settlements" memory is unbounded (a 150-day funding gap followed by resumption; synthetic
+  counterexample). Proposed fix for a ruling: in universe panels funding_mean is known only when its last
+  n settlements lie inside its own 8n-hour window (the window D3 already counts); with it, 0 of 40 start
+  cuts disagree on every tested case, because the membership's 97-day read window already makes every
+  cut run unknown longer than the 90-day lookback limit.
+- Fix pass 2 (2026-11-19): S1 adopted in EVERY unit (the core comparison with b12df97 stayed bit-identical
+  on the synthetic world and on real DEV); S2 (R1b) adopted, with the counterexample and the hole cases as
+  permanent tests; S3: the market-wide hour 2024-10-28 20:00 UTC is 320 rows present with zero trades, so
+  zero-trade bars are usable while their zero-trade run is <= 24 (membership still counts trades only); S4:
+  six-month blocks, bit-identical to the whole panel for signals, weights, engine output and every gate
+  (boundaries inside a hole and inside a member's first month tested).
