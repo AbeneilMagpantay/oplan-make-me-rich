@@ -261,3 +261,43 @@ rates, status.
   404 only for a day at least a week old, checks every reused daily file against its manifest pin, and
   commits tables and manifest through a journal that the next `python -m omr.data` command completes or
   rolls back. Evidence: notes/kp015_build_evidence.md.
+- Fix pass 6 (2026-11-20; audit round 7 first judged 32e32e0 READY, then restated NOT READY after measuring
+  Tier-1 power on the real membership structure, where the 1-day oracle fails G4 in 24 of 24 worlds; fix pass 6
+  was reviewed READY on the working tree; the coordinator's rulings on the round's items): R-H
+  the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its own rows (the core artifact's
+  null A pass rate at 0.10 is 2.94%, so under the shared rule one more core pass would have moved both units,
+  and top30's rows could tighten the core threshold; the units use different G6 constructions and null
+  distributions); both units seal or neither; kernel.lock holds {"core": x, "top30": y}; the evaluator applies
+  the program's own unit's threshold. An incomplete unit artifact stops the seal with a reason. The universe
+  calibration's partial file carries a sha per line (damaged lines discarded, a torn tail repaired, a task
+  stored twice with different results stops), and the oracle phases run first with a power advisory.
+  Documented limits of the universe lag test: recent entrants are in neither book, and each book pays its own
+  costs. PROTOCOL_VERSION 4. R-I (F8): the universe oracle's speeds are a unit constant, fast = 5 days and
+  slow = 20 (the core keeps 1 and 20): at 12.5 bps per side a 1-day oracle with net Sharpe 1.5 cannot pass G4
+  at doubled costs (cost drag 3.86 Sharpe units, Tier-1 0 of 24), so the seal would stop with certainty; at 5
+  days the drag is 0.93 and Tier-1 18 of 24 (the coordinator's rule: the fastest of 5, 7, 10 days with Tier-1
+  at least 0.65 at all thresholds). R-J (F9): the reversal family is now the momentum's mirror on daily bars
+  (n from 3 to 20 days), inside the unit's certified holding periods; the former 4-96 hour reversal was
+  cost-dominated (VAL Sharpe about -9.7 in a measured null world), could never reach Tier 1 and diluted the null
+  pass rate. A malformed unit artifact stops the seal; a sealed threshold must be a grid value. Evidence: notes/kp015_build_evidence.md.
+
+## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
+
+- Problem: the threshold rule's denominator is SUBMITTED pairs (KP-003): per world and family the
+  activity passer with the best DEV Sharpe among 20 draws, whatever the sign of that Sharpe. A
+  researcher does not spend a counted trial on a program with a negative DEV Sharpe, and such a pair
+  fails G3 with certainty, so these pairs only enlarge the denominator. In the sealed core artifact
+  (7446278556aadd8f) about 76% of the submitted pairs pass G3; counted over those, the pass rate at
+  0.10 under null A would be about 3.9% instead of 2.94%, and 0.05 would be the largest qualifying
+  threshold (about 2.3%). In the other direction the calibration does not run G8, which can only
+  veto, so its rates are upper bounds per submitted pair. The same reasoning led to R-J in KP-015 (a
+  family that could never pass diluted the top30 rate by about a third).
+- Proposed change: count the null pass rate over the submitted pairs with a positive DEV Sharpe, per
+  unit, and store both rates in the artifact.
+- Cost: a semantic change of the rule (omr/calibrate.py, CONSTITUTION section 8), so a re-key and both
+  calibrations again (top30 about 88 worker-hours). Not bundled into KP-015: it changes the core
+  unit's rule, which KP-015 leaves as it was sealed, and the size of the effect next to G8 is not
+  measured.
+- Interim: after each calibration the coordinator reports the rate over DEV-positive submissions next
+  to the sealed thresholds, computed from the stored rows.
+- Status: open (needs the human's approval; not blocking).

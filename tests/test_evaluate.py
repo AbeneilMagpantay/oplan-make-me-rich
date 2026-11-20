@@ -3,6 +3,7 @@ stage-1 rejections in stage1_log only, generation rules (allowed numbers, PLAN.m
 refused before any row), pending-row contents, stage-2 exceptions as kernel_fault (never a pending row
 left behind), the sealed-lock requirement, and the data-validation requirement."""
 import json
+import sys
 
 import numpy as np
 import pandas as pd
@@ -224,3 +225,32 @@ def test_a_probe_exception_is_logged_as_probe_fault(tmp_path, tmp_ledger, world,
     monkeypatch.setattr(X, "evaluate_full", boom)
     r = run(write(tmp_path, NOISE, "t_noise"), Prov(world))
     assert r["code"] == "probe_fault" and r["error_type"] == "ZeroDivisionError" and ledger.trials() == []
+
+
+def test_r_h_f_evaluate_uses_the_programs_own_unit_threshold(tmp_path, tmp_ledger, monkeypatch):
+    """R-H: under the sealed lock evaluate takes the threshold of the program's unit (after the parse); the
+    trial row keeps ONE float; the refusal order is unchanged (lock first: an unsealed lock exits 4 before any
+    ledger, data or plan check)."""
+    seen = []
+    monkeypatch.setattr(kernel_lock, "require_sealed", lambda *a, **k: {
+        "semantic": "s" * 64, "text": "t" * 64, "combined": "c" * 64, "g6_threshold": {"core": 0.10, "top30": 0.025}})
+    monkeypatch.setattr(evaluate, "_evaluate_locked",
+                        lambda p, prog, tid, base, plan_sha, provider, opts, quiet, p_max: seen.append((prog.unit, p_max))
+                        or {"status": "evaluated", "g6_threshold": p_max})
+
+    class P0:
+        def check(self):
+            return "r" * 64
+    core = write(tmp_path, NOISE, "t_noise")
+    top = write(tmp_path, prog_text("n = param(24, 12, 48)\nsignal = cs_demean(ret(close, n))\n", kind="portfolio",
+                                    name="t_top").replace("hypothesis", 'unit = "top30"\nhypothesis', 1), "t_top")
+    r1 = evaluate.evaluate_file(str(core), 0, provider=P0(), quiet=True)
+    r2 = evaluate.evaluate_file(str(top), 0, provider=P0(), quiet=True)
+    assert seen == [("core", 0.10), ("top30", 0.025)]
+    assert isinstance(r1["g6_threshold"], float) and r2["g6_threshold"] == 0.025
+    order = []
+    monkeypatch.setattr(kernel_lock, "require_sealed", lambda *a, **k: (order.append("lock"), sys.exit(4)))
+    monkeypatch.setattr(evaluate, "check_generation", lambda g: order.append("plan"))
+    with pytest.raises(SystemExit) as e:
+        evaluate.evaluate_file(str(core), 0, provider=P0(), quiet=True)
+    assert e.value.code == 4 and order == ["lock"]

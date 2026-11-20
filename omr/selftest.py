@@ -125,7 +125,8 @@ def interpreter_smoke(world: pipeline.World):
         check(np.isfinite(raw[val]).any(), f"defined_in_val_{stem}")
 
 
-def pipeline_smoke(provider, p_max: float, tmp: Path):
+def pipeline_smoke(provider, p_max, tmp: Path):
+    """p_max: one float for every program, or the sealed {"core": x, "top30": y} (each program its unit's)."""
     gens = tmp / "generations"
     (gens / "gen000").mkdir(parents=True)
     (gens / "gen000" / "PLAN.md").write_text("selftest: kernel noise programs only (temporary ledger)\n", encoding="ascii")
@@ -138,7 +139,8 @@ def pipeline_smoke(provider, p_max: float, tmp: Path):
             src = progdir / f"{stem}.omr"
             shutil.copyfile(P.PROGRAMS_DIR / f"{stem}.omr", src)
             prog = L.parse_file(src)
-            row = evaluate.evaluate_file(str(src), 0, provider=provider, quiet=True, require_lock=False, p_max=p_max)
+            pm = p_max[prog.unit] if isinstance(p_max, dict) else p_max
+            row = evaluate.evaluate_file(str(src), 0, provider=provider, quiet=True, require_lock=False, p_max=pm)
             check(row.get("status") != "kernel_fault", f"no_kernel_fault_{stem}")
             check(row.get("status") == "evaluated", f"evaluated_{stem}")
             for k in ("dev_sharpe", "val_sharpe", "psr0", "dsr", "val_max_drawdown", "dev_val_max_drawdown",
@@ -183,7 +185,7 @@ def run(provider=None, require_lock: bool = True, p_max: float | None = None, tm
             check(not problems, "kernel_lock_verified")
             seal = kernel_lock.read_lock().get("seal")
             check(seal is not None, "kernel_sealed")
-            p_max = float(seal["g6_threshold"])
+            p_max = kernel_lock.thresholds_of(seal.get("g6_threshold"))      # R-H: per unit
         check(p_max is not None, "g6_threshold_available")
         provider = provider or evaluate.DiskProvider()
         try:

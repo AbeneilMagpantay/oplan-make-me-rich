@@ -1,10 +1,12 @@
-# Kernel universe calibration family (never a trial): short-term cross-sectional reversal on unit top30.
+# Kernel universe calibration family (never a trial): cross-sectional reversal on unit top30, the mirror of
+# ucal_xs_momentum on daily bars. Fix pass 6 (R-J): the former 4-96 hour reversal was cost-dominated at 12.5 bps
+# per side and outside the unit's certified holding periods (about 5 days and longer).
 name = "ucal_xs_reversal"
 family = "meanrev"
 kind = "portfolio"
 unit = "top30"
-hypothesis = "Calibration family: coins that rose most over the last h hours fall back relative to the unit; market neutral."
+hypothesis = "Calibration family: coins with the highest past n-day return fall back relative to the rest of the unit; market neutral."
 
-h = param(24, 4, 96)
+n = param(7, 3, 20)
 
-signal = cs_scale(cs_demean(-ret(close, h)))
+signal = cs_scale(cs_demean(-ret(daily(close), n)))

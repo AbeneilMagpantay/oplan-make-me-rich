@@ -178,19 +178,23 @@ def uartifact(lock, root, passes_010=2, passes_005=1, power=0.8, verified=True):
             "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
 
 
-def test_the_seal_needs_both_units_and_takes_the_stricter(tmp_path):
-    """KP-015: the threshold is the largest one that keeps the null pass rate <= 3% in BOTH units."""
+def test_the_seal_needs_both_units_and_decides_each_unit_alone(tmp_path):
+    """KP-015 + R-H: both calibrations are needed; each unit's threshold is the largest that keeps ITS null pass
+    rate <= 3% under both of its nulls (e: the seal writes the mapping)."""
     k = Kern(tmp_path)
     lock = k.rekey()
-    art = k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1))     # core alone: 0.10 qualifies
+    art = k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1))     # core: 0.10 qualifies
     with pytest.raises(KL.SealRefused):
         k.seal(art, uart=None)
     ua = uartifact(lock, tmp_path, passes_010=6, passes_005=2)                 # top30: 6.7% at 0.10, 2.2% at 0.05
     v = UC.decide_both(json.loads(art.read_text()), ua)
-    assert v["qualifying"] == [0.025, 0.05] and v["chosen_threshold"] == 0.05 and not v["STOP"]
+    assert v["chosen_threshold"] == {"core": 0.10, "top30": 0.05} and not v["STOP"]
+    assert v["per_unit"]["top30"]["qualifying"] == [0.025, 0.05] and v["per_unit"]["core"]["qualifying"] == [0.025, 0.05, 0.1]
     k.seal(art, uart=k.write_art(ua, name="ucalibration_y.json"))
     sealed = KL.read_lock(k.lock)["seal"]
-    assert sealed["g6_threshold"] == 0.05 and sealed["universe_calibration_file"] == "ledger/ucalibration_y.json"
+    assert sealed["g6_threshold"] == {"core": 0.10, "top30": 0.05}
+    assert sealed["universe_calibration_file"] == "ledger/ucalibration_y.json"
+    assert set(sealed["null_pass_rate"]) == {"core", "top30"} and set(sealed["power_at_1_5"]) == {"core", "top30"}
     assert k.verify() == []
     (tmp_path / "ledger" / "ucalibration_y.json").write_text("{}")                # the universe artifact changed
     assert any("universe calibration" in x for x in k.verify())
@@ -220,10 +224,11 @@ def test_seal_applies_the_rule_and_records_it(tmp_path):
     assert v["chosen_threshold"] == 0.05 and v["qualifying"] == [0.025, 0.05] and not v["STOP"]
     k.seal(art)
     sealed = KL.read_lock(k.lock)
-    assert sealed["seal"]["g6_threshold"] == 0.05 and sealed["seal"]["calibration_file"] == "ledger/calibration_x.json"
+    both = {"core": 0.05, "top30": 0.10}                              # the default top30 artifact qualifies at 0.10
+    assert sealed["seal"]["g6_threshold"] == both and sealed["seal"]["calibration_file"] == "ledger/calibration_x.json"
     assert sealed["seal"]["semantic_hash"] == lock["semantic"] and sealed["combined"] == lock["combined"]
     last = LG.read_rows(k.hist)[-1]
-    assert last["event"] == "seal" and last["g6_threshold"] == 0.05 and last["new_semantic"] == lock["semantic"]
+    assert last["event"] == "seal" and last["g6_threshold"] == both and last["new_semantic"] == lock["semantic"]
     assert k.verify() == []
     with pytest.raises(KL.SealRefused):                               # sealed once per semantic key
         k.seal(art)
@@ -231,7 +236,7 @@ def test_seal_applies_the_rule_and_records_it(tmp_path):
     assert any("artifact" in x for x in k.verify())
     art.write_text(art.read_text()[:-1])
     forged = dict(sealed)
-    forged["seal"] = dict(sealed["seal"], g6_threshold=0.1)            # hand-edited threshold
+    forged["seal"] = dict(sealed["seal"], g6_threshold={"core": 0.1, "top30": 0.1})    # hand-edited threshold
     k.lock.write_text(json.dumps(forged))
     assert any("seal" in x for x in k.verify())
     k.lock.write_text(json.dumps(sealed))
@@ -245,7 +250,8 @@ def test_a_text_only_rekey_keeps_the_seal_a_semantic_rekey_drops_it(tmp_path):
     (tmp_path / "tests" / "test_a.py").write_text("def test(): assert 1\n")
     (tmp_path / "CONSTITUTION.md").write_text("rules, reworded\n")
     l2 = k.rekey("text only")
-    assert l2["seal"]["g6_threshold"] == 0.05 and l2["semantic"] == lock["semantic"] and l2["text"] != lock["text"]
+    assert l2["seal"]["g6_threshold"] == {"core": 0.05, "top30": 0.10}
+    assert l2["semantic"] == lock["semantic"] and l2["text"] != lock["text"]
     assert LG.read_rows(k.hist)[-1]["seal_kept"] is True and k.verify() == []
     (tmp_path / "omr" / "a.py").write_text("X = 99\n")
     l3 = k.rekey("semantic change")
@@ -335,6 +341,147 @@ def test_d3_decide_both_reads_the_levels_present_in_each_unit(tmp_path):
     for n in ("A", "B"):
         ua["oracle"][n]["rows"] = [r for r in ua["oracle"][n]["rows"] if r["level"] == 1.5]
     v = UC.decide_both(core, ua)
-    assert v["chosen_threshold"] == 0.10 and not v["STOP"] and v["oracle_level_outside_bound"] == []
+    assert v["chosen_threshold"] == {"core": 0.10, "top30": 0.10} and not v["STOP"]
+    assert v["per_unit"]["top30"]["oracle_level_outside_bound"] == []
     assert set(UC.oracle_summary(ua["oracle"]["A"]["rows"])) == {"fast|1.5", "slow|1.5"}
     assert UC.oracle_summary(core["oracle"]["A"]["rows"]) == K.oracle_summary(core["oracle"]["A"]["rows"])
+
+
+# ---------------------------------------------------------------- fix pass 6: R-H per-unit thresholds, F2
+
+
+def oracle_rows_at(p_values):
+    """Oracle rows (both speeds, levels 1.0 and 1.5, 10 worlds) whose i-th world has perm_p p_values[i]."""
+    rows = []
+    for s in K.SPEEDS:
+        for lvl in K.LEVELS:
+            for i, p in enumerate(p_values):
+                rows.append({"speed": s, "level": lvl, "world_seed": i, "status": "evaluated", "val_sharpe": lvl,
+                             "perm_p": p, "rho": 0.1,
+                             "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None,
+                                                                                                         "G8": None}})
+    return rows
+
+
+def _two_units(core_p=None, top_p=None, core_pass=(2, 1), top_pass=(6, 2)):
+    lock = {"semantic": "s"}
+    core = artifact(lock, ROOT, passes_010=core_pass[0], passes_005=core_pass[1])
+    top = uartifact(lock, ROOT, passes_010=top_pass[0], passes_005=top_pass[1])
+    for art, ps in ((core, core_p), (top, top_p)):
+        if ps is not None:
+            for n in ("A", "B"):
+                art["oracle"][n]["rows"] = oracle_rows_at(ps)
+    return core, top
+
+
+def test_r_h_a_each_unit_at_its_own_threshold_and_its_power_there():
+    # core: 7 worlds pass at every threshold, 2 only at 0.10 -> power 0.9 at 0.10, 0.7 at 0.05
+    # top30: 8 worlds pass at every threshold, 1 only at 0.10 -> power 0.8 at 0.05
+    core, top = _two_units(core_p=[0.001] * 7 + [0.07] * 2 + [0.5], top_p=[0.001] * 8 + [0.07] + [0.5])
+    v = UC.decide_both(core, top)
+    assert v["chosen_threshold"] == {"core": 0.10, "top30": 0.05} and not v["STOP"]
+    assert v["power_at_1_5_chosen"]["core"] == {n: {"fast": 0.9, "slow": 0.9} for n in ("A", "B")}
+    assert v["power_at_1_5_chosen"]["top30"] == {n: {"fast": 0.8, "slow": 0.8} for n in ("A", "B")}
+    assert v["null_pass_rate"]["core"]["A"]["0.1"] == 0.02 and v["null_pass_rate"]["top30"]["A"]["0.05"] == 2 / 90
+
+
+def test_r_h_b_one_unit_rows_never_move_the_other_units_choice():
+    base = UC.decide_both(*_two_units())
+    for tp in ((0, 0), (2, 1), (9, 9)):                               # top30 null rows vary: core stays 0.10
+        v = UC.decide_both(*_two_units(top_pass=tp))
+        assert v["chosen_threshold"]["core"] == base["chosen_threshold"]["core"] == 0.10
+        assert v["per_unit"]["core"] == base["per_unit"]["core"]
+    for cp in ((0, 0), (4, 2), (9, 9)):                               # core null rows vary: top30 stays 0.05
+        v = UC.decide_both(*_two_units(core_pass=cp))
+        assert v["chosen_threshold"]["top30"] == base["chosen_threshold"]["top30"] == 0.05
+        assert v["per_unit"]["top30"] == base["per_unit"]["top30"]
+
+
+def test_r_h_c_top30_power_below_the_minimum_at_its_threshold_stops_naming_top30():
+    # top30 chosen 0.05; its oracle worlds pass only at 0.10 (perm_p 0.07): power 0 at 0.05
+    v = UC.decide_both(*_two_units(top_p=[0.07] * 9 + [0.5]))
+    assert v["STOP"] and v["chosen_threshold"] == {"core": 0.10, "top30": 0.05}
+    assert v["reason"].startswith("top30:") and "core:" not in v["reason"]
+
+
+def test_r_h_d_a_unit_without_a_qualifying_threshold_stops():
+    core, top = _two_units(core_pass=(9, 9))
+    for n in ("A", "B"):                                               # 5% pass even at 0.025: no grid value fits
+        for r in core["nulls"][n]["rows"][:5]:
+            r["perm_p"] = 0.01
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["chosen_threshold"]["core"] is None and v["reason"].startswith("core:")
+    assert v["chosen_threshold"]["top30"] == 0.05
+
+
+def test_r_h_e_the_seal_refuses_on_a_per_unit_stop(tmp_path):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1))
+    ua = uartifact(lock, tmp_path, passes_010=6, passes_005=2)
+    for n in ("A", "B"):
+        ua["oracle"][n]["rows"] = oracle_rows_at([0.07] * 9 + [0.5])
+    with pytest.raises(KL.SealRefused) as e:
+        k.seal(art, uart=k.write_art(ua, name="ucalibration_w.json"))
+    assert "top30" in str(e.value) and "per_unit" in str(e.value)
+    assert "seal" not in KL.read_lock(k.lock)
+
+
+def test_r_h_g_require_sealed_refuses_a_seal_without_both_units(monkeypatch):
+    base = {"semantic": "s" * 64, "text": "t" * 64, "combined": "c" * 64, "files": {}}
+    monkeypatch.setattr(KL, "verify", lambda *a, **k: [])
+    msgs = []
+    for bad in (0.05, {"core": 0.05}, {"core": 0.05, "top30": "x"}):
+        monkeypatch.setattr(KL, "read_lock", lambda *a, _b=bad, **k: dict(base, seal={"g6_threshold": _b}))
+        with pytest.raises(SystemExit) as e:
+            KL.require_sealed(log=msgs.append)
+        assert e.value.code == 4
+    assert all("PER-UNIT" in m for m in msgs)
+    monkeypatch.setattr(KL, "read_lock", lambda *a, **k: dict(base, seal={"g6_threshold": {"core": 0.1, "top30": 0.05}}))
+    assert KL.require_sealed()["g6_threshold"] == {"core": 0.1, "top30": 0.05}
+    assert KL.format_threshold({"core": 0.1, "top30": 0.05}) == "core 0.1 top30 0.05"
+
+
+@pytest.mark.parametrize("gap", ["no_level_15", "no_speed", "no_null", "no_oracle"])
+def test_f2_an_incomplete_unit_artifact_stops_with_a_reason(gap):
+    core, top = _two_units()
+    if gap == "no_level_15":
+        for n in ("A", "B"):
+            top["oracle"][n]["rows"] = [r for r in top["oracle"][n]["rows"] if r["level"] != 1.5]
+    elif gap == "no_speed":
+        top["oracle"]["B"]["rows"] = [r for r in top["oracle"]["B"]["rows"] if r["speed"] != "slow"]
+    elif gap == "no_null":
+        del top["nulls"]["B"]
+    else:
+        del top["oracle"]
+    v = UC.decide_both(core, top)                                      # no KeyError
+    assert v["STOP"] and v["reason"].startswith("top30: top30 artifact incomplete")
+    assert v["chosen_threshold"]["core"] == 0.10
+
+
+# ---------------------------------------------------------------- fix pass 6: FP6-1 malformed rows, FP6-3 grid values
+
+
+@pytest.mark.parametrize("case", ["unknown_family", "no_gates", "no_level"])
+def test_fp6_1_a_malformed_unit_artifact_stops_instead_of_raising(case):
+    core, top = _two_units()
+    if case == "unknown_family":
+        top["nulls"]["A"]["rows"][0]["family"] = "not_a_family"
+    elif case == "no_gates":
+        del top["nulls"]["A"]["rows"][0]["gates"]
+    else:
+        top["oracle"]["A"]["rows"].append({"speed": "fast", "status": "evaluated", "val_sharpe": 1.5, "perm_p": 0.001,
+                                           "gates": {}})
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ")
+    assert v["chosen_threshold"]["core"] == 0.10
+
+
+def test_fp6_3_a_sealed_threshold_must_be_a_grid_value():
+    for bad in (float("nan"), float("inf"), 5, 0.07, -0.05):
+        assert KL.thresholds_of({"core": 0.05, "top30": bad}) is None
+        assert KL.thresholds_of({"core": bad, "top30": 0.05}) is None
+    for g in C.G6_GRID:
+        assert KL.thresholds_of({"core": g, "top30": g}) == {"core": g, "top30": g}
+    assert KL.thresholds_of({"core": 0.1 + 1e-13, "top30": 0.025}) == {"core": 0.1, "top30": 0.025}
+    assert KL.UNITS_SEALED == C.UNITS == ("core", "top30")

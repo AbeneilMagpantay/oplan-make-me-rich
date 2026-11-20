@@ -434,3 +434,170 @@ def test_r_f_deterministic_per_seed_and_drawn_from_the_pools(world_src):
         assert a.pick[d] in set(days[off[dp[d]]:off[dp[d] + 1]].tolist())
     lo = src.meta["pool_lo"]
     assert ((a.pick[dp < 0] >= lo) & (a.pick[dp < 0] < src.ND)).all()
+
+
+# ---------------------------------------------------------------- fix pass 6: F3 partial file integrity
+
+
+def _quiet(*a, **k):
+    return None
+
+
+def test_f3_a_torn_tail_does_not_swallow_the_next_record(tmp_path):
+    p = tmp_path / "t.partial.jsonl"
+    part = UC.Partial(p, {"h": 1}, log=_quiet)
+    for i in range(3):
+        part.record(UC.task_key("null", ["A", i]), [{"v": i}])
+    with p.open("ab") as f:
+        f.write(b'{"key": "[\\"null\\",[\\"A\\",3]]", "result": [{"v"')            # torn, no newline
+    logs = []
+    again = UC.Partial(p, {"h": 1}, log=logs.append)
+    assert again.discarded == 1 and len(again.done) == 3 and "1 damaged lines discarded" in logs[0]
+    again.record(UC.task_key("null", ["A", 3]), [{"v": 3}])                     # the next append after a torn tail
+    third = UC.Partial(p, {"h": 1}, log=_quiet)
+    assert third.done == {UC.task_key("null", ["A", i]): [{"v": i}] for i in range(4)}   # nothing lost
+
+
+def test_f3_a_flipped_character_in_a_stored_result_is_discarded_and_recomputed(tmp_path):
+    p = tmp_path / "t.partial.jsonl"
+    part = UC.Partial(p, {"h": 1}, log=_quiet)
+    part.record(UC.task_key("null", ["A", 0]), [{"val_sharpe": 0.123456}])
+    part.record(UC.task_key("null", ["A", 1]), [{"val_sharpe": 0.5}])
+    lines = p.read_bytes().split(b"\n")
+    assert b"0.123456" in lines[1]
+    lines[1] = lines[1].replace(b"0.123456", b"0.123457")                     # one flipped digit
+    p.write_bytes(b"\n".join(lines))
+    again = UC.Partial(p, {"h": 1}, log=_quiet)
+    assert again.discarded == 1 and list(again.done) == [UC.task_key("null", ["A", 1])]
+
+
+def test_f3_a_key_twice_with_different_results_stops_and_the_same_result_twice_is_accepted(tmp_path):
+    p = tmp_path / "t.partial.jsonl"
+    part = UC.Partial(p, {"h": 1}, log=_quiet)
+    k = UC.task_key("curve", ["A", 1, "fast", [0.1]])
+    part.record(k, [1.0])
+    part.record(k, [1.0])
+    assert UC.Partial(p, {"h": 1}, log=_quiet).done == {k: [1.0]}
+    part.record(k, [2.0])
+    with pytest.raises(UC.PartialMismatch):
+        UC.Partial(p, {"h": 1}, log=_quiet)
+    assert UC.Partial(p, {"h": 1}, restart=True, log=_quiet).done == {}
+
+
+# ---------------------------------------------------------------- fix pass 6: F6 oracle phases first
+
+
+def _power_rows(null, perm_p, seeds=(0, 1, 2, 3)):
+    return [[{"null": null, "speed": s, "level": 1.5, "rho": 0.1, "world_seed": w, "status": "evaluated",
+              "val_sharpe": 1.5, "perm_p": perm_p,
+              "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}}
+             for s in CB.SPEEDS] for w in seeds]
+
+
+@pytest.mark.parametrize("perm_p,advisory", [(0.5, True), (0.001, False)])
+def test_f6_oracle_phases_run_first_and_a_hopeless_power_is_announced(monkeypatch, perm_p, advisory):
+    """Light: fabricated task results (no universe is built). The oracle phases of both nulls come before the
+    null worlds; with power 0 at the largest threshold one prominent ADVISORY line is logged before the null
+    phases, with full power none."""
+    calls = []
+
+    def fake_run_tasks(pool, partial, kind, arglist, log, label):
+        calls.append(kind)
+        if kind == "power":
+            return _power_rows(arglist[0][0], perm_p, seeds=range(len(arglist)))
+        return [[] for _ in arglist]
+    monkeypatch.setattr(UC, "run_tasks", fake_run_tasks)
+    monkeypatch.setattr(UC, "tune_rho", lambda pool, partial, null, speed, seeds, log: (
+        calls.append("curve"), {"1.5": {"rho": 0.1}})[1])
+    logs = []
+    nulls, oracle = UC.calibrate_run(None, None, list(UC.FAMILIES), 3, 4, logs.append)
+    assert calls == ["curve", "curve", "power", "curve", "curve", "power", "null", "null"]
+    adv = [ln for ln in logs if ln.startswith("ADVISORY")]
+    assert bool(adv) == advisory
+    if advisory:
+        assert "seal rule will STOP" in adv[0] and "interrupted" in adv[0] and "null A fast" in adv[0]
+    assert any("Tier-1 power" in ln for ln in logs)
+    assert set(oracle) == {"A", "B"} and set(nulls) == {"A", "B"}
+
+
+def test_f6_the_artifact_does_not_depend_on_the_phase_order(tiny_run, tmp_path, monkeypatch):
+    """HEAVY (builds the synthetic universe): the artifact of the oracle-first run equals the one of a run that
+    takes the null worlds first, apart from created_at and wall_seconds."""
+    first = tmp_path / "oracle_first.json"
+    UC.main(tiny_run + ["--out", str(first)])
+    real = UC.calibrate_run
+
+    def nulls_first(pool, partial, fams, worlds, oracle_worlds, log):
+        nulls = {}
+        for null in ("A", "B"):
+            res = UC.run_tasks(pool, partial, "null", [[null, UC.SEEDS[null] + i] for i in range(worlds)], log, null)
+            rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
+            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
+        _, oracle = real(pool, partial, fams, worlds, oracle_worlds, log)     # null tasks are reused from partial
+        return nulls, oracle
+    monkeypatch.setattr(UC, "calibrate_run", nulls_first)
+    second = tmp_path / "nulls_first.json"
+    UC.main(tiny_run + ["--out", str(second)])
+    assert _artifact(first) == _artifact(second)
+
+
+# ---------------------------------------------------------------- fix pass 6: F8 (R-I) universe oracle speeds
+
+
+def test_f8_the_universe_oracle_speeds_are_a_unit_constant(monkeypatch):
+    """Light: the run header carries the unit speeds; the oracle tasks build each speed's UOracle with
+    USPEEDS days; omr.calibrate's speeds are unchanged."""
+    assert UC.USPEEDS == {"fast": UC.UNIVERSE_FAST_DAYS, "slow": 20} and set(UC.USPEEDS) == set(CB.SPEEDS)
+    assert CB.SPEEDS == {"fast": 1, "slow": 20}                                      # the core is untouched
+    h = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
+    assert h["speeds_days"] == UC.USPEEDS
+    built = []
+
+    class FakeOracle:
+        def __init__(self, ud, k_days, eps_seed):
+            built.append(k_days)
+            self.bu = None
+
+        def val_sharpe(self, rho):
+            return 0.0
+
+        def weights(self, rho):
+            return None
+    monkeypatch.setattr(UC, "UOracle", FakeOracle)
+    monkeypatch.setattr(UC, "build_uworld", lambda *a, **k: None)
+    monkeypatch.setattr(UP, "evaluate_weights_u", lambda *a, **k: {"status": "liquidated", "reason": "x"})
+    UC._W.clear()
+    UC._W.update({"src": None, "handle": None})
+    UC.task_oracle_curve(["A", 1, "fast", [0.1]])
+    UC.task_oracle_curve(["A", 1, "slow", [0.1]])
+    assert built == [UC.USPEEDS["fast"], 20]
+    built.clear()
+    UC.task_oracle_power(["A", 1, {"fast|1.5": 0.1, "slow|1.5": 0.1}])
+    assert built == [UC.USPEEDS["fast"], UC.USPEEDS["slow"]]
+    UC._W.clear()
+
+
+# ---------------------------------------------------------------- fix pass 6: F9 (R-J) the reversal family
+
+
+def test_f9_the_reversal_family_is_the_momentums_mirror_on_daily_bars():
+    """Light (the 12-symbol probe panel): the family parses in unit top30 within the lookback limit, its draws stay
+    within 3..20 days by the momentum's mechanism, and for the same n its signal and weights are exactly minus the
+    momentum family's."""
+    from omr import interp as X
+    from omr import probe
+    rev = L.parse_file(UC.family_path("ucal_xs_reversal"))
+    mom = L.parse_file(UC.family_path("ucal_xs_momentum"))
+    assert rev.unit == "top30" and rev.kind == "portfolio" and list(rev.params) == ["n"]
+    p = rev.params["n"]
+    assert p.is_int and (p.low, p.high) == (3, 20) and rev.lookback_hours <= C.LOOKBACK_MAX_HOURS
+    rng = np.random.default_rng(4)
+    draws = [CB.draw_params(rev, rng)["n"] for _ in range(2000)]
+    assert min(draws) == 3 and max(draws) == 20 and all(isinstance(d, int) for d in draws)
+    panel, btc = probe.universe_panel()
+    for n in (3, 7, 20):
+        r_raw, r_kn = X.evaluate_full(rev, {"n": n}, panel, btc)
+        m_raw, m_kn = X.evaluate_full(mom, {"n": n}, panel, btc)
+        assert np.array_equal(r_kn, m_kn) and r_kn.any()
+        assert np.array_equal(r_raw, -m_raw, equal_nan=True)
+        assert np.array_equal(UP.uweights(r_raw), -UP.uweights(m_raw))

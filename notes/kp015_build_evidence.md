@@ -661,3 +661,88 @@ Full suite after this pass: 826 passed, 0 failed, 0 xfailed, 0 skipped (1,234 s)
 Files touched: omr/data.py, omr/ucalibrate.py, omr/upipeline.py; tests/test_g6_paired.py, test_holefill.py,
 test_ledger_lock.py, test_ucalibrate.py; CONSTITUTION.md, LANGUAGE.md, KERNEL_PROPOSALS.md, STATE.md, .gitignore,
 notes/kp015_build_evidence.md. (audits/AUDIT_LOG.md: the coordinator's own entry, not touched here.)
+
+# FIX PASS 6 (2026-11-20): per-unit G6 threshold (R-H), incomplete artifacts, partial-file integrity, docs, run order
+
+Base 32e32e0 (kp015-build). Build and light tests only so far (memory reserved for the auditor): no re-key,
+calibration, seal or selftest; no git writes; the project ledger untouched; STATE.md, audits/ and kernel.lock not
+touched.
+
+F1 (R-H). omr/ucalibrate.py: decide_both(core_art, uni_art) gives each unit its own decision from its own stored
+rows (unit_verdict -> verdict_from_rows -> calibrate.decide) and returns per_unit (both verdicts), chosen_threshold
+{"core": x, "top30": y}, null_pass_rate and power_at_1_5_chosen per unit, and STOP with a reason naming the unit
+when either unit has no qualifying threshold, power below POWER_MIN or a level outside its bound (RULE_PER_UNIT).
+omr/kernel_lock.py: UNITS_SEALED; seal writes g6_threshold = {"core": x, "top30": y} (null_pass_rate and power_at_1_5
+per unit) and refuses with the per-unit verdicts on STOP; thresholds_of / format_threshold; require_sealed returns
+the mapping and exits (code 4, "KERNEL SEAL HAS NO PER-UNIT G6 THRESHOLD") when the stored value is not a mapping
+with a number for both units; `kernel_lock verify` and omr/status.py print both thresholds. omr/evaluate.py: under
+the sealed lock the threshold of the program's own unit is taken right after the parse (the lock, ledger-chain,
+data and generation-plan refusals keep their order); the trial row's g6_threshold stays one float; require_lock=
+False keeps an explicit float. omr/selftest.py: run() reads the per-unit mapping, pipeline_smoke gives each noise
+program its own unit's threshold. F1 changes no result other than the threshold a unit is judged at: each unit's
+verdict is exactly calibrate.decide on its own rows (the core's equals the previous core verdict; test_d3 shows the
+level-aware summary equals calibrate.oracle_summary on the core rows).
+Tests (light): tests/test_ledger_lock.py test_the_seal_needs_both_units_and_decides_each_unit_alone (e: the seal
+writes the mapping), test_r_h_a (core at 0.10 with power 0.9 read there, top30 at 0.05 with power 0.8 read there;
+the core power at 0.05 would have been 0.7), test_r_h_b (varying one unit's null rows never moves the other unit's
+choice or verdict), test_r_h_c (top30 power below the minimum at its own threshold: STOP naming top30 only),
+test_r_h_d (a unit with no qualifying threshold: STOP naming core), test_r_h_e (the seal refuses with the per-unit
+verdicts), test_r_h_g (require_sealed refuses a float seal, a one-unit mapping and a non-number), the existing seal
+tests moved to the mapping; tests/test_evaluate.py::test_r_h_f_evaluate_uses_the_programs_own_unit_threshold (core
+0.10, top30 0.025 from the same sealed mapping; the row records one float; an unsealed lock still exits first).
+F2. ucalibrate.artifact_gaps: a unit artifact without families, the null or oracle rows of a null, or level-1.5
+oracle rows for a speed and null makes decide_both STOP with "<unit> artifact incomplete: ..." before
+calibrate.decide is called (omr/calibrate.py untouched). Test: test_f2_an_incomplete_unit_artifact_stops_with_a_reason
+(no level 1.5, a missing speed, a missing null, no oracle: STOP, no KeyError, the other unit still decided).
+F3. ucalibrate.Partial: every record line carries "sha" (sha256 of the canonical JSON of {"key", "result"}); a line
+that does not parse or whose sha does not match is discarded and counted in the resume log line; a file whose
+last line was torn gets a newline before the next append; a key stored twice with different results raises
+PartialMismatch (the same result twice is accepted). Tests (tests/test_ucalibrate.py): test_f3_a_torn_tail... (torn
+tail, resume, append, second resume: all four tasks present), test_f3_a_flipped_character... (the damaged line is
+discarded, its task missing so it runs again), test_f3_a_key_twice... (same result accepted, different result stops,
+--restart clears).
+F4. CONSTITUTION section 13 calibration bullet: universe null B funding is "rates as recorded before the sign coin";
+the core calibration's null B in section 8 (line 271) still reads "funding unchanged" (it is the core text).
+F5. CONSTITUTION section 13 (G6 paragraph) and LANGUAGE section 10: the two limits of the universe lag test
+(entrants of less than k hours are in neither book; each book pays its own costs) and why the lag range stays 30
+days to half the VAL length, with a pointer to audits/AUDIT_LOG.md round 7.
+F6. ucalibrate.calibrate_run runs the oracle phases of both nulls first, logs the Tier-1 power per null, speed,
+level and grid threshold (oracle_advisory), and when the power at the largest threshold is below POWER_MIN or a
+level is outside its bound logs one prominent ADVISORY line (the seal rule will STOP whatever the null worlds give;
+the run can be interrupted, the partial file keeps the work); no exit, no change to the artifact. Light test:
+test_f6_oracle_phases_run_first_and_a_hopeless_power_is_announced (fabricated task results: call order curve,
+curve, power x 2 nulls before the null phases; the advisory appears with power 0 and not with full power).
+F7. PROTOCOL_VERSION 4 (per-unit seal rule, partial line sha, oracle phases first); the ucalibrate docstring;
+CONSTITUTION section 8 (the rule is applied per unit since KP-015) and section 13 (seal bullet R-H, run order);
+KERNEL_PROPOSALS KP-015 "fix pass 6".
+Light test results: tests/test_ledger_lock.py 36 passed; tests/test_ucalibrate.py -k "f3 or d1_partial or
+f6_oracle_phases or d4_defaults" 7 passed; tests/test_evaluate.py -k "r_h_f or unsealed" 2 passed;
+tests/test_exploits.py + tests/test_structure.py 97 passed. Heavy tests (test_f6_the_artifact_does_not_depend_on_
+the_phase_order, the rest of tests/test_ucalibrate.py, the full suite) wait for the coordinator.
+F8 (R-I). omr/ucalibrate.py: USPEEDS = {"fast": UNIVERSE_FAST_DAYS, "slow": 20} with UNIVERSE_FAST_DAYS = 5
+(confirmed by the coordinator; one constant); every use of the speeds as days inside ucalibrate (task_oracle_curve, task_oracle_power,
+artifact_gaps, oracle_summary, oracle_advisory, calibrate_run, run_header's speeds_days, the artifact's protocol
+block) reads USPEEDS; the names fast / slow are the core's, so calibrate.decide reads them. omr/calibrate.py
+(SPEEDS 1 and 20) is untouched; omr/kernel_lock.py compares no speeds. Reason (audit round 7, 24 worlds with the
+real membership structure, 40 lags, one rho per speed at mean VAL Sharpe 1.5): cost drag in Sharpe units 3.86 at
+1 day, 1.50 at 3, 0.93 at 5, 0.64 at 7, 0.39 at 10, 0.29 at 20 days; Tier-1 of 24 at 0.025 / 0.05 / 0.10: 1 day
+0 / 0 / 0 (G4 0 of 24), 5 days 18 / 18 / 19 (G4 20 of 24), 7 days 15 / 15 / 19, 10 days 15 / 18 / 20, 20 days
+17 / 18 / 20; the rule fixed before the data (the fastest of 5, 7, 10 days with Tier-1 at least 0.65 at all three
+thresholds) selects 5 days. Light test:
+tests/test_ucalibrate.py::test_f8_the_universe_oracle_speeds_are_a_unit_constant (the header carries USPEEDS; the
+curve and power tasks build the fast oracle with USPEEDS["fast"] days and the slow one with 20; calibrate.SPEEDS
+is still 1 and 20). Text: CONSTITUTION section 13, LANGUAGE section 10 (turnover sentence), KERNEL_PROPOSALS, the
+ucalibrate docstring.
+F9 (R-J). omr/programs/ucal_xs_reversal.omr is now the mirror of ucal_xs_momentum on daily bars:
+signal = cs_scale(cs_demean(-ret(daily(close), n))), n = param(7, 3, 20) (whole days, drawn by the same
+calibrate.draw_params mechanism as the momentum's n; lookback 527 hours, inside the 90-day limit); the former
+4-96 hour reversal was cost-dominated at 12.5 bps per side (VAL Sharpe -9.7 in the measured null world), could never
+reach Tier 1 and sat outside the unit's certified holding periods. Texts: the ucalibrate docstring, CONSTITUTION
+section 13 (family description), KERNEL_PROPOSALS. FP6-1 unit_verdict returns STOP "<unit> artifact malformed:
+<type>: <message>" for a KeyError, TypeError or ValueError raised by a malformed row. FP6-2 KERNEL_PROPOSALS states
+the round-7 sequence (READY, then NOT READY after the Tier-1 power measurement, fix pass 6 reviewed READY on the
+working tree). FP6-3 kernel_lock.thresholds_of accepts a unit's value only if it is a G6_GRID value (within 1e-12);
+require_sealed refuses anything else. FP6-4 kernel_lock uses C.UNITS (exactly ("core", "top30")). FP6-6 LANGUAGE
+section 10 gives the exact figure (twice the gross traded a day, about 0.9 of the gross per year in costs,
+2 x 12.5 bps x 365); CONSTITUTION section 13 says the 24 audit worlds had the real membership structure and
+synthetic prices.

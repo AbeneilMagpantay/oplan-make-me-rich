@@ -38,6 +38,7 @@ import sys
 import sysconfig
 from pathlib import Path
 
+from omr import constants as C
 from omr import ledger
 from omr import paths as P
 
@@ -45,6 +46,7 @@ KERNEL_DIRS = ("omr", "tests")
 KERNEL_FILES = ("CONSTITUTION.md", "LANGUAGE.md", "requirements.txt")
 SEAL_KEYS = ("g6_threshold", "calibration_file", "calibration_sha256", "semantic_hash",
              "universe_calibration_file", "universe_calibration_sha256")
+UNITS_SEALED = C.UNITS                           # R-H: g6_threshold = {"core": x, "top30": y} (C.UNITS order)
 
 
 def is_semantic(rel: str) -> bool:
@@ -353,7 +355,8 @@ def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path:
          research_hash: str | None = None, log=print, check_env: bool = True, calibration_log: Path = None,
          universe_artifact=None) -> dict:
     """Apply the calibration rule in code to the LOGGED calibration artifacts of BOTH units (core:
-    omr.calibrate; top30: omr.ucalibrate) and write the G6 threshold (omr.ucalibrate.decide_both)."""
+    omr.calibrate; top30: omr.ucalibrate) and write the G6 threshold of EACH unit (omr.ucalibrate.decide_both,
+    R-H: {"core": x, "top30": y}); both units seal or neither."""
     from omr import ucalibrate
     from omr import data
     root = P.ROOT if root is None else root
@@ -375,11 +378,14 @@ def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path:
     if bad:
         raise SealRefused("; ".join(bad))
     verdict = ucalibrate.decide_both(art, uart)
-    if verdict.get("chosen_threshold") is None or verdict.get("STOP"):
-        raise SealRefused("calibration rule: " + json.dumps(ledger.clean({k: verdict.get(k) for k in
-                                                                          ("chosen_threshold", "reason",
-                                                                           "below_power_min", "null_pass_rate")})))
-    s = {"g6_threshold": verdict["chosen_threshold"], "calibration_file": rel, "calibration_sha256": sha,
+    chosen = verdict.get("chosen_threshold") or {}
+    if verdict.get("STOP") or any(chosen.get(u) is None for u in UNITS_SEALED):
+        per = {u: {k: (verdict.get("per_unit") or {}).get(u, {}).get(k) for k in
+                   ("chosen_threshold", "reason", "below_power_min", "null_pass_rate", "oracle_level_outside_bound")}
+               for u in UNITS_SEALED}
+        raise SealRefused("calibration rule (per unit): " + json.dumps(ledger.clean({"reason": verdict.get("reason"),
+                                                                                    "per_unit": per})))
+    s = {"g6_threshold": {u: float(chosen[u]) for u in UNITS_SEALED}, "calibration_file": rel, "calibration_sha256": sha,
          "universe_calibration_file": urel, "universe_calibration_sha256": usha,
          "semantic_hash": lock["semantic"], "sealed_at": _now(), "rule": verdict["rule"],
          "null_pass_rate": verdict["null_pass_rate"], "power_at_1_5": verdict["power_at_1_5_chosen"]}
@@ -389,7 +395,7 @@ def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path:
                                  "approved_by": "omr.kernel_lock seal", "old_combined": lock["combined"],
                                  "new_combined": lock["combined"], "new_semantic": lock["semantic"],
                                  "new_text": lock["text"], "changed_files": [], **{k: s[k] for k in SEAL_KEYS}})
-    log(f"sealed: G6 threshold {s['g6_threshold']}  calibration {rel}  sha256 {sha[:16]}")
+    log(f"sealed: G6 threshold {format_threshold(s['g6_threshold'])}  calibration {rel}  sha256 {sha[:16]}")
     return lock
 
 
@@ -404,16 +410,43 @@ def require_kernel(log=print) -> dict:
     return read_lock()
 
 
+def thresholds_of(value) -> dict | None:
+    """R-H: the sealed {"core": x, "top30": y} as floats, or None when the stored value is not a mapping holding,
+    for both units, one of the G6_GRID values (within 1e-12; FP6-3: NaN, infinity and off-grid numbers refused)."""
+    if not isinstance(value, dict):
+        return None
+    out = {}
+    for u in UNITS_SEALED:
+        x = value.get(u)
+        if isinstance(x, bool) or not isinstance(x, (int, float)):
+            return None
+        on_grid = [g for g in C.G6_GRID if abs(float(x) - g) <= 1e-12]
+        if not on_grid:
+            return None
+        out[u] = float(on_grid[0])
+    return out
+
+
+def format_threshold(value) -> str:
+    t = thresholds_of(value)
+    return " ".join(f"{u} {t[u]:g}" for u in UNITS_SEALED) if t else str(value)
+
+
 def require_sealed(log=print) -> dict:
-    """{semantic, text, combined, g6_threshold}; exits if the lock does not verify or is not sealed."""
+    """{semantic, text, combined, g6_threshold: {"core": x, "top30": y}}; exits if the lock does not verify, is
+    not sealed, or its seal does not hold a threshold for each unit."""
     lock = require_kernel(log)
     seal_ = lock.get("seal")
     if not seal_:
         log("KERNEL NOT SEALED - refusing to evaluate: run the calibration on the locked kernel, then "
             "python -m omr.kernel_lock seal --calibration <artifact>")
         sys.exit(4)
-    return {"semantic": lock["semantic"], "text": lock["text"], "combined": lock["combined"],
-            "g6_threshold": float(seal_["g6_threshold"])}
+    t = thresholds_of(seal_.get("g6_threshold"))
+    if t is None:
+        log("KERNEL SEAL HAS NO PER-UNIT G6 THRESHOLD - refusing to evaluate: the seal must hold "
+            "{\"core\": x, \"top30\": y} (R-H); calibrate both units and seal again")
+        sys.exit(4)
+    return {"semantic": lock["semantic"], "text": lock["text"], "combined": lock["combined"], "g6_threshold": t}
 
 
 def main(argv=None):
@@ -439,7 +472,8 @@ def main(argv=None):
         s = lock.get("seal")
         n_sem = sum(1 for f in lock["files"] if is_semantic(f))
         print(f"KERNEL LOCK: OK  semantic {lock['semantic']} ({n_sem} files)  text {lock['text']} "
-              f"({len(lock['files']) - n_sem} files)  " + (f"sealed G6 {s['g6_threshold']}" if s else "NOT SEALED"))
+              f"({len(lock['files']) - n_sem} files)  "
+              + (f"sealed G6 {format_threshold(s['g6_threshold'])}" if s else "NOT SEALED"))
     elif a.cmd == "hash":
         cur = compute()
         print(f"semantic {cur['semantic']}\ntext {cur['text']}\ncombined {cur['combined']}")

@@ -179,9 +179,10 @@ def print_result(row: dict):
 
 def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts | None = None,
                   quiet: bool = False, require_lock: bool = True, p_max: float | None = None) -> dict:
+    thresholds = None
     if require_lock:
         k = kernel_lock.require_sealed()
-        p_max = k["g6_threshold"]
+        thresholds = k["g6_threshold"]                  # R-H: {"core": x, "top30": y}; the unit's is taken below
     else:
         k = kernel_lock.compute()
         if p_max is None:
@@ -206,6 +207,8 @@ def evaluate_file(path: str, generation: int, provider=None, opts: pipeline.Opts
         if e.rule == "probe_fault":                  # a kernel bug while probing: never shown as a syntax error
             return stage1_log(dict(base, code="probe_fault", error_type=e.msg), quiet)
         return stage1_log(dict(base, code=f"parse:{e.rule}", line=e.line, col=e.col), quiet)
+    if thresholds is not None:
+        p_max = thresholds[prog.unit]                    # the program's own unit (header key unit)
     tid = L.trial_id(prog, k["semantic"], rh)
     existing = ledger.find_trial(tid)
     if existing:

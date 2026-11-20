@@ -16,7 +16,7 @@ def main(argv=None):
     seal = (lock or {}).get("seal")
     print(f"kernel: {'OK' if not pr else 'MISMATCH'}  {lock['combined'][:16] if lock else '-'}  "
           f"semantic {lock['semantic'][:16] if lock else '-'}  text {lock['text'][:16] if lock else '-'}  "
-          + (f"sealed: G6 threshold {seal['g6_threshold']}" if seal else "NOT SEALED (evaluate refuses)"))
+          + (f"sealed: G6 threshold {kernel_lock.format_threshold(seal['g6_threshold'])}" if seal else "NOT SEALED (evaluate refuses)"))
     for p in pr[:10]:
         print("  " + p)
     try:

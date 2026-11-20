@@ -305,7 +305,17 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   VAL the earlier weights come from before VAL start), traded at the same times; both books hold the same
   names on every row (tradable now and in play at the earlier row), each re-centred to the net of the
   row it came from, flat under 10 names. No row after the decision is used: a later row would choose the
-  names by future membership.
+  names by future membership. Limits (CONSTITUTION section 13; audits/AUDIT_LOG.md round 7): positions in
+  names that entered the unit less than k hours before are in neither book, so an edge in recent entrants
+  is not credited and a slow strategy has less power than in the core unit; and each book pays its own
+  costs, which distorts the comparison for a book whose costs are large next to its volatility. The lag
+  range stays 30 days to half the VAL length (lagged copies of a slow book stay correlated within its
+  memory of up to 90 days). The threshold applied is the program's own unit's (sealed per unit).
+- Turnover: a book that replaces itself every day trades twice its gross a day and pays about 0.9 of its
+  gross per year in costs (2 x 12.5 bps x 365), about 1.8 at the doubled costs of G4. To pass G4 it would
+  have to earn more than that before costs, which no realistic edge does. Design top30 books for holding
+  periods of days to weeks (the unit's timing test is calibrated for the oracle speeds of CONSTITUTION
+  section 13, 5 and 20 days).
 - Costs: 12.5 bps per side on every symbol. A position in a symbol whose next bar is missing is closed
   at its last usable close (the close of its previous usable bar, which can be a zero-trade bar with a
   frozen price) with that cost; a symbol leaving the unit gets weight 0.

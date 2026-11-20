@@ -283,7 +283,8 @@ read under a logged calibration handle; nothing enters the trial ledger:
 - Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
   under BOTH nulls; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds under both
   nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule fails,
-  nothing is sealed, generation 0 cannot run, and the human decides.
+  nothing is sealed, generation 0 cannot run, and the human decides. Since KP-015 the rule is applied
+  to EACH unit on its own rows and the seal holds one threshold per unit (section 13).
 
 The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
 
@@ -455,8 +456,15 @@ Live risk limits the loop can never change:
   Sharpe - 1e-9 (both can only raise p). Where no row of the actual book differs from the actual weights
   the actual run is reused. Why no future row: the names common to a row must be known at the decision
   (a source row from the future would keep only names that will still be members later, a survivor
-  filter). The core unit's G6 is unchanged. G8: the same program on unit next30 must have a positive
-  Sharpe over its DEV+VAL span.
+  filter). Two limits, stated plainly (numbers: audits/AUDIT_LOG.md, round 7): (1) the books are compared
+  only on names in play at both rows, so positions in names that entered the unit less than k hours
+  before are left out of both books; a book whose edge sits in recent entrants is not credited for it,
+  and with the real turnover of members a slow strategy has less power here than in the core unit. (2)
+  Each book pays its own costs, so for a book whose costs are large next to its volatility the
+  comparison is distorted (such books fail G1-G4 anyway). The lag range stays 30 days to half the VAL
+  length: lagged copies of a slow book stay correlated within the signal's memory of up to 90 days, so a
+  shorter range would leave too few independent comparisons. The core unit's G6 is unchanged. G8: the
+  same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
 - The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged) and omr.ucalibrate
   (top30, fix pass 4: null worlds on the REAL membership calendar - every symbol ever in top30 keeps
   its real present and absent hours, trades and volumes, so the kernel's own rule reproduces the real
@@ -466,9 +474,21 @@ Live risk limits the loop can never change:
   month is fully active (fix pass 5; a pool under 90 days falls back to the whole period), a symbol not
   fully active on it uses a personal fallback day, funding keeps
   the real settlement calendar with the source day's rates; null B mirrors every symbol's demeaned path
-  with one coin per day, funding unchanged; three hash-locked cross-sectional families, the same
+  with one coin per day, funding rates as recorded before the sign coin below; three hash-locked
+  cross-sectional families (momentum and reversal on daily returns, n from 3 to 60 and from 3 to 20 days -
+  the reversal mirrors the momentum since fix pass 6 - and funding carry), the same
   screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds
   on the same worlds, tuned and evaluated at true Sharpe 1.5 only, the level the rule reads). The
+  universe oracle's speeds (fix pass 6, R-I) are fast = 5 days and slow = 20 days; the core keeps 1 and
+  20. At 12.5 bps per side the oracle's cost drag in Sharpe units is 3.86 at 1 day, 1.50 at 3, 0.93 at 5,
+  0.64 at 7, 0.39 at 10 and 0.29 at 20 days, so no 1-day book with net Sharpe 1.5 keeps a positive Sharpe
+  at doubled costs: on 24 audit worlds with the real membership structure and synthetic prices G4 passed
+  0 of 24 and Tier-1 was
+  0 at every threshold at 1 day, while at 5 days Tier-1 was 18 / 18 / 19 of 24 at 0.025 / 0.05 / 0.10 (G4
+  20 of 24; audits/AUDIT_LOG.md, round 7). 5 days is the fastest of 5, 7 and 10 days with Tier-1 at least
+  0.65 at all three thresholds, the rule fixed before the sweep. The unit is therefore certified for
+  holding periods of about 5 days and longer; faster books are expected to fail G4, which doubles costs.
+  The
   universe nulls keep the REAL membership calendar while prices are resampled, so they cannot show an
   effect that needs membership to follow price; the causal construction of G6 is what excludes it.
   Fix pass 5: in the universe null worlds every funding rate is multiplied by a fair sign coin drawn per
@@ -477,8 +497,19 @@ Live risk limits the loop can never change:
   calibration is unchanged: there its carry effect was small (core carry family mean VAL Sharpe -0.30
   under null A, +0.07 under null B; Tier-1 passes under null B 0, 1 and 3 of 300 at the three
   thresholds). The universe run is resumable (finished tasks in a partial file bound to the kernel,
-  data and protocol) and checks memory before it starts. Threshold = the largest of the grid whose null
-  pass rate is <= 3% under both nulls in BOTH units, with oracle power at Sharpe 1.5 >= 50% everywhere.
+  data and protocol, every line with its own sha256) and checks memory before it starts. Fix pass 6: it
+  runs the oracle phases of both nulls FIRST and then logs the oracle power per null, speed and threshold;
+  if the power at the largest threshold is below 50%, or an oracle level misses its bound, it logs that
+  the seal rule will stop whatever the null worlds give (the run may be interrupted; the partial file
+  keeps the finished work; the artifact does not depend on the order).
+- The seal, fix pass 6 (R-H): the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its
+  OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3% under both of that
+  unit's nulls, then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
+  that unit's threshold, every oracle level present within its bound. The two units use different G6
+  constructions and have different null distributions, so one unit's rows never move the other's
+  threshold. Both units seal or neither (a STOP names the unit). kernel.lock holds {"core": x, "top30":
+  y}; omr.evaluate applies the threshold of the program's own unit, and the trial row records that one
+  number.
 - The selftest scores kernel_noise_top30 through the full path as well.
 - Memory (R3, S4): before the pending row of a top30 trial the evaluator estimates stage 2's bytes from
   counts in data/validation.json (rows, distinct top30 and next30 symbols, the symbols of every block) and

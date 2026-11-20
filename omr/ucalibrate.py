@@ -3,10 +3,11 @@
     python -m omr.ucalibrate [--worlds 200] [--oracle-worlds 100] [--workers 4] [--restart] [--force]
     python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic universe; never sealable)
 
-The core calibration (omr.calibrate) is unchanged. The seal (omr.kernel_lock seal) applies decide_both:
-the LARGEST G6 threshold whose null pass rate is <= NULL_PASS_MAX under BOTH nulls IN BOTH UNITS, with
-oracle power at true Sharpe 1.5 >= POWER_MIN for both speeds, both nulls, both units (each unit's oracle
-levels as present in its artifact: the core 1.0 and 1.5, top30 1.5 only).
+The core calibration (omr.calibrate) is unchanged. The seal (omr.kernel_lock seal) applies decide_both,
+PER UNIT (fix pass 6, R-H): each unit's G6 threshold is the LARGEST of G6_GRID whose null pass rate is <=
+NULL_PASS_MAX under both of THAT unit's nulls, with oracle power at true Sharpe 1.5 >= POWER_MIN for both
+speeds under both of its nulls at THAT threshold (each unit's oracle levels as present in its artifact: the
+core 1.0 and 1.5, top30 1.5 only). Both units seal or neither; kernel.lock holds {"core": x, "top30": y}.
 
 WORLDS ON THE REAL MEMBERSHIP CALENDAR (fix pass 4, U2). PANEL: every symbol ever a top30 member from
 UNIVERSE_START to VAL end (the kernel's own rule on the real bars, read with the logged calibration
@@ -39,21 +40,29 @@ FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a 
 Mark and index bars of the null worlds are the synthetic last-price bars of the present rows (no universe
 family reads them; the liquidation check then uses last-price wicks, wider than mark wicks: conservative).
 
-Families: three hash-locked cross-sectional programs (omr/programs/ucal_*.omr): momentum, short-term
-reversal, funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
+Families: three hash-locked cross-sectional programs (omr/programs/ucal_*.omr): momentum and reversal on
+daily returns (n from 3 to 60 and from 3 to 20 days; the reversal is the momentum's mirror since fix pass 6, R-J),
+and funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
 the activity rule; the activity passer with the best DEV Sharpe gets the full stage 1 and is SUBMITTED to
 stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Everything runs on the
 PRODUCTION block path (six-month blocks); G6 is the paired lag test of omr.upipeline.ugates.
 NOISY ORACLE (cross-sectional, on the same worlds): per symbol x = rho * z + sqrt(1 - rho^2) * eps, z = the
 symbol's future k-day log return minus the cross-sectional mean of the symbols with a return, standardised
 per symbol; weights = (x - mean x) / sum |x - mean x| over the in-play symbols, re-decided every k days
-(decided at the 23:00 bar, executed at the next 00:00 open). Speeds k = 1 and 20 days; rho tuned on the
-power worlds for the level the rule reads (true Sharpe 1.5, ULEVELS).
+(decided at the 23:00 bar, executed at the next 00:00 open). Speeds USPEEDS (fix pass 6, R-I): fast = 5 days
+(UNIVERSE_FAST_DAYS, confirmed), slow = 20 days; the core's 1-day speed is not attainable in this unit (at 12.5
+bps per side its cost drag of 3.86 Sharpe units makes G4 at doubled costs fail for every book with net Sharpe
+1.5; at 5 days the drag is 0.93). rho tuned on the power worlds for the level the rule reads (true Sharpe 1.5,
+ULEVELS).
 RUN: the source arrays are built once and shared with the workers (multiprocessing shared memory); each
 world builds a symbol's tables only when a block needs them. Every finished task is appended and fsynced
-to a partial file whose header binds the kernel, the data and the protocol; a restart with the same header
-skips the finished tasks (the artifact is the same, apart from created_at and wall_seconds), another header
-is refused unless --restart. A memory preflight refuses to start when the workers do not fit (--force).
+to a partial file whose header binds the kernel, the data and the protocol, each line with the sha256 of its
+content (a damaged or torn line is discarded and its task runs again; a task stored twice with different
+results stops the run); a restart with the same header skips the finished tasks (the artifact is the same,
+apart from created_at and wall_seconds), another header is refused unless --restart. A memory preflight
+refuses to start when the workers do not fit (--force). The oracle phases run first (fix pass 6); their power
+is logged, and if the power at the largest threshold is below POWER_MIN (or a level misses its bound) a
+prominent line says the seal rule will STOP whatever the null worlds give.
 """
 from __future__ import annotations
 
@@ -84,11 +93,18 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 3                        # fix pass 5: lag G6, funding sign coin (R-E), level 1.5 only, resume
+PROTOCOL_VERSION = 4                        # fix pass 6: per-unit seal rule (R-H), partial lines with a sha (F3),
+                                            # oracle phases before the null worlds (F6); 3 = pass 5
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
 ULEVELS = (1.5,)                            # D3: the rule reads power at true Sharpe 1.5 only
+# F8 (R-I): the universe oracle's speeds in DAYS (the names are the core's, so calibrate.decide reads them). The fast
+# speed is CONFIRMED at 5 days (the coordinator's rule, fixed before the audit sweep: the fastest of 5 / 7 / 10 days
+# with Tier-1 >= 0.65 at all three thresholds): at 12.5 bps per side the cost drag is 3.86 Sharpe units at 1 day
+# (Tier-1 0 of 24, G4 fails) and 0.93 at 5 days (Tier-1 18 of 24). Change it here only.
+UNIVERSE_FAST_DAYS = 5
+USPEEDS = {"fast": UNIVERSE_FAST_DAYS, "slow": 20}
 RHO_GRID = CB.RHO_GRID                      # coarse oracle curve (as the core calibration)
 FINE_POINTS = 41                            # fine curve points inside the bracket
 WORKER_PEAK_BYTES = int(1.6 * 2 ** 30)      # D2: measured peak private bytes of one worker (fix pass 5, M1)
@@ -660,7 +676,7 @@ def task_null(args) -> list:
 
 def task_oracle_curve(args) -> list:
     null, world_seed, speed, rhos = args
-    ob = UOracle(build_uworld(_W["src"], null, world_seed), CB.SPEEDS[speed], CB._seed("ueps", null, world_seed, speed))
+    ob = UOracle(build_uworld(_W["src"], null, world_seed), USPEEDS[speed], CB._seed("ueps", null, world_seed, speed))
     return [ob.val_sharpe(float(r)) for r in rhos]
 
 
@@ -668,8 +684,8 @@ def task_oracle_power(args) -> list:
     null, world_seed, rhos = args
     ud = build_uworld(_W["src"], null, world_seed)
     out = []
-    for speed in CB.SPEEDS:
-        ob = UOracle(ud, CB.SPEEDS[speed], CB._seed("ueps", null, world_seed, speed))
+    for speed in USPEEDS:
+        ob = UOracle(ud, USPEEDS[speed], CB._seed("ueps", null, world_seed, speed))
         for lvl in ULEVELS:
             rho = rhos[f"{speed}|{lvl}"]
             res = UP.evaluate_weights_u(ob.weights(rho), ob.bu, CB._seed("uoracle", null, world_seed, speed, lvl), OPTS,
@@ -703,31 +719,65 @@ def task_key(kind: str, args) -> str:
 class Partial:
     """Finished tasks of a calibration run, appended and fsynced one line each to a partial file whose first
     line is the header binding the run (kernel, data, protocol). A run with the same header skips the tasks
-    already there and reuses their rows."""
+    already there and reuses their rows. F3: every record line carries "sha", the sha256 of the canonical JSON
+    of {"key", "result"}; a line that does not parse or whose sha does not match is discarded (its task runs
+    again) and counted; a file whose last line was torn gets a newline before the next append; a key stored
+    twice with DIFFERENT results raises PartialMismatch (the same result twice is accepted)."""
 
     def __init__(self, path: Path, header: dict, restart: bool = False, log=print):
         self.path, self.header, self.done = Path(path), _plain(header), {}
+        self.discarded = 0
         if self.path.exists() and restart:
             self.path.unlink()
         if self.path.exists():
-            lines = self.path.read_bytes().decode("ascii", "replace").splitlines()
+            raw = self.path.read_bytes()
+            lines = raw.decode("ascii", "replace").splitlines()
             try:
                 old = json.loads(lines[0])["header"] if lines else None
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 old = None
             if old != self.header:
                 raise PartialMismatch(f"{self.path} belongs to another run (its header differs: kernel, data or "
                                       "protocol). Remove it or pass --restart.")
+            seen = {}
             for ln in lines[1:]:
-                try:
-                    rec = json.loads(ln)
-                except ValueError:                                # a line torn by a crash: that task runs again
+                rec = self._parse(ln)
+                if rec is None:                                   # torn or damaged: that task runs again
+                    self.discarded += 1
                     continue
-                self.done[rec["key"]] = rec["result"]
-            log(f"resuming: {len(self.done)} finished tasks in {self.path.name}")
+                k, body = rec
+                if k in seen and seen[k] != body:
+                    raise PartialMismatch(f"{self.path} holds task {k[:60]} twice with different results. Remove "
+                                          "it or pass --restart.")
+                seen[k] = body
+                self.done[k] = json.loads(body)["result"]
+            if raw and not raw.endswith(b"\n"):                  # a torn tail must not swallow the next record
+                with open(self.path, "ab") as f:
+                    f.write(b"\n")
+                    f.flush()
+                    os.fsync(f.fileno())
+            log(f"resuming: {len(self.done)} finished tasks in {self.path.name}; {self.discarded} damaged lines "
+                "discarded (their tasks run again)")
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._write({"header": self.header})
+
+    @staticmethod
+    def _body(key: str, result) -> str:
+        return ledger.canonical({"key": key, "result": result})
+
+    @classmethod
+    def _parse(cls, ln: str):
+        """(key, canonical body) of a sound record line, else None."""
+        try:
+            rec = json.loads(ln)
+            key, result, sha = rec["key"], rec["result"], rec["sha"]
+        except (ValueError, KeyError, TypeError):
+            return None
+        if not isinstance(key, str):
+            return None
+        body = cls._body(key, result)
+        return (key, body) if ledger.sha256_text(body) == sha else None
 
     def _write(self, obj) -> None:
         with open(self.path, "a", encoding="ascii", newline="\n") as f:
@@ -737,7 +787,7 @@ class Partial:
 
     def record(self, key: str, result) -> None:
         self.done[key] = _plain(result)
-        self._write({"key": key, "result": result})
+        self._write({"key": key, "result": result, "sha": ledger.sha256_text(self._body(key, result))})
 
     def remove(self) -> None:
         if self.path.exists():
@@ -830,7 +880,7 @@ def oracle_summary(rows: list) -> dict:
     level 1.5 only; on the core artifact's rows it gives the core summary)."""
     levels = sorted({float(r["level"]) for r in rows})
     out = {}
-    for speed in CB.SPEEDS:
+    for speed in USPEEDS:
         for lvl in levels:
             rr = [r for r in rows if r["speed"] == speed and float(r["level"]) == lvl]
             fin = [r["val_sharpe"] for r in rr if r.get("status") == "evaluated" and _finite(r.get("val_sharpe"))]
@@ -851,40 +901,60 @@ def verdict_from_rows(art: dict) -> dict:
     return CB.decide(nulls, oracle)
 
 
-def decide_both(core_art: dict, uni_art: dict) -> dict:
-    """The seal rule over both units (applied by omr.kernel_lock seal to the stored rows); each unit's oracle
-    summary uses the levels present in its artifact (the core artifact: 1.0 and 1.5; top30: 1.5)."""
-    vc, vu = verdict_from_rows(core_art), verdict_from_rows(uni_art)
-    rates = {"core": vc["null_pass_rate"], "top30": vu["null_pass_rate"]}
-    qualifying = [t for t in C.G6_GRID
-                  if all(rates[u][n][str(t)] is not None and rates[u][n][str(t)] <= C.NULL_PASS_MAX + 1e-12
-                         for u in rates for n in ("A", "B"))]
-    chosen = max(qualifying) if qualifying else None
-    out = {"rule": "G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) "
-                   "is <= NULL_PASS_MAX under BOTH nulls IN BOTH UNITS (core, top30); then oracle power at true "
-                   "Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls in BOTH units, every oracle level "
-                   "present achieved within RHO_BOUND; otherwise STOP",
-           "null_pass_rate": rates, "qualifying": qualifying, "chosen_threshold": chosen}
-    if chosen is None:
-        out.update(STOP=True, reason="no G6 threshold keeps the null pass rate <= NULL_PASS_MAX in both units")
-        return out
-    power, below, off = {}, [], []
-    for unit, art in (("core", core_art), ("top30", uni_art)):
-        orc = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
-        power[unit] = {n: {s: orc[n]["summary"].get(f"{s}|1.5", {}).get("by_threshold", {}).get(str(chosen), {})
-                           .get("power") for s in CB.SPEEDS} for n in ("A", "B")}
-        below += [f"{unit}/{n}/{s}" for n in power[unit] for s in power[unit][n]
-                  if power[unit][n][s] is None or power[unit][n][s] < C.POWER_MIN]
+RULE_PER_UNIT = ("G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose "
+                 "null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit; "
+                 "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at "
+                 "that unit's threshold, every oracle level present in that unit's artifact achieved within "
+                 "RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below "
+                 "POWER_MIN or a level outside its bound")
+
+
+def artifact_gaps(art: dict) -> list:
+    """F2: what a unit artifact lacks for the rule (empty = complete): families, the null and oracle rows of
+    both nulls, and oracle rows at true Sharpe 1.5 for every speed."""
+    gaps = []
+    if not isinstance(art.get("families"), dict) or not art["families"]:
+        gaps.append("no families")
+    for k in ("nulls", "oracle"):
         for n in ("A", "B"):
-            for k, v in orc[n]["summary"].items():
-                if v["mean_val_sharpe"] is None or abs(v["mean_val_sharpe"] - float(k.split("|")[1])) > CB.RHO_BOUND:
-                    off.append(f"{unit}/{n}/{k}")
-    out.update(power_at_1_5_chosen=power, below_power_min=below, oracle_level_outside_bound=off,
-               STOP=bool(below) or bool(off))
-    if off:
-        out["reason"] = "oracle achieved mean VAL Sharpe outside the bound: " + ", ".join(off)
-    elif below:
-        out["reason"] = "oracle power at true Sharpe 1.5 below POWER_MIN: " + ", ".join(below)
+            rows = ((art.get(k) or {}).get(n) or {}).get("rows")
+            if not isinstance(rows, list) or not rows:
+                gaps.append(f"no {k} rows for null {n}")
+    for n in ("A", "B"):
+        rows = ((art.get("oracle") or {}).get(n) or {}).get("rows") or []
+        for s in USPEEDS:
+            if not any(isinstance(r, dict) and r.get("speed") == s and _finite(r.get("level")) and
+                       float(r["level"]) == 1.5 for r in rows):
+                gaps.append(f"no oracle rows at level 1.5 for null {n} speed {s}")
+    return gaps
+
+
+def unit_verdict(art: dict, unit: str) -> dict:
+    """One unit's decision from its own stored rows (the unit rule: verdict_from_rows -> calibrate.decide), or
+    STOP naming what the artifact lacks."""
+    gaps = artifact_gaps(art)
+    if gaps:
+        return {"STOP": True, "chosen_threshold": None, "reason": f"{unit} artifact incomplete: " + "; ".join(gaps)}
+    try:
+        return verdict_from_rows(art)
+    except (KeyError, TypeError, ValueError) as e:             # FP6-1: a malformed row stops, it does not raise
+        return {"STOP": True, "chosen_threshold": None,
+                "reason": f"{unit} artifact malformed: {type(e).__name__}: {e}"}
+
+
+def decide_both(core_art: dict, uni_art: dict) -> dict:
+    """The seal rule (applied by omr.kernel_lock seal to the stored rows), R-H: the G6 threshold is decided PER
+    UNIT, each unit by its own rows (its oracle summary with the levels present in its artifact: core 1.0 and
+    1.5, top30 1.5). Both units seal or neither."""
+    v = {"core": unit_verdict(core_art, "core"), "top30": unit_verdict(uni_art, "top30")}
+    out = {"rule": RULE_PER_UNIT, "per_unit": v,
+           "chosen_threshold": {u: v[u].get("chosen_threshold") for u in v},
+           "null_pass_rate": {u: v[u].get("null_pass_rate") for u in v},
+           "power_at_1_5_chosen": {u: v[u].get("power_at_1_5_chosen") for u in v}}
+    stops = [u for u in v if v[u].get("STOP") or v[u].get("chosen_threshold") is None]
+    out["STOP"] = bool(stops)
+    if stops:
+        out["reason"] = "; ".join(f"{u}: {v[u].get('reason') or 'no qualifying threshold'}" for u in stops)
     return out
 
 
@@ -904,28 +974,61 @@ def run_header(k: dict, rh: str, fams: list, worlds: int, oracle_worlds: int, sy
     return {"protocol_version": PROTOCOL_VERSION, "semantic_hash": k["semantic"], "research_hash": rh,
             "synthetic_dry_run": synthetic, "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
             "seeds": SEEDS, "worlds_per_null": worlds, "oracle_worlds": oracle_worlds, "levels": list(ULEVELS),
-            "speeds_days": CB.SPEEDS, "perm_n": OPTS.perm_n, "draws_per_pair": CB.N_DRAWS,
+            "speeds_days": USPEEDS, "perm_n": OPTS.perm_n, "draws_per_pair": CB.N_DRAWS,
             "rho_grid": [float(r) for r in RHO_GRID], "fine_points": FINE_POINTS,
             "pool_min_days": POOL_MIN_DAYS}
 
 
+def oracle_advisory(oracle: dict) -> tuple:
+    """F6: (log lines of the Tier-1 power per null, speed, level and grid threshold, reasons the seal rule must
+    STOP whatever the null worlds give: power at the LARGEST grid threshold below POWER_MIN, or an achieved
+    oracle level outside RHO_BOUND)."""
+    lines, stop, top = [], [], max(C.G6_GRID)
+    for n in ("A", "B"):
+        summ = (oracle.get(n) or {}).get("summary") or {}
+        for s in USPEEDS:
+            for lvl in ULEVELS:
+                v = summ.get(f"{s}|{lvl}") or {}
+                pw = {t: ((v.get("by_threshold") or {}).get(str(t)) or {}).get("power") for t in C.G6_GRID}
+                mv = v.get("mean_val_sharpe")
+                lines.append(f"  oracle null {n} {s:4s} level {lvl}: Tier-1 power " +
+                             "  ".join(f"at {t:g}: {'n/a' if pw[t] is None else f'{pw[t]:.3f}'}" for t in C.G6_GRID) +
+                             f"; achieved mean VAL Sharpe {'n/a' if mv is None else f'{mv:.3f}'}")
+                if pw[top] is None or pw[top] < C.POWER_MIN:
+                    stop.append(f"null {n} {s}: power at {top:g} below {C.POWER_MIN:g}")
+                if mv is None or abs(mv - lvl) > CB.RHO_BOUND:
+                    stop.append(f"null {n} {s}: level {lvl} achieved outside its bound")
+    return lines, stop
+
+
 def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds: int, log) -> tuple:
-    """(nulls, oracle) of one run; every finished task is in `partial`."""
+    """(nulls, oracle) of one run; every finished task is in `partial`. F6: the oracle phases of both nulls run
+    FIRST, then the oracle power is logged, with one prominent line when the seal rule must STOP whatever the
+    null worlds give; the results are assembled in argument order, so the artifact does not depend on the
+    order of the phases."""
     nulls, oracle = {}, {}
-    for null in ("A", "B"):
-        res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}")
-        rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
-        nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
     for null in ("A", "B"):
         seeds = [SEEDS[f"oracle_{null}"] + i for i in range(oracle_worlds)]
         rhos, tuning = {}, {}
-        for speed in CB.SPEEDS:
+        for speed in USPEEDS:
             tuning[speed] = tune_rho(pool, partial, null, speed, seeds, log)
             for lvl in ULEVELS:
                 rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
         res = run_tasks(pool, partial, "power", [[null, s, rhos] for s in seeds], log, f"oracle {null} power")
         rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["speed"], r["level"]))
         oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": oracle_summary(rows)}
+    lines, stop = oracle_advisory(oracle)
+    for ln in lines:
+        log(ln)
+    if stop:
+        log("!" * 100)
+        log("ADVISORY: the seal rule will STOP whatever the null worlds give (" + "; ".join(stop) + "). The run can "
+            "be interrupted now: the partial file keeps the finished work.")
+        log("!" * 100)
+    for null in ("A", "B"):
+        res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}")
+        rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
+        nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
     return nulls, oracle
 
 
@@ -1004,7 +1107,7 @@ def main(argv=None):
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": header["families"],
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,
-                        "speeds_days": CB.SPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "perm_n": OPTS.perm_n,
+                        "speeds_days": USPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "perm_n": OPTS.perm_n,
                         "membership": "the real monthly schedule (the kernel's rule on the real activity)",
                         "funding": "rates times a fair sign coin per settlement hour (R-E)",
                         "null_a_source_days": src.meta["pools"],
