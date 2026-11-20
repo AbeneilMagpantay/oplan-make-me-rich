@@ -1,11 +1,12 @@
 """Universe calibration (unit top30, KP-015):
 
-    python -m omr.ucalibrate [--worlds 100] [--oracle-worlds 100] [--workers 4]
+    python -m omr.ucalibrate [--worlds 200] [--oracle-worlds 100] [--workers 4] [--restart] [--force]
     python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic universe; never sealable)
 
 The core calibration (omr.calibrate) is unchanged. The seal (omr.kernel_lock seal) applies decide_both:
 the LARGEST G6 threshold whose null pass rate is <= NULL_PASS_MAX under BOTH nulls IN BOTH UNITS, with
-oracle power at true Sharpe 1.5 >= POWER_MIN for both speeds, both nulls, both units.
+oracle power at true Sharpe 1.5 >= POWER_MIN for both speeds, both nulls, both units (each unit's oracle
+levels as present in its artifact: the core 1.0 and 1.5, top30 1.5 only).
 
 WORLDS ON THE REAL MEMBERSHIP CALENDAR (fix pass 4, U2). PANEL: every symbol ever a top30 member from
 UNIVERSE_START to VAL end (the kernel's own rule on the real bars, read with the logged calibration
@@ -14,16 +15,27 @@ and taker volumes exactly as recorded, so the kernel's own membership rule repro
 schedule, usable flags and unit sizes in every world (removing symbols never ranked 1 to 30 cannot change
 ranks 1 to 30). Only PRICES are resampled: open-relative ratios (open / previous close, high / open,
 low / open, close / open) cumulated from the symbol's real first open over its own present rows; a present
-zero-trade bar is flat; an absent bar stays absent.
-NULL A (bootstrap): every world day draws one source day iid (pool: the days from UNIVERSE_START to VAL end),
-  shared by all symbols; a symbol uses its own bars of that source day when all 24 of its hours are active
-  there, otherwise a personal fallback day drawn iid from its own fully active days by a per-(world, symbol)
-  generator. Funding keeps the settlement times and intervals of the real day and takes the rates of the
+zero-trade bar is flat; an absent bar stays absent. These worlds keep the real calendar while prices are
+resampled, so they cannot show an effect that needs membership to follow price; the causal (lag) form of
+G6 is what excludes such an effect.
+NULL A (bootstrap): every world day draws one source day iid, shared by all symbols. R-F: a day of calendar
+  month m draws from POOL(m), the source days (UNIVERSE_START to VAL end) on which EVERY top30 member of m
+  (the kernel's own rule on the source) has 24 active hours, so on every world day of a pooled month all
+  members share one source day; a month with no unit or a pool under POOL_MIN_DAYS (90) draws from the whole
+  period. A symbol uses its own bars of the source day when all 24 of its hours are active there, otherwise
+  a personal fallback day drawn iid from its own fully active days by a per-(world, symbol) generator
+  (mostly non-members). Funding keeps the settlement times and intervals of the real day and takes the rates of the
   source day used for that symbol, in order (cycled if the counts differ; a source day without a
-  settlement is replaced by a day with one, drawn by the same generator): funding persistence is
-  destroyed, the calendar kept.
+  settlement is replaced by a day with one, drawn by the same generator).
 NULL B (sign-flip): the real order; per day ONE fair coin shared by all symbols mirrors each symbol's
-  demeaned hourly log-return path; funding unchanged.
+  demeaned hourly log-return path; funding rates as recorded.
+FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a fair coin drawn per
+  settlement HOUR of the world (its own generator of the world seed), the same coin for every symbol that
+  settles in that hour, so no funding payment can be predicted from earlier funding and a carry strategy
+  earns nothing; sizes, intervals, times and the cross-section up to the shared sign are kept. The core
+  calibration is unchanged; its carry effect was small (core carry family mean VAL Sharpe -0.30 under null
+  A, +0.07 under null B; Tier-1 passes under null B 0, 1 and 3 of 300 at the three thresholds), while a
+  cross-sectional carry over thirty coins could earn far more.
 Mark and index bars of the null worlds are the synthetic last-price bars of the present rows (no universe
 family reads them; the liquidation check then uses last-price wicks, wider than mark wicks: conservative).
 
@@ -31,14 +43,17 @@ Families: three hash-locked cross-sectional programs (omr/programs/ucal_*.omr): 
 reversal, funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
 the activity rule; the activity passer with the best DEV Sharpe gets the full stage 1 and is SUBMITTED to
 stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Everything runs on the
-PRODUCTION block path (six-month blocks).
+PRODUCTION block path (six-month blocks); G6 is the paired lag test of omr.upipeline.ugates.
 NOISY ORACLE (cross-sectional, on the same worlds): per symbol x = rho * z + sqrt(1 - rho^2) * eps, z = the
 symbol's future k-day log return minus the cross-sectional mean of the symbols with a return, standardised
 per symbol; weights = (x - mean x) / sum |x - mean x| over the in-play symbols, re-decided every k days
 (decided at the 23:00 bar, executed at the next 00:00 open). Speeds k = 1 and 20 days; rho tuned on the
-power worlds until the achieved mean VAL Sharpe is within RHO_TOL of the level (1.0 and 1.5).
-The source arrays are built once and shared with the workers (multiprocessing shared memory); each world
-builds a symbol's tables only when a block needs them.
+power worlds for the level the rule reads (true Sharpe 1.5, ULEVELS).
+RUN: the source arrays are built once and shared with the workers (multiprocessing shared memory); each
+world builds a symbol's tables only when a block needs them. Every finished task is appended and fsynced
+to a partial file whose header binds the kernel, the data and the protocol; a restart with the same header
+skips the finished tasks (the artifact is the same, apart from created_at and wall_seconds), another header
+is refused unless --restart. A memory preflight refuses to start when the workers do not fit (--force).
 """
 from __future__ import annotations
 
@@ -47,6 +62,7 @@ import datetime as dt
 import json
 import math
 import multiprocessing as mp
+import os
 import time
 from multiprocessing import shared_memory
 from pathlib import Path
@@ -68,13 +84,19 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3                        # fix pass 5: lag G6, funding sign coin (R-E), level 1.5 only, resume
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
+ULEVELS = (1.5,)                            # D3: the rule reads power at true Sharpe 1.5 only
+RHO_GRID = CB.RHO_GRID                      # coarse oracle curve (as the core calibration)
+FINE_POINTS = 41                            # fine curve points inside the bracket
+WORKER_PEAK_BYTES = int(1.6 * 2 ** 30)      # D2: measured peak private bytes of one worker (fix pass 5, M1)
+EXIT_MEMORY, EXIT_PARTIAL = 4, 5
 HOUR_NS = U.HOUR_NS
 DAY_NS = U.DAY_NS
 OTHER = ["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]
+POOL_MIN_DAYS = 90                          # R-F: a smaller monthly pool uses the whole-period pool
 KEEP_BEFORE_DAYS = 30                       # world rows kept before UNIVERSE_START (as-of seeds, as load_udata)
 
 
@@ -177,7 +199,53 @@ class USource:
         btc = btc_symbol if btc_symbol in names else (C.BTC if C.BTC in names else names[0])
         meta = {"symbols": metas, "D0": D0, "ND": ND, "pool_lo": int(T(C.UNIVERSE_START).value // DAY_NS) - D0,
                 "btc": btc}
-        return cls(meta, arr)
+        src = cls(meta, arr)
+        src._build_pools()
+        return src
+
+    def _build_pools(self) -> None:
+        """R-F: per calendar month m of the world, POOL(m) = the source days (UNIVERSE_START .. VAL end) on which
+        EVERY top30 member of month m (the kernel's own rule on the source, the schedule every world
+        reproduces) has 24 active hours. A month with no unit or a pool under POOL_MIN_DAYS uses the
+        whole-period pool. Arrays: day_pool (per global day: pool id or -1), pool_days, pool_off."""
+        ND, D0, lo = self.ND, self.D0, self.meta["pool_lo"]
+        full_g = {}
+        for s in self.symbols:
+            m = self.sym(s)
+            g = np.zeros(ND, dtype=bool)
+            shift = m["sd0"] - D0
+            fl = np.asarray(self.arr["full"][m["full_off"]:m["full_off"] + m["nd"]], dtype=bool)
+            n = min(len(fl), ND - shift)
+            g[shift:shift + n] = fl[:n]
+            full_g[s] = g
+        acts = self.acts(T(C.VAL_END).value)
+        mem = U.membership(acts, list(acts), T(C.UNIVERSE_START).value, T(C.VAL_END).value)
+        pools, sizes, pool_of = [], [], np.full(len(mem.months), -1, dtype=np.int64)
+        for i in range(len(mem.months)):
+            if not mem.unit_exists("top30", i):
+                continue
+            ok = np.ones(ND, dtype=bool)
+            ok[:lo] = False
+            for s in mem.members("top30", i):
+                ok &= full_g[s]
+            days = np.nonzero(ok)[0]
+            if len(days) >= POOL_MIN_DAYS:
+                pool_of[i] = len(pools)
+                pools.append(days)
+                sizes.append(len(days))
+        day_ns = (D0 + np.arange(ND, dtype=np.int64)) * DAY_NS
+        mi = np.searchsorted(mem.months, day_ns, side="right") - 1
+        day_pool = np.where(mi >= 0, pool_of[np.clip(mi, 0, max(len(mem.months) - 1, 0))], -1) if len(mem.months) \
+            else np.full(ND, -1, dtype=np.int64)
+        self.arr["day_pool"] = np.asarray(day_pool, dtype=np.int64)
+        self.arr["pool_days"] = np.concatenate(pools).astype(np.int64) if pools else np.zeros(0, dtype=np.int64)
+        self.arr["pool_off"] = np.r_[0, np.cumsum(sizes)].astype(np.int64)
+        months = pd.DatetimeIndex(pd.to_datetime(day_ns, unit="ns", utc=True)).strftime("%Y-%m")
+        whole = sorted(set(months[day_pool < 0]))
+        self.meta["pools"] = {"min_pool_days": POOL_MIN_DAYS, "pooled_months": int(len(set(months[day_pool >= 0]))),
+                              "months_whole_period_pool": int(len(whole)),
+                              "smallest_pool_days": int(min(sizes)) if sizes else None,
+                              "median_pool_days": float(np.median(sizes)) if sizes else None}
 
     # ---- sharing with the workers
     def to_shared(self) -> tuple:
@@ -239,22 +307,32 @@ class UWorld:
         rng = np.random.default_rng([seed, 21 if null == "A" else 22])
         ND = src.ND
         if null == "A":
-            self.pick = rng.integers(src.meta["pool_lo"], ND, ND)
+            # R-F: a pooled month's days draw from POOL(m) (every member fully active), others from the whole period
+            u = rng.random(ND)
+            lo = src.meta["pool_lo"]
+            self.pick = lo + np.minimum((u * (ND - lo)).astype(np.int64), ND - lo - 1)
+            dp = np.asarray(src.arr["day_pool"], dtype=np.int64)
+            pooled = dp >= 0
+            if pooled.any():
+                off = np.asarray(src.arr["pool_off"], dtype=np.int64)
+                size = off[dp[pooled] + 1] - off[dp[pooled]]
+                at = off[dp[pooled]] + np.minimum((u[pooled] * size).astype(np.int64), size - 1)
+                self.pick[pooled] = np.asarray(src.arr["pool_days"], dtype=np.int64)[at]
             self.flip = np.zeros(ND, dtype=bool)
         else:
             self.pick = np.arange(ND)
             self.flip = rng.uniform(size=ND) < 0.5
-        self.fallback_days = 0
+        # R-E: one fair funding sign per hour of the world (its own generator), shared by every symbol that
+        # settles in that hour, independent between hours
+        self.fsign = np.where(np.random.default_rng([seed, 31]).integers(0, 2, ND * 24) == 1, 1.0, -1.0)
         self._cache = {}
 
-    def source_days(self, s: str) -> np.ndarray:
-        """Per local day of the symbol: the GLOBAL source day it uses (null A: the world's draw if all 24 of
-        the symbol's hours are active there, else its personal fallback; null B: the day itself)."""
+    def _source_days(self, s: str) -> tuple:
         src, m = self.src, self.src.sym(s)
         shift = m["sd0"] - src.D0
         gd = np.arange(m["nd"]) + shift
         if self.null == "B":
-            return gd
+            return gd, None
         full = src.arr["full"][m["full_off"]:m["full_off"] + m["nd"]]
         p = self.pick[gd]
         lp = p - shift
@@ -262,11 +340,33 @@ class UWorld:
         ok = inside & full[np.clip(lp, 0, m["nd"] - 1)]
         fulld = np.nonzero(full)[0] + shift
         if len(fulld) == 0:                                        # no fully active day: its own days
-            return gd
+            return gd, None
         rs = np.random.default_rng([self.seed, 21, self.src.k[s]])
         fb = fulld[rs.integers(0, len(fulld), m["nd"])]
-        self.fallback_days += int((~ok).sum())
-        return np.where(ok, p, fb)
+        return np.where(ok, p, fb), ok
+
+    def source_days(self, s: str) -> np.ndarray:
+        """Per local day of the symbol: the GLOBAL source day it uses (null A: the world's draw if all 24 of
+        the symbol's hours are active there, else its personal fallback; null B: the day itself)."""
+        return self._source_days(s)[0]
+
+    def source_day_stats(self) -> dict:
+        """D6: over the days on which each panel symbol has an active bar, how many use the world's shared
+        source day, a personal fallback day, or the symbol's own day (no fully active day at all); a
+        deterministic number per world (null A)."""
+        out = {"shared": 0, "fallback": 0, "own": 0}
+        for s in self.src.symbols:
+            m = self.src.sym(s)
+            act = self.src.rows(s, "act")
+            tns = m["start"] + HOUR_NS * np.nonzero(act)[0]
+            days = np.unique(tns // DAY_NS - m["sd0"])
+            sd, ok = self._source_days(s)
+            if ok is None:
+                out["own"] += len(days)
+                continue
+            out["shared"] += int(ok[days].sum())
+            out["fallback"] += int((~ok[days]).sum())
+        return out
 
     def tables(self, s: str, cap_ns: int | None = None, trim: bool = True) -> dict:
         key = (s, cap_ns, trim)
@@ -322,7 +422,10 @@ class UWorld:
             fu = fu[fu.index.asi8 <= hi]
         return {"klines": kl, "funding": fu, "mark_klines": mark, "index_klines": mark}
 
-    def _funding(self, s: str, sd: np.ndarray) -> pd.DataFrame:
+    def _funding(self, s: str, sd: np.ndarray, signs: bool = True) -> pd.DataFrame:
+        """The symbol's funding table: the real settlement times and intervals; null A: the rates of the source
+        day used for the symbol, in order (cycled); null B: the real rates. R-E: every rate times the world's
+        sign coin of its settlement hour (signs=False: without the coin, for the tests)."""
         src, m = self.src, self.src.sym(s)
         fsl = slice(m["f_off"], m["f_off"] + m["f_n"])
         fns, iv, rate, offms = (src.arr[x][fsl] for x in _FUND)
@@ -343,6 +446,9 @@ class UWorld:
                 alt = have[rs.integers(0, len(have), m["nd"])]
                 sl = np.where(bad, alt[ld], sl)
             rate = rate[fd[sl] + kk % cnt[sl]]
+        rate = np.asarray(rate, dtype=np.float64)
+        if signs and len(fns):
+            rate = rate * self.fsign[(np.asarray(fns) - src.D0 * DAY_NS) // HOUR_NS]
         idx = pd.DatetimeIndex(pd.to_datetime(np.asarray(fns), unit="ns", utc=True)).as_unit("ns")
         idx.name = "settle_time"
         return pd.DataFrame({"rate": np.asarray(rate, dtype=np.float64), "interval_hours": np.asarray(iv),
@@ -564,7 +670,7 @@ def task_oracle_power(args) -> list:
     out = []
     for speed in CB.SPEEDS:
         ob = UOracle(ud, CB.SPEEDS[speed], CB._seed("ueps", null, world_seed, speed))
-        for lvl in CB.LEVELS:
+        for lvl in ULEVELS:
             rho = rhos[f"{speed}|{lvl}"]
             res = UP.evaluate_weights_u(ob.weights(rho), ob.bu, CB._seed("uoracle", null, world_seed, speed, lvl), OPTS,
                                         _W["handle"], None)
@@ -574,30 +680,139 @@ def task_oracle_power(args) -> list:
     return out
 
 
-def tune_rho(pool, null: str, speed: str, seeds: list, log) -> dict:
-    """As omr.calibrate.tune_rho, with the universe oracle."""
+_TASKS = {"null": task_null, "curve": task_oracle_curve, "power": task_oracle_power}
+
+
+def task_any(item) -> tuple:
+    """(kind, args) -> (kind, args, result): one entry point, so finished tasks can be keyed and recorded."""
+    kind, args = item
+    return kind, args, _TASKS[kind](args)
+
+
+def _plain(x):
+    """A result as it is stored (JSON, cleaned), so a resumed run and an uninterrupted one see the same objects."""
+    return json.loads(ledger.canonical(x))
+
+
+def task_key(kind: str, args) -> str:
+    return ledger.canonical([kind, args])
+
+
+# ---------------------------------------------------------------- resume (D1)
+
+class Partial:
+    """Finished tasks of a calibration run, appended and fsynced one line each to a partial file whose first
+    line is the header binding the run (kernel, data, protocol). A run with the same header skips the tasks
+    already there and reuses their rows."""
+
+    def __init__(self, path: Path, header: dict, restart: bool = False, log=print):
+        self.path, self.header, self.done = Path(path), _plain(header), {}
+        if self.path.exists() and restart:
+            self.path.unlink()
+        if self.path.exists():
+            lines = self.path.read_bytes().decode("ascii", "replace").splitlines()
+            try:
+                old = json.loads(lines[0])["header"] if lines else None
+            except (ValueError, KeyError):
+                old = None
+            if old != self.header:
+                raise PartialMismatch(f"{self.path} belongs to another run (its header differs: kernel, data or "
+                                      "protocol). Remove it or pass --restart.")
+            for ln in lines[1:]:
+                try:
+                    rec = json.loads(ln)
+                except ValueError:                                # a line torn by a crash: that task runs again
+                    continue
+                self.done[rec["key"]] = rec["result"]
+            log(f"resuming: {len(self.done)} finished tasks in {self.path.name}")
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._write({"header": self.header})
+
+    def _write(self, obj) -> None:
+        with open(self.path, "a", encoding="ascii", newline="\n") as f:
+            f.write(ledger.canonical(obj) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+
+    def record(self, key: str, result) -> None:
+        self.done[key] = _plain(result)
+        self._write({"key": key, "result": result})
+
+    def remove(self) -> None:
+        if self.path.exists():
+            self.path.unlink()
+
+
+class PartialMismatch(RuntimeError):
+    pass
+
+
+class _SerialPool:
+    """workers = 0: the tasks run in this process (tests and small dry runs)."""
+
+    def __init__(self, initializer, initargs):
+        initializer(*initargs)
+
+    def imap_unordered(self, fn, items):
+        return (fn(x) for x in items)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _hms(s: float) -> str:
+    s = int(max(0, s))
+    return f"{s // 3600}h{(s % 3600) // 60:02d}m"
+
+
+def run_tasks(pool, partial: Partial, kind: str, arglist: list, log, label: str) -> list:
+    """Results in the order of arglist; finished tasks are reused, new ones recorded as they finish, with
+    progress lines (elapsed time and an estimate of the time left in this phase)."""
+    keys = [task_key(kind, a) for a in arglist]
+    todo = [(kind, a) for a, k in zip(arglist, keys) if k not in partial.done]
+    t0, n_all, n_new = time.time(), len(arglist), 0
+    step = max(1, len(todo) // 20)
+    for _, args, res in pool.imap_unordered(task_any, todo):
+        partial.record(task_key(kind, args), res)
+        n_new += 1
+        if n_new % step == 0 or n_new == len(todo):
+            el = time.time() - t0
+            left = el / n_new * (len(todo) - n_new)
+            log(f"  {label}: {n_all - len(todo) + n_new}/{n_all} done ({n_all - len(todo)} resumed); "
+                f"{_hms(el)} elapsed, about {_hms(left)} left in this phase")
+    return [partial.done[k] for k in keys]
+
+
+def tune_rho(pool, partial: Partial, null: str, speed: str, seeds: list, log) -> dict:
+    """As omr.calibrate.tune_rho, with the universe oracle, for the levels the rule reads (ULEVELS)."""
     def means(rhos):
-        res = pool.map(task_oracle_curve, [(null, s, speed, [float(r) for r in rhos]) for s in seeds])
+        res = run_tasks(pool, partial, "curve", [[null, s, speed, [float(r) for r in rhos]] for s in seeds], log,
+                        f"oracle {null} {speed} curve ({len(rhos)} rhos)")
         mat = np.array(res, dtype=np.float64)
         return np.nanmean(np.where(np.isfinite(mat), mat, np.nan), axis=0)
 
-    mean = means(CB.RHO_GRID)
-    out = {"mean_curve": {f"{r:.4f}": float(m) for r, m in zip(CB.RHO_GRID, mean)}}
+    mean = means(RHO_GRID)
+    out = {"mean_curve": {f"{r:.4f}": float(m) for r, m in zip(RHO_GRID, mean)}}
     fine = {}
-    for lvl in CB.LEVELS:
+    for lvl in ULEVELS:
         idx = np.nonzero(mean >= lvl)[0]
         if len(idx) == 0:
-            lo, hi = float(CB.RHO_GRID[-2]), float(CB.RHO_GRID[-1])
+            lo, hi = float(RHO_GRID[-2]), float(RHO_GRID[-1])
         elif idx[0] == 0:
-            lo, hi = float(CB.RHO_GRID[0]), float(CB.RHO_GRID[1])
+            lo, hi = float(RHO_GRID[0]), float(RHO_GRID[1])
         else:
-            lo, hi = float(CB.RHO_GRID[idx[0] - 1]), float(CB.RHO_GRID[idx[0]])
-        fine[lvl] = np.linspace(lo, hi, 41)
-    fm = means(np.concatenate([fine[lv] for lv in CB.LEVELS]))
-    picks = {lvl: float(fine[lvl][int(np.nanargmin(np.abs(fm[i * 41:(i + 1) * 41] - lvl)))])
-             for i, lvl in enumerate(CB.LEVELS)}
-    ach = means([picks[lv] for lv in CB.LEVELS])
-    for i, lvl in enumerate(CB.LEVELS):
+            lo, hi = float(RHO_GRID[idx[0] - 1]), float(RHO_GRID[idx[0]])
+        fine[lvl] = np.linspace(lo, hi, FINE_POINTS)
+    fm = means(np.concatenate([fine[lv] for lv in ULEVELS]))
+    F = FINE_POINTS
+    picks = {lvl: float(fine[lvl][int(np.nanargmin(np.abs(fm[i * F:(i + 1) * F] - lvl)))])
+             for i, lvl in enumerate(ULEVELS)}
+    ach = means([picks[lv] for lv in ULEVELS])
+    for i, lvl in enumerate(ULEVELS):
         out[str(lvl)] = {"rho": picks[lvl], "achieved_mean_val_sharpe": float(ach[i]),
                          "within_bound": bool(abs(float(ach[i]) - lvl) <= CB.RHO_BOUND)}
         log(f"    null {null} {speed:4s} level {lvl}: rho {picks[lvl]:.5f} -> achieved {float(ach[i]):.3f}")
@@ -606,13 +821,40 @@ def tune_rho(pool, null: str, speed: str, seeds: list, log) -> dict:
 
 # ---------------------------------------------------------------- the rule over both units
 
+def _finite(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def oracle_summary(rows: list) -> dict:
+    """As omr.calibrate.oracle_summary, for the levels PRESENT in the rows (D3: the universe artifact holds
+    level 1.5 only; on the core artifact's rows it gives the core summary)."""
+    levels = sorted({float(r["level"]) for r in rows})
+    out = {}
+    for speed in CB.SPEEDS:
+        for lvl in levels:
+            rr = [r for r in rows if r["speed"] == speed and float(r["level"]) == lvl]
+            fin = [r["val_sharpe"] for r in rr if r.get("status") == "evaluated" and _finite(r.get("val_sharpe"))]
+            out[f"{speed}|{lvl}"] = {
+                "n": len(rr), "mean_val_sharpe": float(np.mean(fin)) if fin else None,
+                "not_evaluated": int(sum(1 for r in rr if r.get("status") != "evaluated")),
+                "by_threshold": {str(t): {"power": (sum(CB.tier_at(r, t) for r in rr) / len(rr)) if rr else None,
+                                          "tier1": int(sum(CB.tier_at(r, t) for r in rr)),
+                                          "gate_pass_rate": CB.gate_rates(rr, t)} for t in C.G6_GRID}}
+    return out
+
+
 def verdict_from_rows(art: dict) -> dict:
-    return CB.verdict_from_rows(art)
+    """The unit's own verdict recomputed from its stored rows (oracle levels as present)."""
+    fams = list(art["families"])
+    nulls = {n: {"summary": CB.null_summary(art["nulls"][n]["rows"], fams)} for n in ("A", "B")}
+    oracle = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
+    return CB.decide(nulls, oracle)
 
 
 def decide_both(core_art: dict, uni_art: dict) -> dict:
-    """The seal rule over both units (applied by omr.kernel_lock seal to the stored rows)."""
-    vc, vu = CB.verdict_from_rows(core_art), CB.verdict_from_rows(uni_art)
+    """The seal rule over both units (applied by omr.kernel_lock seal to the stored rows); each unit's oracle
+    summary uses the levels present in its artifact (the core artifact: 1.0 and 1.5; top30: 1.5)."""
+    vc, vu = verdict_from_rows(core_art), verdict_from_rows(uni_art)
     rates = {"core": vc["null_pass_rate"], "top30": vu["null_pass_rate"]}
     qualifying = [t for t in C.G6_GRID
                   if all(rates[u][n][str(t)] is not None and rates[u][n][str(t)] <= C.NULL_PASS_MAX + 1e-12
@@ -621,16 +863,16 @@ def decide_both(core_art: dict, uni_art: dict) -> dict:
     out = {"rule": "G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) "
                    "is <= NULL_PASS_MAX under BOTH nulls IN BOTH UNITS (core, top30); then oracle power at true "
                    "Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls in BOTH units, every oracle level "
-                   "achieved within RHO_BOUND; otherwise STOP",
+                   "present achieved within RHO_BOUND; otherwise STOP",
            "null_pass_rate": rates, "qualifying": qualifying, "chosen_threshold": chosen}
     if chosen is None:
         out.update(STOP=True, reason="no G6 threshold keeps the null pass rate <= NULL_PASS_MAX in both units")
         return out
     power, below, off = {}, [], []
     for unit, art in (("core", core_art), ("top30", uni_art)):
-        orc = {n: {"summary": CB.oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
-        power[unit] = {n: {s: orc[n]["summary"][f"{s}|1.5"]["by_threshold"][str(chosen)]["power"] for s in CB.SPEEDS}
-                       for n in ("A", "B")}
+        orc = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
+        power[unit] = {n: {s: orc[n]["summary"].get(f"{s}|1.5", {}).get("by_threshold", {}).get(str(chosen), {})
+                           .get("power") for s in CB.SPEEDS} for n in ("A", "B")}
         below += [f"{unit}/{n}/{s}" for n in power[unit] for s in power[unit][n]
                   if power[unit][n][s] is None or power[unit][n][s] < C.POWER_MIN]
         for n in ("A", "B"):
@@ -646,13 +888,57 @@ def decide_both(core_art: dict, uni_art: dict) -> dict:
     return out
 
 
+# ---------------------------------------------------------------- the run
+
+def memory_preflight(workers: int, source_bytes: int) -> dict:
+    """D2: available memory (the probe of upipeline.memory_check) against workers x WORKER_PEAK_BYTES plus the
+    shared source."""
+    avail = UP.available_memory_bytes()
+    need = workers * WORKER_PEAK_BYTES + int(source_bytes)
+    fit = None if avail is None else max(0, int((avail - source_bytes) // WORKER_PEAK_BYTES))
+    return {"ok": avail is not None and avail >= need, "available_bytes": avail, "needed_bytes": need,
+            "workers_that_fit": fit}
+
+
+def run_header(k: dict, rh: str, fams: list, worlds: int, oracle_worlds: int, synthetic: bool) -> dict:
+    return {"protocol_version": PROTOCOL_VERSION, "semantic_hash": k["semantic"], "research_hash": rh,
+            "synthetic_dry_run": synthetic, "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
+            "seeds": SEEDS, "worlds_per_null": worlds, "oracle_worlds": oracle_worlds, "levels": list(ULEVELS),
+            "speeds_days": CB.SPEEDS, "perm_n": OPTS.perm_n, "draws_per_pair": CB.N_DRAWS,
+            "rho_grid": [float(r) for r in RHO_GRID], "fine_points": FINE_POINTS,
+            "pool_min_days": POOL_MIN_DAYS}
+
+
+def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds: int, log) -> tuple:
+    """(nulls, oracle) of one run; every finished task is in `partial`."""
+    nulls, oracle = {}, {}
+    for null in ("A", "B"):
+        res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}")
+        rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
+        nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
+    for null in ("A", "B"):
+        seeds = [SEEDS[f"oracle_{null}"] + i for i in range(oracle_worlds)]
+        rhos, tuning = {}, {}
+        for speed in CB.SPEEDS:
+            tuning[speed] = tune_rho(pool, partial, null, speed, seeds, log)
+            for lvl in ULEVELS:
+                rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
+        res = run_tasks(pool, partial, "power", [[null, s, rhos] for s in seeds], log, f"oracle {null} power")
+        rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["speed"], r["level"]))
+        oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": oracle_summary(rows)}
+    return nulls, oracle
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m omr.ucalibrate")
-    ap.add_argument("--worlds", type=int, default=100)
+    ap.add_argument("--worlds", type=int, default=200)
     ap.add_argument("--oracle-worlds", type=int, default=100)
-    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--workers", type=int, default=4, help="0: run every task in this process")
     ap.add_argument("--unlocked-dry-run", action="store_true")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--partial", default=None, help="partial file (default ledger/ucalibration_<semantic16>.partial.jsonl)")
+    ap.add_argument("--restart", action="store_true", help="discard a partial file of another run and start again")
+    ap.add_argument("--force", action="store_true", help="start although the memory preflight says it does not fit")
     a = ap.parse_args(argv)
     t0 = time.time()
 
@@ -668,43 +954,46 @@ def main(argv=None):
         raise SystemExit("--unlocked-dry-run needs --out <path>")
     k = kernel_lock.read_lock() if lock_ok else kernel_lock.compute()
     synthetic = bool(a.unlocked_dry_run)
+    fams = list(FAMILIES)
     if synthetic:
         rh = "synthetic-dry-run"
-        handle = access.for_calibration(f"universe calibration DRY RUN, semantic {k['semantic'][:16]}: synthetic universe")
-        src = synthetic_source()
     else:
         if not data.validation_ok():
             raise SystemExit("data not validated: run python -m omr.data validate")
         rh = data.load_manifest()["research_hash"]
+    header = run_header(k, rh, fams, a.worlds, a.oracle_worlds, synthetic)
+    ppath = Path(a.partial) if a.partial else (Path(a.out).with_suffix(".partial.jsonl") if a.out else
+                                               P.LEDGER_DIR / f"ucalibration_{k['semantic'][:16]}.partial.jsonl")
+    try:
+        partial = Partial(ppath, header, restart=a.restart, log=log)
+    except PartialMismatch as e:
+        log(str(e))
+        raise SystemExit(EXIT_PARTIAL)
+    if synthetic:
+        handle = access.for_calibration(f"universe calibration DRY RUN, semantic {k['semantic'][:16]}: synthetic universe")
+        src = synthetic_source()
+    else:
         handle = access.for_calibration(f"universe calibration v{PROTOCOL_VERSION}, semantic {k['semantic'][:16]}: "
                                         "null worlds on the real membership calendar of the top30 panel")
         src = load_source(handle, log)
-    fams = list(FAMILIES)
-    nulls, oracle = {}, {}
+    src_bytes = int(sum(v.nbytes for v in src.arr.values()))
+    if a.workers > 0:
+        mem = memory_preflight(a.workers, src_bytes)
+        if not mem["ok"]:
+            log(f"MEMORY: {a.workers} workers need about {mem['needed_bytes'] / 2 ** 30:.1f} GiB, "
+                f"{(mem['available_bytes'] or 0) / 2 ** 30:.1f} GiB available; {mem['workers_that_fit']} workers fit")
+            if not a.force:
+                raise SystemExit(EXIT_MEMORY)
     spec, blocks = src.to_shared()
     try:
-        with mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(fams, handle, spec)) as pool:
-            for null in ("A", "B"):
-                rows = []
-                for i, rr in enumerate(pool.imap_unordered(task_null, [(null, SEEDS[null] + i) for i in range(a.worlds)])):
-                    rows.extend(rr)
-                    if (i + 1) % 10 == 0:
-                        log(f"  null {null}: {i + 1}/{a.worlds} worlds ({time.time() - t0:.0f} s)")
-                rows.sort(key=lambda r: (r["world_seed"], r["family"]))
-                nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
-            for null in ("A", "B"):
-                seeds = [SEEDS[f"oracle_{null}"] + i for i in range(a.oracle_worlds)]
-                rhos, tuning = {}, {}
-                for speed in CB.SPEEDS:
-                    tuning[speed] = tune_rho(pool, null, speed, seeds, log)
-                    for lvl in CB.LEVELS:
-                        rhos[f"{speed}|{lvl}"] = tuning[speed][str(lvl)]["rho"]
-                rows = []
-                for rr in pool.imap_unordered(task_oracle_power, [(null, s, rhos) for s in seeds]):
-                    rows.extend(rr)
-                rows.sort(key=lambda r: (r["world_seed"], r["speed"], r["level"]))
-                oracle[null] = {"rhos": rhos, "tuning": tuning, "rows": rows, "summary": CB.oracle_summary(rows)}
+        if a.workers > 0:
+            ctx = mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(fams, handle, spec))
+        else:
+            ctx = _SerialPool(_init, (fams, handle, spec))
+        with ctx as pool:
+            nulls, oracle = calibrate_run(pool, partial, fams, a.worlds, a.oracle_worlds, log)
     finally:
+        _W.pop("blocks", None)
         for b in blocks:
             b.close()
             b.unlink()
@@ -713,11 +1002,14 @@ def main(argv=None):
            "semantic_hash": k["semantic"], "text_hash": k["text"], "kernel_lock_verified": lock_ok and not synthetic,
            "synthetic_dry_run": synthetic, "research_hash": rh, "panel": src.symbols,
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-           "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
+           "families": header["families"],
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,
-                        "speeds_days": CB.SPEEDS, "levels": list(CB.LEVELS), "seeds": SEEDS,
+                        "speeds_days": CB.SPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "perm_n": OPTS.perm_n,
                         "membership": "the real monthly schedule (the kernel's rule on the real activity)",
-                        "blocks": "production (six-month blocks)", "reduced_pipeline": "G8 not run"},
+                        "funding": "rates times a fair sign coin per settlement hour (R-E)",
+                        "null_a_source_days": src.meta["pools"],
+                        "g6": "paired lag test (R-C)", "blocks": "production (six-month blocks)",
+                        "reduced_pipeline": "G8 not run"},
            "nulls": nulls, "oracle": oracle, "verdict_unit_only": verdict, "wall_seconds": round(time.time() - t0, 1)}
     path = Path(a.out) if a.out else P.LEDGER_DIR / f"ucalibration_{k['semantic'][:16]}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -725,6 +1017,7 @@ def main(argv=None):
     log(f"saved {path}")
     if not a.out:
         kernel_lock.log_calibration(path, k["semantic"], rh)
+    partial.remove()                                       # D1: only after the artifact is written (and logged)
     log(f"wall time {out['wall_seconds']} s")
 
 

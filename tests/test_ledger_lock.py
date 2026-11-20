@@ -323,3 +323,18 @@ def test_u8_a_text_only_rekey_keeps_a_seal_made_before_the_universe_keys(tmp_pat
     l2 = k.rekey("text only, old seal")
     assert l2["seal"] == seal and LG.read_rows(k.hist)[-1]["seal_kept"] is True
     assert LG.read_rows(k.hist)[-1]["universe_calibration_file"] is None and k.verify() == []
+
+
+def test_d3_decide_both_reads_the_levels_present_in_each_unit(tmp_path):
+    """Fix pass 5 (D3): the universe artifact holds oracle level 1.5 only; the core artifact keeps 1.0 and 1.5.
+    The rule reads power at 1.5, and a level a unit did not run is not an 'oracle level outside the bound'."""
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    core = artifact(lock, tmp_path, passes_010=2, passes_005=1)
+    ua = uartifact(lock, tmp_path, passes_010=2, passes_005=1)
+    for n in ("A", "B"):
+        ua["oracle"][n]["rows"] = [r for r in ua["oracle"][n]["rows"] if r["level"] == 1.5]
+    v = UC.decide_both(core, ua)
+    assert v["chosen_threshold"] == 0.10 and not v["STOP"] and v["oracle_level_outside_bound"] == []
+    assert set(UC.oracle_summary(ua["oracle"]["A"]["rows"])) == {"fast|1.5", "slow|1.5"}
+    assert UC.oracle_summary(core["oracle"]["A"]["rows"]) == K.oracle_summary(core["oracle"]["A"]["rows"])

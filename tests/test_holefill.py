@@ -4,6 +4,7 @@ daily file has stay holes, nothing outside the life is added. Synthetic zips in 
 network is replaced by a fake."""
 import hashlib
 import io
+import json
 import zipfile
 
 import numpy as np
@@ -236,3 +237,114 @@ def test_r_a_core_tables_are_filled_by_the_same_rule_and_nothing_else_changes(ra
     with pytest.raises(data.DailyRevision):
         data.fill_core_tables("BTCUSDT", {"klines": bad, "mark_klines": mk, "index_klines": mk}, metas,
                               data._HoleFill(build_only=True, workers=1))
+
+
+# ---------------------------------------------------------------- R-G: hardening of the hole fill (fix pass 5)
+
+def test_r_g1_a_missing_marker_only_for_a_day_a_week_old(raw_dir, monkeypatch):
+    calls = []
+    monkeypatch.setattr(data, "http_get", lambda url, **k: calls.append(url))
+    monkeypatch.setattr(data.C, "DOWNLOAD_PAUSE_S", 0.0)
+    monkeypatch.setattr(data, "_utcnow", lambda: pd.Timestamp("2026-11-20 05:00", tz="UTC"))
+    young = _daily("AAAUSDT", "klines", "2026-11-15")                   # 5 days old: not in the archive yet
+    assert data._fetch_daily_polite(young) == "missing" and not data._missing_marker(young[3]).exists()
+    assert data._fetch_daily_polite(young) == "missing" and len(calls) == 2           # asked again
+    old = _daily("AAAUSDT", "klines", "2026-11-13")                     # 7 days old: remembered
+    assert data._fetch_daily_polite(old) == "missing" and data._missing_marker(old[3]).exists()
+    assert data._fetch_daily_polite(old) == "cached-missing" and len(calls) == 3
+
+
+def test_r_g2_a_daily_file_must_equal_its_manifest_pin(raw_dir):
+    rows = _rows(T0, 24 * 4, 8)
+    day = "2022-02-21"
+    lo = int(pd.Timestamp(day, tz="UTC").value // 10 ** 6)
+    base = _base(rows, {lo + 5 * HOUR_MS})
+    it = _daily("AAAUSDT", "klines", day)
+    body = _zip(it[3], [r for r in rows if lo <= r[0] < lo + 24 * HOUR_MS])
+    good = {day: hashlib.sha256(body).hexdigest()}
+    merged, info = data.fill_from_daily("klines", base, [it], rows[0][0], rows[-1][0], pins=good)
+    assert info["filled"] == 1 and info["daily_files"] == good
+    with pytest.raises(data.DailyPinMismatch):
+        data.fill_from_daily("klines", base, [it], rows[0][0], rows[-1][0], pins={day: "0" * 64})
+    assert issubclass(data.DailyPinMismatch, data.DailyRevision)          # stops `data universe` like a revision
+    kl, _ = data._grid_klines(base, pd.Timestamp(rows[-1][0], unit="ms", tz="UTC"))
+    with pytest.raises(data.DailyPinMismatch):
+        data.fill_core_tables("AAAUSDT", {"klines": kl},
+                              {"klines": {"daily_files": {day: "f" * 64}}}, data._HoleFill(True, 1))
+
+
+STEPS = ["manifest_new", "journal", ("kept_old", 0), ("moved_new", 0), ("kept_old", 1), ("moved_new", 1),
+         "manifest", "cleanup"]
+
+
+@pytest.fixture
+def commit_dir(tmp_path, monkeypatch):
+    """A scratch data folder: two stored tables and a manifest; staged: one replacement and one new table."""
+    monkeypatch.setattr(data, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(data, "MANIFEST", tmp_path / "manifest.json")
+    data._CACHE.clear()
+    raw = {s: data._grid_klines(_base(_rows(T0, 48, i), set()), pd.Timestamp(T0 + 47 * HOUR_MS, unit="ms", tz="UTC"))[0]
+           for i, s in enumerate(("AAAUSDT", "BBBUSDT", "CCCUSDT"))}
+    man = {"datasets": {"klines": {}}, "research_hash": "old"}
+    for s in ("AAAUSDT", "BBBUSDT"):
+        p = data.stored_path("klines", s)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        raw[s].to_parquet(p)
+        man["datasets"]["klines"][s] = {"sha256": data.sha256_file(p)}
+    (tmp_path / "manifest.json").write_text(json.dumps(man), encoding="ascii")
+    new_man = json.loads(json.dumps(man))
+    new_man["research_hash"] = "new"
+    pairs = []
+    for s, df in (("AAAUSDT", raw["AAAUSDT"].iloc[:40]), ("CCCUSDT", raw["CCCUSDT"])):
+        fp = data.stored_path("klines", s)
+        new = fp.with_suffix(".parquet.new")
+        df.to_parquet(new)
+        new_man["datasets"]["klines"][s] = {"sha256": data.sha256_file(new)}
+        pairs.append((new, fp))
+    yield tmp_path, man, new_man, pairs
+    data._CACHE.clear()
+
+
+def _consistent(root, want):
+    """Every manifest entry's file matches its pin, no journal or kept / staged file is left, and the state is
+    the wanted one."""
+    m = data.load_manifest()
+    assert m["research_hash"] == want
+    for s in m["datasets"]["klines"]:
+        data._read_stored("klines", s, m, cache=False)                    # raises on a hash mismatch
+    left = [p.name for p in root.rglob("*") if p.suffix in (".old", ".new") or p.name.endswith(".journal.json")
+            or p.name == ".commit_journal.json"]
+    assert left == []
+    assert data.stored_path("klines", "CCCUSDT").exists() == (want == "new")
+
+
+
+@pytest.mark.parametrize("step", range(len(STEPS)))
+def test_r_g3_a_crash_at_any_commit_step_recovers_to_one_state(commit_dir, step):
+    root, man, new_man, pairs = commit_dir
+
+    class Crash(Exception):
+        pass
+
+    def hook(s):
+        if s == STEPS[step]:
+            raise Crash(str(s))
+    with pytest.raises(Crash):
+        data.commit_tables(pairs, new_man, log=lambda s: None, hook=hook)
+    logs = []
+    state = data.recover_commit(log=logs.append)
+    want = "new" if STEPS[step] in ("manifest", "cleanup") else "old"
+    assert state == want and len(logs) == 1 and ("ALL NEW" if want == "new" else "ALL OLD") in logs[0]
+    _consistent(root, want)
+    assert data.recover_commit(log=logs.append) is None                   # nothing left to do
+
+
+def test_r_g3_an_uninterrupted_commit_and_the_command_entry(commit_dir, monkeypatch):
+    root, man, new_man, pairs = commit_dir
+    data.commit_tables(pairs, new_man, log=lambda s: None)
+    _consistent(root, "new")
+    seen = []
+    monkeypatch.setattr(data, "recover_commit", lambda log=print: seen.append("checked"))
+    monkeypatch.setattr(data, "summary", lambda log=print: None)
+    data.main(["summary"])
+    assert seen == ["checked"]                                            # every command checks first

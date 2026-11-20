@@ -27,6 +27,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import os
 import sys
 import time
 import zipfile
@@ -1013,13 +1014,14 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
                 if not np.allclose(a_.to_numpy(dtype=float), b_.to_numpy(dtype=float), rtol=0, atol=0, equal_nan=True):
                     raise RuntimeError(f"revision detected in {dataset}/{s}: stored rows changed. Nothing written.")
 
+    pairs = []
     for (dataset, s), df in tables.items():
         p = stored_path(dataset, s)
         p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".parquet.tmp")
-        df.to_parquet(tmp)
-        tmp.replace(p)
-        metas[dataset][s]["sha256"] = sha256_file(p)
+        new = p.with_suffix(".parquet.new")
+        df.to_parquet(new)
+        metas[dataset][s]["sha256"] = sha256_file(new)
+        pairs.append((new, p))
 
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for (d, s) in kept:
@@ -1040,7 +1042,7 @@ def snapshot(mode: str, log=print, admit=()) -> dict:
     if old is not None and "universe" in old:
         manifest["universe"] = old["universe"]
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
-    MANIFEST.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="ascii")
+    commit_tables(pairs, manifest, log)
     log(f"research_hash = {rh}")
     return manifest
 
@@ -1128,18 +1130,19 @@ def _universe_raw(s: str, items: list, until) -> dict:
     return {"raw": raws, "monthly_files": files}
 
 
-def _universe_tables(parsed: dict, daily: dict | None = None) -> dict:
+def _universe_tables(parsed: dict, daily: dict | None = None, pins: dict | None = None) -> dict:
     """Tables of one universe symbol from its parsed monthly rows, with the holes inside its life filled
-    from the daily files in `daily` ({dataset: [items]}, U4; see fill_from_daily)."""
+    from the daily files in `daily` ({dataset: [items]}, U4; see fill_from_daily); pins: {dataset: {day:
+    sha256}} of the stored manifest entries (G2)."""
     raws, files = parsed["raw"], parsed["monthly_files"]
-    daily = daily or {}
+    daily, pins = daily or {}, pins or {}
     out, meta, fills = {}, {}, {}
     rk = raws["klines"]
     if len(rk) == 0:
         return {"tables": {}, "meta": {"klines": {"rows": 0}}, "fills": {}}
     lo_ms, hi_ms = int(rk.open_time_ms.min()), int(rk.open_time_ms.max())
     last = ts(str(pd.Timestamp(hi_ms, unit="ms", tz="UTC")))
-    rk, fills["klines"] = fill_from_daily("klines", rk, daily.get("klines", []), lo_ms, hi_ms)
+    rk, fills["klines"] = fill_from_daily("klines", rk, daily.get("klines", []), lo_ms, hi_ms, pins.get("klines"))
     kl, info = _grid_klines(rk, last)
     out["klines"] = kl
     meta["klines"] = {"rows": int(len(kl)), "first_bar": str(kl.index[0]), "last_bar": str(kl.index[-1]),
@@ -1150,7 +1153,7 @@ def _universe_tables(parsed: dict, daily: dict | None = None) -> dict:
     for ds in PRICE_BAR_DATASETS:
         raw = raws[ds]
         if len(raw):                                             # a dataset absent from the archive stays absent
-            raw, fills[ds] = fill_from_daily(ds, raw, daily.get(ds, []), lo_ms, hi_ms)
+            raw, fills[ds] = fill_from_daily(ds, raw, daily.get(ds, []), lo_ms, hi_ms, pins.get(ds))
         df = _bars_table(raw, MARK_COLS) if len(raw) else pd.DataFrame(
             {c: np.zeros(0) for c in MARK_COLS}, index=ns_index(pd.DatetimeIndex([], tz="UTC")))
         df.index.name = "open_time"
@@ -1196,18 +1199,28 @@ def daily_file_ok(dest: Path) -> bool:
     return True
 
 
-def fetch_daily(url: str, dest: Path) -> str:
+MISSING_MARKER_MIN_AGE_DAYS = 7         # G1: a 404 is remembered only for a day at least this old
+
+
+def _utcnow() -> pd.Timestamp:
+    return pd.Timestamp.now(tz="UTC")
+
+
+def fetch_daily(url: str, dest: Path, day: str | None = None) -> str:
     """U4: one daily bulk zip, verified against its published sha256 CHECKSUM (required: a file without
-    one is not stored and its hours stay holes). Returns cached, ok, missing (404, remembered by a marker
-    so a rerun does not ask again: cached-missing) or nochecksum."""
+    one is not stored and its hours stay holes). Returns cached, ok, missing (404; remembered by a marker
+    so a rerun does not ask again, cached-missing, only when the day is at least MISSING_MARKER_MIN_AGE_DAYS
+    older than now: a younger day the archive does not have yet is asked again later) or nochecksum."""
     if daily_file_ok(dest):
         return "cached"
     if _missing_marker(dest).exists():
         return "cached-missing"
     body = http_get(url)
     if body is None:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        _missing_marker(dest).write_bytes(b"")
+        old = day is not None and (_utcnow().normalize() - pd.Timestamp(day, tz="UTC")).days >= MISSING_MARKER_MIN_AGE_DAYS
+        if old:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            _missing_marker(dest).write_bytes(b"")
         return "missing"
     chk = http_get(url + ".CHECKSUM")
     if chk is None:
@@ -1225,7 +1238,7 @@ def fetch_daily(url: str, dest: Path) -> str:
 
 def _fetch_daily_polite(item) -> str:
     try:
-        st = fetch_daily(item[2], item[3])
+        st = fetch_daily(item[2], item[3], item[4])
     except Exception as e:                                       # network or checksum failure: retried on resume
         st = f"failed:{type(e).__name__}"
     if not st.startswith("cached"):                             # a network request was made: the usual pause
@@ -1253,19 +1266,30 @@ class DailyRevision(RuntimeError):
     """A stored hour differs from the daily file's row for the same hour (U4: stop and report)."""
 
 
-def fill_from_daily(dataset: str, base: pd.DataFrame, items: list, lo_ms: int, hi_ms: int) -> tuple:
+class DailyPinMismatch(DailyRevision):
+    """G2: a daily file differs from the sha256 pinned for it in the table's manifest entry (stop and report)."""
+
+
+def fill_from_daily(dataset: str, base: pd.DataFrame, items: list, lo_ms: int, hi_ms: int,
+                    pins: dict | None = None) -> tuple:
     """(merged raw rows, info). `base`: the raw rows (open_time_ms + columns) already held for the symbol;
     `items`: daily files (only those present with a matching CHECKSUM are read). Rows of the daily files
     inside [lo_ms, hi_ms] (the symbol's life) at hours `base` does not hold are added; an hour `base`
-    holds must be equal in value in every column, else DailyRevision. Hours no daily file has stay holes."""
+    holds must be equal in value in every column, else DailyRevision. Hours no daily file has stay holes.
+    pins: {day: sha256} of the table's manifest entry; a file used must equal its pin (G2), else
+    DailyPinMismatch."""
     cols = _DAILY_COLS[dataset]
     info = {"filled": 0, "daily_files": {}, "compared": 0}
+    pins = pins or {}
     parts = []
     for it in items:
         if not daily_file_ok(it[3]):
             continue
+        sha = sha256_file(it[3])
+        if it[4] in pins and pins[it[4]] != sha:
+            raise DailyPinMismatch(f"{dataset}: the daily file of {it[4]} differs from its manifest pin")
         parts.append(_DAILY_PARSER[dataset](_read_zip_csv(it[3]))[0])
-        info["daily_files"][it[4]] = sha256_file(it[3])
+        info["daily_files"][it[4]] = sha
     if not parts:
         return base, info
     d = pd.concat(parts, ignore_index=True).sort_values("open_time_ms", kind="mergesort")
@@ -1364,7 +1388,9 @@ def download_universe(log=print, workers: int = 6, end_month: str | None = None,
             if s in C.ALL_SYMBOLS:
                 res = _core_filled(s, old, core_end, plan[s], fill, log)
             else:
-                res = _universe_filled(s, plan[s], until, fill)
+                res = _universe_filled(s, plan[s], until, fill,
+                                       {ds: old["datasets"].get(ds, {}).get(s, {}).get("daily_files", {})
+                                        for ds in ("klines",) + PRICE_BAR_DATASETS})
         except DailyRevision as e:                               # U4: stop and report; nothing is written
             fill.revisions.append(f"{s}: {e}")
             continue
@@ -1406,13 +1432,20 @@ def download_universe(log=print, workers: int = 6, end_month: str | None = None,
             log("STOP: a stored hour differs from the daily file (revision); nothing written: "
                 + "; ".join(fill.revisions[:10]))
         return {"download": dl, "stored": False, "hole_fill": report, "daily_revisions": fill.revisions}
+    staged_at = {}
     for new, p, ds, s, m in staged:
-        new.replace(p)
         manifest["datasets"].setdefault(ds, {})[s] = m
+        staged_at[(ds, s)] = new
     if revisions:
         log(f"REVISION detected (stored rows changed), not written: {revisions[:10]}")
-    rh, dh = hashes_streaming(_manifest_keys(manifest), lambda d, s: _read_stored(d, s, manifest, cache=False),
-                              sym_sha)
+
+    def get(d, s):                                       # the new manifest's tables, staged ones from their .new file
+        if (d, s) in staged_at:
+            if sha256_file(staged_at[(d, s)]) != manifest["datasets"][d][s]["sha256"]:
+                raise DataIntegrityError(f"staged {d}/{s} changed before the commit")
+            return pd.read_parquet(staged_at[(d, s)])
+        return _read_stored(d, s, manifest, cache=False)
+    rh, dh = hashes_streaming(_manifest_keys(manifest), get, sym_sha)
     manifest["research_hash"] = rh
     manifest["dataset_hashes"] = dh
     manifest["admitted_this_snapshot"] = sorted(set(dh) - set(old.get("dataset_hashes", {}))) + ["universe"]
@@ -1421,7 +1454,7 @@ def download_universe(log=print, workers: int = 6, end_month: str | None = None,
                             "symbols_stored": built, "symbols_without_rows": empty, "revisions": revisions,
                             "download": dl, "built_at": manifest["updated_at"],
                             "hole_fill": {k: v for k, v in report.items() if k != "unfilled"}}
-    MANIFEST.write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="ascii")
+    commit_tables([(new, p) for new, p, *_ in staged], manifest, log)
     log(f"stored {built} symbols ({len(staged)} tables rewritten); research_hash = {rh}")
     return {"download": dl, "stored": True, "research_hash": rh, "revisions": revisions, "hole_fill": report}
 
@@ -1481,7 +1514,7 @@ class _HoleFill:
                 "unfilled": {ds: sorted(v) for ds, v in self.unfilled.items()}}
 
 
-def _universe_filled(s: str, items: list, until, fill: _HoleFill) -> dict:
+def _universe_filled(s: str, items: list, until, fill: _HoleFill, pins: dict | None = None) -> dict:
     """A universe symbol (not one of the ten): monthly tables, then every hole inside its life (klines
     grid) filled from the daily files of klines, mark and index price klines (U4)."""
     parsed = _universe_raw(s, items, until)
@@ -1499,7 +1532,7 @@ def _universe_filled(s: str, items: list, until, fill: _HoleFill) -> dict:
         fill.count(fill.before, ds, miss)
         daily[ds] = daily_items_for(s, ds, miss)
     fill.fetch([it for ds in daily for it in daily[ds]])
-    res = _universe_tables(parsed, daily) if any(daily.values()) else res0
+    res = _universe_tables(parsed, daily, pins) if any(daily.values()) else res0
     for ds in daily:
         fill.left(s, ds, missing_hours(ds, res["tables"][ds], life))
         n = res["fills"].get(ds, {}).get("filled", 0)
@@ -1534,7 +1567,8 @@ def fill_core_tables(s: str, tables: dict, metas: dict, fill: _HoleFill) -> tupl
     present = ~kl["is_gap"].to_numpy(dtype=bool)
     base = pd.DataFrame({"open_time_ms": (ns_int(kl.index[present]) // 10 ** 6).astype(np.int64),
                          **{c: kl[c].to_numpy(dtype=np.float64)[present] for c in KLINE_FLOAT_COLS}})
-    merged, f = fill_from_daily("klines", base, daily.get("klines", []), lo_ms, hi_ms)
+    merged, f = fill_from_daily("klines", base, daily.get("klines", []), lo_ms, hi_ms,
+                                metas.get("klines", {}).get("daily_files"))
     fills = {"klines": f}
     if f["filled"]:
         k2, info = _grid_klines(merged, life[-1])
@@ -1545,7 +1579,8 @@ def fill_core_tables(s: str, tables: dict, metas: dict, fill: _HoleFill) -> tupl
     for ds in PRICE_BAR_DATASETS:
         if ds not in tables or len(tables[ds]) == 0:
             continue
-        merged, f = fill_from_daily(ds, _bars_raw(tables[ds], MARK_COLS), daily.get(ds, []), lo_ms, hi_ms)
+        merged, f = fill_from_daily(ds, _bars_raw(tables[ds], MARK_COLS), daily.get(ds, []), lo_ms, hi_ms,
+                                    metas.get(ds, {}).get("daily_files"))
         fills[ds] = f
         if f["filled"]:
             md = _bars_table(merged, MARK_COLS)
@@ -1582,6 +1617,91 @@ def _core_filled(s: str, old: dict, core_end, items: list, fill: _HoleFill, log)
              "index_klines": info}
     t, m = fill_core_tables(s, tables, metas, fill)
     return {"tables": t, "meta": m, "full_meta": True}
+
+
+# ---------------------------------------------------------------- G3: a recoverable commit
+
+def _journal_path() -> Path:
+    return Path(DATA_DIR) / ".commit_journal.json"
+
+
+def _manifest_new_path() -> Path:
+    return MANIFEST.with_name(MANIFEST.name + ".new")
+
+
+def _old_path(p: Path) -> Path:
+    return Path(p).with_suffix(".parquet.old")
+
+
+def _write_synced(path: Path, text: str) -> None:
+    with open(path, "w", encoding="ascii", newline="\n") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def _no_hook(step) -> None:
+    return None
+
+
+def commit_tables(pairs: list, manifest: dict, log=print, hook=_no_hook) -> None:
+    """Move staged tables (new, final) into place and write the manifest so that a crash at any step leaves a
+    state recover_commit() brings back to ONE consistent folder: the new manifest is written beside the old
+    one, a journal lists the files, every replaced file is kept as <name>.parquet.old until the new manifest
+    has replaced the old one (the commit point); then the kept files and the journal are removed."""
+    mnew = _manifest_new_path()
+    _write_synced(mnew, json.dumps(manifest, indent=1, sort_keys=True))
+    hook("manifest_new")
+    entries = [{"path": str(Path(fp)), "had_old": Path(fp).exists()} for _, fp in pairs]
+    _write_synced(_journal_path(), json.dumps({"files": entries, "manifest_new": str(mnew)}, sort_keys=True))
+    hook("journal")
+    for i, (new, fp) in enumerate(pairs):
+        fp = Path(fp)
+        if fp.exists():
+            fp.replace(_old_path(fp))
+        hook(("kept_old", i))
+        Path(new).replace(fp)
+        hook(("moved_new", i))
+    mnew.replace(MANIFEST)                                    # the commit point
+    hook("manifest")
+    for _, fp in pairs:
+        _old_path(fp).unlink(missing_ok=True)
+    hook("cleanup")
+    _journal_path().unlink()
+
+
+def recover_commit(log=print) -> str | None:
+    """Bring a data folder left by an interrupted commit back to one consistent state: before the commit
+    point all old (kept files restored, new files and the new manifest removed), after it all new (kept files
+    removed). Returns "old", "new" or None (nothing to do)."""
+    j, mnew = _journal_path(), _manifest_new_path()
+    if not j.exists():
+        if mnew.exists():                                     # nothing was moved yet
+            mnew.unlink()
+            for st in Path(DATA_DIR).rglob("*.parquet.new"):      # staged tables of that commit
+                st.unlink()
+            log("interrupted commit found (no file moved): the data folder is ALL OLD")
+            return "old"
+        return None
+    rec = json.loads(j.read_text(encoding="ascii"))
+    if mnew.exists():
+        for e in rec["files"]:
+            fp = Path(e["path"])
+            o = _old_path(fp)
+            if o.exists():
+                o.replace(fp)
+            elif not e["had_old"] and fp.exists():
+                fp.unlink()
+            fp.with_suffix(".parquet.new").unlink(missing_ok=True)
+        mnew.unlink()
+        j.unlink()
+        log("interrupted commit rolled back: the data folder is ALL OLD again")
+        return "old"
+    for e in rec["files"]:
+        _old_path(Path(e["path"])).unlink(missing_ok=True)
+    j.unlink()
+    log("interrupted commit completed: the data folder is ALL NEW")
+    return "new"
 
 
 def verify(log=print) -> bool:
@@ -1621,6 +1741,7 @@ def summary(log=print):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     cmd = argv[0] if argv else "summary"
+    recover_commit(log=lambda s: print(s, flush=True))       # G3: an interrupted commit is repaired first
     if cmd in ("download", "update"):
         admit = tuple(argv[argv.index("--admit") + 1].split(",")) if "--admit" in argv else ()
         snapshot(cmd, log=lambda s: print(s, flush=True), admit=admit)

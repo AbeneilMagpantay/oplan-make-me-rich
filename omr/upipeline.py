@@ -94,7 +94,7 @@ def stage2_memory_estimate(prog: L.Program, sizes: dict) -> dict:
     activity rows, and per band and block [rows evaluated, engine rows, symbols]. Per band: the block caches
     (program columns over each block's rows with overlap, engine columns over its own rows), the stored
     tables of one block's symbols while it is built, the interpreter's values on the largest block, and the
-    whole-grid weights, raw signal, known channel and masks (G6's paired VAL books for top30). The next30 band
+    whole-grid weights, raw signal, known channel and masks (G6's paired lag books for top30). The next30 band
     (G8) is evaluated and released first, so the peak is the larger band plus the activity of every symbol."""
     T = int(sizes["rows"])
     f = program_fields(prog)
@@ -110,9 +110,10 @@ def stage2_memory_estimate(prog: L.Program, sizes: dict) -> dict:
         cache = sum(per) if band == "top30" else max(per)          # next30 blocks are streamed (one at a time)
         build = max(k for _, _, k in blocks) * int(sizes["symbol_rows_max"]) * 8 * n_tab
         work = max(k * re for re, _, k in blocks) * 8 * interp
-        # G6 on the VAL half (U1, paired): the weights, the plain actual targets, A_k, S_k, the source rows, one
-        # engine target copy (6 float64) and four boolean masks per cell
-        glob = T * k_all * (18 if band == "top30" else 17) + (T // 2) * k_all * 52 * (band == "top30")
+        # G6 on the VAL half (R-C, paired lag; the actual and source rows are views of W): the plain actual
+        # targets, A_k, S_k, one re-centring temporary and one engine target copy (5 float64) and the ok and
+        # mask booleans per cell
+        glob = T * k_all * (18 if band == "top30" else 17) + (T // 2) * k_all * 42 * (band == "top30")
         out[band] = int(cache + build + work + glob)
     out["bytes"] = int(acts + max(out["top30"], out["next30"]))
     return out
@@ -827,20 +828,37 @@ def _seq_rowsum(x: np.ndarray) -> np.ndarray:
     return np.cumsum(x, axis=1)[:, -1] if x.shape[1] else np.zeros(x.shape[0])
 
 
-def g6_books(Wv0: np.ndarray, D_: np.ndarray, ok: np.ndarray, k: int) -> tuple:
-    """U1: the paired books of shift k on the VAL window (row i decided at val_s-1+i, executed at val_s+i).
-    Source row i' = (i - k) mod L. mask[i] = ok[i] and D[i'] (tradable now and in play at the source row).
-    A_k = the actual weights on mask, S_k = the source row's weights on mask (0 elsewhere). A row whose own
-    set (A: ok[i]; S: D[i']) has a name outside mask is re-centred: every mask name gets the constant
-    (net of the unmasked own row - net of the masked row) / (number of mask names), sums sequential in
-    column order; no gross rescaling. A row with fewer than UNIVERSE_MIN_CS mask names is flat in both."""
-    L_ = len(Wv0)
-    src = (np.arange(L_) - k) % L_
-    Ws, Ds = Wv0[src], D_[src]
+def g6_lags(L_: int, g0: int, rng, n: int) -> np.ndarray:
+    """R-C: n lags in hours, uniform on [PERM_MIN_OFFSET_DAYS * 24, L // 2] (L = VAL rows, g0 = the grid row of
+    the first VAL decision). KernelFault when VAL is too short or the grid holds fewer than L // 2 rows
+    before g0 (every source row must exist)."""
+    lo, hi = C.PERM_MIN_OFFSET_DAYS * 24, L_ // 2
+    if hi < lo:
+        raise PL.KernelFault("VAL too short for the lag test")
+    if g0 - hi < 0:
+        raise PL.KernelFault("not enough history before VAL for the lag test")
+    return rng.integers(lo, hi + 1, size=n)
+
+
+def g6_books(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, k: int) -> tuple:
+    """R-C: the paired books of lag k on the VAL window. W, P_: weights and in-play mask over the WHOLE grid;
+    VAL row i (i = 0 .. L-1, L = len(ok)) is decided at grid row g0 + i and executed at g0 + 1 + i; ok[i] =
+    in play at the decision row and a usable bar at the execution row. The source of row i is grid row
+    g0 + i - k: always k hours BEFORE the decision row (before VAL start for i < k), never a later row.
+    mask[i] = ok[i] and in play at the source row. A_k = W[g0 + i] on mask, S_k = W[g0 + i - k] on mask (0
+    elsewhere). SYMMETRIC re-centring: a row whose own in-play set (A: P_[g0 + i]; S: P_[g0 + i - k]) has a
+    name outside mask gets, on every mask name, (net of the row over its own set - net of the masked row) /
+    (number of mask names); sums sequential in column order; no gross rescaling. A row with fewer than
+    UNIVERSE_MIN_CS mask names is flat in both."""
+    L_ = len(ok)
+    if g0 - k < 0:
+        raise PL.KernelFault("lag reaches before the grid")
+    Wa, Da = W[g0:g0 + L_], P_[g0:g0 + L_]
+    Ws, Ds = W[g0 - k:g0 - k + L_], P_[g0 - k:g0 - k + L_]       # views: the program's own earlier rows
     mask = ok & Ds
     nm = mask.sum(axis=1)
     books = []
-    for w, own in ((Wv0, ok), (Ws, Ds)):
+    for w, own in ((Wa, Da), (Ws, Ds)):
         b = np.where(mask, w, 0.0)
         rc = np.nonzero((own & ~mask).any(axis=1) & (nm > 0))[0]
         if len(rc):
@@ -912,12 +930,13 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
     else:
         g["G5"] = {"pass": True, "value": None, "g5_vacuous": True}
     L_ = val_e - val_s + 1
-    Wv0 = W[val_s - 1: val_e].copy()
-    # G6 (U1): row i = decision row val_s-1+i, executed at val_s+i. D = in play at the decision row; ok = D and
-    # a usable bar at the execution row. Each shift k is a PAIRED test on the names common to the actual row
-    # and the shifted row's source (g6_books); the plain actual run is reused when no row of A_k differs.
+    g0 = val_s - 1
+    # G6 (R-C): a causal PAIRED LAG test. VAL row i is decided at grid row g0 + i and executed at val_s + i;
+    # D = in play at the decision row, ok = D and a usable bar at the execution row. For each lag k the program's
+    # own weights k hours earlier (g6_books) are compared with its actual weights on the common names; the
+    # plain actual run is reused when no row of A_k differs from it.
     inplay = fp.inplay()
-    D_ = inplay[val_s - 1: val_e]
+    D_ = inplay[g0:val_e]
     ok = D_ & fp.eng_rows("av", val_s, val_e)
 
     def vrun(tgt):
@@ -926,13 +945,13 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
             return float("-inf")
         return S.sharpe(run.daily_returns().to_numpy())
 
-    plain = np.where(ok, Wv0, 0.0)
+    plain = np.where(ok, W[g0:val_e], 0.0)
     actual = vrun(plain)                                  # the unmasked actual (kept in the detail)
-    offs = PL.perm_offsets(L_, rng_perm, opts.perm_n)
+    offs = g6_lags(L_, g0, rng_perm, opts.perm_n)
     a_sh, s_sh = np.zeros(len(offs)), np.zeros(len(offs))
     ties = np.zeros(len(offs), dtype=bool)
     for j, k in enumerate(offs):
-        A_k, S_k = g6_books(Wv0, D_, ok, int(k))
+        A_k, S_k = g6_books(W, inplay, ok, g0, int(k))
         a_sh[j] = actual if np.array_equal(A_k, plain) else vrun(A_k)
         ties[j] = g6_books_tie(A_k, S_k)                   # R-B (1): no second engine run for a tie
         s_sh[j] = a_sh[j] if ties[j] else vrun(S_k)
@@ -968,7 +987,8 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
         fin = shifted[np.isfinite(shifted)]
         afin = a_sh[np.isfinite(a_sh)]
         res["detail"] = {"permutation": {"actual_val_sharpe_restarted": actual, "n": int(len(offs)), "p": p,
-                                         "paired": True, "ties": int(ties.sum()),
+                                         "paired": True, "ties": int(ties.sum()), "lagged": True,
+                                         "lag_min": int(offs.min()), "lag_max": int(offs.max()),
                                          "actual_common_mean": float(np.mean(afin)) if len(afin) else None,
                                          "shifted_mean": float(np.mean(fin)) if len(fin) else None,
                                          "shifted_p95": float(np.percentile(fin, 95)) if len(fin) else None},

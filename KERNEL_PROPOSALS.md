@@ -248,3 +248,16 @@ rates, status.
   tie, else a 1e-9 Sharpe margin). Open: an equal-weight basket still gets p = 0.52 on a churn panel with
   delistings (A_k's own set drops a delisting name's weight, S_k's does not); A_k's own set = in play at
   the decision row would make every shift a tie. Evidence: notes/kp015_build_evidence.md.
+- Fix pass 5 (2026-11-20): G6 in top30 becomes a causal PAIRED LAG test (R-C): the program's own weights k
+  hours earlier (k from 30 days to half the VAL length; rows before VAL start for the first k rows) against
+  its actual weights, on the names tradable now and in play at the earlier row, each book re-centred to the
+  net of the row it came from. It replaces the circular shift of pass 4, whose source rows for the first k
+  rows lay in the future (a survivor filter through future membership); with the symmetric own sets an
+  equal-weight basket gets p = 1. Universe calibration (R-D): resumable through a partial file bound to the
+  kernel, data and protocol; a memory preflight; level 1.5 only; defaults 200 / 100 / 4. R-E: universe null
+  funding rates carry a fair sign coin per settlement hour, so no carry can be earned in a null world (the
+  core calibration unchanged). R-F: null A draws a month's source days from the days on which every top30
+  member of that month is fully active, so the members share one source day. R-G: the hole fill remembers a
+  404 only for a day at least a week old, checks every reused daily file against its manifest pin, and
+  commits tables and manifest through a journal that the next `python -m omr.data` command completes or
+  rolls back. Evidence: notes/kp015_build_evidence.md.

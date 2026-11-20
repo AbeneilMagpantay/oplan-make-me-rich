@@ -81,3 +81,31 @@ round 3 also the coordinator's own read of the core modules.
   second download; the real-data core-identity test (run by the builder, not the auditor).
 - Detail: `audits/round6_findings.md` (the auditor's full findings file, copied unchanged; the probe
   scripts it names were session scratch and are not kept).
+
+## Coordinator's review of fix pass 4 - 2026-11-20 - commit e4e44e2 (unlocked, branch kp015-build)
+- Not an audit round: the coordinator's own read of the changed critical parts before round 7.
+- G6 in universe units, two defects in the coordinator's own U1 ruling (none in the builder's code):
+  (1) the two books' reference nets were measured differently (the actual book after dropping names
+  without a bar, the shifted book before), so an equal-weight basket got p = 0.524 on a churn panel
+  instead of 1 (reported by the builder as a stop case);
+  (2) a circular shift takes the source of every row i < k from L - k rows in the FUTURE, so the
+  common-names mask restricts both books at that row to names that are still members at a later
+  date: future information at the evaluated row, on about half of all rows. The calibration worlds
+  (real membership calendar, resampled prices) cannot show it, nor can churn worlds whose volume is
+  independent of price.
+  Ruling R-C (fix pass 5): a paired LAG test. The shifted book is the program's own weights k hours
+  earlier (k from 30 days to half the VAL length; rows before VAL start are used as sources), both
+  books on the names in play at both rows, each row re-centred to the net of the weight row it came
+  from. No row after the decision row enters either book.
+- Universe calibration nulls: the funding table kept its real persistence under null B, and its
+  within-day persistence under null A, so the carry family could earn real carry in a "null" world.
+  The sealed core artifact shows the effect at small size (carry family mean VAL Sharpe -0.30 under
+  null A against +0.07 under null B; Tier-1 passes under null B 0, 1, 3 of 300 at 0.025, 0.05, 0.10).
+  Ruling R-E (fix pass 5): in the universe null worlds every settlement's rate is multiplied by a
+  fair coin shared by all symbols at that settlement time. The core calibration is unchanged.
+- Ruling R-D (fix pass 5): the universe calibration resumes after an interruption, checks memory
+  before it starts, evaluates the oracle at level 1.5 only, and defaults to 200 null worlds and 100
+  oracle worlds per null.
+- Read and found consistent with the rulings: cs_* over known finite inputs (U3), funding freshness
+  (U7), the hole fill's revision check and staged writes (U4), the top30 probe panel (U6), the
+  sandbox log order (U8). All of these still need the independent verification of round 7.

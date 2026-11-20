@@ -54,7 +54,11 @@ Fix pass 4 (2026-11-20): paired common-names G6 in top30, calibration worlds on 
 calendar, finite-only cross-sections, daily-file hole fill in `data universe` for every symbol including the
 ten (data rewritten; research hash 28d9084a8c5c7659...), symbol table in the research hash, 12-symbol top30
 probe, bounded funding8h, G6 ties (R-B), small items (KERNEL_PROPOSALS KP-015; notes/kp015_build_evidence.md).
-Open: the R-B basket counterexample (a delisting row makes A_k and S_k differ) awaits a ruling.
+Fix pass 5 (2026-11-20): G6 in top30 is a causal paired lag test (no future row; basket p = 1); the
+universe calibration resumes after an interruption, checks memory first, tunes level 1.5 only (defaults
+200 null worlds, 100 oracle worlds, 4 workers), its null funding carries a sign coin per settlement hour, and
+null A shares one source day across a month's members; the data hole fill got three hardening items (marker
+age, daily-file pins, a recoverable commit). Stored data and research hash unchanged by this pass.
 Next: audit, approval, re-key, both calibrations (core and top30), seal, selftest.
 
 ## Open decisions for the human

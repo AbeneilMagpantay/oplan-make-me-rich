@@ -13,3 +13,4 @@ __pycache__/
 .pytest_cache/
 ledger/.evaluate.lock
 _build/
+ledger/*.partial.jsonl

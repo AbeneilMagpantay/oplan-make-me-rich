@@ -423,7 +423,8 @@ Live risk limits the loop can never change:
   hold the members of every month their evaluated rows touch); the self-check `block_overlap` (stage 1:
   an uncounted kernel fault, stage 2: a counted one) compares each block's warm-up with the previous
   block's result; lookback_hours counts the staleness of mark_close / index_close under a timeframe and
-  under btc(). Fix pass 4: G6 in top30 is the paired common-names test (below); a cs_* counts only
+  under btc(). Fix pass 4: G6 in top30 became a paired common-names test (fix pass 5: the causal lag
+  form below); a cs_* counts only
   known AND finite inputs (a known non-finite input is a known NaN); `data universe` fills every hour
   missing inside a universe symbol's life from the daily files of the same archive (checksum required,
   pinned in the manifest; an hour already stored must equal the daily row, otherwise the download stops
@@ -437,31 +438,47 @@ Live risk limits the loop can never change:
 - Engine for top30 and next30: 12.5 bps per side on every symbol; a position whose next bar is missing
   is closed at its last usable close (possibly a zero-trade bar's frozen price) with that cost; targets of unavailable or out-of-play symbols are 0;
   funding and the mark-price liquidation check per symbol; gross <= 1 across the unit.
-- Gates for top30: G1-G5, G7 and G10 as in section 7. G6 (fix pass 4) is a PAIRED test on the common
-  names: VAL row i is decided at the row before VAL start + i and executed at VAL start + i; for every
-  shift k (offsets drawn as in section 7) with source row i' = (i - k) mod L, the names common to the row
-  are those tradable at i (in play at the decision row with a usable bar at the execution row) and in
-  play at the source decision row i'; the actual book A_k holds the actual weights of row i on those
-  names, the shifted book S_k the weights of row i' on the same names; a row whose own set (A: tradable at
-  i; S: in play at i') has a name outside the common names is re-centred (every common name gets the
-  constant (net of the unmasked row - net of the masked row) / number of common names, sums sequential in
-  column order, no gross rescaling); a row with fewer than 10 common names is flat in both books. Both
-  books run through the engine restarted at VAL start (a liquidated run scores -inf); p = (1 + #(S_k >=
-  A_k)) / (N + 1), where S_k >= A_k when the two books are equal within 1e-12 on every cell (a tie, no
-  second engine run) or Sharpe S_k >= Sharpe A_k - 1e-9 (both can only raise p). Where no row of A_k differs from the actual weights the actual run is
-  reused, so without churn the result is the plain shift test bit for bit. The core unit's G6 is
-  unchanged. G8: the same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
+- Gates for top30: G1-G5, G7 and G10 as in section 7. G6 (fix pass 5) is a causal PAIRED LAG test. It
+  asks whether the program's weights at the time it decided do better over VAL than the SAME program's
+  own weights from k hours earlier, traded at the same times. VAL row i is decided at the row before VAL
+  start + i and executed at VAL start + i. For each of 200 lags k, drawn uniformly from 30 days to half
+  the VAL length, the lagged book at row i is the program's own weight row from k hours BEFORE that
+  decision (for the first k rows of VAL that is a row before VAL start); no row after the decision is
+  ever used, and nothing wraps around. Both books hold only the names common to the row: tradable now (in
+  play at the decision row with a usable bar at the execution row) and in play at the lagged row. Each
+  book is re-centred to the net of the full weight row it came from (its own in-play set) when that set
+  has a name outside the common names (every common name gets (own net - masked net) / number of common
+  names, sums sequential in column order, no gross rescaling); a row with fewer than 10 common names is
+  flat in both books. Both books run through the engine restarted at VAL start (a liquidated run scores
+  -inf); p = (1 + #(lagged >= actual)) / (N + 1), where the lagged book counts as >= when the two books
+  are equal within 1e-12 on every cell (a tie, no second engine run) or its Sharpe is >= the actual
+  Sharpe - 1e-9 (both can only raise p). Where no row of the actual book differs from the actual weights
+  the actual run is reused. Why no future row: the names common to a row must be known at the decision
+  (a source row from the future would keep only names that will still be members later, a survivor
+  filter). The core unit's G6 is unchanged. G8: the same program on unit next30 must have a positive
+  Sharpe over its DEV+VAL span.
 - The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged) and omr.ucalibrate
   (top30, fix pass 4: null worlds on the REAL membership calendar - every symbol ever in top30 keeps
   its real present and absent hours, trades and volumes, so the kernel's own rule reproduces the real
   monthly schedule, usable flags and unit sizes; only prices are resampled, as open-relative ratios
   cumulated from the real first open, a present zero-trade bar flat; null A draws one source day per
-  world day for all symbols, a symbol not fully active on it uses a personal fallback day, funding keeps
+  world day for all symbols, in a month with a unit from the days on which every top30 member of that
+  month is fully active (fix pass 5; a pool under 90 days falls back to the whole period), a symbol not
+  fully active on it uses a personal fallback day, funding keeps
   the real settlement calendar with the source day's rates; null B mirrors every symbol's demeaned path
   with one coin per day, funding unchanged; three hash-locked cross-sectional families, the same
   screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds
-  on the same worlds). Threshold = the largest of the grid whose null pass rate is <= 3% under both
-  nulls in BOTH units, with oracle power at Sharpe 1.5 >= 50% everywhere.
+  on the same worlds, tuned and evaluated at true Sharpe 1.5 only, the level the rule reads). The
+  universe nulls keep the REAL membership calendar while prices are resampled, so they cannot show an
+  effect that needs membership to follow price; the causal construction of G6 is what excludes it.
+  Fix pass 5: in the universe null worlds every funding rate is multiplied by a fair sign coin drawn per
+  settlement hour (the same coin for every symbol settling then), so no funding payment can be predicted
+  from earlier funding and no carry can be earned; sizes, intervals and times are kept. The core
+  calibration is unchanged: there its carry effect was small (core carry family mean VAL Sharpe -0.30
+  under null A, +0.07 under null B; Tier-1 passes under null B 0, 1 and 3 of 300 at the three
+  thresholds). The universe run is resumable (finished tasks in a partial file bound to the kernel,
+  data and protocol) and checks memory before it starts. Threshold = the largest of the grid whose null
+  pass rate is <= 3% under both nulls in BOTH units, with oracle power at Sharpe 1.5 >= 50% everywhere.
 - The selftest scores kernel_noise_top30 through the full path as well.
 - Memory (R3, S4): before the pending row of a top30 trial the evaluator estimates stage 2's bytes from
   counts in data/validation.json (rows, distinct top30 and next30 symbols, the symbols of every block) and

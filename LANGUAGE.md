@@ -300,9 +300,12 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   must not exceed 90 days (2,160 hours). It is a true upper bound of a value's memory: from a frame's
   first row + lookback - 1 on, a value equals the whole run's (tests/test_blocks.py). Every program's
   lookback is recorded in its trial row (`lookback_hours`), in both units.
-- Gates: CONSTITUTION section 13. G6 in top30 is a paired test on the common names: for each shift, the
-  actual book and the shifted book hold the same names on every row (tradable now and in play at the
-  source row), re-centred to their own rows' nets, flat under 10 names.
+- Gates: CONSTITUTION section 13. G6 in top30 is a paired lag test: the program's weights are compared
+  with its OWN weights from k hours earlier (k from 30 days to half the VAL length; for the first k rows of
+  VAL the earlier weights come from before VAL start), traded at the same times; both books hold the same
+  names on every row (tradable now and in play at the earlier row), each re-centred to the net of the
+  row it came from, flat under 10 names. No row after the decision is used: a later row would choose the
+  names by future membership.
 - Costs: 12.5 bps per side on every symbol. A position in a symbol whose next bar is missing is closed
   at its last usable close (the close of its previous usable bar, which can be a zero-trade bar with a
   frozen price) with that cost; a symbol leaving the unit gets weight 0.

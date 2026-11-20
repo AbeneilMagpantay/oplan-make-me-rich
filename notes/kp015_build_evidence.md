@@ -519,3 +519,145 @@ test_ledger_lock.py, test_ucalibrate.py, test_universe.py and new test_cs_nonfin
 test_g6_paired.py, test_holefill.py, test_probe_top30.py, test_sandbox_log.py; CONSTITUTION.md, LANGUAGE.md,
 KERNEL_PROPOSALS.md, STATE.md, notes/kp015_build_evidence.md; data/manifest.json, data/validation.json and the
 stored tables (data universe / validate).
+
+# FIX PASS 5 (2026-11-20): R-C paired lag G6, R-D calibration run, R-E null funding sign, R-F null A pools, R-G hole-fill hardening
+
+Base e4e44e2 (kp015-build). Build and test only: no re-key, real calibration, seal or selftest; no git writes;
+the ledger untouched; no program evaluated on real rows after DEV end; no VAL membership names in any output.
+
+R-C (omr/upipeline.py g6_lags, g6_books, ugates): G6 in universe units is a causal paired LAG test. VAL row i is
+decided at grid row g0 + i (g0 = VAL start - 1) and executed at VAL start + i; D = in play at the decision row,
+ok = D and a usable bar at the execution row. Lags: perm_n integers uniform on [720, L // 2] from rng_perm
+(KernelFault when L // 2 < 720 or fewer than L // 2 rows exist before g0). For lag k the source of row i is grid
+row g0 + i - k (views of the whole-grid W and in-play mask; rows before VAL start for i < k; nothing after the
+decision row, no wrap-around). mask = ok and in play at the source row; A_k = W[g0 + i] on mask, S_k =
+W[g0 + i - k] on mask; symmetric re-centring to the net of each book's own full row (A: in play at its decision
+row; S: in play at the source row) when that set has a name outside mask; flat under 10 mask names. Ties
+(1e-12), the 1e-9 margin and the reuse of the plain actual run are unchanged. Detail adds lagged, lag_min,
+lag_max (the smallest and largest lag drawn). Core G6 (omr/pipeline.py) unchanged. Memory estimate: G6's VAL
+term 52 -> 42 bytes per cell (the actual and source rows are views now).
+Tests (tests/test_g6_paired.py, 10, synthetic):
+- T1 random whole-grid churn calendar, 6 lags (one reaching 1,500 rows before VAL): both books hold exactly the
+  mask names on every live row; row nets equal the own rows' nets (A over D[i], S over the source row's in-play
+  set, 1e-12); flat rows flat in both; gross never above the own row's gross; re-centred and flat rows occur.
+- T2 causality, two inputs identical up to grid row r and different after it (membership, in-play flags,
+  weights, bars): for 5 lags, A_k and S_k are identical on every VAL row executed at or before r. Negative
+  control in the same test: the pass-4 circular form fails the check (leaks > 0).
+- T3 a 14-symbol panel without churn and with every bar: exactly 1 + N engine runs on the VAL window (A_k is the
+  plain actual for every lag), A_k = the plain actual and S_k = W[g0 + i - k] under ok, and the G6 value equals a
+  plain lag test computed directly in the test; no tie and no lagged Sharpe inside the 1e-9 band.
+- churn panel (56 symbols): book properties on 6 production lags, with re-centred rows.
+- T4 the equal-weight basket on the churn panel (it has rows where a member has no bar at the execution row):
+  p == 1.0 exactly (strict, no xfail; the pass-4 counterexample test removed).
+- T5 the spy: no weight on a symbol out of play or without a bar in any G6 run; the detail keys.
+- T6 500 lags inside [720, L // 2]; KernelFault with too little history before VAL and with a too short VAL.
+- T7 a planted-foresight book (UOracle, rho 0.9, one-day speed) on the churn panel: p == 1 / (N + 1).
+- ties and the margin only raise p.
+Documents: CONSTITUTION section 13 (the lag form in plain words, why no future row; the calibration bullet:
+the universe nulls keep the real membership calendar while prices are resampled, so they cannot show an effect
+that needs membership to follow price, and the causal G6 is what excludes it), LANGUAGE section 10, KERNEL_
+PROPOSALS KP-015, STATE.
+
+R-D (omr/ucalibrate.py):
+- D1 resume: every finished task (null world, oracle curve, oracle power) is appended and fsynced to a partial
+  file (default ledger/ucalibration_<semantic16>.partial.jsonl; <out>.partial.jsonl for a dry run with --out)
+  whose first line is the header (protocol version, semantic hash, research hash, families' sha256, seeds, world
+  counts, levels, speeds, perm_n, draws, rho grid). Same header: finished tasks are skipped and their rows reused
+  (a torn last line is ignored); another header: refused with a message and exit code 5 unless --restart. Rows
+  are stored and used as cleaned JSON, so a resumed run and an uninterrupted one compute from identical objects.
+  The partial file is deleted after the artifact is written (and logged for a real run). .gitignore:
+  ledger/*.partial.jsonl.
+- D2 memory preflight before the pool: available memory (upipeline's probe) against workers x WORKER_PEAK_BYTES
+  (1.6 GiB, from M1) + the shared source; if it does not fit it prints how many workers fit and exits with code 4
+  unless --force. --workers 0 runs every task in-process (tests, small dry runs).
+- D3 the oracle is tuned and evaluated at true Sharpe 1.5 only (ULEVELS); oracle_summary / verdict_from_rows /
+  decide_both use the levels present in each unit's artifact (on the core rows the summary equals
+  omr.calibrate.oracle_summary). omr/calibrate.py and the core artifact are untouched.
+- D4 defaults --worlds 200 --oracle-worlds 100 --workers 4.
+- D5 progress lines: done / total (resumed count), elapsed, estimated time left in the phase.
+- D6 UWorld.source_day_stats(): a deterministic count per world (the cache-dependent counter is gone).
+Tests: tests/test_ucalibrate.py (Partial header binding and a torn line; an interrupted tiny synthetic dry run
+- one family, one world per null, one oracle world, a 4-point rho grid, killed by an exception after three
+recorded tasks - resumed to an artifact equal to the uninterrupted run's apart from created_at and wall_seconds,
+the partial file removed, oracle rows and summary at level 1.5 only; the memory preflight refuses with exit code
+4 and names how many workers fit; the defaults; source-day stats deterministic and independent of the table
+cache); tests/test_ledger_lock.py::test_d3_decide_both_reads_the_levels_present_in_each_unit.
+D6 numbers: see R-F (the share after R-F replaces the one asked for here; before R-F, on the same synthetic
+source, 57.9% of the members-and-others symbol-days used the shared source day and 42.1% a fallback).
+
+R-E (omr/ucalibrate.py UWorld): after the funding table is built as before (null A: the source day's rates for
+that symbol; null B: the real rates), every rate is multiplied by a fair sign coin of its settlement hour, drawn
+by the world's own generator ([seed, 31]) for every hour of the world, so every symbol settling at the same time
+gets the same coin and coins at different times are independent. Oracle worlds are the same worlds.
+PROTOCOL_VERSION 3. Tests (tests/test_ucalibrate.py::test_r_e_funding_sizes_kept_signs_shared_per_settlement_time,
+both nulls): |rate| equals the construction without the coin row for row (and the recorded rates under null B),
+intervals kept; two symbols settling at the same time carry the same factor and both signs occur; the same world
+seed gives the same table and another seed a different one; the mean product of consecutive sign factors over a
+symbol's table is below 0.05 in absolute value. Documents: the module docstring and the CONSTITUTION calibration
+bullet (core calibration unchanged and why: core carry family mean VAL Sharpe -0.30 under null A, +0.07 under
+null B; Tier-1 passes under null B 0, 1 and 3 of 300).
+
+R-F (omr/ucalibrate.py USource._build_pools, UWorld): for every calendar month m, POOL(m) = the source days
+(UNIVERSE_START .. VAL end) on which every top30 member of m (the kernel's own rule on the source, the
+schedule every world reproduces) has 24 active hours, built once in the source and shared with the workers
+(arrays day_pool, pool_days, pool_off). Every null A world day of month m draws its source day iid from POOL(m);
+a month with no unit or a pool under 90 days (POOL_MIN_DAYS) draws from the whole period as before; a symbol
+not fully active on the drawn day uses its personal fallback. The artifact's protocol block records
+null_a_source_days: min_pool_days 90, pooled_months, months_whole_period_pool, smallest and median pool days;
+the run header binds pool_min_days.
+Tests (tests/test_ucalibrate.py): in every pooled month no member is on a fallback day and every member uses
+the world's drawn day; the draws are deterministic per seed, change with the seed, lie in the month's pool, and
+whole-period days stay in [UNIVERSE_START day, VAL end]; the kernel's rule on the world still gives the source's
+top30 members month for month and the same in-play mask (both nulls); the DEV view still equals the full world.
+Report (dry-run synthetic source, 149 symbols ever in top30, null A world 11000; mean over 62 months of the mean
+pairwise correlation of that month's members' daily returns): source 0.359; null A before R-F 0.151; after R-F
+0.359. Pools: 62 months pooled, 9 months on the whole-period pool (the 9 months before the first unit), smallest
+pool 90 days, median 201. Symbol-days with an active bar: shared source day 56.7% before, 94.6% after (fallback
+43.3% -> 5.4%, mostly non-members).
+
+R-G (omr/data.py), none of which changes a stored row: G1 a `.missing` marker is written only for a day at least
+7 days older than the request (MISSING_MARKER_MIN_AGE_DAYS; a younger 404 returns missing and is asked again).
+G2 a daily file used for a table whose manifest entry pins a sha256 for that day must equal the pin, else
+DailyPinMismatch (a DailyRevision: `data universe` stops before anything is written; fill_core_tables and the
+snapshot raise). G3 commit_tables: the new manifest is written as manifest.json.new, a journal
+(data/.commit_journal.json) lists the files, each replaced table is kept as <name>.parquet.old, the new tables are
+moved in, the new manifest replaces the old one (the commit point), then the kept files and the journal are
+removed; `data universe` now computes the research hash from the staged files before anything is moved, and
+`data download / update` stage their tables and use the same commit. recover_commit() runs at the start of every
+`python -m omr.data` command: before the commit point it restores ALL OLD (kept files back, new files and the new
+manifest removed), after it ALL NEW (kept files removed), with one log line saying which.
+Tests (tests/test_holefill.py): G1 a 5-day-old 404 leaves no marker and is asked again, a 7-day-old one is
+remembered; G2 a matching pin fills, a different pin raises (also through fill_core_tables); G3 a scratch data
+folder with a crash injected at each of the 8 commit steps (new manifest written, journal written, each of two
+tables kept / moved, manifest replaced, cleanup): recover_commit gives ALL OLD for the six steps before the commit
+point and ALL NEW for the two after it, every manifest entry's file matches its pin, no journal, kept or staged
+file is left, and a second call finds nothing to do; an uninterrupted commit; `python -m omr.data` calls
+recover_commit before its command.
+Research hash before and after this pass: 28d9084a8c5c765930e9e77eadba8b1952e5c49c7f917f0493dac3ab24009410 (the
+e4e44e2 value); `python -m omr.data verify`: OK; no file under data/ changed.
+
+M1 (scratchpad u2_measure.py, each task in its own spawned worker attached to the shared source; dry-run
+synthetic universe, 149 symbols ever in top30; final code):
+- null world A 552.7 s, peak working set 1,255 MiB, peak private 1,382 MiB; null world B 509.7 s, 1,219 MiB
+  (1,397 MiB private); oracle power task (level 1.5 only, 2 evaluations) 314.4 s, 1,103 MiB (1,250 MiB).
+- oracle curves (unchanged by this pass, pass-4 measurement): 16.7 s per world and oracle build, 0.44 s per rho;
+  level 1.5 only: 81 + 41 + 1 rhos and 3 builds per speed, about 104 s, so about 208 s per oracle world for both
+  speeds; an oracle world about 522 s in all; a null world about 531 s (mean of A and B).
+- 200 null worlds per null and 100 oracle worlds per null: 2 x 200 x 531 + 2 x 100 x 522 = 316,800 s = 88.0
+  worker-hours, about 22 h with 4 workers. WORKER_PEAK_BYTES for the preflight: 1.6 GiB (measured 1.40 GiB).
+M2 phase breakdown (seconds):
+- null world A (3 families): world build 0.0 (built per block), block builds 64.0 (9 Blocked panels), 20
+  screening draws x 3 families 19.8, stage 1 14.9, stage-2 evaluation and self-checks 10.6, G5 variants 22.5
+  (36 variant signals; their engine runs are in the next item), gates other than G5 / G6 48.8 (base, stress,
+  G5 engine runs, G7, benchmark), G6 371.9 with 1,203 engine runs on the VAL window (3 x (1 actual + 200 A_k +
+  200 S_k): no lag reused the plain actual on the churn calendar, no tie), everything else 0.1.
+- oracle power task: block builds 29.8, oracle setup 0.5, gates other than G6 30.2, G6 253.8 with 802 engine runs
+  (2 x (1 + 200 + 200)), everything else 0.0.
+M3 stage-2 memory estimates (data/validation.json sizes; G6 term 42 bytes per VAL cell): ucal_xs_momentum 778 MiB,
+ucal_xs_reversal 778 MiB, ucal_xs_carry 835 MiB, kernel_noise_top30 982 MiB (pass 4: 809 / 809 / 866 / 1,012).
+
+Full suite after this pass: 826 passed, 0 failed, 0 xfailed, 0 skipped (1,234 s). python -m omr.ledger verify: OK
+(ledger untouched). No file under data/ changed (research hash 28d9084a8c5c7659...).
+Files touched: omr/data.py, omr/ucalibrate.py, omr/upipeline.py; tests/test_g6_paired.py, test_holefill.py,
+test_ledger_lock.py, test_ucalibrate.py; CONSTITUTION.md, LANGUAGE.md, KERNEL_PROPOSALS.md, STATE.md, .gitignore,
+notes/kp015_build_evidence.md. (audits/AUDIT_LOG.md: the coordinator's own entry, not touched here.)
