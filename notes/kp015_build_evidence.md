@@ -746,3 +746,35 @@ require_sealed refuses anything else. FP6-4 kernel_lock uses C.UNITS (exactly ("
 section 10 gives the exact figure (twice the gross traded a day, about 0.9 of the gross per year in costs,
 2 x 12.5 bps x 365); CONSTITUTION section 13 says the 24 audit worlds had the real membership structure and
 synthetic prices.
+
+Final runs of fix pass 6 on the files committed as 4286abf (logs in the session scratch, read by the coordinator):
+tests/test_ucalibrate.py 28 passed in 754.45 s; full suite 849 passed in 1744.60 s (0 failed, 0 skipped);
+python -m omr.ledger verify OK (trials 10 rows, stage1_log 1, kernel_history 8, calibration_log 2, sandbox_log 18,
+val_access_log 15); ledger/ and data/ unchanged. After the suite the coordinator reworded the turnover bullet of
+LANGUAGE section 10 (tests/test_structure.py: 9 passed).
+
+Pilot of the universe calibration (this block added by the coordinator, 2026-11-21). Command: the kernel's own
+entry point through scratch/pilot_wrapper.py (it redirects the access log and the trial ledger path to scratch, so
+the project's ledger gets no row): --unlocked-dry-run --out <scratch>/pilot_ucal.json --worlds 1 --oracle-worlds 4
+--workers 1. The first attempt (2026-11-20 23:29) was refused by the memory preflight (1.6 GiB available, about
+1.9 GiB needed) and was not forced. Second attempt 2026-11-21 00:54 with 5.9 GiB available: exit 0, wall time
+3,747 s, one worker process (the multiprocessing path), oracle phases first, then the null worlds; artifact saved,
+partial file removed. Dry-run source: the synthetic universe (170 symbols, panel 149; null A pools median 201 days,
+smallest 90). Tuned rho at level 1.5 (achieved mean VAL Sharpe): null A fast 0.059125 (1.498), slow 0.09275
+(1.500); null B fast 0.05675 (1.502), slow 0.091875 (1.499).
+Tier-1 power, 4 oracle worlds per cell, at 0.025 / 0.05 / 0.10: null A fast 0.25 / 0.50 / 0.75; null A slow
+0.25 / 0.25 / 0.25; null B fast 0.50 / 0.75 / 1.00; null B slow 0.75 / 0.75 / 0.75. The ADVISORY fired: "the seal
+rule will STOP whatever the null worlds give (null A slow: power at 0.1 below 0.5)". G6 p values (realized VAL
+Sharpe): A fast 0.0249 (1.78), 0.0348 (1.23), 0.2139 (1.48), 0.0896 (1.50); A slow 0.1443 (0.94, also fails G7),
+0.1990 (1.50), 0.1393 (1.55), 0.0100 (2.01); B fast 0.0050 (1.55), 0.0050 (1.76), 0.0647 (1.32), 0.0448 (1.38);
+B slow 0.0050 (2.06), 0.3234 (0.72, fails G1), 0.0249 (1.42), 0.0050 (1.80). Every other gate passed in the other
+rows (G4 values at 5 days 0.39 to 0.91).
+Null rows (1 world per null, 3 submitted pairs each): null A momentum n = 58 has DEV Sharpe 2.54, VAL Sharpe 3.28,
+passes every other gate and has G6 p = 0.0945 (Tier-1 at 0.10: 1 of 3 pairs); null B momentum n = 60 has VAL
+Sharpe 1.42 and p = 0.771; reversal and carry are negative in both. Unit verdict of the pilot artifact: STOP
+(power below POWER_MIN at A/slow), as the advisory said.
+Reading (coordinator): the pilot met the condition fixed before it ran (it finishes; power above zero in all four
+cells) and is too small to estimate a cell (1 of 4 has a 95% interval of about 1% to 81%). But its slow rows are
+worse than the audit's 24 real-structure worlds, which were measured without the null builders and with 40 lags
+(4 of 8 pilot rows have 13% or more of the lags beating the actual book, against 4 of 24). The four cells are
+therefore measured again on the real structure through the null builders before any re-key (audit round 7, X10).

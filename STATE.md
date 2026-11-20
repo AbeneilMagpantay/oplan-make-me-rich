@@ -75,9 +75,15 @@ Audits of the build (audits/AUDIT_LOG.md): round 6 on bd6920b NOT READY, answere
 round 7: 32e32e0 NOT READY (the seal rule would have stopped with certainty on top30 fast power; found by
 measuring Tier-1 power on the real membership structure), fix pass 6 reviewed READY on the working tree;
 full suite 849 passed on the final files.
-Still to do before the re-key: a small end-to-end pilot of the universe calibration (dry run, outputs in
-scratch). It needs about 2.6 GiB of free memory and was refused at 1.6; a waiting script starts it.
-Next: the pilot, the human's approval, re-key, both calibrations (core about 40 minutes; top30 about 88
+Pilot of the universe calibration (2026-11-21, dry run on the synthetic universe, 4 oracle worlds per cell, 1
+null world per null; notes/kp015_build_evidence.md): it ran end to end in 62 minutes with one worker. Tier-1
+power at 0.025 / 0.05 / 0.10: null A fast 1 / 2 / 3 of 4, null A slow 1 / 1 / 1, null B fast 2 / 3 / 4, null B
+slow 3 / 3 / 3. Its own advisory fired (null A slow under 50% at 0.10), and the unit verdict of the pilot
+artifact is STOP. Four worlds cannot estimate a cell, but the slow rows are worse than the audit's
+real-structure worlds, which did not go through the null builders. NO RE-KEY on this evidence: the auditor is
+measuring the four cells on the real structure through the null builders (audit round 7, X10; the reading rule
+is fixed in advance: proceed at 15 of 24 or more in every cell, stop at 10 of 24 or fewer at 0.10).
+Next: the X10 result, the human's approval, re-key, both calibrations (core about 40 minutes; top30 about 88
 worker-hours: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
 resumable; the oracle phases come first and show after about a third of the run whether the seal can
 succeed), seal of both units, selftest, independent recount, merge into `main`.
@@ -87,7 +93,7 @@ succeed), seal of both units, selftest, independent recount, merge into `main`.
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
 2. KP-015 (built, unlocked; audit clean as of fix pass 6): approve the semantic re-key. The re-key
-   itself waits for the pilot above. Run time on this PC: see Next.
+   itself waits for the measurement above (X10). Run time on this PC: see Next.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only.
