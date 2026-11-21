@@ -320,3 +320,134 @@ round 3 also the coordinator's own read of the core modules.
   core unit; G8.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X10 sections appended
   (sha256 52b232782cc934770407db4faba0762ac270e2d759ea2fba547a3bfac7fec45c).
+
+## Round 7, addendum X11 - 2026-11-21 - fix pass 7 and 7b re-measured: commits ead27c6 and 58ba59e (unlocked, branch kp015-build)
+- Verdict: 58ba59e NOT READY for the re-key (the auditor's judgment and the coordinator's). No code
+  defect and no false-pass risk were found. By the rule fixed in the X10 entry the measurement reads
+  MARGINAL (size not triggered; two power cells under 15 of 24 at 0.025, none at or under 10 at 0.10),
+  which sends the odds to the owner. The auditor's odds of a successful seal are about 1 in 10 (range
+  0.05 to 0.25), most likely a STOP on the momentum family's bound under null A after the full run,
+  so the coordinator does not ask for the re-key. The size trigger of that rule was too loose: 3 of
+  24 is 12.5%, while the seal's own family bound is 6% of about 200 pairs. The auditor worked on a
+  verified copy of ead27c6 (143 blobs), read the 7b delta, and wrote nothing in the project.
+- Coordinator's review of fix pass 7 before the measurement (read: the whole diff of 6d9fb34 to
+  ead27c6 in omr/, the new tests' intent). R-K and R-L were built as ruled. Two defects found and
+  fixed in 7b: the rule's two new bounds were written as "missing or above", under which a NaN rate
+  qualified (now every bound holds only when the value IS inside it); the DEV-positive count read
+  the gate with `is True` (now by truthiness, as tier_at reads it). The builder's re-read found the
+  same weakness in the power and level bounds and in the oracle advisory (fixed in 7b). Full suite at
+  58ba59e: 864 passed, 0 skipped; ledger verify OK.
+- X11 Part A (the auditor, by reading and probes). R-K is exact: its own enumeration from the source
+  rows equals sym_c and pool_adj; the expected day log return minus c is at most 3.5e-18 over 7,295
+  (set, symbol) pairs, members or not (without R-K: SD 0.98 a year over all symbols, 0.63 over
+  members); the draws are unchanged (0 of 134 symbols differ), null B tables are byte-identical, the
+  null A tables differ only by the intended factor, and a one-worker spawn pool gives the in-process
+  result bit for bit. R-L binds as designed (12 of 200 accepted, 13 refused; an unknown family or a
+  text p value gives the "malformed" STOP). 7b is sound. The world builders are byte-identical in
+  ead27c6 and 58ba59e, so the measurements stand for 58ba59e. Notes without action: a symbol's first
+  world row loses 1/24 of its adjustment; 0.16% of symbol-days are partial and get a proportional
+  share; 9 (set, symbol) pairs have 1 to 5 full days (adjustments up to 6.1% a day, exact in
+  expectation); pool-specific volatility remains (SD 0.028 on synthetic prices, larger on real ones).
+- X11 Part B, size (the X10 source: real structure, synthetic iid prices; every pair submitted).
+  Tier-1 at 0.025 / 0.05 / 0.10. Null A, worlds 11000-11023: momentum 2 / 3 / 5 of 24, reversal 0,
+  carry 0 (pooled 2.8 / 4.2 / 6.9% of 72). Null A, 24 further worlds, momentum only (the auditor's
+  extension): 2 / 3 / 4. Null A momentum over all 48: 4 / 6 / 9 = 8.3 / 12.5 / 18.8%, and the p values
+  are U-shaped (9 of 48 at 0.10 or under, 7 of 48 at 0.90 or over). Null B, worlds 14000-14023 (the
+  first 12 are X10's rows; world 14000 reproduced exactly): momentum 0 / 1 / 2 of 24, reversal 0,
+  carry 0; p values concentrated around one half. Positive DEV Sharpe: 23 momentum and 1 carry of 72
+  pairs under null A, 24 and 1 under null B, reversal never. In the 24 listed null A worlds the
+  momentum family's chosen window is 30 to 59 days in every world and its VAL Sharpe is 1.15 to 3.63.
+  On seeds 11000-11011 R-K moved the Tier-1 count at 0.10 from 8 (X10) to 2. On the kernel's dry-run
+  universe: momentum 0 / 0 / 0 of 12 under null A.
+- X11 Part B, power (Tier-1 of 24 at 0.025 / 0.05 / 0.10; level 1.5; 200 lags). Null A re-measured
+  under the fixed null A: fast 17 / 19 / 19 (rho 0.049125), slow 12 / 15 / 18 (rho 0.089125). Null B
+  stands from X10 (world 18000 reproduced exactly): fast 17 / 20 / 20, slow 14 / 15 / 17. G6 alone:
+  19 / 23 / 24, 12 / 16 / 20, 19 / 23 / 23, 16 / 19 / 21.
+- The auditor's odds (its model: only momentum can pass in null worlds, so the binding bound is
+  momentum at 12 or fewer of about 200 pairs per null; rates from its 48 and 24 rows; each power cell
+  from its 24 worlds, measured on 100; the core unit seals with probability 0.95). Threshold chosen:
+  none 0.72, 0.025 0.25, 0.05 0.03, 0.10 0.00; power in all four cells given 0.025: 0.28, given 0.05:
+  0.74; P(seal) 0.09. With a momentum rate exactly at the test's level the same model gives 0.56.
+- X11-F1 (the auditor, HIGH, process, no false-pass risk): the momentum excess under null A is
+  reduced, not gone. Its suggested mechanism (6 worlds per null, "suggestive only"): null A draws
+  days WITH replacement from a pool, so a source day inside a 50-day window can recur in the holding
+  period, and lagged signals from other pools share fewer such days; the 50-day signal's correlation
+  with the next day's return is 0.025 at lags 0 and 60 days and 0.020 at 180 and 365 days under null
+  A, flat (0.019 to 0.022) under null B. Its suggested fix: draw without replacement inside a pool.
+- Coordinator's review of X11-F1 (read: UWorld.__init__, _source_days and _build; upipeline g6_lags,
+  g6_books, g6_paired_p and ugates; the family program; the engine's accounting; the auditor's rows).
+  (1) The suggested fix is not adopted. A world day's source day is one independent uniform draw, so
+  after R-K the expected product of a window return and a later day's return is the same at every
+  lag: a repeated source day is part of independent sampling, not a separate effect. Drawing without
+  replacement inside a pool would ADD a dependence (a day drawn early is missing later: a covariance
+  of minus the variance over N - 1 for every pair of days of one pass through a pool of N days),
+  about as large as the effect it is meant to remove, in favour of the reversal family, and it would
+  leave the pool boundaries as they are.
+  (2) A hypothesis for the excess, ordered to be tested (D2 below): G6 draws its 200 lags uniformly
+  between 30 days and half of VAL (547 days). Lagged copies of a 50-day momentum book at lags closer
+  than 50 days share most of their windows, so the 200 lagged Sharpe ratios hold only about ten
+  independent values; the actual book is then first or second among them about 1 time in 11 and 2 in
+  11, not 2.5% and 10%. That is what the 48 worlds show (8.3% at 0.025, 18.8% at 0.10, and the same
+  excess at the other end). Under null B the lagged copies differ from each other for reasons fixed
+  by the real calendar, which would hide it. If confirmed it is a property of G6 for slow books, not
+  of null A, and becomes a recorded limitation and a proposal of its own.
+  (3) The root of the certain STOP is neither of these: BOTH nulls hand the momentum family a
+  premium. In the null worlds its VAL Sharpe is about 2, it passes every gate but G6 in 47 of 48
+  worlds, its best DEV draw is always a long window, and its mirror, the reversal family, never has
+  a positive DEV Sharpe. Cause: both nulls keep each symbol's own sample mean as its expected return
+  (null A: R-K's c; null B: the mirror's centre plus the mirror's own drift). A sample mean over two
+  to five years is mostly luck: on the auditor's source, whose prices are iid with no true difference
+  between symbols, the means still differ by 0.6 to 0.7 a year, and every world resampled from that
+  source turns the luck into a permanent difference that a slow momentum book learns and collects.
+  (The known bias of a bootstrap that keeps sample means: Conrad and Kaul 1998, Jegadeesh and Titman
+  2002; cited from memory, not re-read.) A no-skill world must not contain it. With it the momentum
+  family's Tier-1 rate is G6's own false-pass rate, the family bound can admit only the smallest
+  thresholds, and there the slow oracle cells sit at 12 and 14 of 24.
+- Ruling R-M (replaces R-K; fix pass 8 ordered): in both top30 nulls the expected gross return of a
+  day is ONE number G for every symbol on every world day. Day gross = the product of the day's 24
+  hourly close over previous close ratios; G = its mean over all fully active symbol-days of the
+  source. Null A: with M(Q, s) = the mean day gross of s over the fully active days of the set Q it
+  draws from (POOL(m), or the whole period) and M(s) = its mean over all its fully active days (the
+  set its fallback draws from), every active row of a shared-branch day has its open / previous
+  close ratio multiplied by (G / M(Q, s))^(1/24) and every active row of a fallback day by
+  (G / M(s))^(1/24). Null B: for symbol s and day d with n active rows, x = the day's sum of (hourly
+  log return - m), m the symbol's mean hourly log return as before; every active row of the day, on
+  either face of the coin, has its open / previous close ratio multiplied by
+  G^(1/24) * exp(-m) * cosh(x)^(-1/n), so the day's gross is G^(n/24) * (1 + tanh(x)) or
+  G^(n/24) * (1 - tanh(x)) and its expectation over the coin is G^(n/24) whatever the path (the log
+  mirror's own drift, half the squared day move, goes with the mean). High / open, low / open, close
+  / open, the shared source days, the funding and its sign coin are unchanged; so is the core unit.
+  Simple returns are equalised, not log returns, because the engine holds positions between
+  rebalances and the family's signal is an n-day simple return: with one expected day gross and
+  independent days, the signal's expectation and a held position's expected profit are the same for
+  every symbol, so a market-neutral book fixed before the day has no expected profit. Not equalised:
+  hour-of-day means and the path inside a source day (both nulls keep them by design). Said plainly:
+  R-M makes the null worlds more correct AND makes the seal easier to reach; the alternative is to
+  keep the worlds as they are and accept that top30 cannot be sealed with the present grid and
+  power. The owner is told both with the request for approval.
+- Also ordered in fix pass 8. tier_at STOPS on a malformed row instead of reading it: a missing gate
+  key, a gate that is not a boolean, or a p that is not a finite number raises, and the unit verdict
+  becomes the "malformed" STOP. Counting such a row as "not passing" (the auditor's suggestion) is
+  not adopted: for a null row that is the loose direction. unit_verdict catches every Exception. An
+  advisory during the null phases when the pooled or a family bound can no longer be met at any
+  threshold, so that a run that must STOP can be interrupted early.
+- Ordered from the auditor before the next measurement: an attack on R-M and on points (1) to (3);
+  D1, the momentum family on the iid source HISTORY itself against its null worlds (expected: about
+  zero against about 2); D2, the lagged Sharpe ratios of a null A momentum book along the lag axis
+  (how many independent values they hold).
+- Reading of the next measurement (X12, on the fix pass 8 commit), fixed here before it runs. Source:
+  the real structure with the real prices of the DEV period, and every price ratio and funding rate
+  after DEV end replaced by real DEV-period days of the same panel drawn in blocks, so that the
+  source has real volatility clustering and tails and no real VAL price; plus a control of 12 worlds
+  per null on the X10 source. Size: 48 worlds per null, all three families. Power: the four cells,
+  24 worlds each. The auditor's odds model of X11, written down before the run, gives P(seal). At
+  0.70 or more the coordinator asks the owner for the re-key with the odds; between 0.40 and 0.70
+  the owner gets the odds with the coordinator's advice not to run yet; under 0.40 not ready. To be
+  explained before any re-key whatever the odds: a family whose mean VAL Sharpe over its null worlds
+  is above +0.5 under either null (a premium remains), or a family at 4 or more of 48 at 0.05 under
+  either null.
+- Not probed in X11: anything on real price rows; the core unit's re-run; G8; a full multi-worker
+  calibration (one spawn worker only); the without-replacement variant; the mechanism of X11-F1
+  beyond the 6-world check.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X11 section appended
+  (sha256 b8c0c3f86513ab0f282887c981d608c65cbfbc1ceb3df1acfda09f31ca1fdfca).

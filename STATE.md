@@ -91,8 +91,21 @@ have stopped after its full run. Fix pass 7 (ordered 2026-11-21): R-K one consta
 in every month under null A; R-L no single family's null pass rate above 6% (FAMILY_PASS_MAX) next to the
 pooled 3%, because in top30 only one of the three families can pass and the pooled bound alone would allow it
 9%.
-Next: fix pass 7 built and committed; the auditor's re-measurement on it (X11: the three families under both
-nulls, the two null A power cells; the reading rule is in AUDIT_LOG); the human's approval, asked with the odds
+Fix pass 7 and 7b (ead27c6, 58ba59e; full suite 864 passed): R-K and R-L built; every bound of the rule holds
+only when its value is a number inside it.
+Audit round 7, X11 (2026-11-21): no code defect, but 58ba59e is NOT READY. Under the fixed null A the momentum
+family still passes Tier 1 in 4 / 6 / 9 of 48 null worlds at 0.025 / 0.05 / 0.10 (null B 0 / 1 / 2 of 24); the
+power cells read 17 / 19 / 19 (A fast), 12 / 15 / 18 (A slow), 17 / 20 / 20 (B fast), 14 / 15 / 17 (B slow) of
+24; the auditor's odds of a successful seal are about 1 in 10. Coordinator's reading: both nulls keep each
+symbol's own sample mean as its expected return, which hands the momentum family a premium in every null world
+(VAL Sharpe about 2, every gate but G6 passed), so its Tier-1 rate is G6's own level; and for a 50-day book G6's
+200 lags hold only about ten independent comparisons (hypothesis, being tested). The auditor's suggested fix
+(draw without replacement) is not adopted. Fix pass 8 (ordered 2026-11-21): R-M every symbol has the same
+expected simple return on every day in both top30 nulls (replaces R-K); tier_at stops on a malformed row; an
+advisory during the null phases.
+Next: fix pass 8 built and committed; the auditor's attack on R-M and its measurement X12 (48 null worlds per
+null with the three families and the four power cells, on a source with real DEV-period prices; the reading
+rule is in AUDIT_LOG); the human's approval, asked with the odds
 of a successful seal; re-key; both calibrations (core about 40 minutes; top30 about 88
 worker-hours: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
 resumable; the oracle phases come first and show after about a third of the run whether the seal can
@@ -102,8 +115,10 @@ succeed), seal of both units, selftest, independent recount, merge into `main`.
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X10: fix
-   pass 7 and the measurement X11 come first. Run time on this PC: see Next.
+2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X11: fix
+   pass 8 and the measurement X12 come first. Run time on this PC: see Next. The approval covers the
+   rulings made during the build, among them R-L (no family above 6%) and R-M (the same expected
+   return for every symbol in the top30 null worlds); the human may decline either.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7

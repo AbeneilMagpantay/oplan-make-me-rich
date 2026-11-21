@@ -634,3 +634,179 @@ run. Fix X10-F1 first.
 Not checked: anything on real price rows (forbidden); the fixed null A for the oracle and for carry / reversal; Q3 on
 the dry-run source beyond the pilot's one world; the spawn-worker path (the in-process path reproduced the pilot's p
 values exactly); the core unit; G8.
+
+# X11 - fix pass 7 (commit ead27c6; copy review7\kernead, setupead.py: 143 blobs written and re-hashed equal, 0
+# problems; delta x11\delta.diff; harness p23_x11.py with identical copies p23_s.py / p23_p.py)
+Source for every measurement: the X10 real-structure source with the same synthetic draw (seed 15000). R-K's arrays
+are derived from prices, so after the overwrite of the real ratios "dret" is recomputed from the SYNTHETIC ratios with
+the kernel's own formula and USource._build_pools() is run again: no real-price quantity remains in the source (the
+kernel's own build would otherwise have taken c_s and the pool means from the real VAL-period returns).
+
+## Part A - R-L (calibrate.decide / null_summary, FAMILY_PASS_MAX = 0.06; p25_rl_probe.py, p25_out.txt)
+Fabricated unit artifacts through ucalibrate.unit_verdict:
+- momentum 14 of 200 at 0.10 (7%) with the two other families at 0: pooled 2.3% passes, the family bound fails at
+  0.10 under both nulls and the unit chooses 0.05 (with the bound switched off: 0.10). 12 of 200 accepted, 13 refused.
+- a family listed but never submitted, or listed without rows: skipped (it has no passes to hide).
+- a row whose family is not in the artifact's families, or a text p value: STOP "artifact malformed" (FP6-1 path).
+- NaN p values count as not passing (g6_paired_p cannot produce one; noted only).
+- a NaN family rate in a HAND-MADE summary is ignored (not fail-closed) and numpy booleans in G3 are not counted as
+  DEV-positive (0 of 600): both are the coordinator's 7b items; verdict_from_rows recomputes every rate from counts,
+  so the seal path cannot meet a NaN rate today.
+- seal path: decide_both -> unit_verdict -> verdict_from_rows -> calibrate.decide; kernel_lock.seal's refusal now
+  carries family_pass_rate per unit. Old artifacts: the rule recomputes the family rates from the stored rows.
+- texts: CONSTITUTION s8 / s13, the module docstrings and RULE / RULE_PER_UNIT say what decide does (pooled 3% AND
+  every family <= 6% per its own submitted pairs, a family without a submitted pair skipped, failures named).
+- the stated binomial reasoning checks out: accepted per null (<= 12 of 200) at a true family rate of 2.5% 0.998,
+  4.5% 0.881, 5.0% 0.796, 9% 0.082, 10% 0.032; under both nulls 0.997 / 0.776 / 0.634 / 0.007 / 0.001.
+Opinion on 0.06: sound as a cap on the dilution, but say plainly what it allows. In top30 only momentum passes the
+other gates in null worlds, so its family rate at threshold t is G6's own false-pass rate at t: the bound makes the
+unit choose 0.05 when momentum's p is close to uniform (0.10 is refused with probability 0.97 per null), so a no-skill
+momentum-type top30 program keeps about a 5% chance of Tier-1, not the 3% the pooled bound was meant to give. A 3%
+family bound (plus allowance) would force 0.025 in top30, where the slow oracle cells sit at 14 of 24. That is a
+choice for the owner, not a defect; the texts should state the 5% consequence in one sentence.
+
+## Part A - fix pass 7b (commit 58ba59e, parent ead27c6; x11\delta7b.diff), by reading
+- decide: every bound is in the positive form (pooled: `not (r is not None and r <= bound)`; family: a None is still
+  skipped, otherwise `not (fr <= bound)`; oracle level: `not (v is not None and |v - level| <= RHO_BOUND)`; power:
+  `not (p is not None and p >= POWER_MIN)`), so None (pooled), NaN and inf fail; a text value raises TypeError at the
+  comparison, which unit_verdict turns into the "malformed" STOP. _bound_failure only formats the message and never
+  raises (math is imported). The DEV-positive count uses truthiness (numpy booleans count). oracle_advisory uses the
+  same positive form. SOUND; it closes the two items of my P25 probe.
+- My measurements on ead27c6 stand for 58ba59e: the text from `class USource` to `def world_udata` (USource, the pools,
+  R-K, UWorld) has the same sha256 in both commits (fa8bb94858887def38fa1a649b8f62ea8485179e05e0a86bfd021293d4d6739a,
+  20,256 characters); upipeline, universe, engine, pipeline, lang, interp and stats are unchanged (empty diff); the
+  only ucalibrate hunk is oracle_advisory.
+The two LOW items left open (my opinion):
+1. tier_at (calibrate.py) skips a gate stored as None and reads the others by truthiness - LOW. It is wider than the
+   builder's example: a gate KEY that is missing is not checked at all, so an oracle row with "gates": {} and a small
+   p counts as Tier-1 (loose for power), and a null row likewise (strict for the null rate). gate_rates reads the same
+   None as a FAIL, so the two disagree. Real rows always carry every gate key with a bool (only G6 / G8 are None).
+   Smallest fix: tier_at requires every gate of GATES except G6 and G8 to be present and `is True` after JSON (or
+   bool(v) for a numpy bool), and treats a missing key as a fail; artifact_gaps can name such rows.
+2. unit_verdict does not catch AttributeError - LOW. More of the kind: any row that is not a dict (r.get on a number),
+   "gates": null, "families" as a list. Nothing is sealed either way (the seal raises). Smallest fix: catch Exception
+   in unit_verdict and return the "malformed" STOP with the exception's type and text.
+I agree with the coordinator: both are outside what a real run writes and inside the seal's procedural trust (every
+partial line has its sha256, the artifact's bytes must match the calibration log row, one pushed commit, an
+independent recount); they can wait for one last small batch. Of the two, 1 is the one I would not leave out of that
+batch, because in the loose direction it can only help a hand-edited artifact pass the power check.
+
+## Part A - R-K (USource.build "dret", _build_pools "sym_c" / "pool_adj", UWorld._build; p24_rk_probe.py,
+## p24_out_kern86.txt, p24_out_ead.txt)
+My own enumeration from the source rows (hourly log(g * cr), my own full-day test, no kernel helper for R-K):
+- c_s and adj(Q, s) equal the kernel's sym_c and pool_adj exactly (max difference 0; pool_adj 64 x 134 = 63 pools +
+  the whole period).
+- expected day log return of every symbol in every set Q under the fixed null A,
+  P(shared) * (mean over Q's full days + adj) + P(fallback) * c_s, minus c_s: at most 3.5e-18 over 7,295 (set, symbol)
+  pairs, members and non-members alike. Without R-K the same quantity had SD 0.98 a year (all symbols; members 0.63, P21).
+- edge cases on this source: 2 symbols with full days before UNIVERSE_START (in c_s, as in their fallback; the shared
+  draws start at pool_lo, as adj does); 0 symbols without a full day (such a symbol keeps its own days, c_s = 0, no
+  adjustment - by reading); 9 (set, symbol) pairs with only 1-5 full days, |adj| up to 0.061 per day (exact in
+  expectation, but a 6% daily shift on the rare shared day of a symbol that is mostly not a member); partial world days
+  (1-23 active hours) 272 of 172,851 symbol-days (0.16%) get h/24 of adj; the first row of a symbol loses its 1/24
+  (the kernel resets G[0] to 1 after the adjustment; 14 of 23 checked symbols start on a shared day) - NOTE only.
+- draws unchanged: for seed 11000 the null A source day of every symbol-day equals the kern86 copy's (0 of 134 symbols
+  differ); for seed 14000 the null B klines, funding and mark tables are byte-identical (0 of 134 differ).
+- null A tables vs kern86 (23 symbols, 647,242 shared active rows): high/open, low/open, close/open equal (max
+  difference 6.7e-16); the gap ratio changes by exactly exp(my adj / 24) on shared active rows and not elsewhere
+  (max relative deviation 2.2e-16).
+- spawn path: a one-worker spawn Pool with the kernel's _init on a 40-symbol dry-run source (pool_adj 55 x 40) gives
+  the same curve task result as the in-process path, bit for bit ([1.33220, 2.20461]).
+- the null B reproductions (repro mode): Q3 null B world 14000 (task_null) and Q2 null B world 18000
+  (task_oracle_power) are identical to X10 on ead27c6, so the X10 null B cells and Q3 null B rows stand.
+What R-K does not remove (members, pooled months, synthetic iid prices):
+- pool-specific volatility: SD of log(pool vol / whole-period vol) 0.028 across members, correlated between month m
+  and m-k 0.79 / 0.51 / 0.26 / 0.07 by lag band - the same decay as the old drift, but on this source only sampling
+  noise of 3%. On real prices the pools are different stretches of history with different volatility regimes, so the
+  spread will be larger; a book that scales positions by recent volatility would then hold a risk-timing edge that its
+  lagged copies hold less of. The three calibration families do not scale by volatility. I cannot show the size of
+  this on synthetic prices - NOTE.
+- pool-specific cross-correlation: mean member correlation over pool days 0.32-0.41 (synthetic: sampling and
+  membership mix); no lag-decaying expected-return channel for a market-neutral book that I can see.
+- hour-of-day means: R-K spreads the correction evenly, so a pool's hour profile (here noise of about 0.008 /
+  sqrt(386) = 0.0004 per hour) stays; trading it needs hourly rebalancing, which at 12.5 bps per side fails G4 (the
+  1-day oracle already does) - not a Tier-1 channel.
+- the months around a symbol's entry: their pools start after the entrant's listing; R-K now fixes the mean; volatility
+  and correlation of that stretch remain as above.
+
+## Part B - measurements on ead27c6 (= 58ba59e for the world builders), 200 lags, the kernel's task functions in one
+## process; p23_size_summary.txt, p23_power_summary.txt, p23_pilot_summary.txt, p26_out.txt, p27_out.txt
+S - size, all three families (null A seeds 11000-11023, p23_sizeA; null B: Q3 rows 14000-14011, reproduced exactly on
+ead27c6, plus 14012-14023, p23_sizeB). Every pair submitted.
+| null | family | Tier-1 .025 / .05 / .10 | DEV-positive |
+| A | ucal_xs_momentum | 2 / 3 / 5 of 24 | 23 |
+| A | ucal_xs_reversal | 0 / 0 / 0 | 0 |
+| A | ucal_xs_carry    | 0 / 0 / 0 | 1 |
+| B | ucal_xs_momentum | 0 / 1 / 2 of 24 | 24 |
+| B | ucal_xs_reversal | 0 / 0 / 0 | 0 |
+| B | ucal_xs_carry    | 0 / 0 / 0 | 1 |
+Pooled (of 72 submitted): null A 2.8 / 4.2 / 6.9%, null B 0 / 1.4 / 2.8%. Family rate, momentum: null A 8.3 / 12.5 /
+20.8%, null B 0 / 4.2 / 8.3%. Over DEV-positive pairs: null A 8.3 / 12.5 / 20.8%, null B 0 / 4.0 / 8.0%.
+Null A momentum rows (seed n DEV VAL p, failed gates): 11000 54 -0.15 1.67 0.527 G3; 11001 55 1.12 3.63 0.478;
+11002 44 1.57 1.95 0.229; 11003 49 1.27 1.15 0.940; 11004 56 1.51 1.95 0.567; 11005 51 0.94 1.42 0.910; 11006 51 0.27
+1.73 0.796; 11007 46 1.55 2.62 0.0746; 11008 40 0.94 1.66 0.0746; 11009 50 1.33 2.09 0.731; 11010 39 1.75 2.43 0.189;
+11011 57 3.01 1.91 0.667; 11012 47 1.07 2.14 0.692; 11013 34 1.52 1.20 0.881; 11014 49 0.81 1.39 0.627; 11015 30 1.12
+1.86 0.110; 11016 45 0.78 1.30 0.950 G7; 11017 40 1.23 2.52 0.0199; 11018 56 1.44 1.97 0.891; 11019 44 0.81 2.08
+0.0199; 11020 58 1.43 2.31 0.234; 11021 37 0.91 3.39 0.0348; 11022 59 1.08 1.83 0.637; 11023 58 1.17 1.81 0.493.
+Null B momentum rows: in p23_size_summary.txt (p 0.0299 and 0.0846 are the only p <= 0.10; 14002 and 14016 fail G1).
+11000-11011, momentum p (VAL Sharpe), Q3 on 4286abf | P22 | X11 on ead27c6: 11000 0.070 (2.63) | 0.527 (1.68) | 0.527
+(1.67); 11001 0.005 (4.16) | 0.458 (3.66) | 0.478 (3.63); 11002 0.005 (3.01) | 0.234 | 0.229; 11003 0.149 | 0.940 |
+0.940; 11004 0.085 | 0.572 | 0.567; 11005 0.453 | 0.910 | 0.910; 11006 0.149 | 0.796 | 0.796; 11007 0.005 | 0.080 |
+0.075; 11008 0.030 | 0.075 | 0.075; 11009 0.174 | 0.721 | 0.731; 11010 0.005 | 0.189 | 0.189; 11011 0.005 | 0.667 |
+0.667. R-K removes the X10 skew the way P22 did (Tier-1 at 0.10 on these 12 seeds: 8 -> 2).
+Extension (not ordered; momentum only, same draws per family; p23_extA): null A 11024-11047 Tier-1 2 / 3 / 4 of 24
+(p 0.0149 x2, 0.0448, 0.0896). Null A momentum over 48 worlds: 4 / 6 / 9 (8.3 / 12.5 / 18.8%); p U-shaped (9 of 48 at
+<= 0.10, 7 of 48 at >= 0.90). Null B over 24: p concentrated (median 0.48; 2 of 24 at <= 0.10, 2 at >= 0.90).
+Dry-run source (UC.synthetic_source(), momentum only, null A 11000-11011, p23_pilotA): 0 / 0 / 0 of 12 (5 fail G1).
+P - power, null A cells under the fixed null A (seeds 17000-17023, the calibration's tune_rho and power tasks; null B
+cells: Q2 world 18000 reproduced exactly on ead27c6, so X10's B cells stand):
+| cell | rho (achieved) | Sharpe at rho 0 | Tier-1 .025/.05/.10 | G6 | G1 | G2 | G3 | G4 | G5 | G7 | G10 |
+| A fast (X11) | 0.049125 (1.502) | -0.72 | 17 / 19 / 19 | 19/23/24 | 20 | 23 | 24 | 19 | 24 | 23 | 24 |
+| A slow (X11) | 0.089125 (1.499) | -0.49 | 12 / 15 / 18 | 12/16/20 | 20 | 22 | 24 | 22 | 24 | 23 | 24 |
+| B fast (X10) | 0.048625 (1.500) | -0.73 | 17 / 20 / 20 | 19/23/23 | 21 | 22 | 23 | 21 | 24 | 23 | 24 |
+| B slow (X10) | 0.073250 (1.500) | -0.17 | 14 / 15 / 17 | 16/19/21 | 23 | 23 | 20 | 23 | 24 | 20 | 24 |
+Lag bands, A slow (keep / A_k / S_k mean (SD) / beat): 30-89 d .804 1.28 -.36 (.60) 22 | 90-179 d .692 1.10 -.19 (.65) 66
+| 180-364 d .632 1.05 -.18 (.56) 107 | 365-547 d .567 1.03 -.18 (.57) 133; A fast: .805 1.32 -.75 0 | .691 1.23 -.71 6 |
+.633 1.20 -.66 21 | .567 1.15 -.61 33.
+
+## Reading (the rule fixed in AUDIT_LOG, applied as written)
+Size: momentum 2 of 24 at 0.025 (trigger 3) and 3 of 24 at 0.05 (trigger 4) under null A, 0 and 1 under null B: NOT
+triggered. No reversal or carry pass. Power: A slow 12 and B slow 14 of 24 at 0.025 (< 15), no cell <= 10 at 0.10
+(lowest 17): MARGINAL -> the owner, with the odds.
+
+## X11-F1 HIGH (process; no false-pass risk): a momentum skew remains under the fixed null A, enough for the 6% family
+## bound to stop the real calibration most of the time
+Over 48 null A worlds momentum passes Tier-1 in 4 / 6 / 9 (8.3 / 12.5 / 18.8%) against the 2.5 / 5 / 10% a valid test
+gives (4 or more of 48 at 2.5% has probability 0.035); under null B 0 / 1 / 2 of 24. The size trigger of the reading
+(3 of 24 = 12.5%) is looser than the seal's own family bound (6% of about 200 pairs): a rate of 8% passes the reading
+(about 2 of 24) but is accepted by the seal in only about 18% of runs per null. Mechanism, suggestive (P27, 6 worlds per
+null): null A draws its days WITH replacement from a monthly pool of about a year, so a source day in a 50-day signal's
+window recurs in the holding period with probability about 50 / |Q|; lagged signals drawn from other pools' stretches
+share fewer such days. The 50-day momentum signal's cross-sectional IC with the next day's return falls from 0.025
+(lags 0 and 60 days) to 0.020 (180 and 365 days) under null A and stays flat under null B (0.021 / 0.022 / 0.021 /
+0.019); the constant drift gives the same IC at every lag. R-K equalises the expected return, not realised returns that
+repeat. Smallest fix: draw null A source days WITHOUT replacement within a pool (one random permutation of POOL(m) per
+world, consumed in order by the months that use that pool, renewed when exhausted), so that no source day recurs within
+|Q| days; then re-run the size measurement (momentum, at least 48 null A worlds) and the two null A power cells.
+Alternative: re-key now and let the rule decide, at the odds below.
+
+## Seal odds (p26_odds.py, p26_out.txt)
+Model: in top30 only momentum can pass in null worlds, so the binding bound is momentum <= 12 of ~200 per null; its
+null A / null B Tier-1 bins from my 48 / 24 rows (Dirichlet, Jeffreys) drive a multinomial 200-world run; the unit
+takes the largest threshold that passes under both nulls; each power cell's true power ~ Beta from its 24 worlds,
+measured on 100 worlds, needing >= 0.50 in all four cells; the core unit seals with probability 0.95 (assumption from
+the sealed core's margins: pooled 2.94% at 0.10, worst family 4.67%, power at 0.05 81-90.5%), independently.
+Result: top30 threshold - none 0.72, 0.025 0.25, 0.05 0.03, 0.10 0.00; power passes all four cells given 0.025 in
+0.28, given 0.05 in 0.74; P(top30 seals) 0.09; P(seal) about 0.09. If momentum's null rate were exactly the level (a
+valid test), the same model gives 0.025 0.41 / 0.05 0.58 and P(top30 seals) 0.56. My estimate: about 0.1 (range 0.05
+to 0.25 for other priors and for real prices behaving differently), most likely outcome a STOP naming "family
+ucal_xs_momentum > FAMILY_PASS_MAX" under null A at every threshold; if a threshold qualifies, most likely 0.025.
+
+## Verdict for the re-key at 58ba59e (ead27c6 + 7b): NOT READY in my judgment
+The code is sound: R-K is exact per branch, the draws and null B are unchanged, the spawn path works, R-L and 7b do what
+their texts say (two LOW items left open, see above). By the reading rule the measurement is MARGINAL (size not
+triggered; power MARGINAL), so it goes to the owner with the odds; my own estimate of a successful seal is about 1 in
+10, most likely ending in a STOP on the momentum family bound after the full run. I would fix X11-F1 first.
+Not checked: anything on real price rows (forbidden; real prices may change both the skew and the power); the core
+unit's re-run; G8; the full multiprocessing calibration (only a one-worker spawn task); the without-replacement fix
+(proposed, not tested); X11-F1's mechanism beyond the 6-world IC check.
