@@ -846,3 +846,56 @@ sha256 of the changed kernel files:
   236feb7c1e467aab26e70ba3fc7053f77e0f0820ce9b20cdb847cfb165cafe65  tests/test_ledger_lock.py
   a0cc5c9548895b4d11fc916b5a24712a83174127e43e1fd77408ea3d669882d9  tests/test_ucalibrate.py
 KERNEL_PROPOSALS.md (not a kernel file): 650151d33d6a5a88126905b52469b9ec0b497b03859570611b1c32739d9795c5
+
+Fix pass 7b (the coordinator's review of ead27c6; working tree, unapproved, not re-keyed). 7b-1: calibrate.decide is
+fail-closed again. A pooled bound holds only when `r is not None and r <= NULL_PASS_MAX + 1e-12`; a family fails
+when `fr is not None and not (fr <= FAMILY_PASS_MAX + 1e-12)`. So a NaN or +inf rate never qualifies (the fix pass 7
+form `r > bound` let a NaN qualify). The failure text comes from calibrate._bound_failure, which never raises: a
+number gives "0.0750 > FAMILY_PASS_MAX", None gives "rate missing (no submitted pair)", NaN or inf give "nan / inf
+is not a finite rate". 7b-2: n_dev_positive counts a submitted evaluated row whose G3 is truthy
+(bool(gates.get("G3")), as tier_at reads a gate), so a numpy.bool_ in memory counts as it does after JSON. The
+pipeline hands over Python bool: omr/pipeline.py and omr/upipeline.py wrap every gate's "pass" in bool(...)
+(G5, G7, G8 and G10 through pipeline.g5_rule / g7_rule / g8_rule / g10_rule, which return bool(...)); G6 is None
+when no threshold is given (the calibration) and G8 is None when not run. So the stored n_dev_positive of a run
+would not have differed; the change makes that independent of the type.
+Tests (tests/test_calibrate.py): test_7b_1_a_rate_that_is_not_a_number_never_qualifies (a NaN pooled rate at 0.10
+under null A, then +inf, then a NaN and an inf family rate under null B: 0.10 drops out each time and
+threshold_failures names it; NaN at every threshold, pooled or family, gives STOP with chosen_threshold None; the
+text helper on None and on a string), test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form
+(numpy.bool_ True counts, False and None do not, a liquidated row does not; n_dev_positive, family_pass_rate,
+pass_rate_dev_positive, pass_rate and tier1 equal on the in-memory rows and on json.loads(json.dumps(ledger.clean(
+rows)))). Both tests fail when run against the ead27c6 version of omr/calibrate.py (checked in-process from
+`git show`, nothing written).
+7b-3 (the coordinator's second review): the positive form wherever a bound decides. calibrate.decide: an oracle level
+is inside its bound only when `v is not None and abs(v - level) <= RHO_BOUND` (None, NaN, inf go into
+oracle_level_outside_bound); a cell has enough power only when `p is not None and p >= POWER_MIN` (None, NaN go
+into below_power_min); the reasons join the cell names, so they cannot raise. ucalibrate.oracle_advisory (log only):
+the same two tests, so a NaN power or level is announced as a reason to expect a STOP. No tolerance was added (the
+old code had none): power exactly POWER_MIN is enough, an achieved mean exactly RHO_BOUND away is inside.
+Tests: tests/test_calibrate.py::test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops (NaN or None power
+at the chosen threshold -> STOP naming the cell; NaN, inf or None achieved mean -> STOP naming the level; power
+exactly 0.5 passes, the next float below does not; with RHO_BOUND set to 0.125 an achieved mean exactly 0.125
+away is inside and the next float outside is outside; around 1.5 + 0.1 with the real bound every float decides as
+the old rule), tests/test_ucalibrate.py::test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number (both
+named; exactly at both bounds no STOP). Both tests fail against the ead27c6 versions of the two files (checked
+in-process from `git show`, nothing written).
+Re-read of the seal path (decide_both, unit_verdict, artifact_gaps, kernel_lock.seal, thresholds_of, tier_at, both
+oracle summaries): no other bound in the negative form. thresholds_of (`abs(float(x) - g) <= 1e-12`), tier_at's
+p value (`perm_p <= p_max + 1e-12`), artifact_gaps (_finite and == 1.5), the oracle summaries (finite Sharpe only;
+power a count ratio) and decide_both / seal (STOP or a None threshold refuses) are fail-closed. Reported, not
+changed (a different pattern): tier_at skips a gate whose stored value is None, so a stored row with, say,
+"G3": null counts as passing G3 (the pipeline only leaves G6 and G8 None, but ledger.clean writes a NaN as null),
+and it reads gates by truthiness, so a float NaN gate would pass; unit_verdict catches KeyError, TypeError and
+ValueError but not AttributeError, so an evaluated row with "gates": null makes the seal raise instead of a STOP
+(nothing is sealed either way).
+Runs (logs in the session scratch): 7b-1/7b-2 tests 6 passed with the R-L tests in 2.76 s; after 7b-1/7b-2
+tests/test_calibrate.py + tests/test_ledger_lock.py + tests/test_structure.py 65 passed in 13.37 s and a full suite
+862 passed in 1659.99 s (0 failed, 0 skipped); after 7b-3:
+tests/test_calibrate.py + tests/test_ledger_lock.py + tests/test_structure.py 66 passed in 24.60 s, the advisory
+tests of tests/test_ucalibrate.py (f6 x 2, 7b_3) 3 passed; full suite on the final files 864 passed in 1710.89 s (wall 1714 s; 862 before + 2 new) (0 failed,
+0 skipped); python -m omr.ledger verify OK; ledger/ and data/ unchanged.
+sha256 of the changed kernel files (fix pass 7b as a whole):
+  f35cf554fdade68e6e362c45ecc70b3f452045d1b5df557a376a6c5934b6319e  omr/calibrate.py
+  87e735510faea1592ddb7a5e3a622c5be913abd08adf4990a7207d6a526b6f86  omr/ucalibrate.py
+  b2cdaf7a476de2a98f1df471e05f7ac946334faecc6433efe31979d83912e578  tests/test_calibrate.py
+  6f5f551a9ad5a039c8030ea1cd665d8e93a1e55acc0c3b3af4c008bf3a02c397  tests/test_ucalibrate.py

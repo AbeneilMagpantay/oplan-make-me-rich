@@ -432,7 +432,8 @@ def null_summary(rows: list, families) -> dict:
             out["stage1_draws"][k] = out["stage1_draws"].get(k, 0) + v
     for r in sub:
         out["submitted_status"][r["status"]] = out["submitted_status"].get(r["status"], 0) + 1
-    dev_pos = [r for r in sub if r.get("status") == "evaluated" and (r.get("gates") or {}).get("G3") is True]
+    # 7b-2: truthiness, as tier_at reads a gate (a numpy bool in memory counts as it does after JSON)
+    dev_pos = [r for r in sub if r.get("status") == "evaluated" and bool((r.get("gates") or {}).get("G3"))]
     out["n_dev_positive"] = len(dev_pos)
     sub_f = {f: sum(1 for r in sub if r["family"] == f) for f in families}
     for t in C.G6_GRID:
@@ -475,22 +476,35 @@ RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 pass
         "otherwise STOP")
 
 
+def _bound_failure(null: str, what: str, r, bound: str) -> str:
+    """The text of one failed bound; never raises (None, NaN, inf or a non-number)."""
+    if r is None:
+        return f"null {null}: {what} rate missing (no submitted pair)"
+    try:
+        x = float(r)
+    except (TypeError, ValueError):
+        return f"null {null}: {what} {r!r} is not a finite rate"
+    if not math.isfinite(x):
+        return f"null {null}: {what} {x} is not a finite rate"
+    return f"null {null}: {what} {x:.4f} > {bound}"
+
+
 def decide(nulls: dict, oracle: dict) -> dict:
     """The calibration rule (also applied by `omr.kernel_lock seal` to the stored rows)."""
     def rate(n, t, k="pass_rate"):
         return nulls[n]["summary"]["by_threshold"][str(t)][k]
 
     def failures(t) -> list:
-        """Which bound fails at threshold t under which null (pooled, or the family's NAME)."""
+        """Which bound fails at threshold t under which null (pooled, or the family's NAME). Fail-closed (7b-1):
+        a bound holds only when the rate IS <= it, so a NaN, an inf or a missing pooled rate fails."""
         out = []
         for n in ("A", "B"):
             r = rate(n, t)
-            if r is None or r > C.NULL_PASS_MAX + 1e-12:
-                out.append(f"null {n}: pooled {r:.4f} > NULL_PASS_MAX" if r is not None else
-                           f"null {n}: pooled rate missing (no submitted pair)")
+            if not (r is not None and r <= C.NULL_PASS_MAX + 1e-12):
+                out.append(_bound_failure(n, "pooled", r, "NULL_PASS_MAX"))
             for f, fr in sorted(rate(n, t, "family_pass_rate").items()):
-                if fr is not None and fr > C.FAMILY_PASS_MAX + 1e-12:
-                    out.append(f"null {n}: family {f} {fr:.4f} > FAMILY_PASS_MAX")
+                if fr is not None and not (fr <= C.FAMILY_PASS_MAX + 1e-12):
+                    out.append(_bound_failure(n, f"family {f}", fr, "FAMILY_PASS_MAX"))
         return out
     fails = {str(t): failures(t) for t in C.G6_GRID}
     qualifying = [t for t in C.G6_GRID if not fails[str(t)]]
@@ -511,13 +525,16 @@ def decide(nulls: dict, oracle: dict) -> dict:
         return verdict
     achieved = {n: {k: v["mean_val_sharpe"] for k, v in oracle[n]["summary"].items()} for n in ("A", "B")}
     verdict["oracle_achieved_mean_val_sharpe"] = achieved
+    # 7b-3: a level is inside its bound only when its achieved mean IS within RHO_BOUND (None, NaN, inf: outside)
     off = [f"{n}/{k}" for n in achieved for k, v in achieved[n].items()
-           if v is None or abs(v - float(k.split("|")[1])) > RHO_BOUND]
+           if not (v is not None and abs(v - float(k.split("|")[1])) <= RHO_BOUND)]
     verdict["oracle_level_outside_bound"] = off
     power15 = {n: {s: oracle[n]["summary"][f"{s}|1.5"]["by_threshold"][str(chosen)]["power"] for s in SPEEDS}
                for n in ("A", "B")}
     verdict["power_at_1_5_chosen"] = power15
-    below = [f"{n}/{s}" for n in power15 for s in power15[n] if power15[n][s] is None or power15[n][s] < C.POWER_MIN]
+    # 7b-3: a cell has enough power only when its power IS >= POWER_MIN (None, NaN: below)
+    below = [f"{n}/{s}" for n in power15 for s in power15[n]
+             if not (power15[n][s] is not None and power15[n][s] >= C.POWER_MIN)]
     verdict["below_power_min"] = below
     verdict["STOP"] = bool(below) or bool(off)
     if off:

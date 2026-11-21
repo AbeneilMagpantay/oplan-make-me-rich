@@ -1054,9 +1054,9 @@ def oracle_advisory(oracle: dict) -> tuple:
                 lines.append(f"  oracle null {n} {s:4s} level {lvl}: Tier-1 power " +
                              "  ".join(f"at {t:g}: {'n/a' if pw[t] is None else f'{pw[t]:.3f}'}" for t in C.G6_GRID) +
                              f"; achieved mean VAL Sharpe {'n/a' if mv is None else f'{mv:.3f}'}")
-                if pw[top] is None or pw[top] < C.POWER_MIN:
+                if not (pw[top] is not None and pw[top] >= C.POWER_MIN):        # 7b-3: positive form (NaN: STOP)
                     stop.append(f"null {n} {s}: power at {top:g} below {C.POWER_MIN:g}")
-                if mv is None or abs(mv - lvl) > CB.RHO_BOUND:
+                if not (mv is not None and abs(mv - lvl) <= CB.RHO_BOUND):
                     stop.append(f"null {n} {s}: level {lvl} achieved outside its bound")
     return lines, stop
 

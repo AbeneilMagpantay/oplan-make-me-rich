@@ -747,3 +747,30 @@ def test_r_k_t5_a_version_4_partial_file_is_refused(tmp_path):
     UC.Partial(p, dict(h5, protocol_version=4), log=lambda *a: None)
     with pytest.raises(UC.PartialMismatch):
         UC.Partial(p, h5, log=lambda *a: None)
+
+
+def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypatch):
+    gates = {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}
+    rows = [{"speed": s, "level": 1.5, "world_seed": i, "status": "evaluated", "val_sharpe": 1.5, "perm_p": 0.001,
+             "rho": 0.1, "gates": dict(gates)} for s in UC.USPEEDS for i in range(10)]
+
+    def adv(edit):
+        oracle = {n: {"summary": UC.oracle_summary(rows)} for n in ("A", "B")}
+        edit(oracle)
+        return UC.oracle_advisory(oracle)
+
+    lines, stop = adv(lambda o: None)
+    assert stop == [] and len(lines) == 4
+
+    def both(o):
+        o["A"]["summary"]["fast|1.5"]["by_threshold"]["0.1"]["power"] = float("nan")
+        o["B"]["summary"]["slow|1.5"]["mean_val_sharpe"] = float("nan")
+    lines, stop = adv(both)
+    assert stop == ["null A fast: power at 0.1 below 0.5", "null B slow: level 1.5 achieved outside its bound"]
+    assert any("nan" in ln for ln in lines)
+
+    def exact(o):
+        o["A"]["summary"]["fast|1.5"]["by_threshold"]["0.1"]["power"] = C.POWER_MIN
+        o["B"]["summary"]["slow|1.5"]["mean_val_sharpe"] = 1.625
+    monkeypatch.setattr(UC.CB, "RHO_BOUND", 0.125)
+    assert adv(exact)[1] == []                                                   # exactly at both bounds: no STOP

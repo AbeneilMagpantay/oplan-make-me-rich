@@ -246,3 +246,121 @@ def test_r_l_d_the_dev_positive_rate_is_information_only():
         assert (w["chosen_threshold"], w["qualifying"], w["STOP"]) == (v["chosen_threshold"], v["qualifying"], v["STOP"])
     assert K.null_summary([], FIVE)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
     assert K.PROTOCOL_VERSION == 4
+
+
+# ---------------------------------------------------------------- fix pass 7b: fail-closed bounds, numpy gate values
+
+
+def _redecide(nulls):
+    return K.decide(nulls, {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")})
+
+
+def test_7b_1_a_rate_that_is_not_a_number_never_qualifies():
+    n_sub = {f: 40 for f in FIVE}
+    base, nulls = _decide(_null_rows(n_sub, {"a": [0.08]}), _null_rows(n_sub), FIVE)
+    assert base["chosen_threshold"] == 0.1 and base["qualifying"] == [0.025, 0.05, 0.1]
+    bt = {n: nulls[n]["summary"]["by_threshold"] for n in ("A", "B")}
+    keep = bt["A"]["0.1"]["pass_rate"]
+    bt["A"]["0.1"]["pass_rate"] = float("nan")                                  # pooled NaN, one threshold, null A
+    v = _redecide(nulls)
+    assert v["qualifying"] == [0.025, 0.05] and v["chosen_threshold"] == 0.05 and not v["STOP"]
+    assert v["threshold_failures"]["0.1"] == ["null A: pooled nan is not a finite rate"]
+    bt["A"]["0.1"]["pass_rate"] = float("inf")                                  # +inf: like any rate above the bound
+    v = _redecide(nulls)
+    assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null A: pooled inf is not a finite rate"]
+    bt["A"]["0.1"]["pass_rate"] = keep
+    bt["B"]["0.1"]["family_pass_rate"]["c"] = float("nan")                      # family NaN, one threshold, null B
+    v = _redecide(nulls)
+    assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null B: family c nan is not a finite rate"]
+    bt["B"]["0.1"]["family_pass_rate"]["c"] = float("inf")
+    v = _redecide(nulls)
+    assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null B: family c inf is not a finite rate"]
+    bt["B"]["0.1"]["family_pass_rate"]["c"] = 0.0
+    for t in C.G6_GRID:                                                          # NaN at every threshold: STOP
+        bt["A"][str(t)]["pass_rate"] = float("nan")
+    v = _redecide(nulls)
+    assert v["STOP"] and v["chosen_threshold"] is None and v["qualifying"] == []
+    for t in C.G6_GRID:
+        assert f"{t}: null A: pooled nan is not a finite rate" in v["reason"]
+    for t in C.G6_GRID:                                                          # family NaN at every threshold: STOP
+        bt["A"][str(t)]["pass_rate"] = 0.0
+        bt["A"][str(t)]["family_pass_rate"]["e"] = float("nan")
+    v = _redecide(nulls)
+    assert v["STOP"] and v["chosen_threshold"] is None
+    assert K._bound_failure("A", "pooled", None, "NULL_PASS_MAX") == "null A: pooled rate missing (no submitted pair)"
+    assert K._bound_failure("A", "pooled", "x", "NULL_PASS_MAX") == "null A: pooled 'x' is not a finite rate"
+
+
+def test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form():
+    import json
+    from omr import ledger
+    rows = _null_rows({f: 20 for f in FIVE}, {"a": [0.08, 0.04], "b": [0.5, 0.01]})     # passers rows 0, 1, 21
+    for i, r in enumerate(rows):                                                 # numpy values as in memory
+        r["gates"] = {k: (np.bool_(v) if isinstance(v, bool) else v) for k, v in r["gates"].items()}
+        r["perm_p"] = np.float64(r["perm_p"])
+        r["val_sharpe"] = np.float64(r["val_sharpe"])
+        if i % 7 == 3:
+            r["gates"]["G3"] = np.bool_(False)
+        elif i % 7 == 5:
+            r["gates"]["G3"] = None
+        elif i % 7 == 6:
+            r["gates"]["G3"] = False
+    rows[1]["gates"]["G3"] = np.bool_(True)
+    rows[8]["status"] = "liquidated"                                            # G3 True but not evaluated
+    rows.append({"family": "c", "world_seed": 999, "submitted": False, "status": "not_submitted",
+                 "stage1": {"activity_dev": 20}})
+    want = sum(1 for i in range(100) if i % 7 not in (3, 5, 6) and i != 8)
+    mem = K.null_summary(rows, FIVE)
+    assert type(rows[0]["gates"]["G3"]) is np.bool_ and mem["n_dev_positive"] == want
+    stored = K.null_summary(json.loads(json.dumps(ledger.clean(rows))), FIVE)
+    assert stored["n_dev_positive"] == mem["n_dev_positive"]
+    for t in C.G6_GRID:
+        for k in ("family_pass_rate", "pass_rate_dev_positive", "pass_rate", "tier1"):
+            assert stored["by_threshold"][str(t)][k] == mem["by_threshold"][str(t)][k], (t, k)
+    assert mem["by_threshold"]["0.1"]["pass_rate_dev_positive"] == 3 / want
+    one = {"family": "a", "world_seed": 0, "submitted": True, "status": "evaluated", "perm_p": 0.5, "params": {},
+           "val_sharpe": 0.1, "stage1": {}}
+    for g3, n in ((np.bool_(True), 1), (True, 1), (np.bool_(False), 0), (False, 0), (None, 0)):
+        assert K.null_summary([dict(one, gates={"G3": g3})], ["a"])["n_dev_positive"] == n, g3
+
+
+def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):
+    n_sub = {f: 40 for f in FIVE}
+    _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)
+
+    def run(edit):
+        oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
+        edit(oracle)
+        return K.decide(nulls, oracle)
+
+    def setp(n, cell, x):
+        return lambda o: o[n]["summary"][cell]["by_threshold"]["0.1"].__setitem__("power", x)
+
+    def setm(n, cell, x):
+        return lambda o: o[n]["summary"][cell].__setitem__("mean_val_sharpe", x)
+
+    base = run(lambda o: None)
+    assert base["chosen_threshold"] == 0.1 and not base["STOP"] and base["below_power_min"] == []
+    v = run(setp("B", "slow|1.5", float("nan")))                                # NaN power at the chosen threshold
+    assert v["STOP"] and v["below_power_min"] == ["B/slow"] and "B/slow" in v["reason"]
+    v = run(setp("B", "slow|1.5", None))
+    assert v["STOP"] and v["below_power_min"] == ["B/slow"]
+    for x in (float("nan"), float("inf"), None):                                # achieved mean NaN / inf / None
+        v = run(setm("A", "fast|1.0", x))
+        assert v["STOP"] and v["oracle_level_outside_bound"] == ["A/fast|1.0"] and "A/fast|1.0" in v["reason"]
+    v = run(setp("A", "fast|1.5", C.POWER_MIN))                                 # finite: exactly POWER_MIN is enough
+    assert not v["STOP"] and v["below_power_min"] == []
+    v = run(setp("A", "fast|1.5", np.nextafter(C.POWER_MIN, 0.0)))
+    assert v["STOP"] and v["below_power_min"] == ["A/fast"]
+    monkeypatch.setattr(K, "RHO_BOUND", 0.125)                                  # an exactly representable bound
+    for x, inside in ((1.625, True), (1.375, True), (np.nextafter(1.625, 2.0), False), (np.nextafter(1.375, 0.0), False)):
+        v = run(setm("B", "slow|1.5", x))
+        assert (v["oracle_level_outside_bound"] == []) == inside, x
+    monkeypatch.setattr(K, "RHO_BOUND", 0.1)
+    x = 1.6
+    for _ in range(4):
+        x = np.nextafter(x, 0.0)
+    for _ in range(9):                                                           # around 1.5 + 0.1: as the old rule
+        v = run(setm("B", "slow|1.5", float(x)))
+        assert ("B/slow|1.5" in v["oracle_level_outside_bound"]) == (abs(float(x) - 1.5) > 0.1), float(x)
+        x = np.nextafter(x, 2.0)
