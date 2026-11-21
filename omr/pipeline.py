@@ -48,7 +48,8 @@ class World:
 
 @dataclass
 class Opts:
-    perm_n: int = C.PERM_N
+    perm_n: int = C.PERM_N                          # the core unit's G6 (circular shifts)
+    u_lags: int = C.UNIVERSE_G6_LAGS                # the top30 unit's G6 (R-N, fix pass 9): equally spaced lags
     jitter_n: int = C.JITTER_N
     include_g8: bool = True
     keep_detail: bool = True

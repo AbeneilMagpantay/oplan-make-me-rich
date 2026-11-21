@@ -32,9 +32,10 @@ NULL A (bootstrap): every world day draws one source day iid, shared by all symb
   settlement is replaced by a day with one, drawn by the same generator).
 NULL B (sign-flip): the real order; per day ONE fair coin shared by all symbols mirrors each symbol's
   demeaned hourly log-return path; funding rates as recorded.
-ONE EXPECTED DAY GROSS, BOTH NULLS (fix pass 8, R-M; it replaces fix pass 7's R-K): a symbol's sample mean over
-  a few years is mostly luck, and a world that keeps it as the symbol's expected return holds a permanent
-  difference between symbols that a slow momentum book collects; a no-skill world must not contain it. The day
+ONE EXPECTED DAY GROSS, BOTH NULLS (fix pass 8, R-M; it replaces fix pass 7's R-K): a world that keeps each
+  symbol's sample mean as its expected return holds a permanent difference between symbols, whether that mean was
+  luck or not, which a slow momentum book collects: there ranking on past returns is a real forecast, so it is a
+  premium world, not a no-skill world (fix pass 9 corrected the earlier reason, audits/AUDIT_LOG.md X12-prep). The day
   gross of a full source day is the product of its 24 hourly close / previous close ratios; G = its mean over
   all fully active symbol-days of the source (one number: meta pools common_day_gross). Null A: every active
   row of a world day on the SHARED branch, drawn from the set Q (the month's pool, or the whole period), has its
@@ -69,7 +70,10 @@ daily returns (n from 3 to 60 and from 3 to 20 days; the reversal is the momentu
 and funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
 the activity rule; the activity passer with the best DEV Sharpe gets the full stage 1 and is SUBMITTED to
 stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Everything runs on the
-PRODUCTION block path (six-month blocks); G6 is the paired lag test of omr.upipeline.ugates.
+PRODUCTION block path (six-month blocks); G6 is the paired lag test of omr.upipeline.ugates (fix pass 9, R-N: the
+UNIVERSE_G6_LAGS lags equally spaced from 30 days plus one random phase to half of VAL, and the speed limit: a book
+whose weights stay correlated above UNIVERSE_G6_MEMORY_MAX with its own weights a lag step or more earlier gets
+p = 1 without any lag run); every evaluated row also carries g6_memory, g6_lag_step and g6_memory_over_limit.
 NOISY ORACLE (cross-sectional, on the same worlds): per symbol x = rho * z + sqrt(1 - rho^2) * eps, z = the
 symbol's future k-day log return minus the cross-sectional mean of the symbols with a return, standardised
 per symbol; weights = (x - mean x) / sum |x - mean x| over the in-play symbols, re-decided every k days
@@ -122,8 +126,8 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 6                        # fix pass 8: R-M (one expected day gross for every symbol under both
-                                            # nulls; replaces R-K); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6 (per-unit
+PROTOCOL_VERSION = 7                        # fix pass 9: R-N (top30 G6: equally spaced lags, the speed limit);
+                                            # 6 = fix pass 8 (R-M); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6 (per-unit
                                             # seal rule, partial lines with a sha, oracle phases first); 3 = pass 5
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
@@ -749,6 +753,15 @@ def dev_sharpe_u(fp_dev, W) -> float:
     return float("-inf") if run.liquidated else S.sharpe(run.daily_returns())
 
 
+def g6_fields(res: dict, row: dict) -> dict:
+    """R-N (fix pass 9): an evaluated calibration row also carries the top30 G6 speed-limit record (g6_memory,
+    g6_lag_step, g6_memory_over_limit); the rule reads none of it (a book over the limit has perm_p 1.0)."""
+    if res.get("status") == "evaluated":
+        g6 = res["gates"]["G6"]
+        row.update(g6_memory=g6["memory"], g6_lag_step=g6["lag_step"], g6_memory_over_limit=g6["memory_over_limit"])
+    return row
+
+
 def task_null(args) -> list:
     null, world_seed = args
     src = _W["src"]
@@ -779,7 +792,8 @@ def task_null(args) -> list:
             out.append(dict(base, submitted=False, status=f"stage1_{s1['code']}", params=best, fault=s1.get("fault")))
             continue
         res = UP.stage2_u(prog, best, ud, s1, OPTS, _W["handle"], CB._seed("unull", null, fam, world_seed), None)
-        out.append(CB.summarise(res, dict(base, submitted=True, params=best, best_dev_sharpe_of_passers=best_sh)))
+        out.append(g6_fields(res, CB.summarise(res, dict(base, submitted=True, params=best,
+                                                         best_dev_sharpe_of_passers=best_sh))))
     return out
 
 
@@ -799,8 +813,8 @@ def task_oracle_power(args) -> list:
             rho = rhos[f"{speed}|{lvl}"]
             res = UP.evaluate_weights_u(ob.weights(rho), ob.bu, CB._seed("uoracle", null, world_seed, speed, lvl), OPTS,
                                         _W["handle"], None)
-            out.append(CB.summarise(res, {"null": null, "speed": speed, "level": lvl, "rho": rho,
-                                          "world_seed": world_seed}))
+            out.append(g6_fields(res, CB.summarise(res, {"null": null, "speed": speed, "level": lvl, "rho": rho,
+                                                         "world_seed": world_seed})))
         del ob
     return out
 
@@ -1088,7 +1102,8 @@ def run_header(k: dict, rh: str, fams: list, worlds: int, oracle_worlds: int, sy
     return {"protocol_version": PROTOCOL_VERSION, "semantic_hash": k["semantic"], "research_hash": rh,
             "synthetic_dry_run": synthetic, "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
             "seeds": SEEDS, "worlds_per_null": worlds, "oracle_worlds": oracle_worlds, "levels": list(ULEVELS),
-            "speeds_days": USPEEDS, "perm_n": OPTS.perm_n, "draws_per_pair": CB.N_DRAWS,
+            "speeds_days": USPEEDS, "g6_lags": OPTS.u_lags, "g6_memory_max": C.UNIVERSE_G6_MEMORY_MAX,
+            "draws_per_pair": CB.N_DRAWS,
             "rho_grid": [float(r) for r in RHO_GRID], "fine_points": FINE_POINTS,
             "pool_min_days": POOL_MIN_DAYS}
 
@@ -1285,11 +1300,13 @@ def main(argv=None):
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": header["families"],
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,
-                        "speeds_days": USPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "perm_n": OPTS.perm_n,
+                        "speeds_days": USPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "g6_lags": OPTS.u_lags,
+                        "g6_memory_max": C.UNIVERSE_G6_MEMORY_MAX,
                         "membership": "the real monthly schedule (the kernel's rule on the real activity)",
                         "funding": "rates times a fair sign coin per settlement hour (R-E)",
                         "null_a_source_days": src.meta["pools"],
-                        "g6": "paired lag test (R-C)", "blocks": "production (six-month blocks)",
+                        "g6": f"paired lag test (R-C) on {OPTS.u_lags} equally spaced lags with the speed limit "
+                              f"{C.UNIVERSE_G6_MEMORY_MAX} (R-N)", "blocks": "production (six-month blocks)",
                         "reduced_pipeline": "G8 not run"},
            "nulls": nulls, "oracle": oracle, "verdict_unit_only": verdict, "wall_seconds": round(time.time() - t0, 1)}
     path = Path(a.out) if a.out else P.LEDGER_DIR / f"ucalibration_{k['semantic'][:16]}.json"

@@ -368,7 +368,7 @@ def test_stage2_top30_gates_and_g8_on_next30(ud_dev, ud_full, val_handle):
     prog = _prog("ucal_xs_carry")
     q = L.default_params(prog)
     s1 = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(4), PL.Opts(truncation_cuts=3, start_cuts=1))
-    opts = PL.Opts(perm_n=20, jitter_n=2, start_cuts_val=1)
+    opts = PL.Opts(u_lags=20, jitter_n=2, start_cuts_val=1)
     res = UP.stage2_u(prog, q, ud_full, s1, opts, val_handle, 9, 0.1)
     assert res["status"] == "evaluated"
     g = res["gates"]
@@ -393,7 +393,7 @@ def test_g6_shifted_weights_never_land_on_symbols_out_of_play(ud_full, val_handl
     monkeypatch.setattr(UP.Blocked, "run_targets", spy)
     bu = UP.Blocked(ud_full, "top30", fields=UP.program_fields(prog))
     W, _, _ = bu.unit(prog, L.default_params(prog))
-    UP.ugates(W, bu, np.random.default_rng(1), PL.Opts(perm_n=5), 0.1, prog, {}, [], None, 0)
+    UP.ugates(W, bu, np.random.default_rng(1), PL.Opts(u_lags=5), 0.1, prog, {}, [], None, 0)
     vs, ve = bu.pos(C.VAL_START), bu.pos(C.VAL_END)
     ok = bu.inplay()[vs - 1:ve] & bu.eng_rows("av", vs, ve)
     g6 = [t for s, e, t in seen if (s, e) == (vs, ve)]
@@ -409,8 +409,14 @@ def test_evaluate_file_runs_a_top30_program_and_records_unit_and_lookback(tmp_pa
     shutil.copyfile(_prog_path("kernel_noise_top30"), src)
     prov = SynthProvider(synth_world(seed=3), universe=(ud_dev, ud_full))
     row = evaluate.evaluate_file(str(src), 0, provider=prov, quiet=True, require_lock=False, p_max=0.1,
-                                 opts=PL.Opts(perm_n=10, jitter_n=2, truncation_cuts=2, start_cuts=1, start_cuts_val=1))
+                                 opts=PL.Opts(u_lags=10, jitter_n=2, truncation_cuts=2, start_cuts=1, start_cuts_val=1))
     assert row["status"] == "evaluated" and row["unit"] == "top30" and row["lookback_hours"] == 1007
+    import json                                                       # R-N: the stored trial's G6 record
+    det = json.loads((evaluate.P.TRIAL_DETAIL_DIR / f"{row['trial_id']}.json").read_text(encoding="ascii"))
+    g6 = det["gates"]["G6"]
+    assert g6["value"] == row["gate_values"]["G6"] and g6["lags"] == 10 and g6["lag_step"] > 0
+    assert 0.0 <= g6["memory"] <= 1.0 and isinstance(g6["memory_over_limit"], bool)
+    assert g6["memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and det["permutation"]["memory"] == g6["memory"]
     pend = [r for r in ledger.read_rows(evaluate.P.TRIALS_JSONL) if r["status"] == "pending"]
     assert pend[0]["unit"] == "top30" and pend[0]["lookback_hours"] == 1007
     assert row["gates"]["G8"] is not None
@@ -636,7 +642,7 @@ def test_s4_blocks_equal_the_whole_panel_for_signals_weights_and_engine(ud_full,
 def test_s4_every_gate_is_identical_with_blocks(ud_full, val_handle):
     prog = _prog("ucal_xs_momentum")
     q = L.default_params(prog)
-    opts = PL.Opts(perm_n=30, jitter_n=3)
+    opts = PL.Opts(u_lags=30, jitter_n=3)
     whole = UP.Blocked(ud_full, "top30", months=None)
     blocked = UP.Blocked(ud_full, "top30", fields=UP.program_fields(prog), boundaries=_boundaries(whole))
     W = whole.unit(prog, q)[0]
@@ -655,7 +661,7 @@ def test_s4_every_gate_is_identical_with_blocks(ud_full, val_handle):
 def test_s4_stage2_with_blocks_equals_one_block(ud_dev, ud_full, val_handle):
     prog = _prog("ucal_xs_reversal")
     q = L.default_params(prog)
-    opts = PL.Opts(perm_n=20, jitter_n=2, truncation_cuts=3, start_cuts=2, start_cuts_val=1)
+    opts = PL.Opts(u_lags=20, jitter_n=2, truncation_cuts=3, start_cuts=2, start_cuts_val=1)
     s1a = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts, months=None)
     s1b = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts)
     assert s1a["ok"] and s1b["ok"] and all(_same(s1a[k], s1b[k]) for k in ("W", "raw", "known", "symbols"))

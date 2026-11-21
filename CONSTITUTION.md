@@ -412,6 +412,15 @@ Live risk limits the loop can never change:
   `sma(hour, 25)`, sums of such ratios used as a scale) or thresholds hidden by multiplying both sides
   of a comparison by the same series; these are deliberate, visible in the text, and left to the
   coordinator's source read before every counted submission (KP-010).
+- In top30 a program whose weights change slowly cannot reach Tier 1: G6's speed limit (section 13)
+  fails a book whose weights are still correlated above 0.5 with its own weights a lag step (about 26
+  days) or more earlier, so books slower than about 50 days are not tested for timing in this unit.
+- What G6 does and does not protect against in top30: at 0.10 a book that earns a steady premium
+  without any timing passes G6 about 1 time in 10 (that is the test's level; with three years of VAL
+  the gate cannot be both stricter and sensitive), and G6 does not protect against plain luck in VAL,
+  because stale copies do not share the actual book's luck; that rate is what the null worlds measure
+  and the seal bounds. The core unit's G6 (200 circular shifts) has not been examined for the same
+  effect; its seal measured its families' rates in worlds that keep each symbol's drift.
 
 ## 13. KP-015: the universe unit top30 (built 2026-11-19; NOT in force until the human approves the re-key)
 
@@ -454,8 +463,9 @@ Live risk limits the loop can never change:
 - Gates for top30: G1-G5, G7 and G10 as in section 7. G6 (fix pass 5) is a causal PAIRED LAG test. It
   asks whether the program's weights at the time it decided do better over VAL than the SAME program's
   own weights from k hours earlier, traded at the same times. VAL row i is decided at the row before VAL
-  start + i and executed at VAL start + i. For each of 200 lags k, drawn uniformly from 30 days to half
-  the VAL length, the lagged book at row i is the program's own weight row from k hours BEFORE that
+  start + i and executed at VAL start + i. For each of 20 lags k, equally spaced from 30 days plus one
+  random phase to half of VAL (fix pass 9, R-N: the step is (half of VAL - 30 days) / 20, about 26 days),
+  the lagged book at row i is the program's own weight row from k hours BEFORE that
   decision (for the first k rows of VAL that is a row before VAL start); no row after the decision is
   ever used, and nothing wraps around. Both books hold only the names common to the row: tradable now (in
   play at the decision row with a usable bar at the execution row) and in play at the lagged row. Each
@@ -463,19 +473,31 @@ Live risk limits the loop can never change:
   has a name outside the common names (every common name gets (own net - masked net) / number of common
   names, sums sequential in column order, no gross rescaling); a row with fewer than 10 common names is
   flat in both books. Both books run through the engine restarted at VAL start (a liquidated run scores
-  -inf); p = (1 + #(lagged >= actual)) / (N + 1), where the lagged book counts as >= when the two books
+  -inf); p = (1 + #(lagged >= actual)) / 21, where the lagged book counts as >= when the two books
   are equal within 1e-12 on every cell (a tie, no second engine run) or its Sharpe is >= the actual
-  Sharpe - 1e-9 (both can only raise p). Where no row of the actual book differs from the actual weights
-  the actual run is reused. Why no future row: the names common to a row must be known at the decision
+  Sharpe - 1e-9 (both can only raise p). So 0.05 means that no stale copy did as well as the actual
+  book and 0.10 that at most one did; 0.025 cannot be reached in this unit (power there is 0, so the
+  seal cannot choose it). Where no row of the actual book differs from the actual weights the actual run
+  is reused. Speed limit (R-N): before any lag run, the correlation between the program's weights and
+  its own weights j lag steps earlier (on the names tradable now and in play at the earlier row, each
+  name's mean over the rows compared removed from both) must be at most 0.5 for every j from 1 to 19; otherwise
+  G6 fails (p = 1) and no lag book is run; an undefined correlation (a book that never changes) counts
+  as above the limit. Why: stale copies of a slow book are not independent comparisons, and three years
+  of VAL cannot test a book slower than about 50 days for timing. What was measured (audits/AUDIT_LOG.md,
+  round 7, X12-prep): for a book with a 37 to 60 day window the correlation of two lagged Sharpe ratios
+  is +0.87 at 0 to 10 days apart, +0.50 at 10 to 25, +0.07 at 25 to 50 and about zero beyond, so the
+  former 200 uniform lags held only about 11 to 14 independent values, and a book earning a premium
+  without timing was first among its copies about 1 time in 13 at any threshold under 0.08 and first or
+  second about 1 time in 6 at 0.10. Why no future row: the names common to a row must be known at the decision
   (a source row from the future would keep only names that will still be members later, a survivor
   filter). Two limits, stated plainly (numbers: audits/AUDIT_LOG.md, round 7): (1) the books are compared
   only on names in play at both rows, so positions in names that entered the unit less than k hours
   before are left out of both books; a book whose edge sits in recent entrants is not credited for it,
   and with the real turnover of members a slow strategy has less power here than in the core unit. (2)
   Each book pays its own costs, so for a book whose costs are large next to its volatility the
-  comparison is distorted (such books fail G1-G4 anyway). The lag range stays 30 days to half the VAL
-  length: lagged copies of a slow book stay correlated within the signal's memory of up to 90 days, so a
-  shorter range would leave too few independent comparisons. The core unit's G6 is unchanged. G8: the
+  comparison is distorted (such books fail G1-G4 anyway). The lag range stays 30 days to half of VAL:
+  with lags about 26 days apart the copies of a book that meets the speed limit are close to independent
+  comparisons, and a shorter range would leave too few of them. The core unit's G6 is unchanged. G8: the
   same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
 - The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged but for the family
   bound of fix pass 7, R-L, which the rule applies in both units) and omr.ucalibrate
@@ -490,9 +512,10 @@ Live risk limits the loop can never change:
   with one coin per day, funding rates as recorded before the sign coin below; fix pass 8 (R-M, which
   replaces fix pass 7's R-K): in both nulls every symbol has ONE expected day gross G on every world
   day, G = the mean over all fully active symbol-days of the source of the day gross (the product of
-  the day's 24 hourly close / previous close ratios). A symbol's sample mean over a few years is mostly
-  luck, and a world that keeps it as the symbol's expected return holds a permanent difference between
-  symbols that a slow momentum book collects; a no-skill world must not contain it. Simple day returns
+  the day's 24 hourly close / previous close ratios). A world that keeps each symbol's sample mean as
+  its expected return holds a permanent difference between symbols, whether that mean was luck or not,
+  which a slow momentum book collects: there ranking on past returns is a real forecast, so it is a
+  premium world, not a no-skill world (corrected in fix pass 9; audits/AUDIT_LOG.md, X12-prep). Simple day returns
   are equalised, not log returns, because positions are held between rebalances. Null A: every active
   hour of a shared-branch day drawn from the set Q (the month's pool, or the whole period) has its open /
   previous close ratio multiplied by (G / M(Q, s))^(1/24), M(Q, s) the symbol's mean day gross over Q's

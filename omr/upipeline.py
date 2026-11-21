@@ -28,9 +28,11 @@ stage1_u   DEV-only, uncounted: signals, truncation cuts (24 random + DEV end), 
            the first 60% of the grid, plus one that removes the first 31 hours of a panel symbol's history),
            activity_dev.
 stage2_u   DEV+VAL, counted, needs a ValHandle: DEV rows equal to stage 1 (by symbol), 3 start cuts,
-           engine, gates. G1-G7 and G10 as for the core; G6 shifts the whole weight matrix in time and sets
-           to 0 every weight that lands on a symbol that is not in play or has no bar (actual and shifted
-           runs alike); G8 = the same program on unit next30 has a positive Sharpe over its DEV+VAL span.
+           engine, gates. G1-G5, G7 and G10 as for the core; G6 is the causal paired lag test (R-C) on
+           UNIVERSE_G6_LAGS equally spaced lags (R-N, fix pass 9: g6_lags) with the speed limit (g6_memory:
+           a book whose weights stay correlated above UNIVERSE_G6_MEMORY_MAX with its own weights a lag step
+           or more earlier gets p = 1 without any lag run); G8 = the same program on unit next30 has a
+           positive Sharpe over its DEV+VAL span.
 """
 from __future__ import annotations
 
@@ -828,16 +830,68 @@ def _seq_rowsum(x: np.ndarray) -> np.ndarray:
     return np.cumsum(x, axis=1)[:, -1] if x.shape[1] else np.zeros(x.shape[0])
 
 
-def g6_lags(L_: int, g0: int, rng, n: int) -> np.ndarray:
-    """R-C: n lags in hours, uniform on [PERM_MIN_OFFSET_DAYS * 24, L // 2] (L = VAL rows, g0 = the grid row of
-    the first VAL decision). KernelFault when VAL is too short or the grid holds fewer than L // 2 rows
+def _seq_colsum(x: np.ndarray) -> np.ndarray:
+    """Column sums, sequential in row order (not pairwise)."""
+    return np.cumsum(x, axis=0)[-1] if x.shape[0] else np.zeros(x.shape[1])
+
+
+def _seq_sum(v: np.ndarray) -> float:
+    """The sum of a vector, sequential in its order (not pairwise)."""
+    return float(np.cumsum(v)[-1]) if len(v) else 0.0
+
+
+def g6_lags(L_: int, g0: int, rng, n: int) -> tuple:
+    """R-N (a), fix pass 9: (lags, step). n lags in hours, EQUALLY spaced: lo = PERM_MIN_OFFSET_DAYS * 24, hi = L // 2
+    (L = VAL rows, g0 = the grid row of the first VAL decision), step = (hi - lo) // n; phase = rng.integers(0, step),
+    the first and only draw taken from the lag generator; lags = lo + phase + step * arange(n), all within
+    [lo, hi). KernelFault when VAL is too short (hi < lo or step < 1) or the grid holds fewer than L // 2 rows
     before g0 (every source row must exist)."""
     lo, hi = C.PERM_MIN_OFFSET_DAYS * 24, L_ // 2
-    if hi < lo:
+    step = (hi - lo) // n if n > 0 else 0
+    if hi < lo or step < 1:
         raise PL.KernelFault("VAL too short for the lag test")
     if g0 - hi < 0:
         raise PL.KernelFault("not enough history before VAL for the lag test")
-    return rng.integers(lo, hi + 1, size=n)
+    phase = int(rng.integers(0, step))
+    return lo + phase + step * np.arange(n, dtype=np.int64), int(step)
+
+
+def g6_memory(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, step: int, n: int) -> float:
+    """R-N (b), fix pass 9, the speed limit (computed before any lag run). For j = 1 .. n - 1, k = j * step: Wa =
+    W[g0 : g0 + L], Ws = W[g0 - k : g0 - k + L] (L = len(ok)), mask = ok & P_[g0 - k : g0 - k + L] (g6_books'
+    common names: tradable now and in play at the lagged row). Per name with at least 2 mask rows: a = Wa on
+    its mask rows minus their mean, s = Ws on the same rows minus their mean; r_j = sum(a * s) / sqrt(sum(a * a)
+    * sum(s * s)) over all such names and rows, and 1.0 when undefined (a sum of squares 0, or not finite: a
+    book that never changes). Returns max over j of r_j (0.0 when n < 2: no pair of copies). The per-name mean
+    is removed because a constant part of a book (always long some names) is common to every lagged copy and
+    does not make the copies depend on each other. Every sum is sequential: down the rows of each name
+    (cumsum along the rows), then across the names in column order (cumsum), so the value is the same bit for
+    bit whatever the platform's pairwise summation does."""
+    L_ = len(ok)
+    Wa = W[g0:g0 + L_]
+    best = None
+    for j in range(1, n):
+        k = j * step
+        if g0 - k < 0:
+            raise PL.KernelFault("lag reaches before the grid")
+        Ws = W[g0 - k:g0 - k + L_]
+        mask = ok & P_[g0 - k:g0 - k + L_]
+        cnt = mask.sum(axis=0)
+        cols = cnt >= 2
+        den = np.where(cnt > 0, cnt, 1)
+        ma = _seq_colsum(np.where(mask, Wa, 0.0)) / den
+        ms = _seq_colsum(np.where(mask, Ws, 0.0)) / den
+        a = np.where(mask, Wa - ma, 0.0)
+        s = np.where(mask, Ws - ms, 0.0)
+        num = _seq_sum(_seq_colsum(a * s)[cols])
+        saa = _seq_sum(_seq_colsum(a * a)[cols])
+        sss = _seq_sum(_seq_colsum(s * s)[cols])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            r = num / float(np.sqrt(saa * sss)) if saa > 0.0 and sss > 0.0 else float("nan")
+        if not np.isfinite(r):
+            r = 1.0
+        best = r if best is None else max(best, r)
+    return 0.0 if best is None else float(best)
 
 
 def g6_books(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, k: int) -> tuple:
@@ -947,18 +1001,27 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
 
     plain = np.where(ok, W[g0:val_e], 0.0)
     actual = vrun(plain)                                  # the unmasked actual (kept in the detail)
-    offs = g6_lags(L_, g0, rng_perm, opts.perm_n)
-    a_sh, s_sh = np.zeros(len(offs)), np.zeros(len(offs))
-    ties = np.zeros(len(offs), dtype=bool)
-    for j, k in enumerate(offs):
-        A_k, S_k = g6_books(W, inplay, ok, g0, int(k))
-        a_sh[j] = actual if np.array_equal(A_k, plain) else vrun(A_k)
-        ties[j] = g6_books_tie(A_k, S_k)                   # R-B (1): no second engine run for a tie
-        s_sh[j] = a_sh[j] if ties[j] else vrun(S_k)
-        del A_k, S_k
-    p = g6_paired_p(a_sh, s_sh, ties)
+    # R-N (fix pass 9): opts.u_lags equally spaced lags (one random phase) and the speed limit, BEFORE any lag run
+    offs, step = g6_lags(L_, g0, rng_perm, opts.u_lags)
+    memory = g6_memory(W, inplay, ok, g0, step, len(offs))
+    over = not (memory <= C.UNIVERSE_G6_MEMORY_MAX)       # positive form: a NaN is over the limit
+    if over:                                              # too slow to test for timing: p = 1, no lag book
+        a_sh, s_sh, ties = np.zeros(0), np.zeros(0), np.zeros(0, dtype=bool)
+        p = 1.0
+    else:
+        a_sh, s_sh = np.zeros(len(offs)), np.zeros(len(offs))
+        ties = np.zeros(len(offs), dtype=bool)
+        for j, k in enumerate(offs):
+            A_k, S_k = g6_books(W, inplay, ok, g0, int(k))
+            a_sh[j] = actual if np.array_equal(A_k, plain) else vrun(A_k)
+            ties[j] = g6_books_tie(A_k, S_k)               # R-B (1): no second engine run for a tie
+            s_sh[j] = a_sh[j] if ties[j] else vrun(S_k)
+            del A_k, S_k
+        p = g6_paired_p(a_sh, s_sh, ties)
     shifted = s_sh
-    g["G6"] = {"pass": (bool(p <= p_max + 1e-12) if p_max is not None else None), "value": p, "threshold": p_max}
+    g["G6"] = {"pass": (bool(p <= p_max + 1e-12) if p_max is not None else None), "value": p, "threshold": p_max,
+               "lags": int(len(offs)), "lag_step": int(step), "memory": float(memory),
+               "memory_max": C.UNIVERSE_G6_MEMORY_MAX, "memory_over_limit": bool(over)}
     buckets = []
     for name, a, b in C.G7_BUCKETS:
         r = daily[(daily.index >= T(a).normalize()) & (daily.index <= T(b))]
@@ -989,6 +1052,8 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
         res["detail"] = {"permutation": {"actual_val_sharpe_restarted": actual, "n": int(len(offs)), "p": p,
                                          "paired": True, "ties": int(ties.sum()), "lagged": True,
                                          "lag_min": int(offs.min()), "lag_max": int(offs.max()),
+                                         "lag_step": int(step), "memory": float(memory),
+                                         "memory_max": C.UNIVERSE_G6_MEMORY_MAX, "memory_over_limit": bool(over),
                                          "actual_common_mean": float(np.mean(afin)) if len(afin) else None,
                                          "shifted_mean": float(np.mean(fin)) if len(fin) else None,
                                          "shifted_p95": float(np.percentile(fin, 95)) if len(fin) else None},

@@ -101,7 +101,7 @@ def test_whole_panel_equals_blocks_for_windows_over_cross_sections(ud_full, name
 def test_stage1_and_stage2_with_blocks_equal_one_block(ud_dev, ud_full, val_handle):
     prog = top30(WINDOWS_OVER_CS["sma_over_cs_demean"])
     q = L.default_params(prog)
-    opts = PL.Opts(perm_n=20, jitter_n=2, truncation_cuts=3, start_cuts=2, start_cuts_val=1)
+    opts = PL.Opts(u_lags=20, jitter_n=2, truncation_cuts=3, start_cuts=2, start_cuts_val=1)
     s1a = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts, months=None)
     s1b = UP.stage1_u(prog, q, ud_dev, np.random.default_rng(9), opts)
     assert s1a["ok"] and s1b["ok"]
@@ -144,7 +144,7 @@ def _evaluate(tmp_path, tmp_ledger, ud_dev, ud_full, body):
         "hypothesis", 'unit = "top30"\nhypothesis', 1), encoding="ascii")
     prov = SynthProvider(synth_world(seed=3), universe=(ud_dev, ud_full))
     row = evaluate.evaluate_file(str(src), 0, provider=prov, quiet=True, require_lock=False, p_max=0.1,
-                                 opts=PL.Opts(perm_n=10, jitter_n=2, truncation_cuts=2, start_cuts=1, start_cuts_val=1))
+                                 opts=PL.Opts(u_lags=10, jitter_n=2, truncation_cuts=2, start_cuts=1, start_cuts_val=1))
     return row, ledger
 
 

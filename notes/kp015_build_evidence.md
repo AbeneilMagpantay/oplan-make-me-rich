@@ -994,3 +994,73 @@ omr.ledger verify OK (trials 10, stage1_log 1, kernel_history 8, calibration_log
 and test files; this note changed too):
   1beb17bd8d052fb8671a7d5e76383fe6e979df59403f12e8996fa9782856a675  omr/ucalibrate.py
   744a593e3cb484e20942d4544ae90727407bc86c2f96bea5a6e878e30bf9f152  tests/test_ucalibrate.py
+
+Fix pass 9, stage A (ruling R-N for the top30 G6, and text corrections; working tree on 97185b1, kernel files as at
+1442b42 before this pass; unapproved, not re-keyed; the full suite follows in stage B).
+R-N (a) (omr/upipeline.py g6_lags; omr/constants.py UNIVERSE_G6_LAGS = 20, provisional; pipeline.Opts.u_lags, the
+core keeps perm_n = 200): lo = 30 days in hours, hi = L // 2, step = (hi - lo) // n, phase = rng.integers(0, step)
+(the first and only draw of the lag generator), lags = lo + phase + step * arange(n); KernelFault "VAL too short
+for the lag test" when hi < lo or step < 1, "not enough history before VAL for the lag test" when g0 - hi < 0;
+returns (lags, step). On the VAL calendar L = 26,304 rows, hi = 13,152, step = 621 hours (25.9 days). p stays
+g6_paired_p: (1 + lagged books at least as good) / (n + 1), ties and margin unchanged.
+R-N (b) (g6_memory; UNIVERSE_G6_MEMORY_MAX = 0.5, provisional): for j = 1 .. n - 1, k = j * step, on the mask
+ok & P_[g0 - k : g0 - k + L] (g6_books' common names; the books' rule that a row with fewer than 10 common names
+is flat is not applied here, as ruled), per name with at least 2 mask rows its mean removed from both copies;
+r_j = sum(a * s) / sqrt(sum(a * a) * sum(s * s)) over all such names and rows, 1.0 when undefined or not finite;
+memory = max over j (0.0 when n < 2: no pair of copies). Sums: every column sum is a cumsum down the rows (as
+_seq_rowsum, but by column), every sum across names a cumsum in column order, so no pairwise summation enters.
+Peak memory of the computation: about four float64 and one boolean per VAL cell, under the 42 bytes per VAL cell
+the R3 estimate already reserves for G6, and never held together with the lag books. In ugates: if not (memory <=
+UNIVERSE_G6_MEMORY_MAX), p = 1.0 and no lag book is built or run (the plain actual run, kept in the detail, still
+runs once); otherwise the lag loop as before over the n lags.
+Records. The G6 gate record of top30 (res["gates"]["G6"], stored in the trial's detail file) is now {pass, value
+(= p), threshold, lags, lag_step, memory, memory_max, memory_over_limit}; the detail's permutation block adds
+lag_step, memory, memory_max, memory_over_limit (n = the lag count). The trial row in ledger/trials.jsonl is
+unchanged (gates.G6 = pass, gate_values.G6 = p). A universe calibration row with status evaluated adds g6_memory,
+g6_lag_step, g6_memory_over_limit (omr/ucalibrate.py g6_fields; omr/calibrate.py and tier_at untouched; a row
+over the limit has perm_p 1.0). omr/ucalibrate.py: PROTOCOL_VERSION 7; the run header and the artifact's protocol
+block carry g6_lags and g6_memory_max instead of perm_n; the docstring's G6 sentence and the corrected R-M reason.
+Measured on the churn panel of tests/test_g6_paired.py (scratch fp9_explore.py): memory of momentum at n = 14 /
+20 / 40 / 60 days 0.022 / 0.035 / 0.30 / 0.52; reversal (7 days) 0.016; carry (9 days) 0.014; the cross-sectional
+oracle at 1 / 5 / 20 days 0.016 / 0.011 / 0.020; the equal-weight basket 0.91; a 60-day moving average of iid
+noise 0.518; fresh iid weights every 20 days 0.072.
+Texts: CONSTITUTION section 13 (G6 of top30: the lags, p / 21, 0.05 and 0.10 read, 0.025 unreachable, the speed
+limit and its reason, the D2 measurement; the lag-range sentence; limits (1) and (2) kept; the corrected R-M
+reason), section 12 (two limitations: a slow program cannot reach Tier 1 in top30; what G6 does and does not
+protect against, and the core G6 not examined for the same effect); LANGUAGE section 10 (the speed-limit sentence
+replaces the old lag-range sentence); KERNEL_PROPOSALS (fix pass 8 clause corrected; "Fix pass 9" entry); the
+upipeline module docstring (its G6 line was still the pre-R-C wording).
+Tests. tests/test_g6_paired.py: R-C T3, T5, T7 and the churn-books test now set Opts(u_lags=N) instead of
+perm_n and unpack (lags, step); T4 (equal-weight basket) asserts that the basket is over the speed limit (p = 1)
+and, with the limit lifted, that the lag test itself still gives p = 1; T6 is replaced by the R-N lag test
+(equal spacing, phase range, every lag within [lo, hi], the single draw, determinism, both KernelFaults); new:
+the memory against a plain-loop reference (names entering and leaving, a name in play for three rows), the
+constructions (a) 60-day moving average over the limit with p = 1 and only the plain actual run, (b) fresh iid
+weights every 20 days under the limit with the lag loop running, (c) a book that never changes (1.0), (d)
+period = step (1.0 at j = 1) and period 2 x step with a sign flip (-1.0 at j = 1, 1.0 at j = 2), (e) a constant
+long base plus a fast tilt under the limit, (f) a name in play for part of VAL only; p with no beat 1 / (n + 1)
+and one beat 2 / (n + 1). tests/test_universe.py, tests/test_blocks.py, tests/test_ucalibrate.py: Opts(perm_n=x)
+for top30 runs became Opts(u_lags=x) (same counts, same run time); a stored top30 trial's detail carries the G6
+record; a calibration row carries the speed-limit fields (perm_p 1.0 when over the limit; tier_at reads it); the
+protocol test refuses version-5 and version-6 partials (it was R-M T5). Runs: tests/test_g6_paired.py,
+test_universe.py, test_blocks.py, test_selftest.py, test_probe_top30.py, test_record_metrics.py, test_evaluate.py,
+test_ucalibrate.py together 145 passed in 1433.96 s; tests/test_structure.py, test_calibrate.py,
+test_ledger_lock.py 89 passed in 21.91 s.
+Reduced dry run (the fix pass 8 wrapper: 60 synthetic symbols, --worlds 1 --oracle-worlds 1 --workers 0, the access
+log and trial ledger in the scratch folder): exit 0 in 599.4 s (fix pass 8: 980.6 s on the same settings; the
+machine is loaded by the auditor's measurement either way); the oracle power phases took under a minute each
+instead of about two; Tier-1 power 0 at 0.025 and 1.0 at 0.05 and 0.10 in all four cells (p = 1 / 21 = 0.048
+cannot be below 0.025); null rows: memory 0.02 to 0.49, none over the limit; unit verdict 0.10, no STOP.
+ledger/, data/, kernel.lock, audits/ and STATE.md unchanged.
+sha256 of the changed kernel and test files:
+  c9b4ae4edc269998ed81f534d16a1645db0b9e988f01c5217206336fc4bddc55  CONSTITUTION.md
+  2f679b3a497e1b524e2f8eb4a3b58de5aef7f377cfb7623ad54d9071548ecd11  LANGUAGE.md
+  0a2c2231bd420644036fc0cfbeb953361230cfa0a836ff5bb7c45af1b86eb357  omr/constants.py
+  3f475642bf515a687aa607cf140e96659b6e8109e2e7a0a18f3d81067583a95e  omr/pipeline.py
+  e5963af6b8d73f266479033b8c82b75dfc9271cc7395b140f1a59aa727596c9c  omr/ucalibrate.py
+  009194b6a91c2000fe9f8da52be8f3bfbf6d4843327b1f542d589fc23e5b0e3e  omr/upipeline.py
+  82679a25ef5a05e37799f3777f72756a1623cf294616eef3a45892f734741f92  tests/test_blocks.py
+  9da0c94f37978ff2c473713babe99cb3afbc8292f191d756b682b6adf93385b4  tests/test_g6_paired.py
+  5dccafc6da2b95a306e0c6fd8f87fc1ed2da932154ce22b5100cd6c9374e093d  tests/test_ucalibrate.py
+  9aabd2b61f484c7ad35d35bc1d01c1bbe9317ae1c4a825b0438b9d206d523f45  tests/test_universe.py
+KERNEL_PROPOSALS.md (not a kernel file): 83d616e741a5ebbc15c0130e6db9784ac1dcddfee7ed0d7867b4b804d4ab2ad2

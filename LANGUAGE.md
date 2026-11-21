@@ -308,9 +308,11 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   names by future membership. Limits (CONSTITUTION section 13; audits/AUDIT_LOG.md round 7): positions in
   names that entered the unit less than k hours before are in neither book, so an edge in recent entrants
   is not credited and a slow strategy has less power than in the core unit; and each book pays its own
-  costs, which distorts the comparison for a book whose costs are large next to its volatility. The lag
-  range stays 30 days to half the VAL length (lagged copies of a slow book stay correlated within its
-  memory of up to 90 days). The threshold applied is the program's own unit's (sealed per unit).
+  costs, which distorts the comparison for a book whose costs are large next to its volatility. In unit
+  top30 G6 fails a program whose weights are still correlated above 0.5 with its own weights one or more
+  lag steps (about 26 days) earlier, so a signal that is one slow average over most of the 90-day lookback
+  will usually be too slow (CONSTITUTION section 13). The threshold applied is the program's own unit's
+  (sealed per unit).
 - Turnover: a book that replaces itself every day trades twice its gross a day and pays about 0.9 of its
   gross per year in costs (2 x 12.5 bps x 365), about 1.8 at the doubled costs of G4. To pass G4 it would
   have to earn more than that before costs, which no realistic edge does. Design top30 books for holding

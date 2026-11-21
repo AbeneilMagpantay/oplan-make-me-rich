@@ -311,8 +311,11 @@ rates, status.
   reached Tier 1 in 4 / 6 / 9 of 48 null A worlds at 0.025 / 0.05 / 0.10 (8.3 / 12.5 / 18.8%); in the null
   worlds of both nulls its VAL Sharpe was about 2 and it passed every gate but G6 in 47 of 48 worlds. Both
   nulls kept each symbol's own sample mean as its expected return (null A: R-K's c; null B: the mirror's centre
-  plus the log mirror's own drift), and on a source with no true difference between symbols those means
-  differed by 0.6 to 0.7 a year: a permanent difference a slow momentum book collects. Null A: shared-branch
+  plus the log mirror's own drift). The auditor's synthetic source has a true per-symbol drift (SD 0.70 a
+  year, by its generator), so most of that premium was real on that source (momentum on the source histories:
+  mean VAL Sharpe 1.23 over nine draws; in the null worlds built from one of them about 2; on a drift-free source
+  about 0 in the history and 0.0 to 0.2 in its null worlds); R-M stands because a kept sample mean is a
+  permanent difference between symbols, luck or not (corrected in fix pass 9). Null A: shared-branch
   rows are multiplied by (G / M(Q, s))^(1/24), fallback rows by (G / M(s))^(1/24) (R-K left fallback days
   alone); null B: every active row by G^(1/24) exp(-m) cosh(x)^(-1/n), so a day's gross is G^(n/24) (1 +- tanh
   x), G^(n/24) in expectation whatever the path. Simple day returns are equalised because positions are held
@@ -325,6 +328,23 @@ rates, status.
   unit_verdict catches every Exception. FP8-4: an advisory during the null phases (log only) when the passes so
   far already exceed the pooled or a family bound at every threshold, or the largest threshold still open lacks
   oracle power. omr/ucalibrate.py PROTOCOL_VERSION 6. Evidence: notes/kp015_build_evidence.md.
+- Fix pass 9 (2026-11-21; audit round 7, addendum X12-prep: the auditor's attack on R-M and its measurement of
+  the lag axis; the coordinator's ruling R-N, top30 only, the core unit's G6 unchanged). D2: for a book with a 37
+  to 60 day window the correlation of two lagged Sharpe ratios is +0.87 at 0 to 10 days apart, +0.50 at 10 to 25,
+  +0.07 at 25 to 50 and about zero beyond, so G6's 200 uniform lags held only about 11 to 14 independent values;
+  a slow book earning a premium without timing was first among its copies about 1 time in 13 at any threshold
+  under 0.08 and first or second about 1 time in 6 at 0.10. R-N (a): UNIVERSE_G6_LAGS = 20 lags, equally spaced
+  by step = (half of VAL - 30 days) // 20 (621 hours, about 26 days) from 30 days plus one random phase (the
+  only draw of the lag generator); p = (1 + lagged books at least as good) / 21, so 0.05 means no stale copy as
+  good, 0.10 at most one, and 0.025 cannot be reached in top30. R-N (b): the speed limit UNIVERSE_G6_MEMORY_MAX =
+  0.5: the correlation of the weights with their own copy j steps earlier (j = 1 .. 19, the common names,
+  each name's mean over the rows compared removed) must not exceed it, otherwise p = 1 and no lag book is run (an
+  undefined correlation counts as above). Both constants are provisional until the auditor's K = 20 / K = 40
+  measurement. The G6 gate record, the trial detail and every calibration row show the memory, the step and
+  whether the limit was exceeded; pipeline.Opts.u_lags carries the lag count (the core keeps perm_n = 200).
+  omr/ucalibrate.py PROTOCOL_VERSION 7. Texts: the R-M reason corrected (a kept sample mean is a permanent
+  difference between symbols, luck or not: a premium world, not a no-skill one); CONSTITUTION sections 12 and
+  13, LANGUAGE section 10. Evidence: notes/kp015_build_evidence.md.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 

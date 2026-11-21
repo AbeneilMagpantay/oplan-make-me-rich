@@ -217,7 +217,7 @@ def test_the_shared_source_gives_the_same_worlds(world_src):
 def test_one_null_world_runs_the_protocol_on_production_blocks(world_src, val_handle, monkeypatch):
     _, _, _, src = world_src
     monkeypatch.setattr(CB, "N_DRAWS", 2)
-    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, perm_n=10, jitter_n=2,
+    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, u_lags=10, jitter_n=2,
                                             truncation_cuts=2, start_cuts=1, start_cuts_val=1))
     seen = []
     real = UP.Blocked.__init__
@@ -233,6 +233,11 @@ def test_one_null_world_runs_the_protocol_on_production_blocks(world_src, val_ha
     sub = [r for r in rows if r["submitted"]]
     assert sub and all(r["status"] in ("evaluated", "liquidated") for r in sub)
     assert all("perm_p" in r and 0 < r["perm_p"] <= 1 for r in sub if r["status"] == "evaluated")
+    ev = [r for r in sub if r["status"] == "evaluated"]                  # R-N: the row carries the speed-limit record
+    assert ev and all(isinstance(r["g6_memory"], float) and r["g6_lag_step"] > 0 and
+                      r["g6_memory_over_limit"] == (not r["g6_memory"] <= C.UNIVERSE_G6_MEMORY_MAX) for r in ev)
+    assert all(r["perm_p"] == 1.0 for r in ev if r["g6_memory_over_limit"])
+    assert all(CB.tier_at(r, 0.1) in (True, False) for r in ev)             # tier_at still reads the rows
     assert seen and all(m == C.UNIVERSE_BLOCK_MONTHS for m in seen)                # the production block path
     summ = CB.null_summary(rows, list(UC.FAMILIES))
     assert summ["n_pairs"] == 3 and summ["n_submitted"] == len(sub)
@@ -250,7 +255,7 @@ def test_the_cross_sectional_oracle_on_the_same_worlds(world_src, val_handle):
     assert np.allclose(rows[live].sum(axis=1), 0.0, atol=1e-12) and np.allclose(np.abs(rows[live]).sum(axis=1), 1.0)
     assert not np.any(rows[~ob.inplay[ob.rows]])                                     # in-play symbols only
     assert ob.val_sharpe(0.6) > ob.val_sharpe(0.0) + 1.0                             # foresight pays
-    res = UP.evaluate_weights_u(W, ob.bu, 1, PL.Opts(perm_n=20, include_g8=False), val_handle, 0.1)
+    res = UP.evaluate_weights_u(W, ob.bu, 1, PL.Opts(u_lags=20, include_g8=False), val_handle, 0.1)
     assert res["status"] == "evaluated" and res["gates"]["G8"]["pass"] is None and res["gates"]["G5"]["pass"]
 
 
@@ -323,7 +328,7 @@ def tiny_run(world_src, monkeypatch):
     monkeypatch.setattr(UC, "synthetic_source", lambda *a, **k: src)
     monkeypatch.setattr(UC, "FAMILIES", ("ucal_xs_momentum",))
     monkeypatch.setattr(CB, "N_DRAWS", 2)
-    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, perm_n=5, jitter_n=1,
+    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, u_lags=5, jitter_n=1,
                                             truncation_cuts=1, start_cuts=1, start_cuts_val=1))
     monkeypatch.setattr(UC, "RHO_GRID", np.array([0.0, 0.3, 0.6, 0.9]))
     monkeypatch.setattr(UC, "FINE_POINTS", 3)
@@ -825,13 +830,17 @@ def test_r_m_t4_null_b_day_products_flipped_and_unflipped_full_and_partial(world
     assert sha == NULL_B_PIN and sha != NULL_B_PIN_58BA59E
 
 
-def test_r_m_t5_a_version_5_partial_file_is_refused(tmp_path):
-    h6 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
-    assert h6["protocol_version"] == UC.PROTOCOL_VERSION == 6
-    p = tmp_path / "v5.partial.jsonl"
-    UC.Partial(p, dict(h6, protocol_version=5), log=lambda *a: None)
-    with pytest.raises(UC.PartialMismatch):
-        UC.Partial(p, h6, log=lambda *a: None)
+def test_r_n_a_version_6_partial_file_is_refused(tmp_path):
+    """Was R-M T5 (a version-5 partial refused); fix pass 9 raises the protocol to 7. The header names the
+    universe lag count and the speed limit instead of perm_n."""
+    h7 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
+    assert h7["protocol_version"] == UC.PROTOCOL_VERSION == 7
+    assert h7["g6_lags"] == C.UNIVERSE_G6_LAGS and h7["g6_memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and "perm_n" not in h7
+    for old in (5, 6):
+        p = tmp_path / f"v{old}.partial.jsonl"
+        UC.Partial(p, dict(h7, protocol_version=old), log=lambda *a: None)
+        with pytest.raises(UC.PartialMismatch):
+            UC.Partial(p, h7, log=lambda *a: None)
 
 
 def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypatch):

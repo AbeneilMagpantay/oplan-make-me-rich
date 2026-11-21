@@ -112,6 +112,10 @@ UNIVERSE_MIN_MEMBERS = 10               # fewer eligible members -> no unit that
 UNIVERSE_MIN_CS = 10                    # S2: a cs_ result needs >= 10 in-play symbols with a known input
 G6_PAIRED_BOOK_TIE = 1e-12              # U1 / R-B: S_k within this of A_k on every cell is a tie (S >= A)
 G6_PAIRED_SHARPE_MARGIN = 1e-9          # U1 / R-B: otherwise S >= A when Sharpe(S) >= Sharpe(A) - this
+# R-N (fix pass 9), top30 G6 only; both PROVISIONAL (to be confirmed by measurement before the re-key):
+UNIVERSE_G6_LAGS = 20                   # lags, equally spaced from 30 days plus one random phase to half of VAL
+UNIVERSE_G6_MEMORY_MAX = 0.5            # speed limit: max correlation of the weights with their own copy a lag step (or
+                                        # more) earlier, each name's mean removed; above it G6 fails (p = 1)
 UNIVERSE_ZERO_TRADE_MAX = 24            # S3: a zero-trade bar is usable while its zero-trade run is <= 24
 UNIVERSE_BLOCK_MONTHS = 6               # S4: universe units are evaluated in blocks of 6 calendar months
 UNIVERSE_BLOCK_MONTHS_G8 = 3            # G8's next30 blocks (evaluated once, streamed): 3 calendar months
