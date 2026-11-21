@@ -80,10 +80,20 @@ null world per null; notes/kp015_build_evidence.md): it ran end to end in 62 min
 power at 0.025 / 0.05 / 0.10: null A fast 1 / 2 / 3 of 4, null A slow 1 / 1 / 1, null B fast 2 / 3 / 4, null B
 slow 3 / 3 / 3. Its own advisory fired (null A slow under 50% at 0.10), and the unit verdict of the pilot
 artifact is STOP. Four worlds cannot estimate a cell, but the slow rows are worse than the audit's
-real-structure worlds, which did not go through the null builders. NO RE-KEY on this evidence: the auditor is
-measuring the four cells on the real structure through the null builders (audit round 7, X10; the reading rule
-is fixed in advance: proceed at 15 of 24 or more in every cell, stop at 10 of 24 or fewer at 0.10).
-Next: the X10 result, the human's approval, re-key, both calibrations (core about 40 minutes; top30 about 88
+real-structure worlds, which did not go through the null builders. No re-key on that evidence.
+Audit round 7, X10 (2026-11-21, audits/AUDIT_LOG.md): the pilot's weak cell was the dry-run structure plus
+chance. On the real structure through the null builders the four cells read 17 / 19 / 19 (A fast), 14 / 17 / 19
+(A slow), 17 / 20 / 20 (B fast) and 14 / 15 / 17 (B slow) of 24 at 0.025 / 0.05 / 0.10: marginal by the rule
+fixed in advance. But 4286abf is NOT READY: under null A the momentum calibration family passes Tier 1 in
+5 / 6 / 8 of 12 null worlds (the monthly pools give each symbol a slowly changing expected return, which the
+lag test reads as timing; X10-F1, no false-pass risk), so no threshold could qualify and the calibration would
+have stopped after its full run. Fix pass 7 (ordered 2026-11-21): R-K one constant expected return per symbol
+in every month under null A; R-L no single family's null pass rate above 6% (FAMILY_PASS_MAX) next to the
+pooled 3%, because in top30 only one of the three families can pass and the pooled bound alone would allow it
+9%.
+Next: fix pass 7 built and committed; the auditor's re-measurement on it (X11: the three families under both
+nulls, the two null A power cells; the reading rule is in AUDIT_LOG); the human's approval, asked with the odds
+of a successful seal; re-key; both calibrations (core about 40 minutes; top30 about 88
 worker-hours: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
 resumable; the oracle phases come first and show after about a third of the run whether the seal can
 succeed), seal of both units, selftest, independent recount, merge into `main`.
@@ -92,8 +102,10 @@ succeed), seal of both units, selftest, independent recount, merge into `main`.
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked; audit clean as of fix pass 6): approve the semantic re-key. The re-key
-   itself waits for the measurement above (X10). Run time on this PC: see Next.
+2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X10: fix
+   pass 7 and the measurement X11 come first. Run time on this PC: see Next.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
-5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only.
+5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7
+   builds a weaker safeguard into KP-015 (R-L, no family above 6%); KP-016 would be stricter (core 0.05
+   instead of 0.10; top30 0.025 at best, with a real chance that no threshold qualifies).

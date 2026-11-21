@@ -507,3 +507,130 @@ Findings:
 Residual (design, coordinator's decision): the cost-dominated ucal_xs_reversal family still dilutes the top30 null
 pass rate (opinion ii). Not checked: the heavy F6 order test and the full suite; a dry or real calibration run on the
 fix-pass-6 code; selftest end to end; the multiprocessing path; the real sealed core artifact (ledger not read).
+
+# X10 - the four seal-rule oracle cells THROUGH the kernel's null builders (commit 4286abf; copy review7\kern86,
+# setup86.py: 143 blobs written and re-hashed equal to the tree, 0 problems; script p20_x10.py, p20_summary.py)
+Method: the kernel's own task functions run in one process (UC._SerialPool with UC._init on the source's shared
+arrays), so every task is the calibration's code path; observation-only hooks record per evaluate_weights_u call the
+lags, the share of in-play cells kept by the mask and the Sharpe of A_k / S_k (p20_lags_*.jsonl).
+
+## Q1 - the pilot's oracle worlds (dry-run synthetic source, UC.synthetic_source(); p20_out_q1.txt, p20_q1_rows.jsonl,
+## p20_q1_summary.txt)
+Reproduction: UC.task_oracle_power with the pilot's seeds (A 17000-17003, B 18000-18003) and tuned rhos (from
+pilot_ucal.json), 200 lags: all 16 p values equal the pilot's (e.g. A 17000 fast 0.0249 / slow 0.1443; B 18001 slow
+0.3234), realized VAL Sharpe equal.
+Source structure: dry-run synthetic source, panel 149, 5.89 new top30 members per VAL month (median 6, max 9); null A
+pools median 201 days (min 90), fallback 5.4-5.6% of symbol-days. Real calendar: 3.59 per month; pools median 365.
+Pooled lag bands (4 worlds per cell; keep = share of in-play cells kept by the mask; A_k = masked actual Sharpe;
+S_k = lagged copies, mean and SD over lags; beat = lags with S_k >= A_k, of about 100 / 140 / 280 / 280):
+| cell     | 30-89 d                 | 90-179 d                | 180-364 d               | 365-547 d               |
+| A fast   | .673 1.14 / -.48 (.52) 0 | .483 1.03 / -.53 (.56) 4 | .392 0.61 / -.54 (.59) 27 | .299 0.49 / -.35 (.56) 38 |
+| A slow   | .658 1.11 / -.23 (.69) 4 | .489 1.24 / -.72 (.45) 0 | .384 0.77 / -.37 (.60) 22 | .299 0.49 / -.17 (.55) 69 |
+| B fast   | .673 1.44 / -.87 (.65) 0 | .484 1.16 / -.75 (.53) 0 | .391 0.79 / -.55 (.53) 2  | .299 0.69 / -.35 (.49) 18 |
+| B slow   | .673 1.32 / -.18 (.52) 5 | .485 1.31 / -.30 (.64) 0 | .391 1.08 / -.19 (.52) 45 | .299 0.82 / -.40 (.64) 18 |
+(each cell: keep, A_k / S_k mean (S_k SD), beat). Real calendar for comparison (X8c / X8d): keep 0.81 / 0.69 / 0.63 /
+0.57; 20-day masked A_k 1.24 / 1.25 / 1.27 / 1.12 at mean VAL Sharpe 1.5.
+Q1 answer: p is large in the three null A slow worlds because the MASKED ACTUAL book collapses at long lags, not
+because the lagged copies earn. World 17000: realized VAL Sharpe 0.94 and A_k 0.29-0.67 at 180-547 d (28 beats);
+17001: 365-547 d A_k 0.25 against S_k +0.09 (35 beats); 17002: 365-547 d A_k -0.04 against S_k -0.20 (27 beats).
+91 of the 95 beating lags of null A slow are at 180-547 days, where the dry-run mask keeps 30-39% of the cells. S_k
+is not higher under null A than under null B in any band (at most +0.09 in any world-band), so I see no null-A-
+specific mechanism for the oracle; the null A / null B difference in A_k at long lags (0.49 vs 0.82) is within
+chance at 4 worlds per cell (B 18001, VAL Sharpe 0.72, has p 0.32 for the same reason). Diagnosis: the dry-run
+structure (5.9 new members a month, so the mask keeps 30% at a year) plus chance; the coordinator's hypothesis holds.
+
+## X10 side analysis P21 - null A's monthly pools give the cross-section a membership-dependent drift (p21_pools.py,
+## p21_out.txt; synthetic prices only)
+Under null A a symbol's expected return in month m is its mean over POOL(m). Members' annualised mean return,
+cross-sectional SD (mean over the 62 pooled months):
+| source | pool means | whole-period means (what null B keeps) | pool minus whole | pool size median |
+| real-structure (Q2 source) | 0.96 | 0.78 | 0.63 | 386 days |
+| dry-run synthetic          | 1.15 | 0.77 | 0.88 | 198 days |
+The pool-specific part (pool mean minus whole-period mean) of month m against month m-k, correlation over month m's
+members, by lag band 30-89 / 90-179 / 180-364 / 365-547 days: real-structure 0.77 / 0.48 / 0.24 / 0.13; dry-run
+0.72 / 0.32 / 0.01 / -0.15. So under null A a book that tilts toward recent winners holds a drift of about 0.6 a year
+in cross-sectional SD that lagged copies of the same book share less and less with the lag: a timing-like edge with no
+timing skill (the sampling noise of a finite pool, SE about 0.039 x 365 / sqrt(386) = 0.72 a year, plus the change of
+pool when membership changes). Null B keeps only the constant whole-period drift, which every lag shares. This is the
+mechanism the coordinator suspected for ucal_xs_momentum (Q3 measures it).
+
+## Q3 - the calibration families in null worlds on the real-structure source (p20_q3p.py = p20_x10.py mode q3p, the
+## kernel's task_null through UC.run_tasks; 12 worlds per null, seeds SEEDS["A"] + 0..11 = 11000-11011, SEEDS["B"] +
+## 0..11 = 14000-14011; p20_q3_result.json, p20_q3_summary.txt; ran in parallel with Q2, started at 4,766 MB available)
+Every pair was submitted (36 per null). Tier-1 at 0.025 / 0.05 / 0.10:
+| family | null A | null B |
+| ucal_xs_momentum | 5 / 6 / 8 of 12 (VAL Sharpe 2.07-4.16, every other gate passed in 12 / 12; p: 0.005 x5, 0.030, 0.070, 0.085, 0.149 x2, 0.174, 0.453; n 39-57) | 0 / 1 / 1 of 12 (VAL Sharpe 0.48-3.25; other gates passed 11 / 12; p 0.030, 0.189, 0.239, 0.403, 0.438, 0.647, 0.672, 0.677, 0.687, 0.771, 0.985, 1.000; n 49-60) |
+| ucal_xs_reversal (R-J mirror) | 0 / 0 / 0 (VAL -4.12 to -2.10, fails G1-G5, G7) | 0 / 0 / 0 (VAL -3.41 to -1.47) |
+| ucal_xs_carry | 0 / 0 / 0 (VAL -4.69 to -1.98) | 0 / 0 / 0 (VAL -4.31 to -2.32) |
+Pooled null pass rate per submitted pair: null A 5/36 = 13.9%, 6/36 = 16.7%, 8/36 = 22.2%; null B 0/36, 1/36 = 2.8%,
+1/36 = 2.8%. NULL_PASS_MAX is 3%: under null A NO threshold qualifies, so on this source the top30 rule STOPs whatever
+the oracle cells give.
+Answer: yes - in null A worlds ucal_xs_momentum earns a high Sharpe (median VAL 2.8) and its p values are skewed LOW
+(5 of 12 at the minimum 1/201; under null B the same family's p values are skewed high, median 0.66). Mechanism (P21):
+null A's monthly pools give each month's members a pool-specific mean return (cross-sectional SD about 0.6 a year)
+that changes with membership; a 40-60-day momentum book tracks the current pool's means, its lagged copies 30-547
+days back track older pools (correlation of the pool-specific part 0.77 / 0.48 / 0.24 / 0.13 by lag band), so the
+actual book beats its lags with no timing skill. Under null B the drift is the symbol's constant whole-period mean,
+which every lag shares, and p is not skewed low.
+
+## X10 reference arm P22 - null A with the pool-specific mean removed (p22_fixA.py, p22_out12.txt, p22_result.json;
+## my copy only, monkeypatched UWorld; NOT a code proposal, a test of the mechanism)
+Change: in null A every active hour of a world day of month m gets (symbol's whole-period mean daily log return -
+its mean over POOL(m)) / 24 added to its log return; the shared source day, the intraday path, the funding and
+everything else are unchanged. Same source and the same 12 null A seeds as Q3, the kernel's task_null, momentum only.
+| momentum, null A seeds 11000-11011 | Tier-1 .025 / .05 / .10 | p values | VAL Sharpe |
+| kernel null A (Q3)                 | 5 / 6 / 8 of 12          | 0.005 x5, 0.030, 0.070, 0.085, 0.149 x2, 0.174, 0.453 | 2.07-4.16 (median 2.8) |
+| pool mean removed (P22)            | 0 / 0 / 2 of 12          | 0.075, 0.080, 0.189, 0.234, 0.458, 0.527, 0.572, 0.667, 0.721, 0.796, 0.910, 0.940 | 1.18-3.66 (median 1.9) |
+(seed 11000 under P22 fails G3.) With reversal and carry at 0 (they fail every Sharpe gate by 2-4 units, which this
+change cannot reverse), the pooled null A pass rate becomes 0 / 0 / 2 of 36 (0 / 0 / 5.6%): 0.025 and 0.05 qualify.
+The skew disappears and the family still earns its static drift (as under null B), which its lags share.
+
+## Q2 - the four seal-rule cells on the REAL-STRUCTURE source THROUGH the kernel's null builders (p20_x10.py q2:
+## UC.calibrate_run(pool, partial, fams, 0, 24) on UC._SerialPool, i.e. tune_rho over RHO_GRID + 41 fine points +
+## achieved, task_oracle_power, oracle_summary, oracle_advisory; 200 lags; speeds 5 / 20 days; level 1.5; G8 not run;
+## seeds SEEDS["oracle_A"] + 0..23 = 17000-17023, SEEDS["oracle_B"] + 0..23 = 18000-18023; p20_out_q2.txt,
+## p20_q2_result.json, p20_lags_q2.jsonl, p20_q2_summary.txt; 282 min in one process)
+Source: real activity, usable bars, volumes, funding times / intervals of the 134-symbol panel; prices and funding
+rates overwritten by ONE synthetic draw (seed 15000: market factor +5e-5 / h, per-symbol drift, noise) before the
+source arrays were shared; m (the null B mirror centre) recomputed from the synthetic returns. Churn 3.59 new
+members per VAL month; null A pools: 62 pooled months, 8 on the whole period, smallest 110 days, median 365;
+fallback 1.8% of symbol-days (worlds 17000-17002).
+| cell | rho (achieved) | Sharpe at rho 0 | Tier-1 .025/.05/.10 | G6 | G1 | G2 | G3 | G4 | G5 | G7 | G10 |
+| A fast | 0.048125 (1.497) | -0.69 | 17 / 19 / 19 | 19/23/24 | 20 | 22 | 24 | 19 | 24 | 23 | 24 |
+| A slow | 0.088500 (1.500) | -0.52 | 14 / 17 / 19 | 14/17/20 | 20 | 22 | 24 | 22 | 24 | 23 | 24 |
+| B fast | 0.048625 (1.500) | -0.73 | 17 / 20 / 20 | 19/23/23 | 21 | 22 | 23 | 21 | 24 | 23 | 24 |
+| B slow | 0.073250 (1.500) | -0.17 | 14 / 15 / 17 | 16/19/21 | 23 | 23 | 20 | 23 | 24 | 20 | 24 |
+Realized VAL Sharpe mean 1.50 in every cell (SD 0.61-0.68). Every p value with its VAL Sharpe: p20_q2_summary.txt.
+Pooled lag bands (keep / masked A_k / S_k mean (SD) / beat), 30-89 | 90-179 | 180-364 | 365-547 days:
+ A fast .805 1.31 -.75(.61) 0 | .691 1.24 -.71(.58) 6 | .633 1.21 -.66(.58) 19 | .567 1.17 -.60(.57) 29
+ A slow .804 1.32 -.30(.61) 20 | .692 1.15 -.21(.68) 54 | .632 1.09 -.18(.56) 89 | .567 1.05 -.18(.58) 130
+ B fast .805 1.38 -.72(.59) 6 | .693 1.31 -.68(.55) 7 | .633 1.21 -.67(.56) 14 | .567 1.13 -.60(.59) 25
+ B slow .806 1.33 -.25(.54) 29 | .692 1.25 -.15(.55) 63 | .633 1.26 -.25(.60) 99 | .567 1.19 -.25(.55) 63
+On the real calendar the mask keeps 0.81 / 0.69 / 0.63 / 0.57 and the masked actual stays at 1.05-1.38: the
+pilot's null A slow collapse does not recur. Pre-registered reading: not every cell is >= 15 of 24 at all three
+thresholds (A slow and B slow are 14 at 0.025) and no cell is <= 10 at 0.10 (minimum 17): MARGINAL. Odds for the owner:
+the seal needs measured power >= 0.50 at the chosen threshold in all four cells (100 oracle worlds per null in the
+real run); with 14 of 24 at 0.025 (posterior P(power < 0.5) about 0.2 per slow cell) the 0.025 outcome is close to a
+coin flip for passing both slow cells; at 0.05 (17 and 15 of 24) the risk is about 0.1 per slow cell; at 0.10 small.
+But see X10-F1: on this source the null A pass rate leaves no threshold at all.
+
+## X10 verdict and finding
+X10-F1 HIGH (design, ucalibrate.py USource._build_pools / UWorld null A, R-F of fix pass 5): null A's monthly pools give
+each month's members a pool-specific mean return (cross-sectional SD about 0.6 a year, from the sampling noise of a
+finite pool and from pool changes when membership changes) that decays with the lag (P21). A slow cross-sectional
+momentum book holds it and its lagged copies hold less of it, so the paired lag test credits it as timing with no
+timing skill: ucal_xs_momentum Tier-1 5 / 6 / 8 of 12 under null A (p 0.005 in 5 of 12) against 0 / 1 / 1 under null B;
+the pooled null A pass rate 13.9 / 16.7 / 22.2% of submitted pairs exceeds NULL_PASS_MAX at every threshold, so the top30
+rule STOPs. The pilot showed the same on the dry-run source (its only null A momentum pair passed at 0.10). Not a
+false-pass risk (it makes the calibration stricter); it makes a useful seal unlikely. Real resampled prices should show
+the same effect (real idiosyncratic vol 0.62 a year, pools about a year: pool-mean noise about 0.6 a year).
+Smallest fix: in null A remove each symbol's pool-specific mean (add whole-period mean minus POOL(m) mean, per hour,
+to the world's log returns; the shared source day, intraday path and funding unchanged). Reference arm P22: momentum
+Tier-1 0 / 0 / 2 of 12 on the same seeds, p no longer skewed. Needs, before a re-key: a size re-check of the three
+families under the fixed null A (as Q3) and the oracle cells under it (as Q2).
+Verdict on fix pass 6 (4286abf) for the re-key: NOT READY. The oracle cells alone are marginal (above), but the null
+A pass rate on the real-structure source leaves no qualifying threshold, so the calibration would STOP after its full
+run. Fix X10-F1 first.
+Not checked: anything on real price rows (forbidden); the fixed null A for the oracle and for carry / reversal; Q3 on
+the dry-run source beyond the pilot's one world; the spawn-worker path (the in-process path reproduced the pilot's p
+values exactly); the core unit; G8.

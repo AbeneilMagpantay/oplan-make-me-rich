@@ -227,3 +227,96 @@ round 3 also the coordinator's own read of the core modules.
   not run, pulls the other way.
 - Detail: `audits/round7_findings.md` (the auditor's full findings file, copied unchanged; the probe
   scripts it names were session scratch and are not kept).
+
+## Round 7, addendum X10 - 2026-11-21 - the calibration pilot, then the seal-rule cells through the kernel's null builders: commit 4286abf (unlocked, branch kp015-build)
+- Verdict: 4286abf NOT READY for the re-key. This supersedes the READY of fix pass 6 above. No
+  false-pass risk was found: the universe calibration would have stopped after its full run (about 88
+  worker-hours) because no G6 threshold could qualify under null A. The auditor worked on a verified
+  copy of 4286abf (143 blobs) under the same rules as before (synthetic prices on the real structure;
+  nothing written in the project).
+- The pilot (the kernel's own dry run on its synthetic universe; 4 oracle worlds per cell, 1 null
+  world per null, 1 worker, 200 lags): it ran end to end in 62 minutes, the first run of the
+  multiprocessing path and of the oracle-first order. Tier-1 power at 0.025 / 0.05 / 0.10: null A fast
+  1 / 2 / 3 of 4, null A slow 1 / 1 / 1, null B fast 2 / 3 / 4, null B slow 3 / 3 / 3; its advisory
+  fired and its unit verdict is STOP. The pass condition written in the entry above (it finishes;
+  power above zero in every cell) was met and was too weak: the coordinator did not ask for the re-key
+  on 1 of 4 in a cell and ordered X10 with a reading rule fixed in advance (proceed at 15 of 24 or
+  more in every cell at all three thresholds; no re-key at 10 of 24 or fewer at 0.10; in between the
+  odds go to the owner).
+- X10 Q1, the pilot's low cell: reproduced exactly (all 16 p values and VAL Sharpe ratios). The dry-run
+  source is harsher than the real calendar: 5.89 new top30 members per VAL month against 3.59, so the
+  common-names mask keeps 0.67 / 0.48 / 0.39 / 0.30 of the in-play cells at lags of 30-89 / 90-179 /
+  180-364 / 365-547 days against 0.81 / 0.69 / 0.63 / 0.57. In the three failing null A slow worlds
+  the MASKED ACTUAL book collapses at long lags (pooled Sharpe 1.11 / 1.24 / 0.77 / 0.49 by band; 91
+  of the 95 beating lags are at 180-547 days); the lagged copies do not earn (-0.17 to -0.72). Null B
+  has the same mask and the same lagged copies; its better long-lag Sharpe is within chance at 4
+  worlds. So the pilot's weak cell is the dry-run structure plus chance, not a property of null A.
+- X10 Q2, the four cells the seal rule reads (the kernel's calibrate_run in one process on the
+  real-structure source through its null builders; 24 worlds per null, 200 lags, level 1.5; 282
+  minutes). Tier-1 of 24 at 0.025 / 0.05 / 0.10: A fast 17 / 19 / 19, A slow 14 / 17 / 19, B fast
+  17 / 20 / 20, B slow 14 / 15 / 17 (G6 alone: 19 / 23 / 24, 14 / 17 / 20, 19 / 23 / 23, 16 / 19 / 21;
+  the other gates pass 19 to 24 of 24). Tuned rho 0.048 / 0.089 / 0.049 / 0.073, achieved mean VAL
+  Sharpe 1.50. The mask keeps 0.81 / 0.69 / 0.63 / 0.57 and the masked actual book stays at 1.05 to
+  1.38 in every band, so the pilot's collapse does not recur. By the rule fixed in advance: MARGINAL
+  (both slow cells are 14 at 0.025; no cell is at or under 10 at 0.10).
+- HIGH X10-F1 (design, no false-pass risk; ruling R-K, fix pass 7 ordered). Q3: the three calibration
+  families in null worlds on the same source (12 worlds per null, every pair submitted). Momentum
+  under null A: VAL Sharpe 2.07 to 4.16, every other gate passed in 12 of 12, p = 0.005 (the minimum)
+  in 5 of 12, Tier-1 5 / 6 / 8 of 12; under null B 0 / 1 / 1 of 12 with p values skewed high (median
+  0.66). Reversal and carry: 0 everywhere (VAL Sharpe -1.5 to -4.7). Pooled null A pass rate 13.9% /
+  16.7% / 22.2% of submitted pairs against the 3% bound: no threshold qualifies. Mechanism (P21):
+  under null A a month's days are drawn from POOL(m), the source days on which every member of month
+  m is fully active, so a symbol's expected return in month m is its mean over that pool. The
+  pool-specific part (pool mean minus whole-period mean) has a cross-sectional SD of about 0.6 a year
+  and a correlation between month m and month m-k of 0.77 / 0.48 / 0.24 / 0.13 by lag band: a slow
+  momentum book holds the current pool's drift, its lagged copies hold less of it the longer the lag,
+  and the paired lag test reads that as timing. Null B keeps one constant drift per symbol, which
+  every lag shares. The pilot's single null A momentum pair had shown the same (p 0.0945, Tier 1 at
+  0.10). Reference arm P22 (the auditor's copy only: pool-specific mean removed, same 12 seeds):
+  momentum Tier-1 0 / 0 / 2 of 12, p values 0.075 to 0.940, median VAL Sharpe 1.9 instead of 2.8.
+- Coordinator's review of X10-F1 (read: USource._build_pools, UWorld.__init__, _source_days, _build;
+  the auditor's P22 patch). The finding stands. POOL(m) is in practice the period since the youngest
+  member of month m was listed, so the pools are windows of history that change with the membership;
+  the null worlds therefore contained a slowly changing cross-section of expected returns, which is
+  predictability a no-skill world must not have. It entered in fix pass 5 with R-F (monthly pools,
+  the answer to H1); neither the coordinator's review nor X5 (correlations of the pooled worlds)
+  looked at the pools' means. The reference arm also shifts the days that use a personal fallback
+  day, whose expected return is not the pool's, and takes its constant from UNIVERSE_START onward
+  while the fallback draws from all of a symbol's full days; the ruling is exact per branch.
+  Ruling R-K: under null A every symbol has ONE expected daily log return c in every month, c = its
+  mean over all its fully active source days (the set its fallback draws from). A world day that uses
+  the world's shared source day drawn from a set Q (POOL(m), or the whole period for an unpooled
+  month) gets c minus the symbol's mean over the fully active days of Q, spread evenly over the day's
+  24 hours and applied to the open-relative gap ratio, so every bar keeps its source shape; a
+  fallback day gets nothing (its expectation is already c). Shared source days, intraday paths,
+  funding and null B are unchanged.
+- Dilution of the null pass bound (coordinator, from the Q3 rows and the sealed core artifact; ruling
+  R-L, fix pass 7 ordered). In the top30 null worlds 13 of the 36 submitted pairs per null have a
+  positive DEV Sharpe (12 momentum, 1 carry): reversal and carry can never pass there, so a bound of
+  3% over SUBMITTED pairs allows the one family that can pass a rate of 9%, and that family passes
+  every other gate, so its rate is the level of G6 itself. In the core artifact the five families
+  have a positive DEV Sharpe in 48% to 89% of their pairs and the worst family's rate at the sealed
+  0.10 is 4.67% (14 of 300). Ruling R-L: in addition to the pooled bound, no single family's null
+  pass rate (per its own submitted pairs) may exceed FAMILY_PASS_MAX = 0.06 under either null at the
+  chosen threshold. 0.06 is the conventional 5% level plus a sampling allowance: with 200 worlds a
+  family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is refused
+  in about 91%. The rule can only lower a threshold. On the stored core rows it changes nothing.
+  KP-016 (count over DEV-positive pairs) stays open as the stricter alternative: on the stored core
+  rows it gives 0.05 instead of 0.10 (rates 3.85% and 3.10% at 0.10, 2.27% and 1.59% at 0.05; power
+  at 0.05 is 81% to 90.5%), and in top30 it would put the bound of 3% on a family whose rate is the
+  test's level, which leaves only 0.025 and, at 200 worlds per null, fails a valid test at that level
+  by chance in about four runs in ten. The artifact will store the per-family rates and the rate over
+  DEV-positive pairs next to the rule's.
+- Reading of the next measurement (X11, on the fix pass 7 commit), fixed here before it runs. Size,
+  24 null worlds per null with all three families: no re-key if under either null the momentum
+  family's Tier-1 count is 3 or more of 24 at 0.025 or 4 or more of 24 at 0.05 (either has a chance
+  of about 2% to 3% for a test whose pass rate equals its level); a Tier-1 pass of reversal or carry
+  is reported as a finding. Power, the two null A cells again (24 worlds; the null B cells of X10
+  stand once one of their worlds is shown to reproduce): the rule of X10 unchanged. The null B slow
+  cell is 14 of 24 at 0.025, so the best possible reading is MARGINAL and the owner gets the odds of
+  a successful seal with the request for approval.
+- Not probed in X10: anything on real price rows; the fixed null A for the oracle cells and for
+  reversal and carry; the spawn-worker path (the in-process path reproduced the pilot exactly); the
+  core unit; G8.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X10 sections appended
+  (sha256 52b232782cc934770407db4faba0762ac270e2d759ea2fba547a3bfac7fec45c).

@@ -300,4 +300,18 @@ rates, status.
   measured.
 - Interim: after each calibration the coordinator reports the rate over DEV-positive submissions next
   to the sealed thresholds, computed from the stored rows.
+- Evidence added 2026-11-21 (audit round 7, X10; audits/AUDIT_LOG.md). (1) Top30: in the null worlds
+  13 of the 36 submitted pairs per null have a positive DEV Sharpe (12 momentum, 1 carry); reversal
+  and carry never pass, so the bound over SUBMITTED pairs allows the momentum family 9%. That family
+  passes every other gate in those worlds, so its rate is the level of G6 itself, and under this
+  proposal only 0.025 lies under the 3% bound; at 200 worlds per null a valid test at that level
+  misses the bound by chance in about four runs in ten. Adopting this proposal for top30 therefore
+  needs a decision on the grid or the bound as well. (2) Core, on the stored rows of 7446278556aadd8f:
+  this proposal gives 0.05 (2.27% and 1.59% under nulls A and B) instead of 0.10 (3.85% and 3.10%);
+  oracle power at true Sharpe 1.5 at 0.05 is 81% to 90.5%.
+- Built into KP-015 instead (fix pass 7, ruling R-L): FAMILY_PASS_MAX = 0.06. No single family's null
+  pass rate (per its own submitted pairs) may exceed 6% under either null at the chosen threshold, in
+  addition to the pooled 3%. It can only lower a threshold; on the stored core rows it changes nothing
+  (worst family 4.67% at 0.10). The artifact stores the per-family rates and the rate over
+  DEV-positive pairs. This proposal stays open as the stricter rule.
 - Status: open (needs the human's approval; not blocking).
