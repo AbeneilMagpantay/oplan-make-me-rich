@@ -648,3 +648,23 @@ round 3 also the coordinator's own read of the core modules.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file with the sections on the
   attack on R-N, Part A, W, W-F1 and X12-RO appended (sha256
   435241d581fe80594db20044cf7b91ab4b7e02dc26c5d303a653a572ed0320ad).
+- Refinement of R-P, made the same day before anything was built on it (this entry was committed
+  as 8bfabc4 with the narrower wording above): the bound counts every submitted pair whose status
+  is not "evaluated" (liquidated, a kernel fault or anything else), since none of them can pass;
+  the constant is NULL_NOT_EVALUATED_MAX = 0.03. The builder and the auditor both work from this
+  form.
+- Early warning from the size arm, same day, and ruling R-Q. In the auditor's null A size run (20
+  worlds so far, on the copy before R-O) the carry family is liquidated in 5 worlds; in each of
+  them EVERY screened draw was liquidated on DEV (best DEV Sharpe -inf) and the pair was still
+  submitted, because task_null keeps the first screen passer whatever its DEV Sharpe (a first NaN
+  could never be replaced either). A pair that nobody would submit then counts as a submitted
+  pair that cannot pass: it pads the denominator of the null pass rate, the loose side again.
+  Ruling R-Q (fix pass 10, both units): a screened draw that is liquidated on DEV, or whose DEV
+  Sharpe is not a finite number, is not a candidate; the best finite DEV Sharpe among the rest is
+  submitted; a pair without a candidate is not submitted. The draws are unchanged, so a pair with
+  a finite best submits the same draw as before. R-P then reads only the pairs that end without a
+  result after DEV. Open, with the auditor: why the carry book is liquidated on DEV at all under
+  null A (its guess: one name with extreme funding holds about half the gross, the R-E sign coin
+  puts the book short that name half the time, and a real up-wick does the rest), whether R-O
+  changes it, and whether what remains is a realistic property of a concentrated book or a
+  property of the null world.

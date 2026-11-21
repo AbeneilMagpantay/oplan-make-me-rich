@@ -625,3 +625,29 @@ def test_fp8_3_any_exception_from_a_malformed_row_is_the_unit_stop(case):
     v = UC.decide_both(core, top)                                      # no exception
     assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ")
     assert v["chosen_threshold"]["core"] == 0.10
+
+
+# ---------------------------------------------------------------- fix pass 10: R-P in both units
+
+
+def test_r_p_t7_both_units_stop_on_too_many_submitted_pairs_not_evaluated():
+    def gone(rows, k):
+        for r in rows[50:50 + k]:
+            r["status"] = "liquidated"
+            r.pop("gates", None)
+            r.pop("perm_p", None)
+    core, top = _two_units()
+    assert not UC.decide_both(core, top)["STOP"]
+    gone(top["nulls"]["B"]["rows"], 2)                                      # top30: 2 of 90 (2.2%)
+    assert not UC.decide_both(core, top)["STOP"]
+    gone(top["nulls"]["B"]["rows"], 3)                                      # 3 of 90 (3.3%)
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["reason"].startswith("top30: ") and v["chosen_threshold"] == {"core": 0.10, "top30": None}
+    assert "null B: 3 of 90 submitted pairs not evaluated (0.0333) > NULL_NOT_EVALUATED_MAX" in v["reason"]
+    core, top = _two_units()
+    gone(core["nulls"]["A"]["rows"], 3)                                     # core: 3 of 100, at the bound
+    assert UC.decide_both(core, top)["chosen_threshold"] == {"core": 0.10, "top30": 0.05}
+    gone(core["nulls"]["A"]["rows"], 4)                                     # 4 of 100
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["reason"].startswith("core: ") and v["chosen_threshold"]["core"] is None
+    assert v["per_unit"]["core"]["null_not_evaluated_share"] == {"A": 0.04, "B": 0.0}

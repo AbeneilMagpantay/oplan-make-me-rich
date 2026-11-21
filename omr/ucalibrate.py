@@ -62,14 +62,24 @@ FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a 
   calibration is unchanged; its carry effect was small (core carry family mean VAL Sharpe -0.30 under null
   A, +0.07 under null B; Tier-1 passes under null B 0, 1 and 3 of 300 at the three thresholds), while a
   cross-sectional carry over thirty coins could earn far more.
-Mark and index bars of the null worlds are the synthetic last-price bars of the present rows (no universe
-family reads them; the liquidation check then uses last-price wicks, wider than mark wicks: conservative).
+MARK BARS (fix pass 10, R-O): a null world's liquidation check reads what the real evaluation reads, the mark
+bar's wicks where the source has a valid mark row (datasets.liquidation_ratios), else the last-price wicks. The
+source keeps per row hm = mark high / mark open and lm = mark low / mark open where it has a valid mark row (NaN
+elsewhere); on an active world row whose source row has them (null A: the drawn source row; null B: its own row,
+mirrored on a flipped day as 1 / lm and 1 / hm) the world's mark bar has high = open * HM and low = open * LM;
+every other row of the mark table is the world's last-price bar; mark open and close are the world's open and
+close. Left as it is: a world row without trades stays flat although the real evaluation would read its mark
+wick, and the index bars (the same table as the mark bars) have the mark bars' high and low (no program reads
+them). The source records the active rows, those without a valid mark row and the two extreme effective ratios
+(meta "liq"); the run prints them and the artifact carries them (source_liq).
 
 Families: three hash-locked cross-sectional programs (omr/programs/ucal_*.omr): momentum and reversal on
 daily returns (n from 3 to 60 and from 3 to 20 days; the reversal is the momentum's mirror since fix pass 6, R-J),
 and funding carry. Protocol per (world, family): 20 parameter draws, SCREENED by the DEV signals and
 the activity rule; the activity passer with the best DEV Sharpe gets the full stage 1 and is SUBMITTED to
-stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Everything runs on the
+stage 2 (G8 not run: it can only veto, so null pass rates are upper bounds). Fix pass 10 (R-Q): a draw liquidated
+on DEV or with a DEV Sharpe that is otherwise not finite is never a candidate (stage1 counts dev_liquidated,
+dev_sharpe_not_finite); a pair without a candidate is not submitted. Everything runs on the
 PRODUCTION block path (six-month blocks); G6 is the paired lag test of omr.upipeline.ugates (fix pass 9, R-N: the
 UNIVERSE_G6_LAGS lags equally spaced from 30 days plus one random phase to half of VAL, and the speed limit: a book
 whose weights stay correlated above UNIVERSE_G6_MEMORY_MAX with its own weights a lag step or more earlier gets
@@ -126,9 +136,9 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 7                        # fix pass 9: R-N (top30 G6: equally spaced lags, the speed limit);
-                                            # 6 = fix pass 8 (R-M); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6 (per-unit
-                                            # seal rule, partial lines with a sha, oracle phases first); 3 = pass 5
+PROTOCOL_VERSION = 8                        # fix pass 10: R-O (mark wicks in the null worlds), R-P, R-Q; 7 = pass 9
+                                            # (R-N); 6 = fix pass 8 (R-M); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6
+                                            # (per-unit seal rule, partial lines with a sha, oracle phases first)
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
@@ -173,6 +183,7 @@ _ROW_B = ("gap", "act")
 _ACT = ("a_active", "a_qv", "a_usable")
 _FUND = ("f_ns", "f_iv", "f_rate", "f_offms")
 _DAY = ("full", "fd_off")
+_MARK = ("hm", "lm")                                # R-O: per row the mark ratios (NaN without a valid mark row)
 
 
 class USource:
@@ -189,10 +200,12 @@ class USource:
 
     @classmethod
     def build(cls, symbols, get_tables, until: dict | None = None, btc_symbol: str | None = None) -> "USource":
-        """get_tables(symbol) -> {"klines", "funding"} (one symbol in memory at a time)."""
+        """get_tables(symbol) -> {"klines", "funding", "mark_klines"} (one symbol in memory at a time). R-O: a
+        missing "mark_klines" is an error; an EMPTY table means no mark bar anywhere."""
         until = dict(until or {})
         cap = T(C.VAL_END)
-        parts = {n: [] for n in _ROW_F + _ROW_B + _ACT + _FUND + _DAY}
+        parts = {n: [] for n in _ROW_F + _ROW_B + _ACT + _FUND + _DAY + _MARK}
+        liq = {"active_rows": 0, "active_rows_without_mark": 0, "min_low_over_open": None, "max_high_over_open": None}
         dsums = []                                                  # R-M: per symbol and local day (not shared)
         metas, off, aoff, foff, doff, full_off = [], 0, 0, 0, 0, 0
         for s in sorted(symbols):
@@ -214,6 +227,26 @@ class USource:
                 lrt = np.log(g * cr)
             ok = act & np.isfinite(lrt)
             ok[0] = False
+            # R-O: the liquidation ratios the real evaluation reads; hm, lm only where the row has a valid mark bar
+            if "mark_klines" not in t:
+                raise KeyError(f"get_tables({s!r}) gave no mark_klines (R-O: an empty table means no mark bar)")
+            mk = t["mark_klines"]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                lq = D.liquidation_ratios(kl, mk if len(mk) else None)
+            has = lq["has_mark"].to_numpy(dtype=bool)
+            hm = np.where(has, lq["up"].to_numpy(dtype=np.float64), np.nan)
+            lm = np.where(has, lq["dn"].to_numpy(dtype=np.float64), np.nan)
+            liq["active_rows"] += int(act.sum())
+            liq["active_rows_without_mark"] += int((act & ~has).sum())
+            eff_lo = np.where(np.isfinite(lm), lm, lr)[act]
+            eff_hi = np.where(np.isfinite(hm), hm, hr)[act]
+            eff_lo, eff_hi = eff_lo[np.isfinite(eff_lo)], eff_hi[np.isfinite(eff_hi)]
+            if len(eff_lo):
+                v = float(eff_lo.min())
+                liq["min_low_over_open"] = v if liq["min_low_over_open"] is None else min(liq["min_low_over_open"], v)
+            if len(eff_hi):
+                v = float(eff_hi.max())
+                liq["max_high_over_open"] = v if liq["max_high_over_open"] is None else max(liq["max_high_over_open"], v)
             fv = data.ns_int(D.get("funding").visible_from(fu))
             order = np.argsort(fv, kind="mergesort")
             fv = fv[order]
@@ -241,6 +274,8 @@ class USource:
                 parts[name].append(fu[col].to_numpy(dtype=np.float64)[order])
             parts["full"].append(full)
             parts["fd_off"].append(fd_off)
+            parts["hm"].append(hm)
+            parts["lm"].append(lm)
             metas.append({"name": s, "start": int(ns[0]), "n": n, "off": off, "first_open": float(o[0]),
                           "m": float(np.mean(lrt[ok])) if ok.any() else 0.0, "sd0": sd0, "nd": nd, "doff": doff,
                           "full_off": full_off, "f_off": foff, "f_n": int(len(fv)), "a_start": int(a.start),
@@ -254,7 +289,7 @@ class USource:
         names = [m["name"] for m in metas]
         btc = btc_symbol if btc_symbol in names else (C.BTC if C.BTC in names else names[0])
         meta = {"symbols": metas, "D0": D0, "ND": ND, "pool_lo": int(T(C.UNIVERSE_START).value // DAY_NS) - D0,
-                "btc": btc}
+                "btc": btc, "liq": liq}
         src = cls(meta, arr)
         src._build_pools(np.concatenate(dsums) if dsums else np.zeros(0))
         return src
@@ -481,6 +516,7 @@ class UWorld:
         src, m = self.src, self.src.sym(s)
         n, start = m["n"], m["start"]
         g, hr, lr, cr = (src.rows(s, x) for x in ("g", "hr", "lr", "cr"))
+        hmr, lmr = src.rows(s, "hm"), src.rows(s, "lm")
         gap, act = src.rows(s, "gap"), src.rows(s, "act")
         r = np.arange(n, dtype=np.int64)
         tns = start + HOUR_NS * r
@@ -493,6 +529,8 @@ class UWorld:
             sr = ((sd[ld[ai]] + src.D0) * DAY_NS + hour[ai] * HOUR_NS - start) // HOUR_NS
             G, HR, LR, CR = (np.ones(n) for _ in range(4))
             G[ai], HR[ai], LR[ai], CR[ai] = g[sr], hr[sr], lr[sr], cr[sr]
+            HM, LM = np.full(n, np.nan), np.full(n, np.nan)            # R-O: the drawn source row's mark ratios
+            HM[ai], LM[ai] = hmr[sr], lmr[sr]
             if okb is not None:
                 # R-M: every active row of a day on the SHARED branch, drawn from set Q (its month's pool, or the whole
                 # period), has its gap ratio multiplied by (G / M(Q, s)) ** (1 / 24); every active row of a FALLBACK
@@ -512,6 +550,8 @@ class UWorld:
             G = np.where(F, np.exp(2.0 * m["m"]) / g, g)
             HR, LR = np.where(F, 1.0 / lr, hr), np.where(F, 1.0 / hr, lr)
             CR = np.where(F, 1.0 / cr, cr)
+            with np.errstate(divide="ignore", invalid="ignore"):   # R-O: the row's own mark ratios, mirrored if F
+                HM, LM = np.where(F, 1.0 / lmr, hmr), np.where(F, 1.0 / hmr, lmr)
             # R-M: per local day, over its active rows with a finite lrt = log(g * cr): n of them, x = sum(lrt - m);
             # every active row of the day (either face of the coin) has its gap ratio multiplied by
             # exp(log G / 24 - m - log(cosh x) / n), so the day's gross is G ** (n / 24) * (1 + tanh x) unflipped and
@@ -539,7 +579,11 @@ class UWorld:
         for x in OTHER:
             kl[x] = src.rows(s, x)
         kl["is_gap"] = np.asarray(gap, dtype=bool)
-        mark = kl.loc[~kl["is_gap"].to_numpy(), ["open", "high", "low", "close"]].copy()
+        # R-O: mark bars with the source's mark wicks on active rows that have them, else the last-price bar
+        use = np.asarray(act, dtype=bool) & np.isfinite(HM) & np.isfinite(LM)
+        mark = pd.DataFrame({"open": o, "high": np.where(use, o * HM, o * HR), "low": np.where(use, o * LM, o * LR),
+                             "close": c}, index=idx)
+        mark = mark.loc[~kl["is_gap"].to_numpy()].copy()
         mark["samples"] = 3600.0
         fu = self._funding(s, sd)
         keep_lo = T(C.UNIVERSE_START).value - KEEP_BEFORE_DAYS * DAY_NS if trim else None
@@ -733,7 +777,13 @@ def load_source(handle, log=print) -> USource:
     log(f"panel: {len(panel)} symbols ever in top30 ({C.UNIVERSE_START} .. {C.VAL_END})")
 
     def get(s):
-        return {d: D.load_raw(d, s, upto="val_end", handle=handle, cache=False) for d in ("klines", "funding")}
+        out = {d: D.load_raw(d, s, upto="val_end", handle=handle, cache=False) for d in ("klines", "funding")}
+        try:                                               # R-O: the mark bars, with the same logged handle
+            out["mark_klines"] = D.load_raw("mark_klines", s, upto="val_end", handle=handle, cache=False)
+        except FileNotFoundError:                          # no mark file: no mark bar anywhere (as datasets.load_liq)
+            out["mark_klines"] = pd.DataFrame({c: np.zeros(0) for c in ("open", "high", "low", "close")},
+                                              index=pd.DatetimeIndex([], tz="UTC").as_unit("ns"))
+        return out
     return USource.build(panel, get, until={s: until.get(s) for s in panel})
 
 
@@ -780,6 +830,8 @@ def task_null(args) -> list:
                 continue
             codes["passed"] = codes.get("passed", 0) + 1
             sh = dev_sharpe_u(fp_dev, sc["W"])
+            if not CB.dev_candidate(codes, sh):                # R-Q: liquidated on DEV or not finite: never submitted
+                continue
             if best is None or sh > best_sh:
                 best, best_sh = q, sh
         del fp_dev
@@ -965,11 +1017,12 @@ def run_tasks(pool, partial: Partial, kind: str, arglist: list, log, label: str,
 
 def tune_rho(pool, partial: Partial, null: str, speed: str, seeds: list, log) -> dict:
     """As omr.calibrate.tune_rho, with the universe oracle, for the levels the rule reads (ULEVELS)."""
-    def means(rhos):
+    def means(rhos, with_matrix=False):
         res = run_tasks(pool, partial, "curve", [[null, s, speed, [float(r) for r in rhos]] for s in seeds], log,
                         f"oracle {null} {speed} curve ({len(rhos)} rhos)")
         mat = np.array(res, dtype=np.float64)
-        return np.nanmean(np.where(np.isfinite(mat), mat, np.nan), axis=0)
+        mean = np.nanmean(np.where(np.isfinite(mat), mat, np.nan), axis=0)
+        return (mean, mat) if with_matrix else mean
 
     mean = means(RHO_GRID)
     out = {"mean_curve": {f"{r:.4f}": float(m) for r, m in zip(RHO_GRID, mean)}}
@@ -987,11 +1040,14 @@ def tune_rho(pool, partial: Partial, null: str, speed: str, seeds: list, log) ->
     F = FINE_POINTS
     picks = {lvl: float(fine[lvl][int(np.nanargmin(np.abs(fm[i * F:(i + 1) * F] - lvl)))])
              for i, lvl in enumerate(ULEVELS)}
-    ach = means([picks[lv] for lv in ULEVELS])
+    ach, ach_mat = means([picks[lv] for lv in ULEVELS], with_matrix=True)
     for i, lvl in enumerate(ULEVELS):
+        liq_books = int(np.sum(~np.isfinite(ach_mat[:, i])))   # R-O: liquidated (non-finite) tuning books at this rho
         out[str(lvl)] = {"rho": picks[lvl], "achieved_mean_val_sharpe": float(ach[i]),
-                         "within_bound": bool(abs(float(ach[i]) - lvl) <= CB.RHO_BOUND)}
-        log(f"    null {null} {speed:4s} level {lvl}: rho {picks[lvl]:.5f} -> achieved {float(ach[i]):.3f}")
+                         "within_bound": bool(abs(float(ach[i]) - lvl) <= CB.RHO_BOUND),
+                         "liquidated_books": liq_books, "books": int(ach_mat.shape[0])}
+        log(f"    null {null} {speed:4s} level {lvl}: rho {picks[lvl]:.5f} -> achieved {float(ach[i]):.3f}; "
+            f"{liq_books} of {int(ach_mat.shape[0])} tuning books liquidated (non-finite) at this rho")
     return out
 
 
@@ -1030,7 +1086,8 @@ def verdict_from_rows(art: dict) -> dict:
 RULE_PER_UNIT = ("G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose "
                  "null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit "
                  "and whose every family's null pass rate (per its own SUBMITTED pairs) is <= FAMILY_PASS_MAX under "
-                 "BOTH nulls of that unit (fix pass 7, R-L); "
+                 "BOTH nulls of that unit (fix pass 7, R-L), a null of that unit with more than NULL_NOT_EVALUATED_MAX "
+                 "of its SUBMITTED pairs not evaluated failing every threshold (fix pass 10, R-P); "
                  "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at "
                  "that unit's threshold, every oracle level present in that unit's artifact achieved within "
                  "RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below "
@@ -1143,11 +1200,14 @@ def null_advisory(rows_by_null: dict, worlds: int, fams: list, oracle: dict) -> 
     for n in ("A", "B"):
         rows = [r for r in rows_by_null.get(n) or [] if r.get("submitted")]
         seen = len({r["world_seed"] for r in rows_by_null.get(n) or []})
-        parts = []
+        n_ne = sum(1 for r in rows if r.get("status") != "evaluated")     # R-P: over the largest final denominator
+        ne_bad = not (tot and n_ne / tot <= C.NULL_NOT_EVALUATED_MAX + 1e-12)
+        parts = [f"not evaluated {n_ne} (cap {C.NULL_NOT_EVALUATED_MAX * tot:g})" + (" DEAD" if ne_bad else "")]
         for t in C.G6_GRID:
             passers = [r for r in rows if CB.tier_at(r, t)]
             per = {f: sum(1 for r in passers if r["family"] == f) for f in fams}
-            bad = [] if tot and len(passers) / tot <= C.NULL_PASS_MAX + 1e-12 else ["pooled"]
+            bad = ["not evaluated"] if ne_bad else []
+            bad += [] if tot and len(passers) / tot <= C.NULL_PASS_MAX + 1e-12 else ["pooled"]
             bad += [f for f in fams if not (worlds and per[f] / worlds <= C.FAMILY_PASS_MAX + 1e-12)]
             if bad:
                 dead.add(t)
@@ -1272,6 +1332,10 @@ def main(argv=None):
         f"{pl.get('fallback_adj_abs_max_per_day')} per day (log); median over pooled months of the members' SD of the "
         f"shared adjustment {pl.get('member_adj_sd_per_year_median')} per year; full days with a non-finite return "
         f"{pl.get('full_days_nonfinite')}")
+    lq = src.meta.get("liq") or {}
+    log(f"source liquidation ratios (R-O): {lq.get('active_rows')} active rows, {lq.get('active_rows_without_mark')} "
+        f"without a valid mark bar; smallest effective low / open {lq.get('min_low_over_open')}, largest effective "
+        f"high / open {lq.get('max_high_over_open')}")
     src_bytes = int(sum(v.nbytes for v in src.arr.values()))
     if a.workers > 0:
         mem = memory_preflight(a.workers, src_bytes)
@@ -1297,6 +1361,7 @@ def main(argv=None):
     out = {"protocol_version": PROTOCOL_VERSION, "unit": "top30", "kernel_hash": k["combined"],
            "semantic_hash": k["semantic"], "text_hash": k["text"], "kernel_lock_verified": lock_ok and not synthetic,
            "synthetic_dry_run": synthetic, "research_hash": rh, "panel": src.symbols,
+           "source_liq": src.meta.get("liq"),
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": header["families"],
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,

@@ -345,6 +345,34 @@ rates, status.
   omr/ucalibrate.py PROTOCOL_VERSION 7. Texts: the R-M reason corrected (a kept sample mean is a permanent
   difference between symbols, luck or not: a premium world, not a no-skill one); CONSTITUTION sections 12 and
   13, LANGUAGE section 10. Evidence: notes/kp015_build_evidence.md.
+- Fix pass 10 (2026-11-21; audit round 7, addendum X12: the power arm on real DEV-period prices stopped because
+  under null B 16 of 24 fast and 18 of 24 slow oracle books, and 34 of 48 submitted null pairs, were liquidated;
+  the coordinator's rulings). Cause: the real evaluation and the core calibration's worlds take the liquidation
+  wicks from the mark bar, but the top30 worlds used their own last-price bars, so two real last-price bad prints
+  (low / open 0.00206 and 0.00136, ordinary mark bars) became highs of 485 and 736 times the open on a flipped
+  null B day. R-O (top30 calibration worlds only): the source keeps per row hm and lm, the up and dn of
+  datasets.liquidation_ratios where the row has a valid mark bar (NaN elsewhere); on an active world row whose
+  source row has them the world's mark bar has high = open * HM and low = open * LM ((hm, lm), mirrored as (1 / lm,
+  1 / hm) on a flipped null B row); every other mark row is the world's last-price bar; mark open and close are the
+  world's; the index table stays the mark table. Left as it is: a world row without trades stays flat. The source
+  records the active rows, those without a valid mark bar and the two extreme effective ratios (meta "liq"); the run
+  prints them, the artifact carries them (source_liq), and tune_rho records per cell the liquidated (non-finite)
+  tuning books at the chosen rho. The real-source loader reads mark_klines with the same logged handle. Klines,
+  funding, draws and the R-M factors are unchanged. Universe PROTOCOL_VERSION 8. R-P (calibrate.decide, both units):
+  under each null at most NULL_NOT_EVALUATED_MAX = 0.03 of the submitted pairs may end without an evaluation
+  (liquidated, a kernel fault or anything else); otherwise that null fails every threshold (fail-closed: both counts
+  proper, n_submitted > 0, the share at most the bound); the verdict records the bound and each null's share; the
+  null advisory marks every threshold dead once the not-evaluated pairs so far exceed the bound over the largest
+  final denominator. R-Q (calibrate.task_null and ucalibrate.task_null, both units): a screened draw liquidated on
+  DEV (counted dev_liquidated) or whose DEV Sharpe is otherwise not finite (dev_sharpe_not_finite) is not a
+  candidate, so a draw liquidated on DEV is never submitted, and a pair without a candidate is not submitted (the
+  auditor's null A size run had the carry family submitted in 5 of 20 worlds although every screened draw was
+  liquidated on DEV; and a NaN first value could never be replaced). Draws and ties are unchanged, so a pair with a
+  finite best submits the same draw as before. omr/calibrate.py PROTOCOL_VERSION 5 (the core calibration keeps no
+  partial file). Correction: the X12-prep reason for the speed limit gave a lagged-Sharpe correlation of "about
+  a quarter" at a weight correlation of 0.5; the auditor measured 0.35 to 0.46 at a memory of 0.49 to 0.53 (the
+  phrase stood only in audits/AUDIT_LOG.md, not in the kernel texts; the design and the constants do not change).
+  Evidence: notes/kp015_build_evidence.md.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 

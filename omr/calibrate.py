@@ -26,7 +26,10 @@ DEV-overfit protocol (false-positive rate): for each (world, family) draw 20 par
   uniformly from the declared ranges; SCREEN them with the DEV signals and the activity rule only
   (activity_dev on the world's DEV-only frames); the activity passer with the best DEV Sharpe gets the
   full stage 1 (truncation and start-cut self-checks) and is SUBMITTED to stage 2; if no draw passes
-  the screen, nothing is submitted for that pair. Null pass rate = Tier-1 passes / SUBMITTED pairs.
+  the screen, nothing is submitted for that pair. Fix pass 10 (R-Q): a draw liquidated on DEV (stage1
+  count dev_liquidated) or with a DEV Sharpe that is otherwise not finite (dev_sharpe_not_finite) is never a
+  candidate, so it is never submitted; a pair without a candidate is not submitted. Null pass rate =
+  Tier-1 passes / SUBMITTED pairs.
   Every gate value and the G6 p-value of every submitted pair are stored.
 Dry run (--unlocked-dry-run --out FILE): the same protocol on FULLY SYNTHETIC core prices (omr.probe
   generator); no real bar after DEV end is read; the artifact can never be sealed.
@@ -47,7 +50,10 @@ Rule (decide): the LARGEST G6 threshold in G6_GRID whose null pass rate is <= NU
 BOTH nulls and whose every family's null pass rate (per its own submitted pairs; fix pass 7, R-L) is <=
 FAMILY_PASS_MAX under both nulls; then oracle power at true Sharpe 1.5 must be >= POWER_MIN for both
 speeds under both nulls. None qualifies, or the power rule fails -> STOP (the seal refuses). The pass
-rate over DEV-positive pairs (KP-016) is stored as information; the rule does not read it.
+rate over DEV-positive pairs (KP-016) is stored as information; the rule does not read it. Fix pass 10 (R-P):
+under each null at most NULL_NOT_EVALUATED_MAX of the submitted pairs may end without an evaluation (liquidated,
+a kernel fault or anything else); otherwise that null fails every threshold, because such a pair cannot pass and
+so lowers the null pass rate, which the rule must not read as safety.
 """
 from __future__ import annotations
 
@@ -73,7 +79,8 @@ from omr import paths as P
 from omr import pipeline
 from omr import stats as S
 
-PROTOCOL_VERSION = 4                  # fix pass 7: family pass rates and the FAMILY_PASS_MAX bound (R-L)
+PROTOCOL_VERSION = 5                  # fix pass 10: R-P (pairs not evaluated) and R-Q (DEV-liquidated draws are
+                                      # never candidates); 4 = fix pass 7 (R-L)
 FAMILIES = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls",
             "gen000_voltarget_trend_ls", "gen000_funding_carry")
 N_DRAWS = 20
@@ -317,6 +324,19 @@ def draw_params(prog: L.Program, rng) -> dict:
     return out
 
 
+def dev_candidate(codes: dict, sh: float) -> bool:
+    """R-Q (fix pass 10, both units): whether a screened draw with DEV Sharpe sh is a candidate for submission. -inf is
+    the DEV Sharpe of a liquidated DEV run (stats.sharpe is finite otherwise): counted as dev_liquidated; any other
+    value that is not a finite number: dev_sharpe_not_finite. Neither is a candidate."""
+    if sh == float("-inf"):
+        codes["dev_liquidated"] = codes.get("dev_liquidated", 0) + 1
+        return False
+    if not np.isfinite(sh):
+        codes["dev_sharpe_not_finite"] = codes.get("dev_sharpe_not_finite", 0) + 1
+        return False
+    return True
+
+
 def dev_sharpe(world_dev_frames, liq, screened) -> float:
     mk = pipeline.Market(world_dev_frames, liq, screened["grid"], C.CORE)
     run = mk.run(screened["W"], mk.pos(C.DEV_START), mk.pos(C.DEV_END))
@@ -357,6 +377,8 @@ def task_null(args) -> list:
                 continue
             codes["passed"] = codes.get("passed", 0) + 1
             sh = dev_sharpe(frames_dev, world.liq, sc)
+            if not dev_candidate(codes, sh):                   # R-Q: liquidated on DEV or not finite: never submitted
+                continue
             if best is None or sh > best_sh:
                 best, best_sh = q, sh
         base = {"null": null, "family": fam, "world_seed": world_seed, "stage1": codes}
@@ -429,6 +451,7 @@ def null_summary(rows: list, families) -> dict:
             out["stage1_draws"][k] = out["stage1_draws"].get(k, 0) + v
     for r in sub:
         out["submitted_status"][r["status"]] = out["submitted_status"].get(r["status"], 0) + 1
+    out["n_submitted_not_evaluated"] = sum(1 for r in sub if r.get("status") != "evaluated")      # R-P
     # 7b-2: truthiness, as tier_at reads a gate (a numpy bool in memory counts as it does after JSON)
     dev_pos = [r for r in sub if r.get("status") == "evaluated" and bool((r.get("gates") or {}).get("G3"))]
     out["n_dev_positive"] = len(dev_pos)
@@ -467,7 +490,9 @@ def oracle_summary(rows: list) -> dict:
 
 RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is "
         "<= NULL_PASS_MAX under BOTH nulls AND whose every family's null pass rate (its Tier-1 passes / its "
-        "SUBMITTED pairs; a family without a submitted pair is skipped) is <= FAMILY_PASS_MAX under BOTH nulls; "
+        "SUBMITTED pairs; a family without a submitted pair is skipped) is <= FAMILY_PASS_MAX under BOTH nulls, "
+        "where a null at which more than NULL_NOT_EVALUATED_MAX of the SUBMITTED pairs were not evaluated "
+        "(liquidated or otherwise) fails every threshold; "
         "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds "
         "under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; "
         "otherwise STOP")
@@ -486,16 +511,39 @@ def _bound_failure(null: str, what: str, r, bound: str) -> str:
     return f"null {null}: {what} {x:.4f} > {bound}"
 
 
+def _count(v) -> bool:
+    return isinstance(v, (int, np.integer)) and not isinstance(v, (bool, np.bool_))
+
+
+def not_evaluated_share(summary: dict, null: str) -> tuple:
+    """R-P (fix pass 10): (share or None, failure text or None) of the submitted pairs of one null that were not
+    evaluated. Fail-closed: the bound holds only when both counts are proper (integers, 0 <= count <= n_submitted,
+    n_submitted > 0) and the share IS <= NULL_NOT_EVALUATED_MAX (+1e-12)."""
+    cnt, nsub = summary.get("n_submitted_not_evaluated"), summary.get("n_submitted")
+    if not (_count(cnt) and _count(nsub) and nsub > 0 and 0 <= cnt <= nsub):
+        return None, (f"null {null}: the count of submitted pairs not evaluated is missing or malformed "
+                      f"({cnt!r} of {nsub!r})")
+    share = int(cnt) / int(nsub)
+    if not (share <= C.NULL_NOT_EVALUATED_MAX + 1e-12):
+        return share, (f"null {null}: {int(cnt)} of {int(nsub)} submitted pairs not evaluated ({share:.4f}) > "
+                       f"NULL_NOT_EVALUATED_MAX")
+    return share, None
+
+
 def decide(nulls: dict, oracle: dict) -> dict:
     """The calibration rule (also applied by `omr.kernel_lock seal` to the stored rows)."""
     def rate(n, t, k="pass_rate"):
         return nulls[n]["summary"]["by_threshold"][str(t)][k]
+
+    ne = {n: not_evaluated_share(nulls[n]["summary"], n) for n in ("A", "B")}         # R-P
 
     def failures(t) -> list:
         """Which bound fails at threshold t under which null (pooled, or the family's NAME). Fail-closed (7b-1):
         a bound holds only when the rate IS <= it, so a NaN, an inf or a missing pooled rate fails."""
         out = []
         for n in ("A", "B"):
+            if ne[n][1] is not None:                      # R-P: this null fails every threshold
+                out.append(ne[n][1])
             r = rate(n, t)
             if not (r is not None and r <= C.NULL_PASS_MAX + 1e-12):
                 out.append(_bound_failure(n, "pooled", r, "NULL_PASS_MAX"))
@@ -508,6 +556,8 @@ def decide(nulls: dict, oracle: dict) -> dict:
     chosen = max(qualifying) if qualifying else None
     verdict = {"rule": RULE, "grid": list(C.G6_GRID), "null_pass_max": C.NULL_PASS_MAX, "power_min": C.POWER_MIN,
                "family_pass_max": C.FAMILY_PASS_MAX, "denominator": "submitted pairs",
+               "null_not_evaluated_max": C.NULL_NOT_EVALUATED_MAX,
+               "null_not_evaluated_share": {n: ne[n][0] for n in ("A", "B")},
                "null_pass_rate": {n: {str(t): rate(n, t) for t in C.G6_GRID} for n in ("A", "B")},
                "family_pass_rate": {n: {str(t): rate(n, t, "family_pass_rate") for t in C.G6_GRID} for n in ("A", "B")},
                "null_pass_rate_dev_positive": {n: {str(t): rate(n, t, "pass_rate_dev_positive") for t in C.G6_GRID}

@@ -245,7 +245,7 @@ def test_r_l_d_the_dev_positive_rate_is_information_only():
         w = K.decide(nulls, oracle)
         assert (w["chosen_threshold"], w["qualifying"], w["STOP"]) == (v["chosen_threshold"], v["qualifying"], v["STOP"])
     assert K.null_summary([], FIVE)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
-    assert K.PROTOCOL_VERSION == 4
+    assert K.PROTOCOL_VERSION == 5                                                # fix pass 10 (R-P, R-Q); 4 before
 
 
 # ---------------------------------------------------------------- fix pass 7b: fail-closed bounds, numpy gate values
@@ -367,3 +367,99 @@ def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):
         v = run(setm("B", "slow|1.5", float(x)))
         assert ("B/slow|1.5" in v["oracle_level_outside_bound"]) == (abs(float(x) - 1.5) > 0.1), float(x)
         x = np.nextafter(x, 2.0)
+
+
+# ---------------------------------------------------------------- fix pass 10: R-P pairs not evaluated
+
+
+def _not_evaluated(rows, k, status="liquidated"):
+    for r in rows[:k]:
+        r["status"] = status
+        r["reason"] = status
+        r.pop("gates", None)
+        r.pop("perm_p", None)
+    return rows
+
+
+def test_r_p_t7_a_null_with_too_many_pairs_not_evaluated_fails_every_threshold():
+    assert C.NULL_NOT_EVALUATED_MAX == 0.03
+    n_sub = {f: 20 for f in FIVE}                                           # 100 submitted pairs per null
+    v, _ = _decide(_null_rows(n_sub), _not_evaluated(_null_rows(n_sub), 3), FIVE)     # 3 of 100: at the bound
+    assert not v["STOP"] and v["chosen_threshold"] == 0.1 and v["null_not_evaluated_max"] == 0.03
+    assert v["null_not_evaluated_share"] == {"A": 0.0, "B": 0.03}
+    rows_b = _not_evaluated(_null_rows(n_sub), 3)
+    _not_evaluated(rows_b[3:], 1, "kernel_fault")                            # a kernel fault counts as well
+    v, _ = _decide(_null_rows(n_sub), rows_b, FIVE)
+    why = "null B: 4 of 100 submitted pairs not evaluated (0.0400) > NULL_NOT_EVALUATED_MAX"
+    assert v["STOP"] and v["chosen_threshold"] is None and v["qualifying"] == []
+    assert all(why in v["threshold_failures"][str(t)] for t in C.G6_GRID) and why in v["reason"]
+    assert v["null_not_evaluated_share"]["B"] == 0.04
+    _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)
+    for bad in ("missing", None, 3.0, True, -1, 101):                        # fail-closed on the counts
+        s = nulls["A"]["summary"]
+        keep = s["n_submitted_not_evaluated"]
+        if bad == "missing":
+            del s["n_submitted_not_evaluated"]
+        else:
+            s["n_submitted_not_evaluated"] = bad
+        w = _redecide(nulls)
+        assert w["STOP"] and w["chosen_threshold"] is None and w["null_not_evaluated_share"]["A"] is None, bad
+        assert "null A: the count of submitted pairs not evaluated is missing or malformed" in w["reason"]
+        s["n_submitted_not_evaluated"] = keep
+    nulls["B"]["summary"]["n_submitted"] = 0
+    assert _redecide(nulls)["STOP"]
+    nulls["B"]["summary"]["n_submitted"] = 100
+    assert not _redecide(nulls)["STOP"]
+    assert K.null_summary(_not_evaluated(_null_rows(n_sub), 7), FIVE)["n_submitted_not_evaluated"] == 7
+
+
+# ---------------------------------------------------------------- fix pass 10: R-Q DEV-liquidated draws are never submitted
+
+
+def _rq_core(monkeypatch, sharpes):
+    """K.task_null with fakes around the real draws: every draw passes the screen, the i-th screened draw has DEV
+    Sharpe sharpes[i]; stage 1 passes, stage 2 returns a liquidated result. (row, draws in order, stage calls)."""
+    import types
+    fam = "gen000_sma_cross_ls"
+    draws, calls, it = [], [], iter(sharpes)
+    monkeypatch.setattr(K, "build_world", lambda src, null, seed: types.SimpleNamespace(liq=None))
+    monkeypatch.setattr(K, "dev_view", lambda w: (None, None))
+    monkeypatch.setattr(pipeline, "screen_dev", lambda prog, q, f, b: (draws.append(dict(q)), {"ok": True})[1])
+    monkeypatch.setattr(K, "dev_sharpe", lambda f, liq, sc: next(it))
+    monkeypatch.setattr(pipeline, "stage1", lambda *a, **k: (calls.append("stage1"), {"ok": True})[1])
+    monkeypatch.setattr(pipeline, "stage2", lambda *a, **k: (calls.append("stage2"),
+                                                             {"status": "liquidated", "reason": "fake"})[1])
+    monkeypatch.setitem(K._W, "src", None)
+    monkeypatch.setitem(K._W, "handle", None)
+    monkeypatch.setitem(K._W, "progs", {fam: L.parse_file(K.family_path(fam))})
+    rows = K.task_null(("A", 1000))
+    assert len(rows) == 1 and len(draws) == K.N_DRAWS
+    return rows[0], draws, calls
+
+
+def test_r_q_tq1_every_screened_draw_liquidated_on_dev_submits_nothing(monkeypatch):
+    row, draws, calls = _rq_core(monkeypatch, [float("-inf")] * K.N_DRAWS)
+    assert row["submitted"] is False and row["status"] == "not_submitted" and calls == []
+    assert row["stage1"] == {"passed": K.N_DRAWS, "dev_liquidated": K.N_DRAWS}
+
+
+def test_r_q_tq2_tq3_the_best_finite_draw_is_submitted(monkeypatch):
+    sh = [float("-inf"), 0.5] + [0.1] * (K.N_DRAWS - 2)                   # TQ2: the same draw as before the change
+    row, draws, calls = _rq_core(monkeypatch, sh)
+    assert row["submitted"] and row["params"] == draws[1] and row["best_dev_sharpe_of_passers"] == 0.5
+    assert row["stage1"] == {"passed": K.N_DRAWS, "dev_liquidated": 1} and calls == ["stage1", "stage2"]
+    sh = [float("nan"), 0.2, 0.4] + [0.1] * (K.N_DRAWS - 3)               # TQ3: the NaN draw no longer stays
+    row, draws, _ = _rq_core(monkeypatch, sh)
+    assert row["params"] == draws[2] and row["best_dev_sharpe_of_passers"] == 0.4
+    assert row["stage1"] == {"passed": K.N_DRAWS, "dev_sharpe_not_finite": 1}
+    sh = [0.3, 0.3] + [0.1] * (K.N_DRAWS - 2)                             # ties: the first of equal best stays
+    row, draws, _ = _rq_core(monkeypatch, sh)
+    assert row["params"] == draws[0]
+
+
+def test_r_q_tq4_a_pair_without_a_candidate_is_not_submitted_in_the_summary(monkeypatch):
+    row, _, _ = _rq_core(monkeypatch, [float("-inf")] * K.N_DRAWS)
+    ok = _row("gen000_sma_cross_ls", 7, 0.5)
+    s = K.null_summary([row, ok], ["gen000_sma_cross_ls"])
+    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 1 and s["n_submitted_not_evaluated"] == 0
+    assert s["stage1_draws"]["dev_liquidated"] == K.N_DRAWS

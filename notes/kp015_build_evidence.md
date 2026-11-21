@@ -1069,3 +1069,39 @@ Fix pass 9, stage B (on 9ca8b62, no kernel file changed). Full suite: 895 passed
 stage1_log 1, kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/, data/, kernel.lock,
 audits/ and STATE.md unchanged. UNIVERSE_G6_LAGS = 20 and UNIVERSE_G6_MEMORY_MAX = 0.5 stay provisional until the
 auditor's measurement.
+Fix pass 10, stage A (rulings R-O, R-P and R-Q; working tree on 8bfabc4, kernel files as at 9ca8b62 before this pass;
+unapproved, not re-keyed; the full suite follows in stage B). R-O (top30 calibration worlds only): USource.build
+requires mark_klines from get_tables (a missing key raises; an empty table means no mark bar) and keeps per row hm and
+lm, the up and dn of datasets.liquidation_ratios where has_mark (NaN elsewhere), two shared row fields outside R-M's
+day sums and pools; UWorld._build gives the world's mark bar high = open * HM and low = open * LM on active rows with
+finite (HM, LM) (null A: the drawn source row's hm, lm; null B: hm, lm, mirrored as 1 / lm, 1 / hm on a flipped
+row), else the world's last-price bar (bit for bit the kline's high and low); mark open and close are the world's;
+index_klines is the same object. The real-source loader reads mark_klines with the same logged handle (a symbol
+without a mark file gets an empty table, as datasets.load_liq treats it). Source meta "liq" (active rows, those
+without a valid mark bar, the smallest effective low / open and the largest effective high / open) is printed once
+per run and stored in the artifact (source_liq); tune_rho records per cell the liquidated (non-finite) tuning books
+at the chosen rho and names them in the log line. The memory preflight counts the source arrays as they are, so the
+two new row fields (16 bytes per source row) are in it; the worker peak constant is unchanged (the mark tables were
+already built per world symbol). Universe PROTOCOL_VERSION 8. R-P (calibrate.decide, both units):
+NULL_NOT_EVALUATED_MAX = 0.03; null_summary counts n_submitted_not_evaluated; a null above the bound (fail-closed on
+the counts) fails every threshold with a named reason; the verdict carries null_not_evaluated_max and each null's
+share; the null advisory marks every threshold dead once the not-evaluated pairs so far exceed the bound over worlds x
+families. R-Q (both task_null): a screened draw liquidated on DEV (dev_liquidated) or with a DEV Sharpe otherwise
+not finite (dev_sharpe_not_finite) is not a candidate; a pair without a candidate is not submitted; core
+PROTOCOL_VERSION 5. Before the edit the klines and the mark tables of the null A (seed 17) and null B (seed 4) worlds
+of the test source were pinned; after it both are unchanged (on that source the mark bars are the last-price bars).
+Tests: R-O T1 to T6, T8, T9 and the advisory part of R-P T7 in tests/test_ucalibrate.py (the bad print: with its
+ordinary mark bar a flipped null B day gives liq_up 1 / 0.9 and no liquidation of a 50% short; without the mark row
+liq_up 500 and the short is liquidated); R-P T7 in tests/test_calibrate.py and tests/test_ledger_lock.py; R-Q TQ1 to
+TQ4 for both units. Changed to the rulings: the shared-source round trip compares float arrays with equal_nan (hm, lm
+hold NaN); the protocol test refuses versions 5 to 7 (was 5 and 6); test_d1 also checks the source_liq record and its
+log line; test_r_l_d pins the core PROTOCOL_VERSION 5 (was 4). T9 covers the real-source loader with
+datasets.load_raw and the symbol table replaced by recording fakes (no disk fixture exists for the loader). Runs,
+one file after another: before R-Q, tests/test_ucalibrate.py 47 passed in 1165.35 s, test_calibrate.py 16 in 16.69 s,
+test_universe.py 48 in 285.56 s, test_blocks.py 24 in 280.85 s, test_g6_paired.py 14 in 47.53 s,
+test_ledger_lock.py 66 in 9.29 s, test_structure.py 9 in 5.65 s; after R-Q, test_calibrate.py 19 passed in 18.27 s,
+test_ledger_lock.py 66 in 15.01 s, test_structure.py 9 in 7.07 s, test_ucalibrate.py 48 tests: 47 passed in 973.33 s in the file run; test_d1 failed there only because the builder edited tests/test_calibrate.py while it ran (the artifact's text hash covers tests/), and passed alone afterwards in 398.42 s. Reduced dry run (60
+synthetic symbols, worlds 1, oracle worlds 1, in-process, through the scratch wrapper): exit 0 in 547.1 s (the first run, whose process started before R-Q: 560.3 s; fix pass 9: 599.4 s; the machine is shared with the auditor's runs); the R-O line printed (1,605,734 active rows, 0 without a valid mark bar on this synthetic universe, whose mark bars are its last-price bars; smallest effective low / open 0.948, largest high / open 1.059); 0 of 1 tuning books liquidated in every cell; Tier-1 power 0 at 0.025 and 1.0 at 0.05 and 0.10 in all four cells; every null pair evaluated (R-P shares 0 and 0); unit verdict 0.10, no STOP. "About a quarter"
+(the speed limit's reason) stands only in audits/AUDIT_LOG.md, not in the kernel texts; recorded as corrected in
+KERNEL_PROPOSALS. ledger/, data/, kernel.lock unchanged; audits/AUDIT_LOG.md and STATE.md were modified in the working
+tree during this pass by someone else, not by the builder.

@@ -201,8 +201,9 @@ def test_the_shared_source_gives_the_same_worlds(world_src):
     spec, blocks = src.to_shared()
     try:
         twin, mine = UC.USource.from_shared(spec)
-        for k in src.arr:
-            assert np.array_equal(src.arr[k], twin.arr[k]) and src.arr[k].dtype == twin.arr[k].dtype
+        for k in src.arr:                                                    # hm / lm hold NaN (R-O)
+            assert np.array_equal(src.arr[k], twin.arr[k], equal_nan=src.arr[k].dtype.kind == "f")
+            assert src.arr[k].dtype == twin.arr[k].dtype
         for s in panel[:3]:
             a, b = UC.UWorld(src, "A", 1).tables(s), UC.UWorld(twin, "A", 1).tables(s)
             assert all(a[d].equals(b[d]) for d in a)
@@ -362,8 +363,14 @@ def test_d1_an_interrupted_run_resumes_to_the_same_artifact(tiny_run, tmp_path, 
     monkeypatch.setattr(UC.Partial, "record", real)
     capsys.readouterr()
     UC.main(tiny_run + ["--out", str(cut)])
-    assert "resuming: 3 finished tasks" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "resuming: 3 finished tasks" in out
+    assert "source liquidation ratios (R-O): " in out                    # printed once per run (R-O)
     a, b = _artifact(whole), _artifact(cut)
+    assert set(a["source_liq"]) == {"active_rows", "active_rows_without_mark", "min_low_over_open",
+                                    "max_high_over_open"} and a["source_liq"]["active_rows"] > 0
+    tun = a["oracle"]["A"]["tuning"]["fast"]["1.5"]
+    assert tun["liquidated_books"] >= 0 and tun["books"] == 1
     assert a == b
     assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
     assert a["protocol"]["levels"] == [1.5] and a["protocol_version"] == UC.PROTOCOL_VERSION
@@ -830,17 +837,17 @@ def test_r_m_t4_null_b_day_products_flipped_and_unflipped_full_and_partial(world
     assert sha == NULL_B_PIN and sha != NULL_B_PIN_58BA59E
 
 
-def test_r_n_a_version_6_partial_file_is_refused(tmp_path):
-    """Was R-M T5 (a version-5 partial refused); fix pass 9 raises the protocol to 7. The header names the
-    universe lag count and the speed limit instead of perm_n."""
-    h7 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
-    assert h7["protocol_version"] == UC.PROTOCOL_VERSION == 7
-    assert h7["g6_lags"] == C.UNIVERSE_G6_LAGS and h7["g6_memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and "perm_n" not in h7
-    for old in (5, 6):
+def test_r_o_t8_a_version_7_partial_file_is_refused(tmp_path):
+    """Was the fix pass 9 protocol test (versions 5 and 6 refused); fix pass 10 raises the protocol to 8. The header
+    names the universe lag count and the speed limit instead of perm_n."""
+    h8 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
+    assert h8["protocol_version"] == UC.PROTOCOL_VERSION == 8
+    assert h8["g6_lags"] == C.UNIVERSE_G6_LAGS and h8["g6_memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and "perm_n" not in h8
+    for old in (5, 6, 7):
         p = tmp_path / f"v{old}.partial.jsonl"
-        UC.Partial(p, dict(h7, protocol_version=old), log=lambda *a: None)
+        UC.Partial(p, dict(h8, protocol_version=old), log=lambda *a: None)
         with pytest.raises(UC.PartialMismatch):
-            UC.Partial(p, h7, log=lambda *a: None)
+            UC.Partial(p, h8, log=lambda *a: None)
 
 
 def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypatch):
@@ -980,3 +987,312 @@ def test_fp8_4_the_pooled_bound_alone_makes_a_threshold_dead():
     split = {f: [0.01] * len(v) for f, v in split.items()}                         # pass at every threshold
     lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8())
     assert lines[0].count("DEAD (pooled)") == 3 and stop and stop[0].startswith("every G6 threshold is already dead")
+
+
+# ---------------------------------------------------------------- fix pass 10: R-O mark wicks in the null worlds
+
+CAP = pd.Timestamp(C.VAL_END, tz="UTC")
+
+
+def _active_ts(kl, after, n=1):
+    sel = (kl.index >= pd.Timestamp(after, tz="UTC")) & ~kl["is_gap"].to_numpy() & (kl["trades"].to_numpy() > 0)
+    return list(kl.index[sel][:n])
+
+
+def _ohlc(kl):
+    mk = kl[["open", "high", "low", "close"]].copy()
+    mk["samples"] = 3600.0
+    return mk
+
+
+def _mark_tables():
+    """The test source's tables with mark bars that differ from the last-price bars. Roles: wide (mark wicks 1%
+    outside the last-price wicks, no mark row at 05:00 of any day), bad (invalid mark rows: low 0, high NaN, high
+    below low, open <= 0, and one missing row), empty (no mark bar at all), flip_mark / flip_nomark (one active VAL
+    bar whose last-price low is open / 500; its mark bar ordinary, low / open 0.9 and high / open 1.02; for
+    flip_nomark the mark row is removed)."""
+    tables, panel, special = _real_tables()
+    tables = {s: dict(t) for s, t in tables.items()}
+    live = [s for s in panel if s != special and len(_active_ts(tables[s]["klines"], "2022-08-01", 5)) == 5]
+    roles = dict(zip(("wide", "bad", "empty", "flip_mark", "flip_nomark"), live[:5]))
+    kl = tables[roles["wide"]]["klines"]
+    mk = _ohlc(kl)
+    mk["high"], mk["low"] = mk["high"] * 1.01, mk["low"] * 0.99
+    tables[roles["wide"]]["mark_klines"] = mk[mk.index.hour != 5]
+    kl = tables[roles["bad"]]["klines"]
+    mk = _ohlc(kl)
+    ts = _active_ts(kl, "2022-08-01", 5)
+    mk.loc[ts[0], "low"] = 0.0
+    mk.loc[ts[1], "high"] = np.nan
+    mk.loc[ts[2], ["high", "low"]] = [mk.loc[ts[2], "low"] * 0.99, mk.loc[ts[2], "high"] * 1.01]
+    mk.loc[ts[3], "open"] = -1.0
+    tables[roles["bad"]]["mark_klines"] = mk.drop(index=ts[4])
+    roles["bad_ts"] = ts
+    tables[roles["empty"]]["mark_klines"] = _ohlc(tables[roles["empty"]]["klines"]).iloc[:0]
+    for role in ("flip_mark", "flip_nomark"):
+        kl = tables[roles[role]]["klines"].copy()
+        t0 = _active_ts(kl, "2023-03-01 10:00")[0]
+        o = kl.loc[t0, "open"]
+        kl.loc[t0, "low"] = o / 500.0                                       # a last-price bad print
+        mk = _ohlc(kl)
+        mk.loc[t0, ["open", "high", "low"]] = [o, 1.02 * o, 0.9 * o]        # an ordinary mark bar
+        tables[roles[role]] = dict(tables[roles[role]], klines=kl,
+                                   mark_klines=mk if role == "flip_mark" else mk.drop(index=t0))
+        roles[role + "_ts"] = t0
+    return tables, panel, roles
+
+
+@pytest.fixture(scope="module")
+def mark_src():
+    tables, panel, roles = _mark_tables()
+    return tables, panel, roles, UC.USource.build(panel, lambda x: tables[x])
+
+
+def test_r_o_t1_source_mark_ratios_are_the_liquidation_ratios_where_the_mark_bar_is_valid(mark_src):
+    tables, panel, roles, src = mark_src
+    for role in ("wide", "bad", "empty", "flip_mark", "flip_nomark"):
+        s = roles[role]
+        kl = tables[s]["klines"]
+        kl = kl[kl.index <= CAP]
+        mk = tables[s]["mark_klines"]
+        lq = D.liquidation_ratios(kl, mk if len(mk) else None)
+        has = lq["has_mark"].to_numpy()
+        hm, lm = np.asarray(src.rows(s, "hm")), np.asarray(src.rows(s, "lm"))
+        assert len(hm) == len(kl) and np.array_equal(np.isfinite(hm), has) and np.array_equal(np.isfinite(lm), has)
+        assert np.array_equal(hm[has], lq["up"].to_numpy()[has]) and np.array_equal(lm[has], lq["dn"].to_numpy()[has])
+    s = roles["bad"]
+    pos = src.sym(s)["start"]
+    for t in roles["bad_ts"]:                                              # low 0, high NaN, high < low, open <= 0,
+        i = (t.value - pos) // H                                           # missing row: no mark ratios
+        assert np.isnan(src.rows(s, "hm")[i]) and np.isnan(src.rows(s, "lm")[i])
+    assert not np.isfinite(src.rows(roles["empty"], "hm")).any()          # an empty mark table: NaN everywhere
+    s = roles["wide"]
+    m = src.sym(s)
+    hour = ((m["start"] + H * np.arange(m["n"])) // H) % 24
+    act = np.asarray(src.rows(s, "act"), dtype=bool)
+    hm, hr = np.asarray(src.rows(s, "hm")), np.asarray(src.rows(s, "hr"))
+    assert np.isnan(hm[hour == 5]).all() and np.isfinite(hm[hour != 5]).all()
+    assert np.all(hm[act & (hour != 5)] > hr[act & (hour != 5)])            # the mark wick, not the last-price one
+    liq = src.meta["liq"]
+    assert liq["active_rows"] == int(sum(np.asarray(src.rows(x, "act"), dtype=bool).sum() for x in src.symbols))
+    assert liq["active_rows_without_mark"] > 0 and liq["min_low_over_open"] <= 0.9 and liq["max_high_over_open"] >= 1.02
+    spec, blocks = src.to_shared()                                         # the two row fields go through
+    try:
+        twin, mine = UC.USource.from_shared(spec)
+        for k in ("hm", "lm"):
+            assert np.array_equal(src.arr[k], twin.arr[k], equal_nan=True)
+        for x in mine:
+            x.close()
+    finally:
+        for x in blocks:
+            x.close()
+            x.unlink()
+    s0 = roles["wide"]
+    with pytest.raises(KeyError, match="mark_klines"):
+        UC.USource.build([s0], lambda x: {"klines": tables[x]["klines"], "funding": tables[x]["funding"]})
+
+
+def _liq_and_short(src, s, w, t0):
+    """(liq_up, liq_dn) of FullPanel at bar t0 of a world, and whether a book 50% short s from 200 bars before t0
+    is liquidated by the universe engine."""
+    from omr import engine as E
+    fp = UP.FullPanel(UC.world_udata(src, "B", 4, world=w), "top30", symbols=[s])
+    i = int(np.searchsorted(fp.ns, t0.value))
+    assert fp.ns[i] == t0.value and fp.active[i, 0]
+    up, dn = fp.col("liq_up"), fp.col("liq_dn")
+    lo, hi = i - 200, i + 3
+    av = fp.active[lo:hi]
+    out = E.run_arrays_u(fp.col("open")[lo:hi], fp.col("close")[lo:hi], av, dn[lo:hi], up[lo:hi],
+                         np.zeros(av.shape), np.where(av, -0.5, 0.0))
+    return float(up[i, 0]), float(dn[i, 0]), bool(out[7] >= 0)
+
+
+def test_r_o_t2_null_b_a_last_price_bad_print_with_an_ordinary_mark_bar_no_longer_liquidates(mark_src):
+    tables, panel, roles, src = mark_src
+    for role in ("flip_mark", "flip_nomark"):
+        s, t0 = roles[role], roles[role + "_ts"]
+        day = t0.value // U.DAY_NS - src.D0
+        for flipped in (True, False):
+            w = UC.UWorld(src, "B", 4)
+            w.flip = w.flip.copy()
+            w.flip[day] = flipped
+            up, dn, liquidated = _liq_and_short(src, s, w, t0)
+            if role == "flip_mark":
+                want = (1 / 0.9, 1 / 1.02) if flipped else (1.02, 0.9)
+                assert up == pytest.approx(want[0], rel=1e-12) and dn == pytest.approx(want[1], rel=1e-12)
+                assert not liquidated                                      # the mark bar decides, as in the real run
+            elif flipped:
+                assert up == pytest.approx(500.0, rel=1e-9) and liquidated    # no mark row: the documented fallback
+
+
+def _src_rows(src, s, w):
+    m = src.sym(s)
+    sd, ok = w._source_days(s)
+    tns = m["start"] + H * np.arange(m["n"])
+    ld, hour = tns // U.DAY_NS - m["sd0"], (tns // H) % 24
+    ai = np.nonzero(np.asarray(src.rows(s, "act"), dtype=bool))[0]
+    sr = ((sd[ld[ai]] + src.D0) * U.DAY_NS + hour[ai] * H - m["start"]) // H
+    return ai, sr, ok[ld[ai]]
+
+
+def test_r_o_t3_null_a_wicks_are_the_drawn_source_rows_mark_ratios(mark_src):
+    tables, panel, roles, src = mark_src
+    w = UC.UWorld(src, "A", 17)
+    seen = {"shared_mark": 0, "fallback_mark": 0, "last_price": 0}
+    for s in (roles["wide"], roles["bad"]):
+        t = w.tables(s, trim=False)
+        lq = D.liquidation_ratios(t["klines"], t["mark_klines"])
+        ai, sr, shared = _src_rows(src, s, w)
+        hm, lm, hr, lr = (np.asarray(src.rows(s, x)) for x in ("hm", "lm", "hr", "lr"))
+        mark = np.isfinite(hm[sr])
+        np.testing.assert_allclose(lq["up"].to_numpy()[ai], np.where(mark, hm[sr], hr[sr]), rtol=1e-15)
+        np.testing.assert_allclose(lq["dn"].to_numpy()[ai], np.where(mark, lm[sr], lr[sr]), rtol=1e-15)
+        seen["shared_mark"] += int((mark & shared).sum())
+        seen["fallback_mark"] += int((mark & ~shared).sum())
+        seen["last_price"] += int((~mark).sum())
+    assert all(v > 50 for v in seen.values()), seen
+
+
+def test_r_o_t4_a_null_b_world_without_a_flip_reads_the_source_liquidation_ratios(mark_src):
+    """Tolerance: the world's mark high is open * hm and the check divides by the world open again (the world open
+    is not the source open: R-M and the cumulated path), so two roundings separate the two ratios: rtol 1e-15."""
+    tables, panel, roles, src = mark_src
+    w = UC.UWorld(src, "B", 4)
+    w.flip = np.zeros_like(w.flip)
+    for role in ("wide", "bad", "empty", "flip_mark", "flip_nomark"):
+        s = roles[role]
+        t = w.tables(s, trim=False)
+        lqw = D.liquidation_ratios(t["klines"], t["mark_klines"])
+        kl = tables[s]["klines"]
+        mk = tables[s]["mark_klines"]
+        lqs = D.liquidation_ratios(kl[kl.index <= CAP], mk if len(mk) else None)
+        act = np.asarray(src.rows(s, "act"), dtype=bool)
+        for c in ("up", "dn"):
+            np.testing.assert_allclose(lqw[c].to_numpy()[act], lqs[c].to_numpy()[act], rtol=1e-15)
+
+
+WORLD_PINS_8BFABC4 = {                                  # the test source, every panel symbol, untrimmed, before R-O
+    "A17_klines": "b067dcd6e52fd7804558cd46240a086aa1cc2008f21500be831b3b2f3a1bfe64",
+    "A17_mark": "04d24a862e1ffa5f9088bc5aac185a09311acb63d1ef6ee4c1f5b90936b7c623",
+    "B4_klines": "cf215d0cd2bcc5831e16393b11f7cc3baa0e54385b1baf73c15df93879277e1c",
+    "B4_mark": "279efe42c51a64d1d84b1f2136ad8ac4c1547e2ef040519be38668b201b80d74"}
+
+
+def test_r_o_t5_world_klines_are_unchanged(world_src):
+    """The klines of every world are what they were at 8bfabc4 (and NULL_B_PIN, klines and funding, still holds).
+    On this source the mark bars ARE its last-price bars, so the world mark tables did not change either."""
+    _, _, _, src = world_src
+    for null, seed in (("A", 17), ("B", 4)):
+        w = UC.UWorld(src, null, seed)
+        tabs = [w.tables(s, trim=False) for s in src.symbols]
+        assert _frames_sha([t["klines"] for t in tabs]) == WORLD_PINS_8BFABC4[f"{null}{seed}_klines"]
+        assert _frames_sha([t["mark_klines"] for t in tabs]) == WORLD_PINS_8BFABC4[f"{null}{seed}_mark"]
+
+
+def test_r_o_t6_a_row_without_trades_keeps_a_flat_mark_bar_and_index_is_mark(world_src):
+    tables, panel, special, src = world_src
+    lo, hi = pd.Timestamp("2021-03-03 05:00", tz="UTC"), pd.Timestamp("2021-03-03 09:00", tz="UTC")
+    real = tables[special]["mark_klines"]
+    assert (real.loc[lo:hi, "high"] > real.loc[lo:hi, "low"]).all()       # the source has mark wicks there
+    for null, seed in (("A", 17), ("B", 4)):
+        t = UC.UWorld(src, null, seed).tables(special, trim=False)
+        assert t["index_klines"] is t["mark_klines"]
+        mk = t["mark_klines"].loc[lo:hi]
+        assert len(mk) == 5
+        for c in ("high", "low", "close"):
+            assert np.array_equal(mk[c].to_numpy(), mk["open"].to_numpy())  # flat (left as it is, R-O)
+
+
+def test_r_o_t8_tune_rho_records_the_liquidated_tuning_books(monkeypatch):
+    def fake(pool, partial, kind, arglist, log, label, on_progress=None):
+        out = []
+        for i, (null, seed, speed, rhos) in enumerate(arglist):
+            vals = [5.0 * r for r in rhos]                                  # Sharpe = 5 rho
+            if len(rhos) == 1 and i < 2:
+                vals = [float("-inf") if i == 0 else float("nan")]           # two books not finite at the chosen rho
+            out.append(vals)
+        return out
+    monkeypatch.setattr(UC, "run_tasks", fake)
+    logs = []
+    out = UC.tune_rho(None, None, "B", "slow", [1, 2, 3, 4], logs.append)
+    assert out["1.5"]["liquidated_books"] == 2 and out["1.5"]["books"] == 4
+    assert out["1.5"]["achieved_mean_val_sharpe"] == pytest.approx(5.0 * out["1.5"]["rho"])
+    assert any("2 of 4 tuning books liquidated" in ln for ln in logs)
+
+
+def test_r_o_t9_the_real_source_loader_reads_mark_klines_through_the_logged_handle(monkeypatch):
+    """The real-source loader on in-memory tables (no disk fixture exists for it): datasets.load_raw and the symbol
+    table are replaced by fakes that record every call; a symbol without a mark file gets an empty table."""
+    tables, panel, special = _real_tables()
+    handle = object()
+    nomark = panel[4]
+    calls = []
+
+    def fake_load_raw(ds, s, upto=None, handle=None, cache=True):
+        calls.append((ds, s, upto, handle, cache))
+        if ds == "mark_klines" and s == nomark:
+            raise FileNotFoundError(s)
+        return tables[s][ds]
+    monkeypatch.setattr(UC.D, "load_raw", fake_load_raw)
+    monkeypatch.setattr(UC.U, "load_symbols", lambda: {"symbols": {s: {"until": None} for s in tables}})
+    monkeypatch.setattr(UC.U, "crypto_symbols", lambda table: sorted(table["symbols"]))
+    src = UC.load_source(handle, log=lambda *a: None)
+    assert nomark in src.symbols
+    marks = [c for c in calls if c[0] == "mark_klines"]
+    assert sorted(c[1] for c in marks) == sorted(src.symbols)               # every panel symbol's mark bars
+    assert all(c[2] == "val_end" and c[3] is handle and c[4] is False for c in calls)   # the logged handle
+    assert not np.isfinite(src.rows(nomark, "hm")).any()
+    assert np.isfinite(src.rows(src.symbols[0] if src.symbols[0] != nomark else src.symbols[1], "hm")).any()
+
+
+def test_r_p_t7_the_null_advisory_counts_the_pairs_not_evaluated():
+    fams, W = list(UC.FAMILIES), 100                     # cap: 0.03 x 300 = 9 submitted pairs not evaluated
+    rows = _nrows("A", 40)
+    for r in rows[:9]:
+        r["status"] = "liquidated"
+        r.pop("gates")
+        r.pop("perm_p")
+    lines, stop = UC.null_advisory({"A": rows, "B": []}, W, fams, _oracle8())
+    assert stop == [] and "not evaluated 9 (cap 9)" in lines[0] and "DEAD" not in lines[0]
+    rows[9]["status"] = "kernel_fault"
+    lines, stop = UC.null_advisory({"A": rows, "B": []}, W, fams, _oracle8())
+    assert stop and stop[0].startswith("every G6 threshold is already dead")
+    assert "not evaluated 10 (cap 9) DEAD" in lines[0] and lines[0].count("DEAD (not evaluated)") == 3
+
+
+# ---------------------------------------------------------------- fix pass 10: R-Q in the universe unit
+
+
+def _rq_universe(monkeypatch, sharpes):
+    draws, calls, it = [], [], iter(sharpes)
+    fam = "ucal_xs_momentum"
+
+    class FakeBlocked:
+        def __init__(self, *a, **k):
+            pass
+    monkeypatch.setattr(UC, "build_uworld", lambda src, null, seed: None)
+    monkeypatch.setattr(UC, "dev_view", lambda src, null, seed: None)
+    monkeypatch.setattr(UP, "Blocked", FakeBlocked)
+    monkeypatch.setattr(UP, "screen_dev_u", lambda prog, q, fp: (draws.append(dict(q)), {"ok": True, "W": None})[1])
+    monkeypatch.setattr(UC, "dev_sharpe_u", lambda fp, W: next(it))
+    monkeypatch.setattr(UP, "stage1_u", lambda *a, **k: (calls.append("stage1"), {"ok": True})[1])
+    monkeypatch.setattr(UP, "stage2_u", lambda *a, **k: (calls.append("stage2"),
+                                                         {"status": "liquidated", "reason": "fake"})[1])
+    monkeypatch.setattr(UC, "_W", {"src": None, "handle": None, "progs": {fam: L.parse_file(UC.family_path(fam))}})
+    rows = UC.task_null(("A", 11000))
+    assert len(rows) == 1 and len(draws) == CB.N_DRAWS
+    return rows[0], draws, calls
+
+
+def test_r_q_universe_tq1_to_tq4(monkeypatch):
+    n = CB.N_DRAWS
+    row, draws, calls = _rq_universe(monkeypatch, [float("-inf")] * n)                   # TQ1
+    assert row["submitted"] is False and row["status"] == "not_submitted" and calls == []
+    assert row["stage1"] == {"passed": n, "dev_liquidated": n}
+    s = CB.null_summary([row], ["ucal_xs_momentum"])                                      # TQ4
+    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 0 and s["n_submitted_not_evaluated"] == 0
+    row, draws, calls = _rq_universe(monkeypatch, [float("-inf"), 0.5] + [0.1] * (n - 2))   # TQ2
+    assert row["submitted"] and row["params"] == draws[1] and calls == ["stage1", "stage2"]
+    assert row["stage1"] == {"passed": n, "dev_liquidated": 1}
+    row, draws, _ = _rq_universe(monkeypatch, [float("nan"), 0.2, 0.4] + [0.1] * (n - 3))  # TQ3
+    assert row["params"] == draws[2] and row["stage1"] == {"passed": n, "dev_sharpe_not_finite": 1}

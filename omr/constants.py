@@ -90,6 +90,7 @@ MAX_PARAMS = 6
 G6_GRID = (0.025, 0.05, 0.10)
 NULL_PASS_MAX = 0.03          # per SUBMITTED pair, under BOTH nulls
 FAMILY_PASS_MAX = 0.06        # per family, per its own SUBMITTED pairs, under BOTH nulls (fix pass 7, R-L)
+NULL_NOT_EVALUATED_MAX = 0.03 # per null: SUBMITTED pairs not evaluated (liquidated or other) / SUBMITTED (fix pass 10, R-P)
 POWER_MIN = 0.50              # oracle power at true Sharpe 1.5, both speeds, both nulls
 
 # ---------------------------------------------------------------- pool

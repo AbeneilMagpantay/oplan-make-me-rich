@@ -273,7 +273,9 @@ read under a logged calibration handle; nothing enters the trial ledger:
   (`omr/programs/gen000_*.omr`, hash-locked; `--families` accepts nothing else): 20 parameter sets
   drawn from the declared ranges are SCREENED with the DEV signals and the activity rule only; the
   activity passer with the best DEV Sharpe gets the full stage 1 (truncation and start-cut
-  self-checks) and is SUBMITTED to stage 2; none -> nothing submitted. Null pass rate
+  self-checks) and is SUBMITTED to stage 2; none -> nothing submitted. A draw liquidated on DEV (or
+  whose DEV Sharpe is otherwise not a finite number) is never a candidate and so never submitted
+  (fix pass 10, R-Q; both units); a pair without a candidate is not submitted. Null pass rate
   = Tier-1 passes / SUBMITTED pairs. Every gate value and G6 p is stored (G8 not run: no extended
   universe; G8 can only veto, so the rates are upper bounds).
 - Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
@@ -297,6 +299,11 @@ read under a logged calibration handle; nothing enters the trial ledger:
   the pooled 3%. The artifact also stores, per
   threshold, the family rates and the pass rate over the submitted pairs that pass G3 (DEV-positive,
   KP-016); the rule does not read the latter.
+  Fix pass 10 (R-P): under each null at most 3% (NULL_NOT_EVALUATED_MAX) of the submitted pairs may end
+  without an evaluation (liquidated, a kernel fault or anything else); otherwise that null fails every
+  threshold and the verdict is a STOP that names it. Such a pair cannot pass, so it lowers the null pass
+  rate, and the rule must not read that as safety; the bound holds only when both counts are proper and
+  the share is at most the bound. The verdict records the bound and each null's share.
 
 The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
 
@@ -525,7 +532,13 @@ Live risk limits the loop can never change:
   coin, so the day's gross is G^(n/24) (1 + tanh x) or G^(n/24) (1 - tanh x), G^(n/24) in expectation
   whatever the path. Every bar keeps its shape (high, low and close over open); hour-of-day means and the
   path inside a source day are kept by design; the draws and the funding are unchanged; the core unit's
-  nulls are unchanged (audits/AUDIT_LOG.md, round 7, X10 and X11); three hash-locked
+  nulls are unchanged (audits/AUDIT_LOG.md, round 7, X10 and X11); fix pass 10 (R-O): a null world's
+  liquidation check reads what the real evaluation reads, the source's mark wicks (mark high / open and
+  low / open, mirrored on a flipped null B day) on every active row whose source row has a valid mark bar,
+  else the world's last-price wicks; a world row without trades stays flat although the real evaluation
+  would read its mark wick, and the index bars follow the mark bars (no program reads them)
+  (audits/AUDIT_LOG.md, round 7, X12: two real last-price bad prints, mirrored, had liquidated most null B
+  books); three hash-locked
   cross-sectional families (momentum and reversal on daily returns, n from 3 to 60 and from 3 to 20 days -
   the reversal mirrors the momentum since fix pass 6 - and funding carry), the same
   screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds

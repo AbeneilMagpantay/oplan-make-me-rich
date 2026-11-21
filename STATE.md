@@ -118,7 +118,9 @@ prints in the real DEV rows (lows at 1/485 and 1/736 of the open), mirrored into
 any short. The same would have hit the real calibration, and it also emptied the null side (34 of 48
 no-skill rows liquidated, which the rule would have read as safe). Fix pass 10 (ordered 2026-11-21): R-O
 the top30 null worlds take their liquidation wicks from the mark-price bars, as the real evaluation does;
-R-P a null with more than 3% of its submitted pairs liquidated cannot seal. After R-O no row of the panel
+R-P a null with more than 3% of its submitted pairs left without a result (liquidated or faulted) cannot
+seal; R-Q a calibration draw that is liquidated on DEV is never submitted (it used to pad the denominator of
+the null pass rate). After R-O no row of the panel
 comes near such a wick, in DEV or after it (counts only).
 Next: fix pass 10 built and committed; the rest of the auditor's measurement X12 on its own patched copy
 (power under null B again, no-skill size, a premium arm for G6; the reading rule is in AUDIT_LOG) and its
@@ -136,8 +138,9 @@ early whether the seal can succeed), seal of both units, selftest, independent r
    fix pass 10 and the rest of the measurement X12 come first. Run time on this PC: see Next. The approval
    covers the rulings made during the build, among them R-L (no family above 6%), R-M (the same expected
    return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally spaced lags
-   and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds) and R-P (no seal when
-   more than 3% of a null's submitted pairs are liquidated); the human may decline any of them.
+   and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-P (no seal when
+   more than 3% of a null's submitted pairs end without a result) and R-Q (a draw liquidated on DEV is
+   never submitted); the human may decline any of them.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7
