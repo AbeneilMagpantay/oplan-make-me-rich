@@ -810,3 +810,199 @@ triggered; power MARGINAL), so it goes to the owner with the odds; my own estima
 Not checked: anything on real price rows (forbidden; real prices may change both the skew and the power); the core
 unit's re-run; G8; the full multiprocessing calibration (only a one-worker spawn task); the without-replacement fix
 (proposed, not tested); X11-F1's mechanism beyond the 6-world IC check.
+
+# X12-prep - attack on R-M and the coordinator's points (1)-(3), diagnostics D1 / D2, source D, X12 plan
+(Base: audits/AUDIT_LOG.md at 2dd58a2, "Round 7, addendum X11"; copies kernead (ead27c6) and kern86; nothing written
+in the project.)
+
+## A. Attack (my judgment)
+(1) Without replacement - I AGREE and withdraw my X11 mechanism and fix. World days are independent uniform draws, so
+for two different world days the covariance of returns is zero whatever the coincidences (a repeated source day is
+balanced by the slightly lower chance of a repeat in the other draws); after R-K the expected product of a window and
+a later day is the same at every lag. Drawing without replacement would add -variance / (N - 1) per pair of one pass.
+My P27 difference (IC 0.025 at lags 0-60 days against 0.020 at 180-365 days, over 6 worlds, SE of each mean about
+0.0025-0.003) is within noise. The remaining pool-specific structure is in second moments (volatility, correlation),
+not in means.
+(2) G6's effective number of lags for slow books - measured in D2 below.
+(3) Premise to correct: my X10 / X11 source is NOT "iid with no true difference between symbols". Its generator (the
+same as the kernel's own dry-run universe) gives every symbol a constant drift N(0, 8e-5) per hour, SD 0.70 a year;
+the members' cross-sectional SD of mean return (0.78 a year, P21) is mostly that TRUE drift (sampling noise over about
+four years adds about 0.37). So on this source a slow momentum book earns on the history itself (D1). The luck part
+exists and both nulls keep it (D1's drift-free arm measures it), but most of the premium is real by construction.
+R-M itself:
+- Legitimate as a definition: ONE expected simple day gross for every symbol on every world day is a clean "no
+  persistent cross-sectional premium" world, and simple per day is the right quantity for this engine (a held position's
+  P&L is weight x (day gross - 1); equalising log means would leave a premium of about half the variance in simple terms
+  for the volatile names) and for the families' simple n-day return signals. Exact per branch by construction (null A
+  shared: E = G; fallback: E = G); the null B algebra is right: faces G^(n/24) (1 +- tanh x), expectation G^(n/24).
+- My main objection - what the seal no longer measures. Under R-M a no-skill program earns nothing in the null worlds,
+  fails G1 almost always, and the null pass rates fall towards 0, so a threshold of 0.10 will qualify. But real trials
+  include slow books that collect a real static premium without timing (real symbols' drifts differ widely); for them
+  Tier-1 rests on G6 alone, and G6's false-pass rate for a slow book is set by its effective number of lags (D2), not by
+  the threshold. The R-K and null B worlds MEASURED that rate (momentum 8.3 / 12.5 / 18.8%); R-M removes the only
+  measurement of it from the seal. R-M makes the seal reachable partly by no longer looking at G6's known weakness.
+  Proposal (smallest): keep R-M for the null pass bound, and add to the rule a G6-only bound measured on a premium arm
+  (for example the momentum family in today's R-K / null B worlds, counted among its G1-G5 passers), or record G6's
+  limit for slow books and bound top30 lookbacks; the test that shows it: momentum's G6 pass rate among G1-G5 passers in
+  the R-K worlds (X11: 9 of 47 at 0.10, 4 of 47 at 0.025), compared with the threshold the R-M calibration chooses.
+- Artifacts that remain or are new under R-M: (a) the path inside a day and hour-of-day means (kept by design);
+  (b) pool-specific volatility and correlation (kept; small on iid prices, real on source D) - a volatility-scaled book
+  keeps a lag-decaying risk-timing edge; (c) NEW in null A: a pool holding one extreme up day gives the symbol a high
+  M(Q, s) and therefore a steady negative drift on all its other shared days (simple means are dominated by rare big up
+  days, more so than R-K's log means): a short position earns a steady drift with rare large losses, a negatively skewed
+  payoff that a 3-year VAL may not sample - more G1 passes for programs short of recent big movers (reversal); expected
+  profit zero, lagged copies share the skew, so it raises G1-G5 pass rates rather than G6's; (d) NEW in null B: the factor
+  cosh(x)^(-1/n) uses the day's realised move on every hour of that day, so a big early move announces a negative drift
+  for the rest of the day on that symbol (about 0.08% over an average day, 0.7% on a 3-sigma day: below one trade's cost,
+  not a Tier-1 channel; a daily-close program cannot use it); (e) NEW in null B: the face "+" is no longer the source day:
+  the day gross is bounded by 2 G^(n/24), so real up days above about +70% are compressed (source D has such days);
+  (f) G6's effective number of lags for slow books (a property of G6, untouched by any null).
+Verdict on R-M: agree that it makes the null worlds more correct; disagree that it is sufficient for the seal - with
+it the calibration no longer bounds G6's false-pass rate for slow premium books, which D2 shows is about 1 in 10 at
+any threshold.
+
+## B. D1 - the momentum family on the source HISTORY versus the null worlds built from it (p28_d1.py, p28_rows.jsonl;
+## copy kernead, i.e. R-K is the null A in force; the history = a UWorld whose every day is its own source day, no flip,
+## no funding coin, through the kernel's own task_null: 20 DEV draws, best DEV draw, stage 1, stage 2, 200 lags)
+| source (real structure, synthetic prices) | run | n | DEV | VAL | p | other gates failed |
+| X10 / X11 source (drift N(0, 8e-5) per hour), seed 15000 | history, protocol | 58 | 0.93 | 1.26 | 0.532 | none |
+| same | history, n = 50 | 50 | 0.57 | 1.39 | 0.488 | none |
+| same, X11 null worlds (24 null A, R-K; 24 null B) | worlds | 30-60 | | median 1.9 (A), 2.2 (B) | | 47 of 48 pass all but G6 |
+| further draw, seed 15001 | history, protocol / n = 50 | 56 / 50 | 1.48 / 1.29 | 1.54 / 1.80 | 0.552 / 0.343 | none |
+| DRIFT-FREE source (drift 0), seed 15000 | history, protocol / n = 50 | 58 / 50 | -0.49 / -0.77 | -0.08 / 0.17 | 0.378 / 0.299 | G1-G5, G7 |
+| same, null A worlds (R-K) 11000-11005 | worlds | 40-56 | | 0.04, 0.87, 0.25, -0.41, 0.00, -0.62 (mean 0.02) | | 5 of 6 fail G1 |
+| same, null B worlds 14000-14005 | worlds | 45-56 | | 0.95, -0.22, -0.35, 0.80, -0.89, 1.03 (mean 0.22) | | 4 of 6 fail G1 |
+(Seeds 15002-15008 queued behind the builder's test run; appended below when done.)
+Reading: the prediction "about zero on the histories against about 2 in the worlds" does not hold on the X10 source:
+the history itself pays the momentum family 1.3-1.8, because the source has a TRUE per-symbol drift; the worlds pay a
+little more (1.9-2.2). On a source without true differences between symbols the luck in the sample means does NOT
+become a material premium in either null (mean VAL 0.02 under null A, 0.22 under null B, against -0.08 / 0.17 on the
+history). So the X11 premium is the source's real drift kept by both nulls, not luck made permanent; R-M would remove
+a premium that the source history really contains. Whether real crypto has persistent per-symbol drift is the open
+empirical question; source D's history (real DEV prices) can answer it for the DEV period.
+
+## C. D2 - the lag axis (p29_d2.py, p29_lags.jsonl, p29_summary.txt; the X11 momentum rows reproduced exactly: same n
+## and p in all 12 worlds)
+Correlation of the lagged Sharpe ratios S_k between two lags, by distance (pairs pooled within worlds, deviations from
+the world's own mean):
+| distance (days) | 0-10 | 10-25 | 25-50 | 50-100 | > 100 |
+| null A, 8 worlds | +0.87 | +0.50 | +0.07 | -0.03 | -0.10 |
+| null B, 4 worlds | +0.81 | +0.50 | +0.09 | -0.11 | -0.08 |
+Independent values: the correlation falls to zero within about 25-50 days (integrated half-width about 18 days, so
+about 517 / 36 = 14 blocks over the lag range); the negative level at long distances is the bias of demeaning by the
+world's own mean, -1 / (N - 1), which gives N of about 11 (null A) and 13 (null B). So about 11-14 independent lagged
+values for windows of 37-60 days - the coordinator's "about ten" holds.
+Spread: SD of S_k across lags inside a world 0.53 (null A) / 0.41 (null B) against SD across worlds of
+(mean A_k - mean S_k) 0.87 / 0.51, and a mean gap of +0.24 / +0.26: the actual book sits further from its lagged
+copies than they sit from each other, more so under null A, so its rank is over-dispersed (the U shape).
+Beating lags are clustered: the low-p worlds have their few beating lags in one or two bands (11021: 6 in 365-547;
+11007: 7 in 30-89 and 5 in 365-547; 11008: 10 in 30-89; 14000: 5 in 365-547; 14017: 9 in 30-89 and 7 in 365-547);
+the high-p worlds have almost every lag beating. Null B worlds: 14000 p 0.030, 14017 p 0.085, 14005 0.687, 14010 0.677.
+Reading: point (2) is confirmed as a property of G6 for slow books: with about 12 independent comparisons the actual
+book is first among them about 1 time in 13 at any threshold below about 0.08 (X11: 8.3% at 0.025, 12.5% at 0.05), and
+the mean gap of +0.25 (actual above its copies in both nulls) adds to it.
+
+## D. Source D (p30_srcD.py; check p30_out_check.txt, statistics p30_out_stats.txt)
+Construction: as specified, real DEV prices and rates; after DEV end one shared donor-day sequence of 20-day blocks of
+real DEV days (seed 20261122, 678 distinct donor days of 912 used over 1,096 post-DEV days); active hours take the
+real hourly ratios of the same symbol on the donor day if it was fully active then, else of a donor symbol. First
+version: donor symbols from the 6 symbols fully active on >= 99% of DEV days - own DEV day on 63,866 post-DEV
+symbol-days (55.1%), donor symbol on 52,087 (44.9%), flat 0; 47 symbols listed after DEV end. PROBLEM found: with only
+6 donors, recipients sharing a donor on the same day get IDENTICAL day paths (clones in the top30 cross-section, where
+recent listings are frequent). Revised (in the file now): donor candidates = every crypto perpetual fully active on
+>= 50% of DEV days, the symbols OUTSIDE the panel first (never in play, so a copy of one is not a clone of a member),
+one distinct donor per recipient assigned once (seeded round robin), a per-recipient fallback order for days the
+donor was not fully active. The revised build and its statistics are queued behind the builder's test run (memory).
+Check on the first version: with every real price and funding rate after DEV end replaced by random numbers BEFORE the
+construction reads them, all 27 source arrays and the meta are identical (0 differ): no real price or rate after DEV
+end reaches the source or anything the kernel derives from it (base volume after DEV end is recomputed as quote
+volume / new close). Statistics (first version; day log returns of fully active days):
+| | abs-return autocorrelation, lag 1 / 5 / 20 | quantiles 0.1% / 1% / 99% / 99.9% | excess kurtosis | cross-sectional SD of symbols' mean (a year) |
+| source D, DEV rows (real) | 0.169 / 0.096 / -0.003 | -0.493 / -0.200 / +0.218 / +0.424 | 42 | 1.18 (86 symbols) |
+| source D, after DEV end | 0.148 / 0.055 / 0.016 | -0.480 / -0.173 / +0.193 / +0.391 | 15 | 0.78 (132) |
+| X10 iid source | -0.006 / 0.007 / 0.004 | -0.150 / -0.114 / +0.113 / +0.152 | 0 | 1.10 (134) |
+Caveat of the construction itself: a symbol that takes its own DEV days after DEV end inherits its own DEV drift (a
+2021 winner keeps winning after DEV end), so source D's HISTORY favours momentum artificially; under R-M the null
+worlds equalise means, so this does not reach X12's null worlds, but it must not be read as evidence about real
+momentum.
+
+## E. X12 - prepared, NOT started (the coordinator's condition for a direct start is not met: D1 contradicts the
+## artifact claim and I object to R-M's sufficiency; see the report)
+Odds model, written down before any X12 number exists (to be implemented as p31_odds.py from p26):
+- Size: for each null and each family f, the family's 48 rows give Dirichlet (Jeffreys) bin probabilities for
+  {Tier-1 with p <= 0.025, 0.025-0.05, 0.05-0.10, no Tier-1 pass} and a submitted share; a simulated real run draws 200
+  worlds per null, each family's submitted pairs and bins multinomially; a threshold qualifies when, under BOTH nulls,
+  the pooled rate (all families' Tier-1 / all submitted) <= 3% AND every family with a submitted pair <= 6%; the unit
+  takes the largest qualifying threshold (none -> STOP).
+- Power: each of the four cells' 24 worlds give Dirichlet bins as above; the real run measures each cell on 100 worlds;
+  the seal needs >= 0.50 in all four at the chosen threshold; the achieved-level bound is taken as met (tuning hit 1.50
+  +- 0.003 in every X10 / X11 cell).
+- Core unit: P(core seals) = 0.98. Reason: the core calibration re-runs the same core worlds with unchanged core code,
+  so its stored verdict (0.10, power 0.75 / 0.83 / 0.855 slow) should reproduce; the only new element is R-L's family
+  bound, under which the stored rows still choose 0.10 (worst family 4.67%); the 0.02 covers a changed core data
+  manifest moving the pooled 2.94% at 0.10 over 3% (then 0.05, where the core's power is 81-90.5%).
+- P(seal) = P(top30 seals) x 0.98; reported with the threshold distribution and a sensitivity in which every family's
+  rate equals the level.
+Plan and time (one null task about 6.5 min, a power world about 4 min, curves about 42 min per null; measured in X10 /
+X11): size on source D 96 tasks = 10.4 h; control on the X10 source 24 tasks = 2.6 h; power on source D 2 x 2.3 h =
+4.6 h; total about 17.6 process-hours; with two processes at once (the machine leaves 2 GiB free with two) about 9 h,
+with three (only when the builder's test runs are not on) about 6.5 h. Order: power first (it can end the question:
+an advisory if a cell is below 0.50 at 0.10), size interleaved A / B, control last.
+On the builder's known inexactness (the day factor sits on the day's own rows, so a position opened at the first open
+holds 23/24 of this day's factor and 1/24 of the next): I accept it - it is exact where consecutive days share a factor
+and off by at most (next / this)^(1/24) at a pool or month boundary (about 0.25% on a boundary day for the most
+extreme few-day pools, far less for members).
+
+## B (completed). D1 - all nine synthetic draws with the X10 generator (history; protocol / n = 50; VAL Sharpe)
+| draw | 15000 | 15001 | 15002 | 15003 | 15004 | 15005 | 15006 | 15007 | 15008 | mean |
+| protocol (best of 20 DEV draws) | 1.26 | 1.54 | 1.09 | 2.18 | 1.07 | 0.39 | 1.45 | 0.38 | 1.68 | 1.23 |
+| n = 50 | 1.39 | 1.80 | 1.22 | 2.18 | 1.73 | 0.55 | 1.47 | 0.36 | 1.49 | 1.35 |
+Chosen n 42-58; every other gate passed in 7 of 9 draws (15005 and 15007 fail G1 / G2 / G4); G6 p 0.095-0.980.
+Against the worlds built from draw 15000 (X11: null A median 1.9, null B 2.2): the histories pay the family about 1.2-1.4
+and the worlds about 0.6-0.9 more. On the drift-free source: history -0.08 / 0.17, worlds 0.02 (null A) / 0.22 (null B).
+Reading: two effects. (i) Most of the premium is the source's TRUE drift, which the history really pays (1.2-1.4 on
+average; zero without drift) - the prediction "about zero on the histories" does not hold for this source. (ii) The
+worlds add something on top: a null world gives every symbol its FULL-sample mean in both DEV and VAL, so the DEV signal
+already carries VAL's own sampling noise; with a true drift present this adds about 0.6-0.9 Sharpe, without one it is
+small (about 0.1-0.2, within noise at 6 worlds). The coordinator's mechanism (the sample mean made permanent) is real
+but secondary on this source; R-M removes both (i) and (ii).
+
+## D (completed). Source D - three revisions of the donor rule (p30_srcD.py, outputs p30_out_check*.txt /
+## p30_out_stats*.txt); every revision passes the scramble check (27 arrays + meta identical, 0 differ)
+| donor rule (recipients: an active symbol not fully active on the donor day; 44.9% of post-DEV symbol-days, all 47 symbols listed after DEV end) | copied day paths | abs-return autocorr 1/5/20 | 0.1% / 99.9% day log return | SD of symbols' mean (a year) |
+| 1: one of 6 symbols >= 99% full, same donor day | 59.9% of post-DEV symbol-days | 0.148 / 0.055 / 0.016 | -0.480 / +0.391 | 0.78 |
+| 2: distinct donors from all symbols >= 50% full (outside the panel first), same day if unused, else a later DEV day | 0.02% | 0.277 / 0.155 / -0.030 | -0.881 / +0.453 | 15.8 (coins delisted inside DEV, e.g. the May 2022 crash, handed on repeatedly) |
+| 3: as 2, donors >= 80% full AND listed at DEV end (30 candidates, all panel symbols) | 0.06% | 0.162 / 0.063 / 0.007 | -0.433 / +0.374 | 1.74 |
+(DEV rows of source D, real: 0.169 / 0.096 / -0.003, -0.493 / +0.424, 1.18; X10 iid source: about 0, -0.150 / +0.152, 1.10.)
+The specified rule (one fixed donor symbol, the panel's donor day) makes clones: recipients copying the same donor, or a
+donor that is itself in play with its own day, have IDENTICAL day paths - 60% of post-DEV symbol-days with 6 donors.
+Avoiding clones forces most recipients onto a DIFFERENT DEV day of their donor (revision 3: 52,047 of 52,087 donor
+symbol-days shifted), so those days are real DEV days but not contemporaneous with the panel's day (their correlation
+with the market on that day is lost). This is a design choice for the coordinator before X12: (a) contemporaneous with
+clones, (b) clone-free and not contemporaneous for 45% of post-DEV symbol-days (revision 3, my recommendation), or (c)
+a different construction for recipients (for example their own DEV days if they have any, shifted, and a synthetic
+path scaled to a donor's volatility for the 47 symbols listed after DEV end). Also, as noted above: a symbol that takes
+its own DEV days inherits its own DEV drift, so source D's history favours momentum artificially (R-M removes that
+from the null worlds).
+
+## Fix pass 8 commits (read only, for the record)
+258c1a5 (stage A) and 1442b42 (stage B): `git diff 258c1a5 1442b42 -- omr` is five added lines of the R-M paragraph of
+the omr/ucalibrate.py module docstring (the 23/24 held-position boundary); no executable line of omr/ changed, so a
+measurement on a verified copy of 258c1a5 would stand for 1442b42. Note on that docstring: the factor changes not only
+at a set or month boundary but at every switch between the shared and the fallback branch (null A) and on EVERY day in
+null B (its day term depends on the day's own move), so the 23/24 / 1/24 split applies on most days in null B; the
+builder's measured bound (about 0.43% per hold on a 60-symbol dry-run source) is the figure to keep. I have not yet
+verified a copy, read the 58ba59e..258c1a5 diff, or checked the builder's exactness claims (X12 Part A, not started).
+
+## X12-prep verdict: STOP and report (the coordinator's condition for a direct start is not met, or at best unclear)
+- R-M: a legitimate no-skill world (agreed), but not sufficient for the seal: under R-M the calibration no longer
+  measures G6's false-pass rate for slow books that collect a real premium without timing, which D2 shows is about 1 in
+  12 at any threshold below about 0.08 (and about 1 in 6 at 0.10). I would keep R-M AND add a G6-only bound measured on a
+  premium arm, or record the limit and bound top30 lookbacks.
+- D1: histories pay 1.2-1.4, worlds 1.9-2.2 (draw 15000) - less, but not "about zero": the premium is mostly the
+  source's true drift; the sample-mean effect adds about 0.6-0.9 here and little without a true drift.
+- D2: confirms the coordinator's point (2): about 11-14 independent lagged values for 37-60-day windows.
+- Source D needs a ruling on the donor rule (clones against contemporaneity) before X12 can run on it.
+Correction to part A above: the X11 null A momentum rows that pass every gate but G6 are 43 of 48, not 47 (22 of 24 in
+worlds 11000-11023: 11000 fails G3, 11016 fails G7; 21 of 24 in 11024-11047: 11045, 11046, 11047 fail G1 and more), so
+the G6 rate among them is 9 of 43 at 0.10 and 4 of 43 at 0.025.

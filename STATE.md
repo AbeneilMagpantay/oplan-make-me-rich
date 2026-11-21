@@ -100,14 +100,21 @@ power cells read 17 / 19 / 19 (A fast), 12 / 15 / 18 (A slow), 17 / 20 / 20 (B f
 symbol's own sample mean as its expected return, which hands the momentum family a premium in every null world
 (VAL Sharpe about 2, every gate but G6 passed), so its Tier-1 rate is G6's own level; and for a 50-day book G6's
 200 lags hold only about ten independent comparisons (hypothesis, being tested). The auditor's suggested fix
-(draw without replacement) is not adopted. Fix pass 8 (ordered 2026-11-21): R-M every symbol has the same
-expected simple return on every day in both top30 nulls (replaces R-K); tier_at stops on a malformed row; an
-advisory during the null phases.
-Next: fix pass 8 built and committed; the auditor's attack on R-M and its measurement X12 (48 null worlds per
-null with the three families and the four power cells, on a source with real DEV-period prices; the reading
-rule is in AUDIT_LOG); the human's approval, asked with the odds
+(draw without replacement) is not adopted. Fix pass 8 (258c1a5, 1442b42; full suite 891 passed): R-M every
+symbol has the same expected simple return on every day in both top30 nulls (replaces R-K); tier_at stops on a
+malformed row; an advisory during the null phases.
+Audit round 7, X12-prep (2026-11-21): the auditor agrees that R-M is a correct no-skill world and confirms that
+for a 50-day book G6's 200 lags hold only about 11 to 14 independent comparisons (a book that earns a premium
+without timing passes G6 about 1 time in 12 below 0.08 and 1 in 6 at 0.10). It corrected the coordinator: the
+premium in the X11 worlds was mostly a true drift built into the synthetic source, not luck. Its objection,
+accepted: with R-M alone the seal would no longer measure that weakness of G6. Fix pass 9 (ordered 2026-11-21),
+R-N: G6 in top30 uses 20 equally spaced lags, and a book whose weights are still correlated above 0.5 with its
+own weights one or more lag steps (about 26 days) earlier fails G6. Still NOT READY.
+Next: fix pass 9 built and committed; the auditor's measurement X12 (no-skill size, power, and a premium arm
+for G6, on a source with real DEV-period prices; the reading rule is in AUDIT_LOG); the human's approval,
+asked with the odds
 of a successful seal; re-key; both calibrations (core about 40 minutes; top30 about 88
-worker-hours: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
+worker-hours before fix pass 9, which cuts G6 from 200 to 20 engine pairs - to be measured again: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
 resumable; the oracle phases come first and show after about a third of the run whether the seal can
 succeed), seal of both units, selftest, independent recount, merge into `main`.
 
@@ -115,10 +122,11 @@ succeed), seal of both units, selftest, independent recount, merge into `main`.
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X11: fix
-   pass 8 and the measurement X12 come first. Run time on this PC: see Next. The approval covers the
-   rulings made during the build, among them R-L (no family above 6%) and R-M (the same expected
-   return for every symbol in the top30 null worlds); the human may decline either.
+2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12-prep:
+   fix pass 9 and the measurement X12 come first. Run time on this PC: see Next. The approval covers
+   the rulings made during the build, among them R-L (no family above 6%), R-M (the same expected
+   return for every symbol in the top30 null worlds) and R-N (G6 in top30: 20 equally spaced lags
+   and a speed limit); the human may decline any of them.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7

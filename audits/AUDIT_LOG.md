@@ -451,3 +451,109 @@ round 3 also the coordinator's own read of the core modules.
   beyond the 6-world check.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X11 section appended
   (sha256 b8c0c3f86513ab0f282887c981d608c65cbfbc1ceb3df1acfda09f31ca1fdfca).
+
+## Round 7, addendum X12-prep - 2026-11-21 - fix pass 8 built (258c1a5, 1442b42); the auditor's attack on R-M, D1 and D2; ruling R-N
+- State: fix pass 8 is built and committed (stage A 258c1a5, stage B 1442b42: R-M in both nulls,
+  tier_at stops on a malformed row, unit_verdict catches every Exception, the null advisory; full
+  suite 891 passed, 0 skipped; against 258c1a5 the kernel changed by five docstring lines).
+  Coordinator's review of the kernel diff 2dd58a2 to 258c1a5: built as ruled, no defect found. The
+  builder reported, and the coordinator accepted, one inexactness: the day's factor sits on the gap
+  ratios of the day's own rows, so a position opened at a day's first open holds 23/24 of that
+  day's factor and 1/24 of the next day's (largest measured per hold: about 0.43% on a 60-symbol
+  dry-run source, 0.08% on the test source). The measurement X12 has NOT run: the auditor stopped
+  after its attack, as the coordinator's condition asked. Still NOT READY for the re-key.
+- The auditor on the coordinator's three points of the X11 entry. (1) Without replacement: agreed;
+  it withdraws its X11 mechanism and its fix (independent draws have zero covariance between
+  different days; its 6-world difference was within noise). (2) G6's independent lags: confirmed
+  by D2. (3) The premise was WRONG and is corrected here: the X10 / X11 source is not "iid with no
+  true difference between symbols". Its generator (the kernel's own dry-run universe) gives every
+  symbol a constant true drift with an SD of 0.70 a year; the spread of the sample means (0.78) is
+  mostly that true drift, and sampling noise over about four years adds about 0.37.
+- D1 (the momentum family on source HISTORIES, not null worlds; the calibration's protocol). Nine
+  draws of the X10 generator: VAL Sharpe 0.38 to 2.18, mean 1.23 (n fixed at 50: mean 1.35); every
+  other gate passes in 7 of 9. The X11 null worlds built from one of them: median 1.9 (null A) and
+  2.2 (null B). A drift-free source: history -0.08 (n = 50: 0.17); six null A worlds under R-K mean
+  0.02, six null B worlds mean 0.22. Reading: the coordinator's prediction (about zero on the
+  history against about 2 in the worlds) does not hold on that source; most of the X11 premium was
+  the source's true drift, which both nulls kept, and the part that is luck made permanent is small
+  there (about 0.1 to 0.2, more under null B). R-M stands for another reason than the one written
+  in the X11 entry: a world that keeps each symbol's sample mean as its expected return holds a
+  permanent difference between symbols, luck or not, and in it ranking on past returns is a real
+  forecast; that is a premium world, not a no-skill world. How much of the real symbols' mean
+  spread is luck is not known (real DEV rows: 1.18 a year over at most two and a half years of
+  history, which sampling noise alone can produce at real volatility).
+- D2 (the lag axis; 8 null A and 4 null B momentum worlds of X11, 200 lags each, p values
+  reproduced). Correlation of two lagged Sharpe ratios by the distance between their lags: +0.87
+  (0 to 10 days), +0.50 (10 to 25), +0.07 (25 to 50), about zero beyond (null B: +0.81, +0.50,
+  +0.09). So the 200 lags of a book with a window of 37 to 60 days hold about 11 to 14 independent
+  values: point (2) is confirmed as a property of G6 for slow books, not of null A. The actual
+  book is first among them about 1 time in 13 at any threshold under about 0.08 and first or
+  second about 1 time in 6 at 0.10. (The auditor also reports a mean gap of +0.25 between the
+  actual book and its copies and a wider spread across worlds than across lags; the 12 worlds
+  were picked by the coordinator from both tails of the p values, so neither number is an
+  estimate. The premium arm below measures it on unselected worlds.)
+- The auditor's verdict on R-M: a correct no-skill world (one expected simple day gross is the
+  right quantity for this engine and these signals; the null B algebra is right), but NOT
+  sufficient for the seal. Under R-M the null worlds no longer measure what G6 does with a slow
+  book that collects a real premium without timing; for such a book Tier 1 rests on G6 alone, and
+  D2 says G6 passes it about 1 time in 12 below 0.08 and 1 in 6 at 0.10 whatever the threshold.
+  Its proposals: a G6-only bound on a premium arm, or a recorded limit and a bound on lookbacks.
+  New or remaining artifacts it lists under R-M, none checked yet on R-M worlds: pool-specific
+  volatility; in null A a pool with one extreme up day gives the symbol a steady negative drift on
+  its other days (a negatively skewed payoff for a short, which may raise G1 pass rates); in null B
+  the day's own move enters every hour of that day (below one trade's cost) and up days are
+  compressed (the day gross is at most twice G).
+- Coordinator's ruling on the objection: accepted. The seal must not be made reachable by no longer
+  looking at a known weakness of G6, and by the project's own rule a known fault of a gate is
+  fixed before the first scored generation on the unit, not after. A bound on a premium arm cannot
+  be met by choosing a threshold (the excess does not depend on it), so G6 itself is changed.
+  Ruling R-N (fix pass 9 ordered; top30 only, the core unit's G6 unchanged):
+  (a) K = 20 lags, EQUALLY spaced by step = (half of VAL - 30 days) / 20 (about 26 days), from 30
+  days plus one random phase; p = (1 + number of lagged books at least as good) / 21 as before. So
+  0.05 means no stale copy as good as the actual book, 0.10 at most one; 0.025 cannot be reached
+  (power there is 0, so the seal cannot choose it for this unit).
+  (b) A speed limit: with each name's own mean over VAL removed, the correlation between the
+  program's weights and its own weights j steps earlier (the names in play at both rows) must be
+  at most 0.5 for every j from 1 to 19; otherwise G6 fails (p = 1): its stale copies would not be
+  independent comparisons, and three years of VAL cannot test a slower book for timing. An
+  undefined correlation (a book that never changes) counts as above the limit.
+  Why these numbers, to be checked by measurement before they are final: copies of a 50-day book
+  26 days apart share about half their window, and D2 gives a correlation of their Sharpe ratios
+  of about a quarter there; 20 is the largest spacing-first count at which 0.05 can still be
+  reached. What it costs: books slower than about 50 days cannot be Tier 1 in top30; the timing
+  gate's resolution is two steps. What it gives: a p value that means what it says for every book
+  it admits, and a G6 with 20 engine pairs instead of 200 (the calibration gets several times
+  shorter). What stays true and will be said to the owner: at the threshold that keeps power
+  (0.10), a book that earns a steady premium with no timing passes G6 about 1 time in 10; with
+  three years of VAL the gate cannot be both stricter than that and sensitive. G6 never protected
+  against plain luck in VAL (stale copies do not share the actual book's luck); that rate is what
+  the R-M null worlds measure and the seal bounds.
+- Source D (for the measurement; the auditor's construction): the real structure; real prices and
+  funding rates up to DEV end; after DEV end one shared sequence of 20-day blocks of real DEV
+  days. 45% of the symbol-days after DEV end need a donor (47 symbols were listed after DEV end).
+  The donor rule the coordinator specified (one donor per symbol, same day) makes clones (60% of
+  those paths are copies); the auditor's third rule (donors at least 80% fully active and still
+  listed at DEV end, the donor's day moved to a different DEV day) has none and is taken: absolute
+  return autocorrelation 0.162 / 0.063 / 0.007 at lags 1 / 5 / 20 (real DEV rows 0.169 / 0.096 /
+  -0.003), 0.1% and 99.9% day returns -0.43 and +0.37 (-0.49 and +0.42). No real price or rate
+  after DEV end reaches it (the auditor's scramble check: all 27 source arrays identical).
+- Reading of the next measurement (X12, replacing the rule of the X11 entry where they differ),
+  fixed here before it runs. The auditor measures on a verified copy of 1442b42 with only the lag
+  rule of R-N patched in, for K = 20 and K = 40, and applies the speed limit from the weights:
+  (N) no-skill size: R-M worlds on source D, 48 worlds per null, the three families; control 12
+  worlds per null on the X10 source. (W) power: the four cells, 24 worlds each, on source D.
+  (P) premium arm: the momentum family in the 58ba59e worlds (kept means) on the X10 source (48
+  null A, 24 null B) and on source D (24 per null): G6 passes among the rows that pass every other
+  gate, by K and by window, on unselected worlds.
+  Choice of K, fixed now: K = 20 if every power cell has at least 14 of 24 at 0.10; otherwise
+  K = 40 if it has; otherwise not ready. To be explained before any re-key whatever the odds: in
+  (P), among admitted books (speed limit met), a G6 pass rate at 0.10 that a true rate of 10%
+  would produce in fewer than 1 run in 20; in (N), a family whose mean VAL Sharpe is above +0.5
+  under either null, or a family at 4 or more of 48 at 0.10 under either null. Then the odds from
+  the auditor's model, written down before the run: at 0.70 or more the coordinator asks the
+  owner; 0.40 to 0.70 the owner gets the odds with the advice not to run yet; under 0.40 not ready.
+- Texts to correct in fix pass 9: the "mostly luck" sentence in CONSTITUTION section 13 and the
+  "no true difference between symbols" clause in the fix pass 8 entry of KERNEL_PROPOSALS.md rest
+  on the premise corrected above.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X12-prep section
+  appended (sha256 b63473f329c1202d1ec44ff69776287b494aca590a7f31cf6bd73eb7dd3a86e3).
