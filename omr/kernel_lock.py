@@ -381,7 +381,8 @@ def seal(artifact_path, root: Path = None, lock_path: Path = None, history_path:
     chosen = verdict.get("chosen_threshold") or {}
     if verdict.get("STOP") or any(chosen.get(u) is None for u in UNITS_SEALED):
         per = {u: {k: (verdict.get("per_unit") or {}).get(u, {}).get(k) for k in
-                   ("chosen_threshold", "reason", "below_power_min", "null_pass_rate", "oracle_level_outside_bound")}
+                   ("chosen_threshold", "reason", "below_power_min", "null_pass_rate", "family_pass_rate",
+                    "oracle_level_outside_bound")}
                for u in UNITS_SEALED}
         raise SealRefused("calibration rule (per unit): " + json.dumps(ledger.clean({"reason": verdict.get("reason"),
                                                                                     "per_unit": per})))

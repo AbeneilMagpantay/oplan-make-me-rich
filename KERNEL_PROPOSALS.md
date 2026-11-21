@@ -280,6 +280,30 @@ rates, status.
   (n from 3 to 20 days), inside the unit's certified holding periods; the former 4-96 hour reversal was
   cost-dominated (VAL Sharpe about -9.7 in a measured null world), could never reach Tier 1 and diluted the null
   pass rate. A malformed unit artifact stops the seal; a sealed threshold must be a grid value. Evidence: notes/kp015_build_evidence.md.
+- Fix pass 7 (2026-11-21; audit round 7, addendum X10 judged 4286abf NOT READY, with no false-pass risk: the
+  universe calibration would have stopped after its full run; the coordinator's rulings): R-K under null A
+  every symbol has ONE expected daily log return in every month, c = its mean over all its fully active source
+  days (the set its fallback draws from). X10 found that the monthly pools of R-F are windows of history that
+  change with the membership, so every pooled month carried its own cross-section of expected returns (pool
+  mean minus whole-period mean: cross-sectional SD about 0.6 a year, correlation between month m and month m-k
+  0.77 / 0.48 / 0.24 / 0.13 by lag band); a slow momentum book held the current pool's drift and the paired lag
+  test read it as timing. Momentum under null A reached Tier 1 in 5 / 6 / 8 of 12 worlds at 0.025 / 0.05 /
+  0.10 (null B 0 / 1 / 1), the pooled null A pass rate was 13.9% / 16.7% / 22.2% of submitted pairs, and no
+  threshold could qualify. Now a world day that uses the shared source day drawn from a set Q (the month's pool,
+  or the whole period) has every active row's open / previous close ratio multiplied by exp((c - the symbol's
+  mean over Q's fully active days) / 24); a fallback day gets nothing; high, low and close relative to the open,
+  the source days drawn, funding and null B are unchanged (null B worlds byte-identical to fix pass 6);
+  hour-of-day means are deliberately not equalised. R-L: in addition to the pooled 3%, no single family's null
+  pass rate (its Tier-1 passes / its own submitted pairs) may exceed FAMILY_PASS_MAX = 0.06 under either null
+  at the chosen threshold, in both units. In the top30 null worlds 13 of the 36 submitted pairs per null had a
+  positive DEV Sharpe (12 momentum, 1 carry); reversal and carry cannot pass there, so the pooled bound alone
+  allowed momentum 9%. 0.06 is the conventional 5% level plus a sampling allowance (200 worlds per null: a
+  true 4.5% is accepted in about 88% of runs per null, 9% refused in about 91%). It can only lower a threshold;
+  on the stored core rows (7446278556aadd8f) it changes nothing (worst family 14 of 300 = 4.67% at 0.10, under
+  null A). The artifacts store per threshold the family rates and the rate over DEV-positive pairs (KP-016,
+  information only); a STOP names, for each threshold, the bound and the null that failed; the seal's refusal
+  shows the family rates. omr/ucalibrate.py PROTOCOL_VERSION 5, omr/calibrate.py PROTOCOL_VERSION 4.
+  Evidence: notes/kp015_build_evidence.md.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 
@@ -296,8 +320,9 @@ rates, status.
   unit, and store both rates in the artifact.
 - Cost: a semantic change of the rule (omr/calibrate.py, CONSTITUTION section 8), so a re-key and both
   calibrations again (top30 about 88 worker-hours). Not bundled into KP-015: it changes the core
-  unit's rule, which KP-015 leaves as it was sealed, and the size of the effect next to G8 is not
-  measured.
+  unit's outcome (0.05 instead of 0.10 on the stored rows), and the size of the effect next to G8 is
+  not measured. (Fix pass 7 does add the family bound R-L to the rule of both units; on the stored
+  core rows that changes nothing.)
 - Interim: after each calibration the coordinator reports the rate over DEV-positive submissions next
   to the sealed thresholds, computed from the stored rows.
 - Evidence added 2026-11-21 (audit round 7, X10; audits/AUDIT_LOG.md). (1) Top30: in the null worlds

@@ -778,3 +778,71 @@ cells) and is too small to estimate a cell (1 of 4 has a 95% interval of about 1
 worse than the audit's 24 real-structure worlds, which were measured without the null builders and with 40 lags
 (4 of 8 pilot rows have 13% or more of the lags beating the actual book, against 4 of 24). The four cells are
 therefore measured again on the real structure through the null builders before any re-key (audit round 7, X10).
+
+Fix pass 7 (rulings R-K and R-L; working tree on 6d9fb34, kernel files as in 4286abf before this pass; unapproved,
+not re-keyed). Before any edit the sha256 of the klines and funding frames of two symbols of one null B world
+(seed 4, panel[1] and panel[4], untrimmed) of the test source was pinned at 6d9fb34:
+e7ec7d09d5f3dc0176c2f766a1fcc2daf7e28037b1d5686bbc17829e4c96892e (the null B pin of test T4).
+R-K (omr/ucalibrate.py). USource.build stores per symbol and local day "dret", the day's log return (the sum of its
+24 rows' log(g * cr), 0.0 where the day is not full), concatenated like "full". _build_pools computes c_s (the
+symbol's mean dret over ALL its full days with a finite return; 0.0 with no full day), and per set Q (each pool, then
+the whole period [pool_lo, ND) as the last row) pool_adj[Q, s] = c_s - mean of s over the days of Q on which s is
+full (0.0 when there is none); arrays sym_c and pool_adj (2-D, shape kept through to_shared / from_shared); meta
+pools gains full_days_nonfinite, pool_adj_abs_max_per_day and pool_adj_member_sd_per_year_median (per pooled
+month the SD, ddof 1, of pool_adj[pool, member] x 365 over that month's top30 members; the median over months);
+main() logs the three once after the source is built. UWorld._build, null A only: every active row of a world day
+on the SHARED branch gets G *= exp(pool_adj[Q, s] / 24), Q the set that global day draws from; fallback days and
+the own-days branch (no full day) get nothing; HR, LR, CR, funding, the source days drawn, the generators and
+null B are unchanged. PROTOCOL_VERSION 5 (a version-4 partial file is refused). Docstring: hour-of-day means are
+deliberately not equalised. On the test source (tests/test_ucalibrate.py, synthetic churn universe, seed 4, 44
+symbols): pool_adj_member_sd_per_year_median 0.6298582988457404, pool_adj_abs_max_per_day 0.01280302944513791,
+full_days_nonfinite 0; on the dry-run synthetic universe 0.866286909508653 and 0.05240581067137142.
+Tests (tests/test_ucalibrate.py): test_r_k_t1 (every set and symbol: mean over Q's full days + adjustment = c_s
+within 1e-12; c_s = mean over all full days; no full day in Q -> 0), test_r_k_t2 (null A seed 17, ten symbols:
+each sampled world day's log return = source day return + adjustment on the shared branch, = source day return
+on the fallback branch, more than 20 and 5 days of each; every active row's high / low / close over open equals
+its source row within 1e-12), test_r_k_t3 (per pooled month and member the expected day return under the
+adjustment is c_s; without it the members' deviations have a nonzero spread), test_r_k_t4 (the null B pin
+above, unchanged after the edits), test_r_k_t5 (a version-4 partial file is refused).
+R-L (omr/constants.py, omr/calibrate.py, omr/ucalibrate.py, omr/kernel_lock.py). FAMILY_PASS_MAX = 0.06 next to
+NULL_PASS_MAX. calibrate.null_summary adds n_dev_positive (submitted rows with status evaluated and G3 true) and
+per threshold family_pass_rate (Tier-1 passes / the family's submitted pairs; None without a submitted pair) and
+pass_rate_dev_positive (passes / n_dev_positive; None when 0; information only, KP-016). calibrate.decide: a
+threshold qualifies only if under both nulls the pooled rate is not None and <= NULL_PASS_MAX + 1e-12 and every
+family rate that is not None is <= FAMILY_PASS_MAX + 1e-12; the verdict adds family_pass_max, family_pass_rate
+{null: {threshold: {family: rate}}}, null_pass_rate_dev_positive {null: {threshold: rate}} and
+threshold_failures {threshold: [failed bounds]}; when nothing qualifies the reason names, per threshold, the bound
+(pooled, or the family by name) and the null. RULE, RULE_PER_UNIT and both docstrings state the bound;
+calibrate.PROTOCOL_VERSION 3 -> 4; the seal's refusal detail per unit adds family_pass_rate. On the stored core
+rows of ledger/calibration_7446278556aadd8f.json (read only) the verdict is unchanged: chosen 0.1, qualifying
+0.025 / 0.05 / 0.1; worst family at 0.10 4.67% under null A (14 of 300) and 4.00% under null B; rate over
+DEV-positive pairs at 0.10 3.85% (A) and 3.10% (B), stored as information.
+Tests: tests/test_calibrate.py test_r_l_a (pooled 1.5% at 0.10 but one family 7.5% under null A -> 0.05 chosen,
+threshold_failures names "null A: family a"; a second family above 6% under null B at every threshold -> STOP
+whose reason lists every threshold; a pooled failure is named as pooled), test_r_l_b (3 of 50 = 6% qualifies, 4 of
+50 does not), test_r_l_c (a family with pairs but none submitted and a family with no pair are None and skipped),
+test_r_l_d (pass_rate_dev_positive = passes / submitted evaluated rows with G3 true; replacing it by 0.99, None or
+0 never changes the choice); tests/test_ledger_lock.py test_r_l_e (top30 summaries without family_pass_rate ->
+"top30 artifact malformed: KeyError", core still 0.10), test_r_l_f (a top30 family at 2 of 30 = 6.67% at every
+threshold, pooled 2.2%: top30 STOP; the seal refuses and its message carries family_pass_rate and the family).
+Existing test expectations changed: none (no existing test pinned a null A world number; the hand-built seal
+artifacts keep every family at or under 5%).
+Texts: CONSTITUTION section 8 (protocol v4; the rule with the family bound; why a family bound and why 0.06) and
+section 13 (null A: R-K; the seal bullet: R-L; "core unchanged but for the family bound"); KERNEL_PROPOSALS KP-015
+"Fix pass 7" (the KP-016 entry untouched); LANGUAGE.md has no text on the rule or null A (unchanged).
+Runs (logs in the session scratch): focused tests while building (R-K tests 5 passed in 3.30 s; tests/test_calibrate.py
++ tests/test_ledger_lock.py + tests/test_structure.py 63 passed in 13.57 s); tests/test_ucalibrate.py 33 passed in 547.77 s (wall 550 s; 28 before + 5 new); full
+suite 860 passed in 1294.36 s (wall 1297 s; 849 before + 11 new) (0 failed, 0 skipped); python -m omr.ledger verify OK (trials 10 rows, stage1_log 1,
+kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/ and data/ unchanged (git status
+clean there; no file under ledger/, no table and nothing in data/raw to depth 2 newer than the start of the pass).
+No calibration, seal, selftest or dry run was run in this pass; nothing was evaluated on real price rows.
+sha256 of the changed kernel files:
+  0e19b605b428d4fdf5da46aaf3e0c9747bb5e0299183597c62881edc97f3c999  CONSTITUTION.md
+  419c3e2e4b92b73360f3c2a76027799265fbd23a0c137d61184bc5650f7b8238  omr/calibrate.py
+  bd75261ddd817b7b87618636b3e35d7e043a2b39501d1099ef1c9bf3c13c1431  omr/constants.py
+  c4d6689cdb462a25f2d3c3887c0a487087eefafec44204d8a80339cd397dc8ca  omr/kernel_lock.py
+  b93892738eac13847737d4fd25d40788b213d6cbded3af0048a94d0fe5bfe04d  omr/ucalibrate.py
+  d7cd66a074bf05d3e8ebf0be9ccbf62c5e36cbef2f34e808f68106cae88101b2  tests/test_calibrate.py
+  236feb7c1e467aab26e70ba3fc7053f77e0f0820ce9b20cdb847cfb165cafe65  tests/test_ledger_lock.py
+  a0cc5c9548895b4d11fc916b5a24712a83174127e43e1fd77408ea3d669882d9  tests/test_ucalibrate.py
+KERNEL_PROPOSALS.md (not a kernel file): 650151d33d6a5a88126905b52469b9ec0b497b03859570611b1c32739d9795c5

@@ -245,7 +245,7 @@ G9 (at most 6 params) is retired as a gate: the parser enforces it. Information 
 (constant long 1/K per core symbol through the same engine) VAL Sharpe and max drawdown, beta,
 annualised alpha and PSR(0) of the beta-hedged residual.
 
-## 8. Calibration (protocol v3) and the seal
+## 8. Calibration (protocol v4) and the seal
 
 The G6 threshold is not a constant. The sequence is fixed: lock the kernel (re-key) ->
 `python -m omr.calibrate` on the LOCKED kernel (it refuses otherwise; the artifact records
@@ -281,10 +281,20 @@ read under a logged calibration handle; nothing enters the trial ledger:
   (G5 passes, no params). On 200 fresh worlds per null and speed, rho is tuned per speed and level so the
   ACHIEVED mean VAL Sharpe over those worlds is within 0.1 of the nominal 1.0 / 1.5 (reported).
 - Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
-  under BOTH nulls; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds under both
-  nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule fails,
-  nothing is sealed, generation 0 cannot run, and the human decides. Since KP-015 the rule is applied
-  to EACH unit on its own rows and the seal holds one threshold per unit (section 13).
+  under BOTH nulls and at which no single family's null pass rate (its Tier-1 passes / its own
+  SUBMITTED pairs; a family without a submitted pair is skipped) exceeds 6% (FAMILY_PASS_MAX, fix
+  pass 7, R-L) under either null; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds
+  under both nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule
+  fails, nothing is sealed, generation 0 cannot run, and the human decides; the verdict names, for each
+  threshold, the bound (pooled, or the family by name) and the null that failed. Since KP-015 the rule
+  is applied to EACH unit on its own rows and the seal holds one threshold per unit (section 13).
+  Why a family bound: the pooled rate is diluted by families that cannot pass in a null world (in the
+  top30 null worlds reversal and carry never pass, so 3% over all submitted pairs would allow the one
+  family that can pass 9%). Why 0.06: the conventional 5% level plus a sampling allowance; with 200
+  worlds a family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is
+  refused in about 91%. The family bound can only lower a threshold. The artifact also stores, per
+  threshold, the family rates and the pass rate over the submitted pairs that pass G3 (DEV-positive,
+  KP-016); the rule does not read the latter.
 
 The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
 
@@ -465,14 +475,23 @@ Live risk limits the loop can never change:
   length: lagged copies of a slow book stay correlated within the signal's memory of up to 90 days, so a
   shorter range would leave too few independent comparisons. The core unit's G6 is unchanged. G8: the
   same program on unit next30 must have a positive Sharpe over its DEV+VAL span.
-- The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged) and omr.ucalibrate
+- The seal (section 8) needs BOTH calibrations: omr.calibrate (core, unchanged but for the family
+  bound of fix pass 7, R-L, which the rule applies in both units) and omr.ucalibrate
   (top30, fix pass 4: null worlds on the REAL membership calendar - every symbol ever in top30 keeps
   its real present and absent hours, trades and volumes, so the kernel's own rule reproduces the real
   monthly schedule, usable flags and unit sizes; only prices are resampled, as open-relative ratios
   cumulated from the real first open, a present zero-trade bar flat; null A draws one source day per
   world day for all symbols, in a month with a unit from the days on which every top30 member of that
   month is fully active (fix pass 5; a pool under 90 days falls back to the whole period), a symbol not
-  fully active on it uses a personal fallback day, funding keeps
+  fully active on it uses a personal fallback day; fix pass 7 (R-K): every symbol has ONE expected
+  daily log return in every month, its mean over all its fully active source days (the set its
+  fallback draws from), so on a world day that uses the shared source day drawn from a set Q (the
+  month's pool, or the whole period) every active hour's open / previous close ratio is multiplied by
+  exp((that mean - the symbol's mean over Q's fully active days) / 24), every bar keeping its source
+  shape, and a fallback day gets nothing (hour-of-day means are deliberately not equalised); without it
+  the pools, windows of history that change with the membership, gave every month its own
+  cross-section of expected returns, which a slow momentum book held and the lag test read as timing
+  (audits/AUDIT_LOG.md, round 7, X10); funding keeps
   the real settlement calendar with the source day's rates; null B mirrors every symbol's demeaned path
   with one coin per day, funding rates as recorded before the sign coin below; three hash-locked
   cross-sectional families (momentum and reversal on daily returns, n from 3 to 60 and from 3 to 20 days -
@@ -504,7 +523,9 @@ Live risk limits the loop can never change:
   keeps the finished work; the artifact does not depend on the order).
 - The seal, fix pass 6 (R-H): the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its
   OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3% under both of that
-  unit's nulls, then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
+  unit's nulls and at which no family of that unit passes more than 6% of its own submitted pairs under
+  either of them (fix pass 7, R-L; in top30 only the momentum family can pass in a null world, so this
+  is the bound that binds there), then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
   that unit's threshold, every oracle level present within its bound. The two units use different G6
   constructions and have different null distributions, so one unit's rows never move the other's
   threshold. Both units seal or neither (a STOP names the unit). kernel.lock holds {"core": x, "top30":

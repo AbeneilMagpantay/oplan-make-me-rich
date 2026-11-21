@@ -485,3 +485,40 @@ def test_fp6_3_a_sealed_threshold_must_be_a_grid_value():
         assert KL.thresholds_of({"core": g, "top30": g}) == {"core": g, "top30": g}
     assert KL.thresholds_of({"core": 0.1 + 1e-13, "top30": 0.025}) == {"core": 0.1, "top30": 0.025}
     assert KL.UNITS_SEALED == C.UNITS == ("core", "top30")
+
+
+# ---------------------------------------------------------------- fix pass 7: R-L family bound in the per-unit seal
+
+
+def test_r_l_e_a_summary_without_family_rates_stops_the_unit_as_malformed(monkeypatch):
+    core, top = _two_units()
+    orig = K.null_summary
+
+    def no_family(rows, fams):
+        s = orig(rows, fams)
+        if "ucal_xs_momentum" in fams:                                  # the top30 unit only
+            for b in s["by_threshold"].values():
+                del b["family_pass_rate"]
+        return s
+    monkeypatch.setattr(K, "null_summary", no_family)
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: KeyError")
+    assert v["chosen_threshold"] == {"core": 0.10, "top30": None}
+
+
+def test_r_l_f_the_seal_refuses_a_unit_whose_family_passes_too_often_and_shows_the_family_rates(tmp_path):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1))
+    ua = uartifact(lock, tmp_path, passes_010=0, passes_005=0)
+    for n in ("A", "B"):                                                # 2 / 30 of ucal_xs_momentum at every threshold
+        for r in [r for r in ua["nulls"][n]["rows"] if r["family"] == "ucal_xs_momentum"][:2]:
+            r["perm_p"] = 0.01
+    v = UC.decide_both(json.loads(art.read_text()), ua)
+    assert v["per_unit"]["top30"]["null_pass_rate"]["A"]["0.025"] == 2 / 90 <= C.NULL_PASS_MAX
+    assert v["STOP"] and v["chosen_threshold"] == {"core": 0.10, "top30": None}
+    assert "null A: family ucal_xs_momentum 0.0667 > FAMILY_PASS_MAX" in v["reason"]
+    with pytest.raises(KL.SealRefused) as e:
+        k.seal(art, uart=k.write_art(ua, name="ucalibration_f.json"))
+    assert "family_pass_rate" in str(e.value) and "ucal_xs_momentum" in str(e.value)
+    assert "seal" not in KL.read_lock(k.lock)

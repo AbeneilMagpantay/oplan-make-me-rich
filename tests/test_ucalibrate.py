@@ -601,3 +601,149 @@ def test_f9_the_reversal_family_is_the_momentums_mirror_on_daily_bars():
         assert np.array_equal(r_kn, m_kn) and r_kn.any()
         assert np.array_equal(r_raw, -m_raw, equal_nan=True)
         assert np.array_equal(UP.uweights(r_raw), -UP.uweights(m_raw))
+
+
+# ---------------------------------------------------------------- fix pass 7: R-K one expected daily return (null A)
+
+
+def _sym_days(src, s):
+    """(global full mask, global day returns with NaN where not full or not finite) of symbol s."""
+    m = src.sym(s)
+    shift = m["sd0"] - src.D0
+    fl = np.asarray(src.arr["full"][m["full_off"]:m["full_off"] + m["nd"]], dtype=bool)
+    dr = np.asarray(src.arr["dret"][m["full_off"]:m["full_off"] + m["nd"]], dtype=np.float64)
+    full = np.zeros(src.ND, dtype=bool)
+    ret = np.full(src.ND, np.nan)
+    n = min(len(fl), src.ND - shift)
+    full[shift:shift + n] = fl[:n]
+    ret[shift:shift + n] = np.where(fl[:n] & np.isfinite(dr[:n]), dr[:n], np.nan)
+    return full, ret
+
+
+def _pool_sets(src):
+    off, days = np.asarray(src.arr["pool_off"]), np.asarray(src.arr["pool_days"])
+    sets = [days[off[j]:off[j + 1]] for j in range(len(off) - 1)]
+    return sets + [np.arange(src.meta["pool_lo"], src.ND)]
+
+
+def test_r_k_t1_every_set_and_symbol_has_the_symbols_one_mean_after_the_adjustment(world_src):
+    _, _, _, src = world_src
+    adj, c = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["sym_c"])
+    sets = _pool_sets(src)
+    assert adj.shape == (len(sets), len(src.symbols)) and src.meta["pools"]["full_days_nonfinite"] == 0
+    checked = 0
+    for k, s in enumerate(src.symbols):
+        full, ret = _sym_days(src, s)
+        assert c[k] == pytest.approx(float(np.nanmean(ret)), abs=1e-12)          # c_s over ALL its full days
+        for j, Q in enumerate(sets):
+            v = ret[Q][np.isfinite(ret[Q])]
+            if len(v):
+                assert abs(float(np.mean(v)) + adj[j, k] - c[k]) <= 1e-12
+                checked += 1
+            else:
+                assert adj[j, k] == 0.0
+    assert checked > 100
+
+
+def test_r_k_t2_world_days_carry_the_adjustment_on_the_shared_branch_only(world_src):
+    _, panel, _, src = world_src
+    w = UC.UWorld(src, "A", 17)
+    adj = np.asarray(src.arr["pool_adj"])
+    dp = np.asarray(src.arr["day_pool"])
+    seen = {"shared": 0, "fallback": 0}
+    for s in panel[:10]:
+        m, k = src.sym(s), src.k[s]
+        shift = m["sd0"] - src.D0
+        kl = w.tables(s, trim=False)["klines"]
+        act = np.asarray(src.rows(s, "act"), dtype=bool)
+        sd, ok = w._source_days(s)
+        _, ret = _sym_days(src, s)
+        tns = m["start"] + U.HOUR_NS * np.arange(m["n"])
+        ld = tns // U.DAY_NS - m["sd0"]
+        close = kl["close"].to_numpy()
+        for d in np.unique(ld)[1:][::9]:                                       # never the first row's day
+            rows = np.nonzero(ld == d)[0]
+            if len(rows) != 24 or not act[rows].all() or rows[0] == 0:
+                continue
+            got = float(np.log(close[rows[-1]]) - np.log(close[rows[0] - 1]))
+            gsrc = int(sd[d])
+            if ok[d]:
+                q = dp[d + shift] if dp[d + shift] >= 0 else adj.shape[0] - 1
+                want = ret[gsrc] + adj[q, k]
+                seen["shared"] += 1
+            else:
+                want = ret[gsrc]
+                seen["fallback"] += 1
+            assert abs(got - want) <= 1e-9, (s, d, ok[d])
+        ai = np.nonzero(act)[0][1:]                                              # (c) every active row's shape
+        hour = (tns // U.HOUR_NS) % 24
+        sr = ((sd[ld[ai]] + src.D0) * U.DAY_NS + hour[ai] * U.HOUR_NS - m["start"]) // U.HOUR_NS
+        o = kl["open"].to_numpy()[ai]
+        for col, name in (("high", "hr"), ("low", "lr"), ("close", "cr")):
+            np.testing.assert_allclose(kl[col].to_numpy()[ai] / o, np.asarray(src.rows(s, name))[sr], rtol=1e-12)
+    assert seen["shared"] > 20 and seen["fallback"] > 5
+
+
+def test_r_k_t3_the_finding_in_miniature(world_src):
+    """For every pooled month and member, the expected day return under the builder's rule (the pool enumerated,
+    the adjustment applied) equals c_s; without the adjustment it would vary across members."""
+    _, _, _, src = world_src
+    adj, c = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["sym_c"])
+    sets = _pool_sets(src)
+    acts = src.acts(pd.Timestamp(C.VAL_END, tz="UTC").value)
+    mem = U.membership(acts, list(acts), pd.Timestamp(C.UNIVERSE_START, tz="UTC").value,
+                       pd.Timestamp(C.VAL_END, tz="UTC").value)
+    dp = np.asarray(src.arr["day_pool"])
+    with_adj, without = [], []
+    for i, mo in enumerate(mem.months):
+        if not mem.unit_exists("top30", i):
+            continue
+        g = int(mo) // U.DAY_NS - src.D0
+        if g >= len(dp) or dp[g] < 0:
+            continue
+        Q = sets[dp[g]]
+        diffs = []
+        for s in mem.members("top30", i):
+            k = src.k[s]
+            _, ret = _sym_days(src, s)
+            e = float(np.mean(ret[Q]))                                           # every member is full on every pool day
+            with_adj.append(e + adj[dp[g], k] - c[k])
+            diffs.append(e - c[k])
+        without.append(float(np.std(diffs)))
+    assert with_adj and max(abs(x) for x in with_adj) <= 1e-12
+    assert max(without) > 0.0                                                    # so the test can fail
+
+
+def _frames_sha(frames) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    for df in frames:
+        h.update(np.asarray(df.index.asi8, dtype=np.int64).tobytes())
+        for col in df.columns:
+            h.update(str(col).encode("ascii"))
+            v = df[col].to_numpy()
+            v = v.astype(np.uint8) if v.dtype == bool else v.astype(np.float64)
+            h.update(np.ascontiguousarray(v).tobytes())
+    return h.hexdigest()
+
+
+NULL_B_PIN = "e7ec7d09d5f3dc0176c2f766a1fcc2daf7e28037b1d5686bbc17829e4c96892e"     # at 6d9fb34, before R-K
+
+
+def test_r_k_t4_null_b_worlds_are_byte_identical_to_fix_pass_6(world_src):
+    _, panel, _, src = world_src
+    w = UC.UWorld(src, "B", 4)
+    frames = []
+    for s in (panel[1], panel[4]):
+        t = w.tables(s, trim=False)
+        frames += [t["klines"], t["funding"]]
+    assert _frames_sha(frames) == NULL_B_PIN
+
+
+def test_r_k_t5_a_version_4_partial_file_is_refused(tmp_path):
+    h5 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
+    assert h5["protocol_version"] == UC.PROTOCOL_VERSION == 5
+    p = tmp_path / "v4.partial.jsonl"
+    UC.Partial(p, dict(h5, protocol_version=4), log=lambda *a: None)
+    with pytest.raises(UC.PartialMismatch):
+        UC.Partial(p, h5, log=lambda *a: None)

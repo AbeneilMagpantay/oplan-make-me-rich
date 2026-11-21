@@ -141,3 +141,108 @@ def test_draws_are_screened_and_only_the_submitted_one_gets_the_full_stage1(monk
     rows = K.task_null(("A", 1000))
     assert calls["screen"] == K.N_DRAWS and calls["stage1"] == 1 and calls["stage2"] == 1
     assert rows[0]["submitted"] and rows[0]["status"] == "evaluated"
+
+
+# ---------------------------------------------------------------- fix pass 7: R-L family bound (FAMILY_PASS_MAX)
+
+_GATES = ("G1", "G2", "G3", "G4", "G5", "G7", "G10")
+
+
+def _row(fam, seed, p, g3=True, status="evaluated"):
+    gates = {g: True for g in _GATES} | {"G6": None, "G8": None}
+    gates["G3"] = g3
+    return {"family": fam, "world_seed": seed, "submitted": True, "status": status, "params": {}, "val_sharpe": 0.1,
+            "perm_p": p, "stage1": {"passed": 20}, "gates": gates}
+
+
+def _null_rows(n_sub, passes=None):
+    """n_sub: {family: submitted pairs}; passes: {family: [perm_p of its first rows]}; the rest have perm_p 0.5."""
+    rows, seed = [], 0
+    for f, n in n_sub.items():
+        ps = list((passes or {}).get(f, []))
+        for i in range(n):
+            rows.append(_row(f, seed, ps[i] if i < len(ps) else 0.5))
+            seed += 1
+    return rows
+
+
+def _oracle_rows():
+    return [{"speed": s, "level": lvl, "world_seed": i, "status": "evaluated", "val_sharpe": lvl, "perm_p": 0.001,
+             "rho": 0.1, "gates": {g: True for g in _GATES} | {"G6": None, "G8": None}}
+            for s in K.SPEEDS for lvl in K.LEVELS for i in range(10)]
+
+
+def _decide(rows_a, rows_b, fams):
+    nulls = {"A": {"summary": K.null_summary(rows_a, fams)}, "B": {"summary": K.null_summary(rows_b, fams)}}
+    oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
+    return K.decide(nulls, oracle), nulls
+
+
+FIVE = ("a", "b", "c", "d", "e")
+
+
+def test_r_l_a_one_family_above_the_bound_under_one_null_moves_the_threshold_down():
+    assert C.FAMILY_PASS_MAX == 0.06 and C.NULL_PASS_MAX == 0.03
+    n_sub = {f: 40 for f in FIVE}                                          # 200 submitted pairs per null
+    rows_a = _null_rows(n_sub, {"a": [0.08, 0.08, 0.08]})                  # family a: 3 / 40 = 7.5% at 0.10 only
+    rows_b = _null_rows(n_sub, {"a": [0.08]})
+    v, _ = _decide(rows_a, rows_b, FIVE)
+    assert v["null_pass_rate"]["A"]["0.1"] == 3 / 200 <= C.NULL_PASS_MAX      # the pooled bound alone keeps 0.10
+    assert v["qualifying"] == [0.025, 0.05] and v["chosen_threshold"] == 0.05 and not v["STOP"]
+    assert v["threshold_failures"] == {"0.025": [], "0.05": [], "0.1": ["null A: family a 0.0750 > FAMILY_PASS_MAX"]}
+    assert v["family_pass_max"] == 0.06
+    assert v["family_pass_rate"]["A"]["0.1"]["a"] == 3 / 40 and v["family_pass_rate"]["B"]["0.1"]["a"] == 1 / 40
+    assert v["family_pass_rate"]["A"]["0.05"]["a"] == 0.0
+    rows_b2 = _null_rows(n_sub, {"a": [0.08], "b": [0.01, 0.01, 0.01]})     # null B family b 7.5% at every threshold
+    v2, _ = _decide(rows_a, rows_b2, FIVE)
+    assert v2["STOP"] and v2["chosen_threshold"] is None and v2["qualifying"] == []
+    for t in ("0.025", "0.05"):
+        assert f"{t}: null B: family b 0.0750 > FAMILY_PASS_MAX" in v2["reason"]
+    assert "0.1: null A: family a 0.0750 > FAMILY_PASS_MAX, null B: family b 0.0750 > FAMILY_PASS_MAX" in v2["reason"]
+    rows_a3 = _null_rows(n_sub, {f: [0.04, 0.08] for f in FIVE[:4]})         # pooled 2% at 0.05, 4% at 0.10
+    v3, _ = _decide(rows_a3, rows_b, FIVE)
+    assert v3["threshold_failures"]["0.05"] == [] and v3["chosen_threshold"] == 0.05
+    assert v3["threshold_failures"]["0.1"] == ["null A: pooled 0.0400 > NULL_PASS_MAX"]       # families at 5%: pooled
+
+
+def test_r_l_b_a_family_at_exactly_the_bound_qualifies():
+    n_sub = {f: 50 for f in FIVE}
+    v, _ = _decide(_null_rows(n_sub, {"c": [0.08, 0.08, 0.08]}), _null_rows(n_sub, {"c": [0.08, 0.08, 0.08]}), FIVE)
+    assert v["family_pass_rate"]["A"]["0.1"]["c"] == 3 / 50 == 0.06
+    assert v["chosen_threshold"] == 0.1 and v["threshold_failures"]["0.1"] == [] and not v["STOP"]
+    v4, _ = _decide(_null_rows(n_sub, {"c": [0.08] * 4}), _null_rows(n_sub), FIVE)       # 4 / 50 = 8%: refused
+    assert v4["chosen_threshold"] == 0.05 and v4["threshold_failures"]["0.1"] == ["null A: family c 0.0800 > FAMILY_PASS_MAX"]
+
+
+def test_r_l_c_a_family_without_a_submitted_pair_is_skipped():
+    fams = ("a", "b", "c", "d", "e", "f")
+    rows = _null_rows({f: 40 for f in ("a", "b", "c", "d")}, {"a": [0.08, 0.08]})
+    rows += [{"family": "e", "world_seed": 900 + i, "submitted": False, "status": "not_submitted",
+              "stage1": {"activity_dev": 20}} for i in range(10)]                     # e: pairs, none submitted
+    v, nulls = _decide(rows, rows, fams)                                               # f: no pair at all
+    for n in ("A", "B"):
+        fr = nulls[n]["summary"]["by_threshold"]["0.1"]["family_pass_rate"]
+        assert fr["e"] is None and fr["f"] is None and fr["a"] == 2 / 40
+    assert v["chosen_threshold"] == 0.1 and not v["STOP"] and v["threshold_failures"]["0.1"] == []
+
+
+def test_r_l_d_the_dev_positive_rate_is_information_only():
+    rows = _null_rows({f: 40 for f in FIVE}, {"a": [0.08, 0.04]})
+    for r in rows[100:150]:
+        r["gates"]["G3"] = False                                                       # DEV-negative: 50 pairs
+    rows[160]["status"] = "liquidated"                                                 # G3 True but not evaluated
+    s = K.null_summary(rows, FIVE)
+    assert s["n_dev_positive"] == 200 - 50 - 1
+    assert s["by_threshold"]["0.1"]["pass_rate_dev_positive"] == 2 / 149
+    assert s["by_threshold"]["0.05"]["pass_rate_dev_positive"] == 1 / 149
+    v, nulls = _decide(rows, rows, FIVE)
+    assert v["null_pass_rate_dev_positive"]["A"]["0.1"] == 2 / 149 and v["chosen_threshold"] == 0.1
+    for fake in (0.99, None, 0.0):                                                     # whatever it says, same choice
+        for n in ("A", "B"):
+            for t in C.G6_GRID:
+                nulls[n]["summary"]["by_threshold"][str(t)]["pass_rate_dev_positive"] = fake
+        oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
+        w = K.decide(nulls, oracle)
+        assert (w["chosen_threshold"], w["qualifying"], w["STOP"]) == (v["chosen_threshold"], v["qualifying"], v["STOP"])
+    assert K.null_summary([], FIVE)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
+    assert K.PROTOCOL_VERSION == 4

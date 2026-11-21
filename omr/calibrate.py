@@ -1,4 +1,4 @@
-"""Instrument calibration (protocol v3, formula language):
+"""Instrument calibration (protocol v4, formula language):
 
     python -m omr.calibrate [--worlds 300] [--oracle-worlds 200] [--workers 6]
 
@@ -44,8 +44,10 @@ Reduced pipeline (stated in the artifact): G8 not run (no extended universe in s
   stage 2 with 200 permutation shifts and 12 jitter perturbations.
 
 Rule (decide): the LARGEST G6 threshold in G6_GRID whose null pass rate is <= NULL_PASS_MAX under
-BOTH nulls; then oracle power at true Sharpe 1.5 must be >= POWER_MIN for both speeds under both
-nulls. None qualifies, or the power rule fails -> STOP (the seal refuses).
+BOTH nulls and whose every family's null pass rate (per its own submitted pairs; fix pass 7, R-L) is <=
+FAMILY_PASS_MAX under both nulls; then oracle power at true Sharpe 1.5 must be >= POWER_MIN for both
+speeds under both nulls. None qualifies, or the power rule fails -> STOP (the seal refuses). The pass
+rate over DEV-positive pairs (KP-016) is stored as information; the rule does not read it.
 """
 from __future__ import annotations
 
@@ -71,7 +73,7 @@ from omr import paths as P
 from omr import pipeline
 from omr import stats as S
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4                  # fix pass 7: family pass rates and the FAMILY_PASS_MAX bound (R-L)
 FAMILIES = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls",
             "gen000_voltarget_trend_ls", "gen000_funding_carry")
 N_DRAWS = 20
@@ -430,11 +432,17 @@ def null_summary(rows: list, families) -> dict:
             out["stage1_draws"][k] = out["stage1_draws"].get(k, 0) + v
     for r in sub:
         out["submitted_status"][r["status"]] = out["submitted_status"].get(r["status"], 0) + 1
+    dev_pos = [r for r in sub if r.get("status") == "evaluated" and (r.get("gates") or {}).get("G3") is True]
+    out["n_dev_positive"] = len(dev_pos)
+    sub_f = {f: sum(1 for r in sub if r["family"] == f) for f in families}
     for t in C.G6_GRID:
         passers = [r for r in sub if tier_at(r, t)]
         out["by_threshold"][str(t)] = {
             "tier1": len(passers),
             "pass_rate": len(passers) / len(sub) if sub else None,           # per SUBMITTED pair (the rule)
+            "family_pass_rate": {f: (sum(1 for r in passers if r["family"] == f) / sub_f[f]) if sub_f[f] else None
+                                 for f in families},                            # per family (R-L, the rule)
+            "pass_rate_dev_positive": len(passers) / len(dev_pos) if dev_pos else None,   # information (KP-016)
             "pass_rate_all_pairs": len(passers) / len(rows) if rows else None,
             "passer_families": {f: sum(1 for r in passers if r["family"] == f) for f in families},
             "passers": [{"family": r["family"], "world_seed": r["world_seed"], "params": r["params"],
@@ -460,7 +468,9 @@ def oracle_summary(rows: list) -> dict:
 
 
 RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is "
-        "<= NULL_PASS_MAX under BOTH nulls; then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds "
+        "<= NULL_PASS_MAX under BOTH nulls AND whose every family's null pass rate (its Tier-1 passes / its "
+        "SUBMITTED pairs; a family without a submitted pair is skipped) is <= FAMILY_PASS_MAX under BOTH nulls; "
+        "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds "
         "under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; "
         "otherwise STOP")
 
@@ -469,18 +479,35 @@ def decide(nulls: dict, oracle: dict) -> dict:
     """The calibration rule (also applied by `omr.kernel_lock seal` to the stored rows)."""
     def rate(n, t, k="pass_rate"):
         return nulls[n]["summary"]["by_threshold"][str(t)][k]
-    qualifying = [t for t in C.G6_GRID
-                  if all(rate(n, t) is not None and rate(n, t) <= C.NULL_PASS_MAX + 1e-12 for n in ("A", "B"))]
+
+    def failures(t) -> list:
+        """Which bound fails at threshold t under which null (pooled, or the family's NAME)."""
+        out = []
+        for n in ("A", "B"):
+            r = rate(n, t)
+            if r is None or r > C.NULL_PASS_MAX + 1e-12:
+                out.append(f"null {n}: pooled {r:.4f} > NULL_PASS_MAX" if r is not None else
+                           f"null {n}: pooled rate missing (no submitted pair)")
+            for f, fr in sorted(rate(n, t, "family_pass_rate").items()):
+                if fr is not None and fr > C.FAMILY_PASS_MAX + 1e-12:
+                    out.append(f"null {n}: family {f} {fr:.4f} > FAMILY_PASS_MAX")
+        return out
+    fails = {str(t): failures(t) for t in C.G6_GRID}
+    qualifying = [t for t in C.G6_GRID if not fails[str(t)]]
     chosen = max(qualifying) if qualifying else None
     verdict = {"rule": RULE, "grid": list(C.G6_GRID), "null_pass_max": C.NULL_PASS_MAX, "power_min": C.POWER_MIN,
-               "denominator": "submitted pairs",
+               "family_pass_max": C.FAMILY_PASS_MAX, "denominator": "submitted pairs",
                "null_pass_rate": {n: {str(t): rate(n, t) for t in C.G6_GRID} for n in ("A", "B")},
+               "family_pass_rate": {n: {str(t): rate(n, t, "family_pass_rate") for t in C.G6_GRID} for n in ("A", "B")},
+               "null_pass_rate_dev_positive": {n: {str(t): rate(n, t, "pass_rate_dev_positive") for t in C.G6_GRID}
+                                               for n in ("A", "B")},
                "null_pass_rate_all_pairs": {n: {str(t): rate(n, t, "pass_rate_all_pairs") for t in C.G6_GRID}
                                             for n in ("A", "B")},
-               "qualifying": qualifying, "chosen_threshold": chosen}
+               "threshold_failures": fails, "qualifying": qualifying, "chosen_threshold": chosen}
     if chosen is None:
         verdict["STOP"] = True
-        verdict["reason"] = "no G6 threshold in the grid keeps the null pass rate <= NULL_PASS_MAX under both nulls"
+        verdict["reason"] = ("no G6 threshold in the grid qualifies under both nulls: " +
+                             "; ".join(f"{t}: " + ", ".join(fails[str(t)]) for t in C.G6_GRID))
         return verdict
     achieved = {n: {k: v["mean_val_sharpe"] for k, v in oracle[n]["summary"].items()} for n in ("A", "B")}
     verdict["oracle_achieved_mean_val_sharpe"] = achieved

@@ -3,10 +3,12 @@
     python -m omr.ucalibrate [--worlds 200] [--oracle-worlds 100] [--workers 4] [--restart] [--force]
     python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic universe; never sealable)
 
-The core calibration (omr.calibrate) is unchanged. The seal (omr.kernel_lock seal) applies decide_both,
+The core calibration (omr.calibrate) is unchanged but for the family bound (fix pass 7, R-L), which the
+rule applies in both units. The seal (omr.kernel_lock seal) applies decide_both,
 PER UNIT (fix pass 6, R-H): each unit's G6 threshold is the LARGEST of G6_GRID whose null pass rate is <=
-NULL_PASS_MAX under both of THAT unit's nulls, with oracle power at true Sharpe 1.5 >= POWER_MIN for both
-speeds under both of its nulls at THAT threshold (each unit's oracle levels as present in its artifact: the
+NULL_PASS_MAX under both of THAT unit's nulls and whose every family's null pass rate (per its own submitted
+pairs) is <= FAMILY_PASS_MAX under both of them (fix pass 7, R-L), with oracle power at true Sharpe 1.5 >=
+POWER_MIN for both speeds under both of its nulls at THAT threshold (each unit's oracle levels as present in its artifact: the
 core 1.0 and 1.5, top30 1.5 only). Both units seal or neither; kernel.lock holds {"core": x, "top30": y}.
 
 WORLDS ON THE REAL MEMBERSHIP CALENDAR (fix pass 4, U2). PANEL: every symbol ever a top30 member from
@@ -28,6 +30,15 @@ NULL A (bootstrap): every world day draws one source day iid, shared by all symb
   (mostly non-members). Funding keeps the settlement times and intervals of the real day and takes the rates of the
   source day used for that symbol, in order (cycled if the counts differ; a source day without a
   settlement is replaced by a day with one, drawn by the same generator).
+  ONE EXPECTED DAILY RETURN (fix pass 7, R-K): a pool's days have their own mean return per symbol, and a
+  cross-section of expected returns that changes with the membership is predictability a no-skill world must
+  not have (it reads as timing in the lag test). So every symbol s has ONE expected daily log return c_s in
+  every month: c_s = its mean day log return over ALL its fully active source days (the set its fallback
+  draws from); every active row of a world day on the SHARED branch, drawn from the set Q (the month's pool,
+  or the whole period), has its open / previous close ratio multiplied by exp((c_s - mean of s over Q's
+  full days) / 24); a fallback day is already at c_s and gets nothing; high / open, low / open and close /
+  open are untouched, so every bar keeps its source shape. The correction is per day, spread evenly over
+  the 24 hours: hour-of-day means are deliberately not equalised. Null B is unchanged.
 NULL B (sign-flip): the real order; per day ONE fair coin shared by all symbols mirrors each symbol's
   demeaned hourly log-return path; funding rates as recorded.
 FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a fair coin drawn per
@@ -93,8 +104,9 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 4                        # fix pass 6: per-unit seal rule (R-H), partial lines with a sha (F3),
-                                            # oracle phases before the null worlds (F6); 3 = pass 5
+PROTOCOL_VERSION = 5                        # fix pass 7: R-K (one expected daily return per symbol and month under
+                                            # null A) and R-L (the family pass bound); 4 = fix pass 6 (per-unit seal
+                                            # rule, partial lines with a sha, oracle phases first); 3 = pass 5
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
@@ -138,7 +150,7 @@ _ROW_F = ("g", "hr", "lr", "cr") + tuple(OTHER)
 _ROW_B = ("gap", "act")
 _ACT = ("a_active", "a_qv", "a_usable")
 _FUND = ("f_ns", "f_iv", "f_rate", "f_offms")
-_DAY = ("full", "fd_off")
+_DAY = ("full", "fd_off", "dret")
 
 
 class USource:
@@ -187,6 +199,11 @@ class USource:
             sd1 = int(max(day_r[-1], fv[-1] // DAY_NS if len(fv) else day_r[-1]))
             nd = sd1 - sd0 + 1
             full = np.bincount(day_r[act] - sd0, minlength=nd)[:nd] == 24
+            # R-K: a full day's log return = the sum of its 24 rows' log(g * cr) (0.0 where the day is not full;
+            # a non-finite sum stays non-finite and is left out of every mean)
+            with np.errstate(invalid="ignore"):
+                dsum = np.bincount(day_r[act] - sd0, weights=lrt[act], minlength=nd)[:nd]
+            dret = np.where(full, dsum, 0.0)
             fd_off = np.searchsorted(fv // DAY_NS - sd0, np.arange(nd + 1), side="left").astype(np.int64)
             a = U.activity_of(kl, until.get(s))
             for name, v in zip(_ROW_F, (g, hr, lr, cr) + tuple(kl[x].to_numpy(dtype=np.float64) for x in OTHER)):
@@ -200,6 +217,7 @@ class USource:
             for name, col in (("f_iv", "interval_hours"), ("f_rate", "rate"), ("f_offms", "offset_ms")):
                 parts[name].append(fu[col].to_numpy(dtype=np.float64)[order])
             parts["full"].append(full)
+            parts["dret"].append(dret)
             parts["fd_off"].append(fd_off)
             metas.append({"name": s, "start": int(ns[0]), "n": n, "off": off, "first_open": float(o[0]),
                           "m": float(np.mean(lrt[ok])) if ok.any() else 0.0, "sd0": sd0, "nd": nd, "doff": doff,
@@ -225,15 +243,24 @@ class USource:
         reproduces) has 24 active hours. A month with no unit or a pool under POOL_MIN_DAYS uses the
         whole-period pool. Arrays: day_pool (per global day: pool id or -1), pool_days, pool_off."""
         ND, D0, lo = self.ND, self.D0, self.meta["pool_lo"]
-        full_g = {}
-        for s in self.symbols:
+        full_g, dret_g, c_sym = {}, {}, np.zeros(len(self.symbols))
+        n_nonfinite = 0
+        for k, s in enumerate(self.symbols):
             m = self.sym(s)
             g = np.zeros(ND, dtype=bool)
+            dg = np.full(ND, np.nan)
             shift = m["sd0"] - D0
             fl = np.asarray(self.arr["full"][m["full_off"]:m["full_off"] + m["nd"]], dtype=bool)
+            dr = np.asarray(self.arr["dret"][m["full_off"]:m["full_off"] + m["nd"]], dtype=np.float64)
             n = min(len(fl), ND - shift)
             g[shift:shift + n] = fl[:n]
+            dg[shift:shift + n] = np.where(fl[:n], dr[:n], np.nan)
             full_g[s] = g
+            fin = fl & np.isfinite(dr)
+            n_nonfinite += int((fl & ~np.isfinite(dr)).sum())
+            dret_g[s] = np.where(g & np.isfinite(dg), dg, np.nan)
+            # R-K: c_s = the mean day log return over ALL the symbol's full days (the set its fallback draws from)
+            c_sym[k] = float(np.mean(dr[fin])) if fin.any() else 0.0
         acts = self.acts(T(C.VAL_END).value)
         mem = U.membership(acts, list(acts), T(C.UNIVERSE_START).value, T(C.VAL_END).value)
         pools, sizes, pool_of = [], [], np.full(len(mem.months), -1, dtype=np.int64)
@@ -249,6 +276,16 @@ class USource:
                 pool_of[i] = len(pools)
                 pools.append(days)
                 sizes.append(len(days))
+        # R-K: per set Q (each pool, then the whole period [pool_lo, ND)) and symbol: c_s - mean over Q's days on
+        # which s is full (0.0 when s is full on no day of Q, or has no full day at all)
+        sets = list(pools) + [np.arange(lo, ND)]
+        adj = np.zeros((len(sets), len(self.symbols)))
+        for j, Q in enumerate(sets):
+            for k, s in enumerate(self.symbols):
+                v = dret_g[s][Q]
+                v = v[np.isfinite(v)]
+                if len(v):
+                    adj[j, k] = c_sym[k] - float(np.mean(v))
         day_ns = (D0 + np.arange(ND, dtype=np.int64)) * DAY_NS
         mi = np.searchsorted(mem.months, day_ns, side="right") - 1
         day_pool = np.where(mi >= 0, pool_of[np.clip(mi, 0, max(len(mem.months) - 1, 0))], -1) if len(mem.months) \
@@ -258,10 +295,20 @@ class USource:
         self.arr["pool_off"] = np.r_[0, np.cumsum(sizes)].astype(np.int64)
         months = pd.DatetimeIndex(pd.to_datetime(day_ns, unit="ns", utc=True)).strftime("%Y-%m")
         whole = sorted(set(months[day_pool < 0]))
+        self.arr["sym_c"] = c_sym
+        self.arr["pool_adj"] = adj
+        sds = []
+        for i in range(len(mem.months)):
+            if pool_of[i] >= 0:
+                ks = [self.k[s] for s in mem.members("top30", i)]
+                sds.append(float(np.std(adj[pool_of[i], ks] * 365.0, ddof=1)) if len(ks) > 1 else 0.0)
         self.meta["pools"] = {"min_pool_days": POOL_MIN_DAYS, "pooled_months": int(len(set(months[day_pool >= 0]))),
                               "months_whole_period_pool": int(len(whole)),
                               "smallest_pool_days": int(min(sizes)) if sizes else None,
-                              "median_pool_days": float(np.median(sizes)) if sizes else None}
+                              "median_pool_days": float(np.median(sizes)) if sizes else None,
+                              "full_days_nonfinite": n_nonfinite,
+                              "pool_adj_abs_max_per_day": float(np.max(np.abs(adj))) if adj.size else 0.0,
+                              "pool_adj_member_sd_per_year_median": float(np.median(sds)) if sds else None}
 
     # ---- sharing with the workers
     def to_shared(self) -> tuple:
@@ -403,13 +450,24 @@ class UWorld:
         tns = start + HOUR_NS * r
         ld = tns // DAY_NS - m["sd0"]
         hour = (tns // HOUR_NS) % 24
-        sd = self.source_days(s)
+        sd, okb = self._source_days(s)
         shift = m["sd0"] - src.D0
         if self.null == "A":
             ai = np.nonzero(act)[0]
             sr = ((sd[ld[ai]] + src.D0) * DAY_NS + hour[ai] * HOUR_NS - start) // HOUR_NS
             G, HR, LR, CR = (np.ones(n) for _ in range(4))
             G[ai], HR[ai], LR[ai], CR[ai] = g[sr], hr[sr], lr[sr], cr[sr]
+            if okb is not None:
+                # R-K: an active row of a day on the SHARED branch moves its gap ratio by exp(adj(Q, s) / 24), Q the set
+                # that global day draws from (its month's pool, or the whole period): the day's expected log return
+                # becomes c_s; fallback days are already at c_s; HR, LR, CR (the bar's shape) are untouched
+                sh = okb[ld[ai]]
+                if sh.any():
+                    dp = np.asarray(src.arr["day_pool"], dtype=np.int64)
+                    pa = np.asarray(src.arr["pool_adj"], dtype=np.float64)
+                    gd = ld[ai][sh] + shift
+                    q = np.where(dp[gd] >= 0, dp[gd], pa.shape[0] - 1)
+                    G[ai[sh]] = G[ai[sh]] * np.exp(pa[q, src.k[s]] / 24.0)
         else:
             F = self.flip[ld + shift] & act
             G = np.where(F, np.exp(2.0 * m["m"]) / g, g)
@@ -902,7 +960,9 @@ def verdict_from_rows(art: dict) -> dict:
 
 
 RULE_PER_UNIT = ("G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose "
-                 "null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit; "
+                 "null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit "
+                 "and whose every family's null pass rate (per its own SUBMITTED pairs) is <= FAMILY_PASS_MAX under "
+                 "BOTH nulls of that unit (fix pass 7, R-L); "
                  "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at "
                  "that unit's threshold, every oracle level present in that unit's artifact achieved within "
                  "RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below "
@@ -1079,6 +1139,10 @@ def main(argv=None):
         handle = access.for_calibration(f"universe calibration v{PROTOCOL_VERSION}, semantic {k['semantic'][:16]}: "
                                         "null worlds on the real membership calendar of the top30 panel")
         src = load_source(handle, log)
+    pl = src.meta.get("pools") or {}
+    log(f"null A pool adjustment (R-K): median over pooled months of the members' SD {pl.get('pool_adj_member_sd_per_year_median')} "
+        f"per year; largest |adjustment| {pl.get('pool_adj_abs_max_per_day')} per day; full days with a non-finite "
+        f"return {pl.get('full_days_nonfinite')}")
     src_bytes = int(sum(v.nbytes for v in src.arr.values()))
     if a.workers > 0:
         mem = memory_preflight(a.workers, src_bytes)
