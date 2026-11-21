@@ -1105,3 +1105,8 @@ synthetic symbols, worlds 1, oracle worlds 1, in-process, through the scratch wr
 (the speed limit's reason) stands only in audits/AUDIT_LOG.md, not in the kernel texts; recorded as corrected in
 KERNEL_PROPOSALS. ledger/, data/, kernel.lock unchanged; audits/AUDIT_LOG.md and STATE.md were modified in the working
 tree during this pass by someone else, not by the builder.
+Fix pass 10, stage B (on 306eb8c, no kernel file changed; nothing was edited while the suite ran). Full suite: 910
+passed in 2139.16 s, 0 failed, 0 skipped (895 at db32ce2 plus the 15 tests of fix pass 10: tests/test_ucalibrate.py
+10, tests/test_calibrate.py 4, tests/test_ledger_lock.py 1); python -m omr.ledger verify OK (trials 10, stage1_log 1,
+kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/, data/ and kernel.lock unchanged,
+and STATE.md and audits/ equal to 306eb8c (git status clean before this paragraph).
