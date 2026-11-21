@@ -557,3 +557,94 @@ round 3 also the coordinator's own read of the core modules.
   on the premise corrected above.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file with the X12-prep section
   appended (sha256 b63473f329c1202d1ec44ff69776287b494aca590a7f31cf6bd73eb7dd3a86e3).
+
+## Round 7, addendum X12 (power arm) - 2026-11-21 - fix pass 9 built (9ca8b62, db32ce2); power on real DEV-period prices stops on null B liquidations; rulings R-O and R-P
+- State: fix pass 9 is built and committed (stage A 9ca8b62, stage B db32ce2: R-N as ruled,
+  universe protocol version 7, full suite 895 passed, 0 skipped). Coordinator's review of the
+  kernel diff 1442b42 to 9ca8b62: built as ruled, no defect found (the lag set, the memory
+  statistic against the ruling's formula, the positive form of the limit test so that a NaN
+  counts as over the limit, the gate record). The measurement X12 ran its first arm and stopped,
+  as its rule says: NOT READY.
+- The auditor's attack on R-N, written before the runs: no flaw that changes the design. The
+  memory statistic measures what is claimed (the weight correlation one step apart is about the
+  window overlap). Correction of the stated reason: at a memory of 0.49 to 0.53 the correlation
+  of adjacent lagged Sharpe ratios is 0.35 to 0.46, not "about a quarter". Simulated rank test
+  with that dependence: K = 20, chance of p <= 0.05 is 0.055 to 0.061 (level 0.048) and of
+  p <= 0.10 is 0.105 to 0.110; so books just under the limit carry a small excess. At K = 20 the
+  limit admits every momentum window of the calibration family (60 days sits at the limit and is
+  admitted in about half the worlds); at K = 40 only windows up to about 28 days. What R-N cannot
+  remove, and the premium arm measures: the actual book's own luck may be wider than the spread
+  of its copies.
+- The auditor's reading of fix pass 8 (58ba59e to 1442b42): R-M exact (the common day gross
+  reproduced; expected day gross off by at most 2.2e-16 over 7,295 set and symbol pairs in null
+  A; null B day products to 7.8e-15); the draws unchanged; tier_at, unit_verdict and the null
+  advisory sound.
+- W, power (R-M worlds on source D, the calibration's own tuning, 24 worlds per cell, Tier-1
+  counts). Null A: fast 15 / 16 at 0.05 / 0.10 with K = 20 and 12 / 14 / 15 at 0.025 / 0.05 / 0.10
+  with K = 40; slow 11 / 16 and 10 / 13 / 15; no book liquidated. Null B: 16 of 24 fast books and
+  18 of 24 slow books LIQUIDATED; of the rest fast 5 / 6 of 8 (K = 20), slow 3 / 3 of 6. No
+  oracle book is over the speed limit (largest memory 0.36). By the rule fixed in advance no K
+  qualifies: STOP.
+- Finding W-F1 (HIGH). Cause, read in the code by the coordinator as well: the real evaluation
+  takes the liquidation wicks from the MARK price bar (last price only where a bar has no valid
+  mark row), and so do the core calibration's null worlds, which carry the mark wicks and mirror
+  them; the top30 null worlds alone used their own last-price bars for it (UWorld._build), under
+  a docstring that called this conservative. Null B mirrors a flipped bar's shape (high / open =
+  1 / (low / open)). The real DEV rows hold two last-price bad prints: 2020-03-13 02:00 UTC with
+  low / open 0.00206 and 2020-04-14 07:00 UTC with 0.00136, on symbols ranked 22 and 11 by volume
+  that day (top30 members, not core or extended symbols). Flipped they become highs of 485 and
+  736 times the open and liquidate any short above 0.2% of equity. Both bars have a valid mark
+  row with ordinary wicks (mark low / open 0.848 and 0.987, high / open 1.262 and 1.005): the
+  real evaluation never saw either print. Source D repeats both days after DEV end, which gives
+  four exposure points; predicted share liquidated 68%, observed 71%. Earlier sources had
+  synthetic prices and no such bar, so no earlier round could see it.
+- Correction to "no false-pass risk": the shortcut is not conservative in either direction.
+  Liquidated books cannot pass, so it lowers the power (tight) AND the null pass rate (loose: the
+  rule divides the passes by the submitted pairs). In the auditor's null B size run so far, 34 of
+  48 submitted pairs are liquidated and Tier 1 reads 0 at every threshold: a null side that says
+  "every threshold qualifies" while 71% of its rows are gone. Here the power bound would have
+  stopped the seal; a milder dose would have loosened it quietly.
+- Facts the coordinator asked for before ruling (the auditor's read-only reader). DEV, active
+  rows, the ratios the real pipeline uses (mark where valid, else last): no row with low / open
+  at or under 1/5, one with high / open at or above 5 (6.99, a mark bar); smallest low / open
+  0.271; 3,162 rows without a valid mark row, all of 2019. From 2022-07-01 to VAL end, COUNTS
+  ONLY, by the coordinator's decision recorded here (no program, oracle or family is evaluated
+  and nothing but counts leaves the reader; the count answers whether the real calibration would
+  meet the same wall): panel 2,781,983 rows, none without a mark row, none at 1/5 or 5; all
+  perpetuals 6,330,192 rows, 2 without a mark row, 1 at or under 1/5, 1 at or above 5, none in
+  the panel.
+- Ruling R-O (fix pass 10 ordered; top30 calibration worlds only): a null world's liquidation
+  check reads what the real evaluation reads. The source carries per row hm and lm, the up and
+  dn of datasets.liquidation_ratios on the rows where it has a mark bar, else NaN. On an active
+  world row whose source row (null A: the drawn day's row; null B: its own) has them, the world's
+  mark bar has high = open * HM and low = open * LM, with (HM, LM) = (hm, lm), and (1 / lm,
+  1 / hm) on a flipped null B row; every other row of the mark table is the last-price bar as
+  before; mark open and close stay the last-price open and close; the index table stays the same
+  object. Left as it is and said in the docstring: a row without trades stays flat in the world
+  although the real evaluation would read its mark wick (40 DEV rows on the panel). The source
+  records the count of active rows without mark ratios and the two extreme effective ratios; the
+  run prints them.
+- Ruling R-P (same fix pass; calibrate.decide, both units): a null under which more than
+  NULL_LIQUIDATED_MAX = 0.03 of the submitted pairs are liquidated fails every threshold (STOP).
+  A liquidated pair cannot pass, so liquidations lower the null pass rate; the rule must not
+  read that as safety. Fail-closed like the other bounds. Power needs no such rule. tune_rho
+  keeps its rule (it averages the surviving books); the count of liquidated tuning books is
+  recorded.
+- Residual exposure after R-O, by the auditor's count: the largest mirrored high in DEV is about
+  3.7 (a single short would have to be about 36% of equity), and no panel row after DEV end
+  reaches 1/5 or 5. Under null A a row can change only through a liquidation flag (the equity
+  path reads opens and closes only); mark wicks lie outside the last-price wicks by more than
+  10% on 8 panel rows in DEV.
+- The measurement goes on, on the auditor's copy patched from the ruling text alone (source D
+  gets the mark bars of its donor days; the X10 source empty mark tables): W null B first, then
+  the size arms, the premium arm and the odds. Added to the reading rule fixed in the X12-prep
+  entry, before any result: after R-O on source D, a power cell with 2 or more of 24 books
+  liquidated, or a null with more than 1 liquidated row among its 144 submitted pairs, is to be
+  explained before any re-key. The null A rows measured before R-O stand only if they reproduce
+  bit for bit on the final commit.
+- Texts to correct in fix pass 10: "about a quarter" in the reason given for the speed limit
+  (CONSTITUTION section 13 and wherever it was copied) becomes the measured 0.35 to 0.46; the
+  "conservative" sentence of the ucalibrate docstring.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file with the sections on the
+  attack on R-N, Part A, W, W-F1 and X12-RO appended (sha256
+  435241d581fe80594db20044cf7b91ab4b7e02dc26c5d303a653a572ed0320ad).

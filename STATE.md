@@ -107,26 +107,37 @@ Audit round 7, X12-prep (2026-11-21): the auditor agrees that R-M is a correct n
 for a 50-day book G6's 200 lags hold only about 11 to 14 independent comparisons (a book that earns a premium
 without timing passes G6 about 1 time in 12 below 0.08 and 1 in 6 at 0.10). It corrected the coordinator: the
 premium in the X11 worlds was mostly a true drift built into the synthetic source, not luck. Its objection,
-accepted: with R-M alone the seal would no longer measure that weakness of G6. Fix pass 9 (ordered 2026-11-21),
-R-N: G6 in top30 uses 20 equally spaced lags, and a book whose weights are still correlated above 0.5 with its
-own weights one or more lag steps (about 26 days) earlier fails G6. Still NOT READY.
-Next: fix pass 9 built and committed; the auditor's measurement X12 (no-skill size, power, and a premium arm
-for G6, on a source with real DEV-period prices; the reading rule is in AUDIT_LOG); the human's approval,
-asked with the odds
-of a successful seal; re-key; both calibrations (core about 40 minutes; top30 about 88
-worker-hours before fix pass 9, which cuts G6 from 200 to 20 engine pairs - to be measured again: about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker;
-resumable; the oracle phases come first and show after about a third of the run whether the seal can
-succeed), seal of both units, selftest, independent recount, merge into `main`.
+accepted: with R-M alone the seal would no longer measure that weakness of G6. Fix pass 9 (9ca8b62, db32ce2;
+full suite 895 passed), R-N: G6 in top30 uses 20 equally spaced lags, and a book whose weights are still
+correlated above 0.5 with its own weights one or more lag steps (about 26 days) earlier fails G6.
+Audit round 7, X12 power arm (2026-11-21), the first measurement on real DEV-period prices: null A has
+enough power (16 of 24 in both cells at 0.10), but under null B 34 of 48 oracle books were liquidated, so the
+rule fixed in advance says NOT READY. Cause: the top30 null worlds checked liquidation against their own
+last-price bars, while the real evaluation and the core null worlds use mark-price bars; two last-price bad
+prints in the real DEV rows (lows at 1/485 and 1/736 of the open), mirrored into highs by null B, wipe out
+any short. The same would have hit the real calibration, and it also emptied the null side (34 of 48
+no-skill rows liquidated, which the rule would have read as safe). Fix pass 10 (ordered 2026-11-21): R-O
+the top30 null worlds take their liquidation wicks from the mark-price bars, as the real evaluation does;
+R-P a null with more than 3% of its submitted pairs liquidated cannot seal. After R-O no row of the panel
+comes near such a wick, in DEV or after it (counts only).
+Next: fix pass 10 built and committed; the rest of the auditor's measurement X12 on its own patched copy
+(power under null B again, no-skill size, a premium arm for G6; the reading rule is in AUDIT_LOG) and its
+bit-for-bit check on the final commit; the human's approval, asked with the odds of a successful seal;
+re-key; both calibrations (core about 40 minutes; top30 was about 88 worker-hours before fix pass 9, that is
+about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker; fix pass 9 cuts G6
+from 200 to 20 engine pairs, so it is to be measured again; resumable; the oracle phases come first and show
+early whether the seal can succeed), seal of both units, selftest, independent recount, merge into `main`.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12-prep:
-   fix pass 9 and the measurement X12 come first. Run time on this PC: see Next. The approval covers
-   the rulings made during the build, among them R-L (no family above 6%), R-M (the same expected
-   return for every symbol in the top30 null worlds) and R-N (G6 in top30: 20 equally spaced lags
-   and a speed limit); the human may decline any of them.
+2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12 power arm:
+   fix pass 10 and the rest of the measurement X12 come first. Run time on this PC: see Next. The approval
+   covers the rulings made during the build, among them R-L (no family above 6%), R-M (the same expected
+   return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally spaced lags
+   and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds) and R-P (no seal when
+   more than 3% of a null's submitted pairs are liquidated); the human may decline any of them.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7

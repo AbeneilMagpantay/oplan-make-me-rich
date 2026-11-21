@@ -1006,3 +1006,268 @@ verified a copy, read the 58ba59e..258c1a5 diff, or checked the builder's exactn
 Correction to part A above: the X11 null A momentum rows that pass every gate but G6 are 43 of 48, not 47 (22 of 24 in
 worlds 11000-11023: 11000 fails G3, 11016 fails G7; 21 of 24 in 11024-11047: 11045, 11046, 11047 fail G1 and more), so
 the G6 rate among them is 9 of 43 at 0.10 and 4 of 43 at 0.025.
+
+# X12 - R-N (my own patch of the lag rule, p32_rn.py) on R-M worlds; copies kern1442 (1442b42, setup1442.py: 143
+# blobs re-hashed equal, 0 problems) and kernead (58ba59e world builders) for the premium arm
+World builders 258c1a5 = 1442b42: the text from `class USource` to `def world_udata` has the same sha256 in both
+(c45d3b2e4a2c732667d08137941838d7ccb6bbabc9242fd4328eaaaa3dc41bba); the only omr/ change of 1442b42 is the docstring.
+
+## Attack on R-N (written before the long runs; p33_rn_probe.py / p33_out.txt, p36_rank_sim.py / p36_out.txt)
+Memory against the dependence of lagged Sharpe ratios, momentum with fixed window n, 6 R-K null A worlds of the X11
+source (S_k at the R-N lags, deviations from each world's mean, adjacent pairs pooled):
+| n (days) | K = 20 (step 25.9 d): weight r at one step / memory / adjacent S_k corr | K = 40 (step 12.9 d): same |
+| 5  | -0.01 / 0.02 / +0.02 | -0.01 / 0.03 / +0.02 |
+| 10 | -0.02 / 0.03 / -0.08 | -0.02 / 0.04 / +0.01 |
+| 20 | -0.04 / 0.04 / -0.08 | 0.32 / 0.32 / +0.32 |
+| 30 | 0.07 / 0.07 / -0.03 | 0.53 / 0.53 / +0.46 |
+| 45 | 0.34 / 0.34 / +0.26 | 0.67 / 0.67 / +0.62 |
+| 60 | 0.49 / 0.49 / +0.35 | 0.74 / 0.74 / +0.69 |
+- The memory statistic measures what is claimed: the weight correlation one step apart is about the window overlap
+  (n - step) / n, and the adjacent lagged Sharpe correlation follows it at 0.7-1.0 times its value - NOT "near a
+  quarter" at 0.5: at memory 0.49-0.53 it is 0.35-0.46. Correction to the stated reason, not to the design.
+- Validity for admitted books: if the actual book's Sharpe is one more member of the stationary chain of lagged
+  copies (its distance to the first copy is 30 days + phase, about 1.6 steps), the rank test is close to its level
+  even with neighbour correlation 0.35-0.5 (simulated, p36): K = 20, P(p <= 0.05) = 0.055 / 0.061 at neighbour
+  correlation 0.35 / 0.5 (level 0.048), P(p <= 0.10) = 0.105 / 0.110; K = 40 at 0.5: 0.030 / 0.056 / 0.105 at 0.025 /
+  0.05 / 0.10. The X11 excess came from close lag pairs (0-25 days) that R-N removes. What R-N does NOT remove: a
+  mismatch between the actual book's own luck and the spread of its copies (X11's selected worlds: SD of the gap 0.87
+  against 0.53 inside a world); if the gap SD exceeds the copies' SD on unselected worlds the test is over-dispersed
+  whatever the lag design - arm (P) measures it.
+- The limit 0.5 admits, at K = 20, every momentum window of the family (n <= 60: memory <= 0.51, so n = 60 sits at the
+  limit and passes in about half the worlds); at K = 40 it admits n up to about 28. A program can pass the limit with
+  dependent copies only through what the per-name demeaning removes (a static tilt, which both books hold equally and
+  which does not bias the rank) or through a dependence the lag set does not sample (a periodic pattern whose period
+  divides none of j * step: then the copies are not dependent at the lags used either); I found no case that breaks
+  the rank test. Books with memory just under the limit carry a small excess (above).
+- Cost of K = 20: 0.025 unreachable (the grid's first threshold has no power; the rule then lives on 0.05 = no beat and
+  0.10 = at most one); power to be measured (W). K = 40 keeps 0.025 but admits only windows up to about 28 days.
+- No flaw that changes the design. I would state the constants' reason as "adjacent lagged Sharpe correlation about
+  0.35-0.45 at the limit", and I record each book's memory so that any limit can be read off afterwards (0.5 and 0.3
+  are reported below).
+
+## Part A - the diff 58ba59e..1442b42 in omr/ (x12/delta_58_1442.diff) and my own checks (p35_rm_check.py, p35_out.txt)
+- R-M exactness, my own enumeration on the X10 source in the 1442b42 copy: G own = kernel (1.000543728324);
+  pool_adj and fb_adj equal mine to 4.4e-16 / 6.7e-16; expected day gross / G - 1 over 7,295 (set, symbol) pairs at
+  most 2.2e-16 (null A, shared and fallback branches). Null B world 14000: 27,480 symbol-days, day product of the rows'
+  gross against G^(n/24) (1 +- tanh x) at most 7.8e-15 (the face is the coin's; the first day of a symbol is skipped,
+  its first row's factor being reset as before).
+- Draws unchanged: null A seed 11000 source day of every symbol-day equals the kern86 copy's (0 of 134 differ).
+- tier_at (pipeline.py, one implementation): raises ValueError on an evaluated row with "gates" not a mapping, a
+  missing gate of TIER_GATES but G6, a non-boolean gate, or perm_p not a finite number in [0, 1]; the unit verdict
+  turns it into the "malformed" STOP. I agree with raise over "count as fail": no silent reading is safe in both
+  directions (a null row read as failing loosens the null rate, an oracle row read as failing tightens power).
+- unit_verdict catches Exception: agreed.
+- null_advisory: a threshold is DEAD when its passes so far, divided by the LARGEST possible final denominators
+  (worlds x families pooled, worlds per family), already exceed a bound - passes only grow and denominators cannot
+  exceed those totals, so dead is certain; STOP is announced when every threshold is dead or the largest live one has
+  power below POWER_MIN (power cannot rise at a smaller threshold). Sound and log-only. Under R-N K = 20 the 0.025
+  threshold can never die (no p reaches it) and has zero power, so when 0.05 and 0.10 die the advisory correctly says
+  STOP through the power branch.
+
+## Odds model for X12 (written before the run; p37_odds.py will implement it)
+- Per null and family: the family's rows give Dirichlet (Jeffreys) probabilities for its outcome bins at the
+  thresholds the chosen K can reach (K = 20: Tier-1 with p <= 0.05 [no beat], with 0.05 < p <= 0.10 [one beat], no
+  Tier-1 pass; K = 40: p <= 0.025, 0.025-0.05, 0.05-0.10, none; with the memory limit applied: a book over 0.5 has
+  p = 1) and a submitted share; a simulated real run draws 200 worlds per null; a threshold qualifies when under BOTH
+  nulls the pooled rate <= 3% and every family with a submitted pair <= 6%; the largest qualifying threshold is chosen;
+  unreachable thresholds qualify trivially and carry zero power.
+- Power: each cell's 24 worlds give Dirichlet bins (same thresholds, limit applied); measured on 100 worlds; >= 0.50
+  in all four cells at the chosen threshold; level bound taken as met.
+- Core: P(core seals) = 0.98 (as argued in X12-prep: same core worlds and code; R-L does not move its stored 0.10).
+- P(seal) = P(top30 seals) x 0.98, with the threshold distribution, and a sensitivity at the level.
+
+## W - power on R-M worlds of source D (rule 3), the calibration's own tuning (p34 powerA / powerB on kern1442 with
+## the R-N patch; p34_powerA_result.json, p34_powerB_result.json, side lines p34_side_power*.jsonl; p37_summary.py W)
+Counts are Tier-1 (every gate) at each reachable threshold; "G6 alone" = G6 passes among evaluated rows. 24 worlds per
+cell (17000-17023 null A, 18000-18023 null B), level 1.5, speeds 5 / 20 days.
+| cell | rho (achieved mean VAL Sharpe) | status | K = 20 Tier-1 at 0.05 / 0.10 (G6 alone) | K = 40 Tier-1 at 0.025 / 0.05 / 0.10 (G6 alone) | memory K20 / K40: median, max |
+| A fast | 0.047750 (1.502) | 24 evaluated | 15 / 16 (21 / 22) | 12 / 14 / 15 (17 / 20 / 23) | 0.02, 0.03 / 0.02, 0.04 |
+| A slow | 0.078500 (1.500) | 24 evaluated | 11 / 16 (14 / 20) | 10 / 13 / 15 (13 / 16 / 19) | 0.03, 0.09 / 0.32, 0.36 |
+| B fast | 0.046375 (1.498) | 16 LIQUIDATED, 8 evaluated | 5 / 6 (6 / 7) | 4 / 5 / 6 (4 / 5 / 7) | 0.02, 0.02 / 0.02, 0.03 |
+| B slow | 0.090125 (1.501) | 18 LIQUIDATED, 6 evaluated | 3 / 3 (3 / 3) | 3 / 4 / 5 (3 / 4 / 5) | 0.02, 0.06 / 0.33, 0.35 |
+- No oracle book is over the memory limit (largest 0.36, the slow book at K = 40, as the overlap rule predicts:
+  (20 - 12.9) / 20 = 0.355); limit or no limit gives the same counts. A limit of 0.3 at K = 40 would leave the slow
+  null A cell 1 / 1 / 1.
+- The tuning drops liquidated books: tune_rho takes nanmean over the finite curve values (a liquidated book's VAL
+  Sharpe is -inf, ucalibrate.tune_rho), so the achieved 1.50 is the survivors' mean, while power counts every
+  liquidated book as a failure. At rho 0.05-0.09 the oracle's weights are more than 99% noise, so liquidation does not
+  depend on rho and cannot be tuned away.
+- THE CHOICE OF K (fixed in advance): at 0.10 the cells have K = 20: 16 / 16 / 6 / 3 and K = 40: 15 / 15 / 6 / 5. Null A
+  qualifies under both K; null B cannot qualify under any K or threshold (at most 8 and 6 books per cell survive).
+  Per the rule: NOT READY - STOP and report. The N, C and P arms were not summarised (their runs continue in the
+  background, not interrupted, resumable); p37_odds.py and the 9ca8b62 equivalence were not run.
+
+## W-F1 HIGH (design; blocks the seal through null B power, no false-pass risk): two REAL DEV bars with near-zero
+## lows become 485x and 736x highs in every flipped null B world and liquidate any short held in them
+Mechanism (code, kern1442 = 1442b42):
+- The universe engine flags liquidation when the worst intrabar equity, eq + sum over shorts h * (up - 1) + sum over
+  longs h * (dn - 1), is at most 2.5% of gross (engine._ucore_impl); in a null world the liquidation wicks come from the
+  world's own last-price bars (UWorld.tables: mark = the klines' OHLC; the module docstring calls last-price wicks
+  "conservative").
+- Null B flips a bar's shape with HR = 1 / LR and LR = 1 / HR (UWorld.tables, unchanged by R-M, which touches the gap
+  ratio only): a low wick to a fraction f of the open becomes a high of 1 / f. A long's loss is bounded by its weight;
+  a short's is not.
+Evidence (p40_wicks.py / p40_wicks_out.txt: every crypto perpetual's REAL DEV rows, the parquet filter stops at DEV end,
+counts only; p41_flipcheck.py / p41_flipcheck_out.txt):
+- Over ALL crypto perpetuals and all DEV bars, exactly two bars have open / low >= 5, and both are >= 30: 2020-03-13
+  02:00 UTC (open / low 485) and 2020-04-14 07:00 UTC (736), on symbols ranked 22 and 11 by trailing 30-day quote
+  volume that day (members of top30 in practice); neither is a CORE or EXTENDED symbol. Bars >= 2: 21 in all, 14 in
+  the top 30. Real high wicks (what null A carries): largest 7.6, three bars >= 5 in the top 40 - never liquidating.
+- On a flipped day a short in that symbol of more than 0.975 / 484 = 0.2% of equity is liquidated by the bar alone. The
+  oracle holds every in-play name (weights d / sum |d|, typically 1-9% each) and is short about half of them.
+- Source D's block bootstrap repeats each DEV day after DEV end: 2020-03-13 recurs on 2025-04-08, 2020-04-14 on
+  2025-02-27 (four exposure points in a world, each liquidating with probability about 1/2 (coin) x 1/2 (short)).
+  Predicted liquidation share 1 - 0.75^4 = 0.68; observed 34 of 48 = 0.71 (fast 16 / 24, slow 18 / 24). By the number
+  of the four days the world's coin flips: 1 flip 4 / 6 worlds liquidated (fast) and 4 / 6 (slow); 2 flips 7 / 12 and
+  9 / 12; 3 flips 4 / 5 and 4 / 5; 4 flips 1 / 1 and 1 / 1. Every one of the 24 worlds flips at least one of the four.
+  Null A: 0 of 48 liquidated (the same bars hit longs only, with a loss bounded by the weight).
+- Limits of the evidence: this ties the liquidations to the four days statistically and by mechanism, not book by book.
+  The book-level test (rerun the liquidated books and read the liquidation row and the column that triggers it) needs a
+  source D process, and memory is not free (the two size runs hold about 3.2 GB; the rule leaves 2 GiB free).
+Why it matters for the real calibration: the two bars are real DEV rows, so the real source carries them. Every real
+null B world flips each of the two DEV days with probability 1/2; with both names in play the DEV bars alone liquidate
+about 1 - 0.75^2 = 44% of null B oracle books, plus whatever the real VAL rows hold (not inspected, by rule). With the
+survivors' measured Tier-1 rates at 0.10 (fast 6 / 8, slow 3 / 6 under K = 20) null B power is about 0.56 x 0.5-0.75 =
+0.28-0.42, under POWER_MIN 0.5: the real calibration would most likely fail on null B power and not seal. Not a
+false-pass risk (liquidations only remove passes). It is not caused by R-M or by R-N: the bar flip predates both, and
+earlier rounds' sources (the iid X10 source, the dry-run synthetic source) have no such wicks, so nobody could see it.
+Options (for the builder; my ranking): (1) take the null worlds' liquidation wicks from the mark-price table where the
+source has one, flipped the same way - the real engine reads mark-price wicks, and a mark price would not print 0.2% of
+the open; (2) a data rule that treats a bar whose low is below a set fraction of its open as a bad print (only these two
+bars in DEV fall below 1/5); (3) bound the flipped wick for the liquidation check (for example at the largest real high
+wick of the panel). Any of them needs W (null B) rerun only; null A power is already adequate under both K.
+
+## X12 verdict (so far): STOP - not ready under the pre-fixed choice of K
+- R-N: no design flaw (attack above). Part A: R-M exact, draws unchanged, tier_at / null_advisory / unit_verdict sound.
+- W: null A power adequate under both K (16 / 16 at 0.10 with K = 20; 15 / 15 with K = 40); null B power destroyed by
+  liquidations (W-F1), so no K qualifies and the rule says STOP. In my judgment the cause is the null B bar flip meeting
+  two real bad-print bars, and the same failure would hit the real calibration; it needs a ruling before any re-key.
+- Not done because of the STOP: summaries of N / C / P (runs continue, resumable), the odds (p37_odds.py), the R-M
+  artifact (c) G1 rates, and the 9ca8b62 bit-for-bit equivalence (needs a source D process; memory not free).
+
+# X12-RO - facts for the provisional ruling R-O (the coordinator's FACTS step; no new long run)
+Readers: p42_marks.py / p42_marks_out.txt (kernel functions of the verified copy kern9ca = 9ca8b62: U.activity_of,
+UC.panel_symbols, D.liquidation_ratios; ACTIVE rows = not a gap and trades > 0, USource's act; "top 40" = rank <= 40 by
+trailing 30-day quote volume, my approximation of membership; "panel" = the kernel's ever-top30 set, 134 symbols, i.e.
+the symbols of the real-structure source), p42_zero.py / p42_zero_out.txt, p42_sizeB.py / p42_sizeB_out.txt.
+The rows after 2022-06-30 were read by the coordinator's decision (counts only); nothing but counts and shares of them
+is printed or written.
+
+Correction to W-F1 (the coordinator's point, accepted): "no false-pass risk" is wrong as a general statement. The null
+rate's denominator is submitted pairs, so an artefact that liquidates submitted null rows removes their chance to pass
+and LOWERS the null rate - the loose side. At this dose (F4: 34 of 48 submitted null B rows liquidated) null B power
+blocks the seal; a milder dose would have loosened the size bound quietly while leaving power above POWER_MIN.
+
+## F1 - the two DEV bars: both have a VALID mark row (predicate of datasets.liquidation_ratios), with ordinary wicks
+- 2020-03-13 02:00 (rank 22): last low / open 0.00206, last high / open 1.2062; MARK low / open 0.84807, high / open
+  1.26246.
+- 2020-04-14 07:00 (rank 11): last low / open 0.00136, last high / open 1.0060; MARK low / open 0.98666, high / open
+  1.00456.
+So the real evaluation never sees the 485x / 736x wicks; they are last-price bad prints. Under R-O the flipped highs
+become 1 / 0.84807 = 1.18 and 1 / 0.98666 = 1.014.
+
+## F2 - DEV active rows (open_time <= 2022-06-30 23:00; includes the 2019 rows the source carries), EFFECTIVE ratios
+(mark where valid, else last price)
+| scope | rows | without a valid mark row | eff. dn <= 1/5 | eff. dn <= 1/30 | eff. up >= 5 | last-price on the same rows: dn <= 1/5 / dn <= 1/30 / up >= 5 |
+| all crypto perpetuals | 1,921,980 | 3,162 (0.1645%) | 0 | 0 | 1 (mark-valid) | 2 / 2 / 3 |
+| panel (134) | 1,364,860 | 3,162 (0.2317%) | 0 | 0 | 1 (mark-valid) | 2 / 2 / 3 |
+| top 40 | 787,809 | 3,162 (0.4014%) | 0 | 0 | 1 (mark-valid) | 2 / 2 / 3 |
+- Split by has_mark: every count above is on mark-valid rows; the rows without a valid mark row have 0 / 0 / 0 (and
+  0 / 0 / 0 in last price).
+- Smallest effective dn 0.271003, largest effective up 6.9872 - both on mark-valid rows (overall = mark-valid only).
+- Rows without a valid mark row by calendar year (all three scopes): 2019 88.52% of 3,572; 2020, 2021, 2022: 0 rows.
+  All 3,162 lie in 2019 (mark history starts 2019-12-23), before DEV start; null B uses them only for rows before DEV
+  start; null A draws from UNIVERSE_START (2019-12-31) on, and I did not split whether any of the 3,162 falls on that one
+  day (at most one day of a few symbols; none of them has a wick at 1/5 or 5 in last price anyway).
+
+## F3 - rows 2022-07-01 .. VAL end, COUNTS ONLY
+| scope | rows | without a valid mark row | eff. dn <= 1/5 | eff. dn <= 1/30 | eff. up >= 5 | last-price: dn <= 1/5 / dn <= 1/30 / up >= 5 |
+| all crypto perpetuals | 6,330,192 | 2 (0.0000%) | 1 | 0 | 1 | 2 / 0 / 0 |
+| panel (134) | 2,781,983 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+| top 40 | 1,050,508 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+- Every count is on mark-valid rows. The real calibration's panel rows after DEV end carry no wick at 1/5 or 5 either
+  way, and none falls back to last price: after R-O the real calibration does not hit the same wall.
+
+## F4 - the sizeB partial file (null B, source D, kern1442 + my R-N patch), 16 worlds (14000-14015), 48 rows
+| family | evaluated | liquidated | not submitted / other | Tier-1, K = 20 (0.05 / 0.10) | K = 40 (0.025 / 0.05 / 0.10) |
+| momentum | 5 | 11 | 0 | 0 / 0 | 0 / 0 / 0 |
+| reversal | 3 | 13 | 0 | 0 / 0 | 0 / 0 / 0 |
+| carry | 6 | 10 | 0 | 0 / 0 | 0 / 0 / 0 |
+Same with the memory limit 0.5. Every row was submitted; no row passes all other gates. 34 of 48 submitted null rows
+liquidated: the loose-side dose of the correction above. The sizeB chain was then stopped (task stopped; no p34B
+process left); its partial file is kept. sizeA continues.
+
+## F5 - source D and mark tables
+- Today source D carries NO mark tables: p30_srcD.get_tables returns {"klines", "funding"} and USource.build reads only
+  those; every world's mark table is the world's own last-price bars (UWorld.tables), as in the kernel.
+- Extension for R-O (to be written from the ruling text): get_tables also returns "mark_klines" in the stored format
+  (index open_time; open, high, low, close, samples). Rows <= DEV end: the real stored mark rows, read with a filter
+  that stops at DEV end (no mark row after DEV end is read at all). Rows after DEV end: an active row of symbol s on
+  post-DEV day d takes, like its klines bar, the mark bar of hour h of its assigned (donor symbol, donor DEV day): if
+  that DEV mark row is valid by the predicate, the row gets open = its constructed kline open O, high = O * (mh / mo),
+  low = O * (ml / mo), close = O * (mc / mo); otherwise no mark row (so the kernel's hm / lm are NaN there and the world
+  keeps its last-price bar). The kernel derives hm / lm itself from these tables. The scramble check is extended: real
+  post-DEV mark values replaced by noise before the read (with the DEV-end filter this is trivially equal) and the
+  fingerprint covers hm / lm. (Source D's own rounding, (O * r) / O versus r, is my construction's and needs no
+  agreement with the builder.)
+- The X10 iid source (ctrl arm) must NOT pass real mark tables: its prices are synthetic, and real mark ratios would
+  bring real post-DEV wicks into a world. It gets empty mark tables (hm / lm all NaN: the synthetic last-price bars stay
+  the liquidation wicks, exactly as today).
+
+## F6 - attack on R-O (on paper)
+(a) Exact mirror: yes, in ratio terms, on every ACTIVE row whose source row has a valid mark row: the world's mark bar
+    gives liquidation_ratios dn = (o * LM) / o and up = (o * HM) / o, the real evaluation dn = ml / mo, up = mh / mo
+    (equal up to one rounding of (o * r) / o); where the source row has no valid mark row the world keeps its last-price
+    bar, which is the real fallback; flipped rows use the core's mirror (1 / lm, 1 / hm). The world's mark rows pass
+    the real predicate again: o > 0 finite, LM > 0, and o * HM >= o * LM because HM >= LM (mh >= ml and mo > 0; flipped
+    1 / lm >= 1 / hm) and rounding is monotone. One gap: rows the engine may hold that are NOT active (present, zero
+    trades, usable by S3): the world bar there is flat (HR = LR = 1, as today), the real evaluation would read the mark
+    wick. Panel counts: DEV 40 such rows of 1,361,328 usable (all with a valid mark row; 9 with a mark wick beyond 10%),
+    VAL 432 of 2,782,415 (7 beyond 10%). Negligible; I would leave it and say so in the docstring (null A has no source
+    row for those rows, so extending R-O there is not well defined for both nulls).
+(b) Other readers of the world's mark / index tables (9ca8b62): programs see only mark_klines.close / .new and
+    index_klines.close / .new (upipeline.field_columns; interp mark_close / index_close: the close of the last row with
+    .new, staleness by row age). .new comes from the rows' visible_from (own bar): unchanged because R-O keeps every row.
+    Closes are unchanged, so mark_close / index_close are identical and every program weight is identical. FullPanel
+    builds mark_klines.high / .low columns in its cache but nothing reads them. Activity, usable, membership,
+    freshness: klines (trades, quote_volume, is_gap) and funding only (universe.activity_of, usable_of, U.membership,
+    FullPanel._fresh) - no mark read. Engine: liq_dn / liq_up only. index_klines is the SAME DataFrame object as
+    mark_klines in UWorld.tables, so R-O also changes the index table's high / low - harmless (no reader), but the
+    ruling should say it (keep one object, or give index the last-price bar).
+(c) Residual exposure after R-O: through rows without a valid mark row - none that matters: DEV 2020-2022 has 0
+    such active rows in every scope; the 3,162 rows of 2019 lie before DEV start (and carry no last-price wick at 1/5
+    or 5); after DEV end 0 panel rows. Through mark wicks themselves: worst DEV effective dn 0.271 (flipped up 3.69; a lone short must
+    be about 36% of equity to be liquidated by it), worst DEV up 6.99 (flipped dn 0.14, a bounded loss for longs);
+    after DEV end no panel row at 1/5 or 5. No further rule needed in my view. I would add only a log line in the source
+    build: the number of active source rows without valid mark ratios and the largest flipped up wick (1 / min lm), so
+    a data change cannot reintroduce the exposure silently.
+(d) Null A: the engine's equity path reads open and close only; the wicks set only the liquidation flag of a run
+    (Run.liquidated; dead is set only by eq <= 0). So a null A row can change only if some run's flag flips (the base
+    run, a DEV screen's dev_sharpe_u = -inf, a G5 jitter, a G6 lagged copy). Mark wicks are outside the last-price wicks
+    often but by little: DEV all symbols, mark dn < last dn on 412,417 rows and mark up > last up on 497,629 rows of
+    1,918,818 mark-valid rows, but by more than 10% on 3 / 15 rows (panel 3 / 5; top 40 2 / 1; after DEV end panel
+    4 / 8); smallest mark dn / last dn 0.84, largest mark up / last up 2.37. Null A had 0 of 48 oracle books
+    liquidated; I expect no null A row to change, and the bit-for-bit check on the fix commit will show it: any
+    difference must be a liquidation flag.
+(e) Memory: the panel's stored rows up to VAL end are 4,209,275; two float64 row fields = 64.2 MiB (the nine float64
+    row fields today: 289.0 MiB; +22%). The source sits once in shared memory for all workers; per-world temporaries are
+    per symbol. Negligible against the 2 GiB margin.
+(f) Expressions two implementations must share (beyond those named): (1) the alignment - the stored mark table
+    reindexed to the klines row's open_time by exact equality (as liquidation_ratios: mark.reindex(grid)), all stored
+    rows with open_time <= VAL end (visible from their own bar); (2) the predicate on the RAW stored values before any
+    division (isfinite mo, mh, ml; mo > 0; ml > 0; mh >= ml) - not the core Source's predicate (which wants a finite
+    mark close and has no mh >= ml); (3) hm and lm both NaN when invalid, validity in the world read as
+    np.isfinite(hm) (lm then finite too); (4) the source row: null A sr exactly as for g / hr / lr / cr (the drawn day's
+    row at the same hour), null B the row itself; (5) the flip mask is the existing F = flip[ld + shift] & act;
+    (6) flipped HM = 1.0 / lm and LM = 1.0 / hm (crossed), and the world bar high = o * HM, low = o * LM with o the
+    world's own open array exactly as used for the klines (after G[0] = 1 and the act masking) - not o / lm; (7) only
+    ACTIVE rows take (HM, LM); non-active non-gap rows keep today's bar; mark open / close = the world's last-price open
+    / close; (8) index_klines object identity (b); (9) hm / lm carried through to_shared / from_shared, excluded from
+    R-M's dsum and pools; (10) the X10 and dry-run sources: the dry-run synthetic tables carry mark tables (copies of
+    their OHLC), so hm / lm there equal the last-price ratios up to one rounding - fine, but a test that expects
+    "no change" on the dry run must allow for it.
+
+## F7 - tune_rho
+With R-O liquidations should be rare, and at rho 0.05-0.09 they do not depend on rho, so averaging the survivors does
+not bias the chosen rho. Recording the number of liquidated tuning books at the chosen rho (per cell) is enough; no
+change to the rule.
