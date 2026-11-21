@@ -1064,3 +1064,8 @@ sha256 of the changed kernel and test files:
   5dccafc6da2b95a306e0c6fd8f87fc1ed2da932154ce22b5100cd6c9374e093d  tests/test_ucalibrate.py
   9aabd2b61f484c7ad35d35bc1d01c1bbe9317ae1c4a825b0438b9d206d523f45  tests/test_universe.py
 KERNEL_PROPOSALS.md (not a kernel file): 83d616e741a5ebbc15c0130e6db9784ac1dcddfee7ed0d7867b4b804d4ab2ad2
+Fix pass 9, stage B (on 9ca8b62, no kernel file changed). Full suite: 895 passed in 2050.87 s, 0 failed, 0 skipped
+(891 at 1442b42 plus the 4 tests added in tests/test_g6_paired.py); python -m omr.ledger verify OK (trials 10,
+stage1_log 1, kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/, data/, kernel.lock,
+audits/ and STATE.md unchanged. UNIVERSE_G6_LAGS = 20 and UNIVERSE_G6_MEMORY_MAX = 0.5 stay provisional until the
+auditor's measurement.
