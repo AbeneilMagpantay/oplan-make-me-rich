@@ -122,25 +122,45 @@ R-P a null with more than 3% of its submitted pairs left without a result (liqui
 seal; R-Q a calibration draw that is liquidated on DEV is never submitted (it used to pad the denominator of
 the null pass rate). After R-O no row of the panel
 comes near such a wick, in DEV or after it (counts only).
-Next: fix pass 10 built and committed; the rest of the auditor's measurement X12 on its own patched copy
-(power under null B again, no-skill size, a premium arm for G6; the reading rule is in AUDIT_LOG) and its
-bit-for-bit check on the final commit; the human's approval, asked with the odds of a successful seal;
-re-key; both calibrations (core about 40 minutes; top30 was about 88 worker-hours before fix pass 9, that is
-about 22 hours with 4 workers, which need about 7 GiB free, or about 4 days with 1 worker; fix pass 9 cuts G6
-from 200 to 20 engine pairs, so it is to be measured again; resumable; the oracle phases come first and show
-early whether the seal can succeed), seal of both units, selftest, independent recount, merge into `main`.
+Fix pass 10 (306eb8c, 76765ce; full suite 910 passed): R-O, R-P and R-Q built; the coordinator's review of
+the kernel diff found no defect.
+Audit round 7, X12 size arm (2026-11-22, audits/AUDIT_LOG.md): after R-O no oracle book is liquidated and the
+four power cells read 16, 16, 15 and 16 of 24 at 0.10 (the rule fixed in advance for the 20 lags asked for
+14), and the no-skill side passes Tier 1 in 1 of 264 submitted pairs. But the reading is NOT READY: the
+auditor's odds of a successful seal are 0.02 as the rule stands and 0.31 with one known artefact set aside,
+against 0.70 to ask the human and 0.40 as the floor. The artefact: 8 of 132 submitted null B pairs were
+liquidated after DEV by one real DEV bar (2022-06-07 20:00, mark high 7 times the open) that the pilot's source
+replays after DEV end; in the real run that bar lies in DEV, where R-Q applies. The rest of the gap to 0.70
+is probably the pilot's size (48 worlds per null and 24 books per power cell; being confirmed). Reading the
+rule against this, the coordinator found that after R-Q a breakage inside DEV would show as pairs never
+submitted, which R-P does not count, so a null with few submitted pairs could qualify every threshold. Fix
+pass 11 (ordered 2026-11-22), R-R, replaces R-P's cap: null pass rates are taken over EVALUATED pairs; under
+each null every family must end with at least half of its designed pairs evaluated and the null as a whole
+with at least 75%; faults stay bounded at 3% of the submitted pairs; the stored rows must be exactly the
+protocol's, and the seal refuses a calibration whose sizes are not the protocol's (core 300 and 200 worlds,
+top30 200 and 100), which nothing checked before. Open with the auditor: whether the new kernel reproduces
+the sealed core calibration's rows (core met its 3% bound at 0.10 with 44 of 1498, one pass to spare).
+Next: fix pass 11 built, reviewed and committed; the rest of the auditor's runs (controls, the premium arm
+for G6, the bit-for-bit runs on the committed code); ONE extension of the pilot, sized in advance so that its
+reading can be decisive, with the reading rule fixed before its first world; then, if that reading allows,
+the human's approval, asked with the odds of a successful seal; re-key; both calibrations (core about 40
+minutes; top30 to be estimated again by the auditor; resumable; the oracle phases come first and show early
+whether the seal can succeed), the reading of the evaluated shares before the seal, seal of both units,
+selftest, independent recount, merge into `main`.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12 power arm:
-   fix pass 10 and the rest of the measurement X12 come first. Run time on this PC: see Next. The approval
-   covers the rulings made during the build, among them R-L (no family above 6%), R-M (the same expected
-   return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally spaced lags
-   and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-P (no seal when
-   more than 3% of a null's submitted pairs end without a result) and R-Q (a draw liquidated on DEV is
-   never submitted); the human may decline any of them.
+2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12 size arm
+   (2026-11-22): fix pass 11 and one sized extension of the pilot come first. Run time on this PC: see
+   Next. The approval covers the rulings made during the build, among them R-L (no family above 6%), R-M
+   (the same expected return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally
+   spaced lags and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-Q (a draw
+   liquidated on DEV is never submitted) and R-R (null pass rates over evaluated pairs; no seal when a
+   family keeps under half or a null under 75% of its designed pairs, when more than 3% of the submitted
+   pairs fault, or when a calibration is not of the protocol's size; it replaces R-P); the human may
+   decline any of them.
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7

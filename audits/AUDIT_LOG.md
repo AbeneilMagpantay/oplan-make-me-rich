@@ -668,3 +668,129 @@ round 3 also the coordinator's own read of the core modules.
   puts the book short that name half the time, and a real up-wick does the rest), whether R-O
   changes it, and whether what remains is a realistic property of a concentrated book or a
   property of the null world.
+
+## Round 7, addendum X12 (size arm) - 2026-11-22 - fix pass 10 built (306eb8c, 76765ce); the pilot reads NOT READY; one reused DEV bar; a gap in the rule after R-Q
+
+- State. Fix pass 10 was built from the ruling texts: stage A `306eb8c` (R-O in
+  `omr/ucalibrate.py`: the source keeps hm and lm per row, the world's mark bars carry them, the
+  loader reads mark_klines with the logged handle, universe protocol 8; R-P in `calibrate.decide`
+  and R-Q in both task_null, core protocol 5; NULL_NOT_EVALUATED_MAX = 0.03), stage B `76765ce`
+  (full suite 910 passed, 0 failed, 0 skipped in 2139 s on 306eb8c; 15 tests new). Coordinator's
+  review of the kernel diff, line by line: built as ruled, no defect found. The auditor measured
+  on its own copy (1442b42 with R-N, R-O and R-Q patched in from the ruling texts alone); its
+  bit-for-bit runs on 306eb8c are still to come.
+- W, the power arm after R-O (24 oracle books per cell at Sharpe 1.5, K = 20, counts at 0.05 and
+  at 0.10). Null A (copy before R-O; no book liquidated): fast 15 and 16, slow 11 and 16. Null B
+  on the R-O copy: fast 12 and 15 (rho 0.046750), slow 14 and 16 (rho 0.081875); 0 of 48 books
+  liquidated (34 of 48 before R-O); largest memory 0.37. The rule fixed in the X12-prep entry for
+  the number of lags (every power cell at 14 or more of 24 at 0.10) is met: 16, 16, 15, 16. K =
+  20 stands. With K = 40 the same books give 15, 15, 15, 16 at 0.10.
+- The carry liquidations under null A, the question left open in the last entry. Every one that
+  remains comes from one source bar, 2022-05-11 13:00 (effective up 4.895 by mark, 5.52 by last
+  price). The carry book is short that name at w = -0.33 to -0.42 because the R-E sign coin flips
+  a real funding of -0.41% per 8 hours; a real carry book would be long there. Coordinator's
+  judgment, with the auditor: a property of the null world, not of the book or the engine; R-Q is
+  the treatment (the pair drops out of numerator and denominator alike; about a quarter of the
+  null A carry pairs, 12 of 48); the family cannot pass anyway (mean VAL Sharpe -1.44 under null
+  A). No kernel change for it; one limitation sentence goes into CONSTITUTION section 12 in the
+  next pass. DEV panel rows with effective up of 3 or more: three (4.895 and 4.873 on that name;
+  6.987 on 2022-06-07 20:00 on another). After DEV end, counts only: 1 row at 3 or more, none at
+  4 or more, none with dn at 1/3 or less.
+- N, the size arm (48 worlds per null, three families, K = 20 with the speed limit). Per family:
+  not submitted under R-Q / evaluated / not evaluated after DEV; Tier-1 at 0.05 and at 0.10; mean
+  VAL Sharpe.
+  Null A (copy before R-O, read under R-Q): momentum 0 / 48 / 0; 1 and 1; -0.26. Reversal 0 / 48
+  / 0; 0 and 0; -0.66. Carry 12 / 36 / 0; 0 and 0; -1.44. R-P: 0 of 132.
+  Null B (copy with R-O and R-Q): momentum 0 / 45 / 3; 0 and 0; -0.51. Reversal 5 / 38 / 5; 0 and
+  0; -0.24. Carry 7 / 41 / 0; 0 and 0; -1.49. R-P: 8 of 132 = 6.1%, above 0.03: on source D null B
+  fails every threshold.
+  Triggers of the reading rule: no family has a mean VAL Sharpe above +0.5 and none is at 4 or
+  more of 48 at 0.10 under either null; null B has more than 1 liquidated row among its submitted
+  pairs, to be explained before any re-key.
+- The explanation (auditor's diagnostic p53). All 8 rows (reversal in five worlds, momentum in
+  three) are liquidated at the same world bar, in the part after DEV end, on a day that is not
+  flipped. That bar is source D's copy of the real DEV bar 2022-06-07 20:00, the only DEV panel
+  bar above 5 times the open (effective up 6.987 by mark, 7.56 by last price; mark and last price
+  agree, so R-O rightly leaves it). Every one of the 8 books is short that one name as its largest
+  position, w = -0.16 to -0.34 (contribution -0.98 to -2.00 of equity; the next largest -0.005 or
+  less); a lone short is liquidated at that bar from w = 0.975 / 5.99 = 0.16. Source D's block
+  sequence places that DEV day exactly once after DEV end. In the real run the bar exists once,
+  at its own date, in DEV; a draw it liquidates is not a candidate (R-Q) and R-P never sees it.
+  After DEV end the real panel has 1 row at an effective up of 3 or more and none at 4 or more, so
+  a lone short would need w of 0.33 or more; one of the 8 books (w = -0.335) reaches that.
+  Accepted: the 8 are a property of the pilot's source (its days after DEV end are DEV days, and
+  DEV holds the wilder bars), not of the kernel.
+- The odds, from the auditor's model written before the run (K = 20, W and N as measured, 200
+  null worlds and 100 oracle worlds per null, core 0.98): 0.02 as measured (R-P fails null B in
+  95% of the simulated runs); 0.31 with the 8 counted as none (0.10 chosen in 38% of runs, 0.05
+  in 33%, neither in 28%). Named limits: the pooled 3% and momentum's 6% under null A (1 of 48,
+  and a prior that leaves a family without a pass at about 2%), and the power at 0.05 (null A
+  slow 11 of 24).
+- Reading, by the rule fixed in advance: under 0.40 either way. NOT READY. The owner is not
+  asked for the re-key.
+- A gap in the rule after R-Q (coordinator, reading `calibrate.decide` against the diagnostic).
+  R-Q turns a liquidation on DEV into "not submitted". A breakage like W-F1 whose bad rows lie in
+  DEV (both of W-F1's did) would then show as pairs never submitted; R-P counts submitted pairs
+  only; decide skips a family without a submitted pair; a null with a handful of submitted pairs
+  and no pass qualifies every threshold. Thin evidence would read as safety: the loose side once
+  more. And R-P's 3% is a hard stop on a count that one real bar moves by several points (8 of
+  132 here): under null B the day order is real, so one bar after DEV end meets every world in
+  which its day is not flipped; after R-O such liquidations are real wicks, not artefacts, and a
+  liquidated no-skill book is a non-pass in the real evaluation as well.
+- Ruling R-R (fix pass 11, both units; replaces the cap of R-P).
+  (a) The pooled and the per-family null pass rates are Tier-1 passes over EVALUATED pairs (a
+  submitted pair that ends liquidated or faulted leaves the denominator, as a pair never
+  submitted already does). Never looser on the rate than before: the passes are the same and
+  evaluated <= submitted. A rate without an evaluated pair fails; no family is skipped.
+  (b) Evidence floors, under each null: every family must end with at least
+  FAMILY_EVALUATED_MIN = 0.50 of its designed pairs evaluated, and the null as a whole with at
+  least NULL_EVALUATED_MIN = 0.75 of its designed pairs; below either floor that null fails every
+  threshold.
+  (c) Faults: the share of submitted pairs whose status is neither "evaluated" nor "liquidated"
+  stays bounded at 0.03 (NULL_FAULT_MAX, which replaces NULL_NOT_EVALUATED_MAX), fail-closed on
+  the counts as before.
+  (d) Designed pairs are the worlds ordered for the null times the families, never the rows that
+  happen to be present; the stored null rows must be exactly one per protocol seed and family,
+  the oracle rows exactly one per protocol seed, speed and level; a missing, double or foreign
+  row stops the unit.
+  (e) The seal refuses a calibration whose sizes are not the protocol's (core 300 null worlds per
+  null and 200 oracle worlds; top30 200 and 100; kernel constants from now on). Found on the way:
+  `check_artifact` and `check_universe_artifact` test neither the sizes nor the row counts, so a
+  logged real run made with a reduced --worlds could have been sealed.
+- The auditor's attack on R-R, asked for before the build. No unintended loosening on the rate.
+  One loss named: R-P's 3% also worked as a sentinel for a milder breakage (5% to 40% of the
+  pairs lost with the survivors hurt); its remedy, the floor for the null as a whole at 0.75, is
+  adopted in (b). Two traps named and closed in (a) and (d): the designed count must come from
+  the protocol, and 0 of 0 must never read as a rate of 0. Its own choice for the family floor
+  was 0.60; ruled 0.50, because the pilot fixes carry's share under null A only to 36 of 48 (95%
+  interval about 0.61 to 0.85), so 0.60 is a floor the known, harmless loss can touch, and a stop
+  for that reason would cost a real run and say nothing about breakage. Shares evaluated of
+  designed in the pilot: null A momentum 48, reversal 48, carry 36 of 48, together 132 of 144;
+  null B on source D 45, 38 and 41 of 48, together 124 of 144. W-F1 would have been stopped (null
+  B before R-O, 16 worlds: 5, 3 and 6 of 16; together 14 of 48). Core, read from the sealed
+  artifact `ledger/calibration_7446278556aadd8f.json` (300 worlds per null, five families): every
+  family has at least 299 of 300 pairs evaluated under both nulls and evaluated = submitted
+  everywhere, so R-R leaves every core rate as it is.
+- Reading before the seal, fixed here: after the real calibration and before `kernel_lock seal`
+  the coordinator sets every family's evaluated share under each null against the pilot's (null
+  A 48, 48 and 36 of 48; null B, with the 8 rows of the replayed bar counted as evaluated, 48, 43
+  and 41 of 48) and explains any cell that differs by more than 0.15 before sealing. This is a
+  reading, not a bound of the rule: it asks for a cause, it does not stop the seal by itself.
+- Open, with the auditor (its reading of the sealed core artifact): core's null A pooled rate at
+  0.10 is 44 of 1498 = 2.94% against 3%, one pass to spare (largest family: donchian 14 of 300 =
+  4.67% against 6%). After the re-key the core calibration runs again; whether the new kernel
+  reproduces the sealed rows bit for bit is being read (the delta from `main` over everything the
+  core calibration imports; a fully synthetic dry run under both kernels), with core's power at
+  0.05 as the fallback. The answer enters the odds.
+- The pilot's size (coordinator's suspicion, the auditor to confirm by the ceiling of its model):
+  with 48 worlds per null and 24 books per power cell the model written before the run may not be
+  able to read 0.70 for any outcome, the priors of the cells without a pass doing most of the
+  work. If so, the rule fixed in the X12-prep entry could only ever say "not ready" or "advice
+  not to run": the coordinator's planning error, no property of the kernel. Remedy: ONE extension
+  of the pilot on the committed code, sized by a pre-posterior calculation of the same model, its
+  size and its reading rule recorded before its first world is built.
+- Counts allowed for the exposure after DEV end, in addition to those of the last entry: panel
+  rows with an effective up of 2.0, 2.5, 3.0 or 3.5 and more, and with an effective dn of 0.5,
+  0.4 or 1/3 and less (counts only; no price, name or date after 2022-06-30).
+- Detail: the auditor's findings file is copied into `audits/round7_findings.md` at its final
+  report.
