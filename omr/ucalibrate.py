@@ -49,7 +49,11 @@ ONE EXPECTED DAY GROSS, BOTH NULLS (fix pass 8, R-M; it replaces fix pass 7's R-
   holds positions between rebalances and the families' signals are n-day simple returns. High / open, low /
   open and close / open are untouched (every bar keeps its source shape); hour-of-day means and the path
   inside a source day are kept by design; the draws, the funding and a symbol's first row (the real first
-  open) are unchanged.
+  open) are unchanged. The day's factor sits on the gap ratios of the day's own rows, so a position opened at a
+  day's first open holds 23/24 of that day's factor and 1/24 of the next day's: the expected gross of such a hold
+  is exactly G while both days carry the same factor, and off by at most (next factor / this factor) ** (1 / 24)
+  where the factor changes (a set boundary, a switch between the shared and the fallback branch, null B's day
+  term).
 FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a fair coin drawn per
   settlement HOUR of the world (its own generator of the world seed), the same coin for every symbol that
   settles in that hour, so no funding payment can be predicted from earlier funding and a carry strategy

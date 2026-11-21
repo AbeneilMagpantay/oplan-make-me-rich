@@ -932,7 +932,15 @@ year; full_days_nonfinite 0. Dry-run synthetic universe (synthetic_source(), 170
 0.0526805549308387; 0.007142146291285913; 1.1322925403321595; 0. Reduced dry run below (60 symbols):
 G 1.001740350457411; 0.09765208908491096; 0.005791119630101154; 1.0414527028913656; 0. Checks on the test source:
 null A enumeration from the raw rows equals G to 6.7e-16 relative over every (set, symbol); null B day products
-equal G ** (n / 24) * (1 +- tanh x) to 8.0e-15 relative over 60,547 days (30 partial).
+equal G ** (n / 24) * (1 +- tanh x) to 8.0e-15 relative over 60,547 days (30 partial). The day's factor sits on
+the gap ratios of the day's own rows, so a position opened at a day's first open holds 23/24 of that day's factor
+and 1/24 of the next day's; the expected gross of such a hold is exactly G while both days carry the same factor
+and is off by at most (next factor / this factor) ^ (1/24) where the factor changes (a set boundary, a switch
+between the shared and the fallback branch, null B's day term). Measured as the largest |log of next factor / this
+factor| / 24 over every symbol and every pair of adjacent active days (stage B, scratch fp8_hold_boundary.py):
+about 0.43% per hold on the reduced dry run (null A, seeds 11000-11002; null B 0.10%) and 0.08% on the test source
+(null B; null A 0.05%, seeds 17, 11000, 11001); the stage A report's 0.4% and 0.07% were the bound from the largest
+single adjustment (0.41% and 0.065%). A symbol's first day is outside the exact day property (G[0] = 1 is kept).
 FP8-2 (omr/pipeline.py tier_at, the one implementation; omr/calibrate.py tier_at = pipeline.tier_at and
 GATES = list(pipeline.TIER_GATES)). Shapes of the stored rows (the sealed core artifact, 3,000 null and 1,600
 oracle rows; the pilot dry run): an evaluated row (null or oracle) has gates with exactly G1 G2 G3 G4 G5 G6 G7 G8
@@ -973,3 +981,16 @@ sha256 of the changed kernel and test files:
   12fd8e37d08a47a7e5660eeedec9e01450d30cd7718baaaa79baedb481e38633  tests/test_ledger_lock.py
   38aba87fa35d99ff4f708a684192557c6b5001c50043a790b3285b64ddf1ab43  tests/test_ucalibrate.py
 KERNEL_PROPOSALS.md (not a kernel file): fcd2b6863cb872ba741a9552219860ff3612f46c2a40e61f1f6f0ee43a28800a
+Fix pass 8, stage B (on 258c1a5). B-1: the held-position boundary above is now also stated in the R-M paragraph of
+the omr/ucalibrate.py docstring. B-2: FP8-4 cases (a) to (d) are in test_fp8_4_the_null_advisory_reads_the_counts_so_far,
+(e) in test_fp8_4_a_malformed_row_makes_the_advisory_unavailable_once_and_the_run_goes_on (now also: the run's
+results equal those of a clean run), the advisory logged once with its counts in
+test_fp8_4_calibrate_run_logs_the_null_advisory_once_with_the_counts; added (f)
+test_fp8_4_the_pooled_bound_alone_makes_a_threshold_dead (families 4, 4 and 2 of a cap of 6, together 10 over 9:
+0.10 dead by the pooled bound alone with 0.05 open, and every threshold dead when the passes are at every
+threshold). Full suite on the final kernel and test files: 891 passed in 1585.34 s, 0 failed, 0 skipped; python -m
+omr.ledger verify OK (trials 10, stage1_log 1, kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log
+15); ledger/, data/, kernel.lock, audits/ and STATE.md unchanged. sha256 of the files changed in stage B (kernel
+and test files; this note changed too):
+  1beb17bd8d052fb8671a7d5e76383fe6e979df59403f12e8996fa9782856a675  omr/ucalibrate.py
+  744a593e3cb484e20942d4544ae90727407bc86c2f96bea5a6e878e30bf9f152  tests/test_ucalibrate.py

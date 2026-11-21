@@ -956,3 +956,18 @@ def test_fp8_4_a_malformed_row_makes_the_advisory_unavailable_once_and_the_run_g
     un = [ln for ln in logs if ln.startswith("null advisory unavailable: ")]
     assert len(un) == 1 and un[0].startswith("null advisory unavailable: ValueError: ") and "gate G1 is missing" in un[0]
     assert len(nulls["A"]["rows"]) == 60 and len(nulls["B"]["rows"]) == 60
+    _, clean = _fake_null_run(monkeypatch, lambda null, seed: _nrows(null, 1, start=seed))
+    assert nulls == clean                                                        # the run's results are unchanged
+
+
+def test_fp8_4_the_pooled_bound_alone_makes_a_threshold_dead():
+    """Case f: no single family over its count (4, 4 and 2 passes, a family's cap 6), the three together over
+    NULL_PASS_MAX x worlds x families (10 > 9)."""
+    fams, W = list(UC.FAMILIES), 100
+    split = {fams[0]: [0.08] * 4, fams[1]: [0.08] * 4, fams[2]: [0.08] * 2}       # pass at 0.10 only
+    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8())
+    assert "at 0.1: 10 (cap 9), per family " in lines[0] and lines[0].count("DEAD (pooled)") == 1
+    assert "at 0.05: 0 (cap 9)" in lines[0] and stop == []                       # 0.05 still open, power fine
+    split = {f: [0.01] * len(v) for f, v in split.items()}                         # pass at every threshold
+    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8())
+    assert lines[0].count("DEAD (pooled)") == 3 and stop and stop[0].startswith("every G6 threshold is already dead")
