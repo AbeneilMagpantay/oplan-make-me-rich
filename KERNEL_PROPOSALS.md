@@ -304,6 +304,27 @@ rates, status.
   information only); a STOP names, for each threshold, the bound and the null that failed; the seal's refusal
   shows the family rates. omr/ucalibrate.py PROTOCOL_VERSION 5, omr/calibrate.py PROTOCOL_VERSION 4.
   Evidence: notes/kp015_build_evidence.md.
+- Fix pass 8 (2026-11-21; audit round 7, addendum X11 judged 58ba59e NOT READY, with no code defect and no
+  false-pass risk; the coordinator's rulings): R-M replaces R-K. In both top30 nulls every symbol has ONE
+  expected day gross G on every world day (day gross = the product of the day's 24 hourly close / previous
+  close ratios; G = its mean over all fully active symbol-days of the source). X11: the momentum family still
+  reached Tier 1 in 4 / 6 / 9 of 48 null A worlds at 0.025 / 0.05 / 0.10 (8.3 / 12.5 / 18.8%); in the null
+  worlds of both nulls its VAL Sharpe was about 2 and it passed every gate but G6 in 47 of 48 worlds. Both
+  nulls kept each symbol's own sample mean as its expected return (null A: R-K's c; null B: the mirror's centre
+  plus the log mirror's own drift), and on a source with no true difference between symbols those means
+  differed by 0.6 to 0.7 a year: a permanent difference a slow momentum book collects. Null A: shared-branch
+  rows are multiplied by (G / M(Q, s))^(1/24), fallback rows by (G / M(s))^(1/24) (R-K left fallback days
+  alone); null B: every active row by G^(1/24) exp(-m) cosh(x)^(-1/n), so a day's gross is G^(n/24) (1 +- tanh
+  x), G^(n/24) in expectation whatever the path. Simple day returns are equalised because positions are held
+  between rebalances. The draws, the bar shapes, the funding and the core unit are unchanged; the null B worlds
+  change. On the test suite's synthetic source the spread of the expected day gross across symbols (SD of
+  (E - 1) x 365) went from 0.685 (null A) and 0.684 (null B) to zero within rounding. FP8-2: tier_at (one
+  implementation in omr/pipeline.py, which omr/calibrate.py refers to) raises on a malformed evaluated row (a
+  required gate missing or not a boolean, perm_p not a finite number in [0, 1]) and the unit verdict is the
+  "malformed" STOP; reading such a row as "not passing" would be the loose direction for a null row. FP8-3:
+  unit_verdict catches every Exception. FP8-4: an advisory during the null phases (log only) when the passes so
+  far already exceed the pooled or a family bound at every threshold, or the largest threshold still open lacks
+  oracle power. omr/ucalibrate.py PROTOCOL_VERSION 6. Evidence: notes/kp015_build_evidence.md.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 

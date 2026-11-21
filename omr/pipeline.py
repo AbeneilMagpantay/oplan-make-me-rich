@@ -481,9 +481,50 @@ def dev_only_buckets(buckets: list) -> list:
     return [x if ends[x["bucket"]] <= end else {"bucket": x["bucket"], "n_days": x["n_days"]} for x in buckets]
 
 
+# The calibration's gates (omr.calibrate.GATES refers to this tuple); every one but G6 must be stored for an
+# evaluated calibration row
+TIER_GATES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10")
+
+
+def _is_bool(v) -> bool:
+    return isinstance(v, (bool, np.bool_))
+
+
 def tier_at(row: dict, p_max: float) -> bool:
-    """Tier 1 re-read at G6 threshold p_max from stored gate outcomes (calibration rows)."""
+    """Tier 1 re-read at G6 threshold p_max from a stored calibration row (the one implementation; omr.calibrate
+    refers to it). A row whose status is not "evaluated" is not Tier 1. An evaluated row must be well formed,
+    otherwise ValueError (fix pass 8, FP8-2): "gates" a mapping holding every gate of TIER_GATES but G6 with a
+    boolean (Python or numpy); G6 and G8 may be None or absent (G6 is re-read from perm_p and its stored value is
+    ignored; G8 is not run in calibration); a G8 or any other gate that is present and not None must be a boolean
+    and counts; perm_p a finite number in [0, 1] (not a bool). Why it raises instead of reading the row as "not
+    passing": that reading is the LOOSE direction for a null row (it lowers the null pass rate) and the strict one
+    for an oracle row (it lowers the power), so no silent reading is safe in both; the unit verdict turns the
+    ValueError into the "malformed" STOP."""
     if row.get("status") != "evaluated":
         return False
-    others = [v for k, v in row["gates"].items() if k != "G6" and v is not None]
-    return all(others) and row["perm_p"] <= p_max + 1e-12
+    who = f"world_seed {row.get('world_seed')!r}, " + (f"family {row.get('family')!r}" if "family" in row
+                                                         else f"speed {row.get('speed')!r}")
+    gates = row.get("gates")
+    if not isinstance(gates, dict):
+        raise ValueError(f"evaluated calibration row ({who}): gates is not a mapping ({type(gates).__name__})")
+    ok = True
+    for g in TIER_GATES:
+        if g == "G6":
+            continue
+        if g not in gates:
+            raise ValueError(f"evaluated calibration row ({who}): gate {g} is missing")
+        if not _is_bool(gates[g]):
+            raise ValueError(f"evaluated calibration row ({who}): gate {g} is not a boolean ({gates[g]!r})")
+        ok = ok and bool(gates[g])
+    for g, v in gates.items():
+        if g in TIER_GATES and g != "G6" or v is None:
+            continue
+        if not _is_bool(v):
+            raise ValueError(f"evaluated calibration row ({who}): gate {g} is not a boolean ({v!r})")
+        if g != "G6":
+            ok = ok and bool(v)
+    p = row.get("perm_p")
+    if isinstance(p, (bool, np.bool_)) or not isinstance(p, (int, float, np.integer, np.floating)) or \
+            not math.isfinite(float(p)) or not (0.0 <= float(p) <= 1.0):
+        raise ValueError(f"evaluated calibration row ({who}): perm_p is not a finite number in [0, 1] ({p!r})")
+    return ok and float(p) <= p_max + 1e-12

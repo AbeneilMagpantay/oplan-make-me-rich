@@ -501,7 +501,7 @@ def test_f6_oracle_phases_run_first_and_a_hopeless_power_is_announced(monkeypatc
     phases, with full power none."""
     calls = []
 
-    def fake_run_tasks(pool, partial, kind, arglist, log, label):
+    def fake_run_tasks(pool, partial, kind, arglist, log, label, on_progress=None):
         calls.append(kind)
         if kind == "power":
             return _power_rows(arglist[0][0], perm_p, seeds=range(len(arglist)))
@@ -603,21 +603,40 @@ def test_f9_the_reversal_family_is_the_momentums_mirror_on_daily_bars():
         assert np.array_equal(UP.uweights(r_raw), -UP.uweights(m_raw))
 
 
-# ---------------------------------------------------------------- fix pass 7: R-K one expected daily return (null A)
+# ---------------------------------------------------------------- fix pass 8: R-M one expected day gross (both nulls)
+
+# The draws BEFORE the R-M edit (code at 58ba59e; the test source; null A seed 17, null B seed 4): R-M changes no draw
+DRAWS_58BA59E = {"pick_A17": "413a4e1ba9aac100e26c4bbd937e50c7d85d6b1f08357d0340a18a17f14255e4",
+                 "source_days_A17": "53dd79441e6188c110c3a367a961ad229dbaa1d46d479398ccdc91c8535d6c82",
+                 "flip_B4": "c4d6431be672a4a85a5304b38c991981b71fb3b474b5f845276afaf71714e0e9"}
 
 
-def _sym_days(src, s):
-    """(global full mask, global day returns with NaN where not full or not finite) of symbol s."""
+def _sha(a, dt) -> str:
+    import hashlib
+    return hashlib.sha256(np.ascontiguousarray(np.asarray(a, dtype=dt)).tobytes()).hexdigest()
+
+
+def _raw(src, s):
+    """From the raw rows only (no kernel helper): per row the local day, the active flag and lrt = log(g * cr);
+    per local day full (24 active rows, finite sum) and the day's log gross (NaN unless full)."""
+    m = src.sym(s)
+    g, cr = np.asarray(src.rows(s, "g"), dtype=np.float64), np.asarray(src.rows(s, "cr"), dtype=np.float64)
+    act = np.asarray(src.rows(s, "act"), dtype=bool)
+    lrt = np.log(g * cr)
+    ld = (m["start"] + H * np.arange(m["n"])) // U.DAY_NS - m["sd0"]
+    cnt = np.bincount(ld[act], minlength=m["nd"])[:m["nd"]]
+    sm = np.bincount(ld[act], weights=lrt[act], minlength=m["nd"])[:m["nd"]]
+    full = (cnt == 24) & np.isfinite(sm)
+    return ld, act, lrt, full, np.where(full, sm, np.nan)
+
+
+def _global(src, s, local):
     m = src.sym(s)
     shift = m["sd0"] - src.D0
-    fl = np.asarray(src.arr["full"][m["full_off"]:m["full_off"] + m["nd"]], dtype=bool)
-    dr = np.asarray(src.arr["dret"][m["full_off"]:m["full_off"] + m["nd"]], dtype=np.float64)
-    full = np.zeros(src.ND, dtype=bool)
-    ret = np.full(src.ND, np.nan)
-    n = min(len(fl), src.ND - shift)
-    full[shift:shift + n] = fl[:n]
-    ret[shift:shift + n] = np.where(fl[:n] & np.isfinite(dr[:n]), dr[:n], np.nan)
-    return full, ret
+    out = np.full(src.ND, np.nan)
+    n = min(m["nd"], src.ND - shift)
+    out[shift:shift + n] = local[:n]
+    return out
 
 
 def _pool_sets(src):
@@ -626,92 +645,135 @@ def _pool_sets(src):
     return sets + [np.arange(src.meta["pool_lo"], src.ND)]
 
 
-def test_r_k_t1_every_set_and_symbol_has_the_symbols_one_mean_after_the_adjustment(world_src):
+def _common_gross(src) -> float:
+    tot, cnt = 0.0, 0
+    for s in src.symbols:
+        d = _raw(src, s)[4]
+        v = np.exp(d[np.isfinite(d)])
+        tot, cnt = tot + float(v.sum()), cnt + len(v)
+    return tot / cnt
+
+
+def _null_a_expected(src, k, s, j, Q) -> float:
+    """P(shared) * mean over Q's full days of Qd * exp(pool_adj) + P(fallback) * mean over all full days of Qd * exp(fb_adj);
+    the pick is uniform over Q, the fallback uniform over the symbol's full days."""
+    pa, fb = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["fb_adj"])
+    loc = _raw(src, s)[4]
+    qd_all = np.exp(loc[np.isfinite(loc)])
+    gq = _global(src, s, loc)[Q]
+    v = np.exp(gq[np.isfinite(gq)])
+    p_sh = len(v) / len(Q)
+    sh = float(np.mean(v * np.exp(pa[j, k]))) if len(v) else 0.0
+    return p_sh * sh + (1.0 - p_sh) * float(np.mean(qd_all * np.exp(fb[k])))
+
+
+def test_r_m_t1_null_a_every_set_and_symbol_expects_the_common_day_gross(world_src):
     _, _, _, src = world_src
-    adj, c = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["sym_c"])
+    Gc = _common_gross(src)
+    assert src.meta["pools"]["common_day_gross"] == pytest.approx(Gc, rel=1e-12)
+    assert src.meta["pools"]["full_days_nonfinite"] == 0
+    assert "sym_c" not in src.arr and "dret" not in src.arr                     # no dead array in the shared spec
+    pa, fb = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["fb_adj"])
     sets = _pool_sets(src)
-    assert adj.shape == (len(sets), len(src.symbols)) and src.meta["pools"]["full_days_nonfinite"] == 0
+    assert pa.shape == (len(sets), len(src.symbols)) and fb.shape == (len(src.symbols),)
     checked = 0
     for k, s in enumerate(src.symbols):
-        full, ret = _sym_days(src, s)
-        assert c[k] == pytest.approx(float(np.nanmean(ret)), abs=1e-12)          # c_s over ALL its full days
+        loc = _raw(src, s)[4]
+        qd_all = np.exp(loc[np.isfinite(loc)])
+        if not len(qd_all):
+            assert fb[k] == 0.0 and not pa[:, k].any()
+            continue
+        assert np.exp(fb[k]) == pytest.approx(Gc / qd_all.mean(), rel=1e-12)    # G / M(s)
+        gq = _global(src, s, loc)
         for j, Q in enumerate(sets):
-            v = ret[Q][np.isfinite(ret[Q])]
+            v = np.exp(gq[Q][np.isfinite(gq[Q])])
             if len(v):
-                assert abs(float(np.mean(v)) + adj[j, k] - c[k]) <= 1e-12
-                checked += 1
+                assert np.exp(pa[j, k]) == pytest.approx(Gc / v.mean(), rel=1e-12)   # G / M(Q, s)
             else:
-                assert adj[j, k] == 0.0
+                assert pa[j, k] == 0.0
+            assert abs(_null_a_expected(src, k, s, j, Q) / Gc - 1.0) <= 1e-12, (s, j)
+            checked += 1
     assert checked > 100
 
 
-def test_r_k_t2_world_days_carry_the_adjustment_on_the_shared_branch_only(world_src):
+def test_r_m_t2_world_rows_carry_the_day_factor_and_the_draws_did_not_change(world_src):
     _, panel, _, src = world_src
-    w = UC.UWorld(src, "A", 17)
-    adj = np.asarray(src.arr["pool_adj"])
-    dp = np.asarray(src.arr["day_pool"])
+    wa, wb = UC.UWorld(src, "A", 17), UC.UWorld(src, "B", 4)
+    assert _sha(wa.pick, np.int64) == DRAWS_58BA59E["pick_A17"]
+    assert _sha(np.concatenate([wa.source_days(s) for s in src.symbols]), np.int64) == DRAWS_58BA59E["source_days_A17"]
+    assert _sha(wb.flip, np.uint8) == DRAWS_58BA59E["flip_B4"]
+    pa, fb, dp = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["fb_adj"]), np.asarray(src.arr["day_pool"])
     seen = {"shared": 0, "fallback": 0}
     for s in panel[:10]:
         m, k = src.sym(s), src.k[s]
         shift = m["sd0"] - src.D0
-        kl = w.tables(s, trim=False)["klines"]
-        act = np.asarray(src.rows(s, "act"), dtype=bool)
-        sd, ok = w._source_days(s)
-        _, ret = _sym_days(src, s)
-        tns = m["start"] + U.HOUR_NS * np.arange(m["n"])
-        ld = tns // U.DAY_NS - m["sd0"]
-        close = kl["close"].to_numpy()
-        for d in np.unique(ld)[1:][::9]:                                       # never the first row's day
+        kl = wa.tables(s, trim=False)["klines"]
+        ld, act, lrt, full, loc = _raw(src, s)
+        gq = _global(src, s, loc)
+        sd, ok = wa._source_days(s)
+        tns = m["start"] + H * np.arange(m["n"])
+        hour = (tns // H) % 24
+        o, c = kl["open"].to_numpy(), kl["close"].to_numpy()
+        prev = np.r_[m["first_open"], c[:-1]]
+        ai = np.nonzero(act)[0]
+        ai = ai[ai > 0]                                                          # row 0 keeps G = 1 (the real first open)
+        sr = ((sd[ld[ai]] + src.D0) * U.DAY_NS + hour[ai] * H - m["start"]) // H
+        gd = ld[ai] + shift
+        adj = np.where(ok[ld[ai]], pa[np.where(dp[gd] >= 0, dp[gd], pa.shape[0] - 1), k], fb[k])
+        np.testing.assert_allclose((o[ai] / prev[ai]) / np.asarray(src.rows(s, "g"))[sr], np.exp(adj / 24.0), rtol=1e-12)
+        for col, name in (("high", "hr"), ("low", "lr"), ("close", "cr")):
+            np.testing.assert_allclose(kl[col].to_numpy()[ai] / o[ai], np.asarray(src.rows(s, name))[sr], rtol=1e-12)
+        for d in np.unique(ld[ai])[1::5]:
             rows = np.nonzero(ld == d)[0]
             if len(rows) != 24 or not act[rows].all() or rows[0] == 0:
                 continue
-            got = float(np.log(close[rows[-1]]) - np.log(close[rows[0] - 1]))
-            gsrc = int(sd[d])
-            if ok[d]:
-                q = dp[d + shift] if dp[d + shift] >= 0 else adj.shape[0] - 1
-                want = ret[gsrc] + adj[q, k]
-                seen["shared"] += 1
-            else:
-                want = ret[gsrc]
-                seen["fallback"] += 1
-            assert abs(got - want) <= 1e-9, (s, d, ok[d])
-        ai = np.nonzero(act)[0][1:]                                              # (c) every active row's shape
-        hour = (tns // U.HOUR_NS) % 24
-        sr = ((sd[ld[ai]] + src.D0) * U.DAY_NS + hour[ai] * U.HOUR_NS - m["start"]) // U.HOUR_NS
-        o = kl["open"].to_numpy()[ai]
-        for col, name in (("high", "hr"), ("low", "lr"), ("close", "cr")):
-            np.testing.assert_allclose(kl[col].to_numpy()[ai] / o, np.asarray(src.rows(s, name))[sr], rtol=1e-12)
+            a = (pa[dp[d + shift] if dp[d + shift] >= 0 else -1, k]) if ok[d] else fb[k]
+            got = float(np.prod(c[rows] / prev[rows]))                          # the world day's gross
+            assert abs(got / (float(np.exp(gq[sd[d]])) * float(np.exp(a))) - 1.0) <= 1e-12   # Qd * factor ** 24
+            seen["shared" if ok[d] else "fallback"] += 1
     assert seen["shared"] > 20 and seen["fallback"] > 5
 
 
-def test_r_k_t3_the_finding_in_miniature(world_src):
-    """For every pooled month and member, the expected day return under the builder's rule (the pool enumerated,
-    the adjustment applied) equals c_s; without the adjustment it would vary across members."""
+def test_r_m_t3_the_finding_in_miniature_every_symbol_expects_the_same_day_gross_under_both_nulls(world_src):
+    """The test source's symbols have clearly different sample means (a drift per symbol). Under the 58ba59e
+    construction (null A: R-K's c_s; null B: the mirror's centre m) the expected day gross differed across the 44
+    symbols: SD of (expected day gross - 1) x 365 = 0.685 under null A (the whole-period set; 0.709 median over the
+    pooled months' members) and 0.684 under null B (computed once before the edit; scratch fp8_pre_records.py).
+    Under R-M it is G for every symbol: null A by enumeration, null B by the two faces of every day."""
     _, _, _, src = world_src
-    adj, c = np.asarray(src.arr["pool_adj"]), np.asarray(src.arr["sym_c"])
+    Gc = src.meta["pools"]["common_day_gross"]
     sets = _pool_sets(src)
-    acts = src.acts(pd.Timestamp(C.VAL_END, tz="UTC").value)
-    mem = U.membership(acts, list(acts), pd.Timestamp(C.UNIVERSE_START, tz="UTC").value,
-                       pd.Timestamp(C.VAL_END, tz="UTC").value)
-    dp = np.asarray(src.arr["day_pool"])
-    with_adj, without = [], []
-    for i, mo in enumerate(mem.months):
-        if not mem.unit_exists("top30", i):
-            continue
-        g = int(mo) // U.DAY_NS - src.D0
-        if g >= len(dp) or dp[g] < 0:
-            continue
-        Q = sets[dp[g]]
-        diffs = []
-        for s in mem.members("top30", i):
-            k = src.k[s]
-            _, ret = _sym_days(src, s)
-            e = float(np.mean(ret[Q]))                                           # every member is full on every pool day
-            with_adj.append(e + adj[dp[g], k] - c[k])
-            diffs.append(e - c[k])
-        without.append(float(np.std(diffs)))
-    assert with_adj and max(abs(x) for x in with_adj) <= 1e-12
-    assert max(without) > 0.0                                                    # so the test can fail
+    own, devA = [], 0.0
+    for k, s in enumerate(src.symbols):
+        loc = _raw(src, s)[4]
+        own.append(float(np.mean(np.exp(loc[np.isfinite(loc)]))))
+        for j, Q in enumerate(sets):
+            devA = max(devA, abs(_null_a_expected(src, k, s, j, Q) / Gc - 1.0))
+    assert float(np.std((np.array(own) - 1.0) * 365, ddof=1)) > 0.3            # the sample means do differ
+    assert devA <= 1e-12
+    w = UC.UWorld(src, "B", 4)
+    w2 = UC.UWorld(src, "B", 4)
+    w2.flip = ~w.flip                                                            # the other face of every day
+    devB, n_days = 0.0, 0
+    for s in src.symbols:
+        m = src.sym(s)
+        ld, act, lrt, full, loc = _raw(src, s)
+        faces = []
+        for ww in (w, w2):
+            c = ww.tables(s, trim=False)["klines"]["close"].to_numpy()
+            lg = np.log(c / np.r_[m["first_open"], c[:-1]])
+            faces.append(np.exp(np.bincount(ld[act], weights=lg[act], minlength=m["nd"])[:m["nd"]]))
+        days = np.nonzero(full)[0]
+        days = days[days > ld[0]]                                                # not the first day (G[0] = 1)
+        e = float(np.mean((faces[0][days] + faces[1][days]) / 2.0))
+        devB = max(devB, abs(e / Gc - 1.0))
+        n_days += len(days)
+    assert devB <= 1e-12 and n_days > 1000
+
+
+NULL_B_PIN = "50fe43f66e8c08bfd0b0b03ce5f8c13d309c2a2a4b148ef62530d620ced3e6a7"      # R-M (fix pass 8)
+# The pin of fix passes 6 to 7b no longer matches: R-M multiplies every active null B row by its day factor
+NULL_B_PIN_58BA59E = "e7ec7d09d5f3dc0176c2f766a1fcc2daf7e28037b1d5686bbc17829e4c96892e"
 
 
 def _frames_sha(frames) -> str:
@@ -727,26 +789,49 @@ def _frames_sha(frames) -> str:
     return h.hexdigest()
 
 
-NULL_B_PIN = "e7ec7d09d5f3dc0176c2f766a1fcc2daf7e28037b1d5686bbc17829e4c96892e"     # at 6d9fb34, before R-K
-
-
-def test_r_k_t4_null_b_worlds_are_byte_identical_to_fix_pass_6(world_src):
+def test_r_m_t4_null_b_day_products_flipped_and_unflipped_full_and_partial(world_src):
     _, panel, _, src = world_src
+    Gc = src.meta["pools"]["common_day_gross"]
     w = UC.UWorld(src, "B", 4)
+    kinds = {"flipped": 0, "unflipped": 0, "partial": 0}
+    for s in src.symbols:
+        m = src.sym(s)
+        ld, act, lrt, full, loc = _raw(src, s)
+        kl = w.tables(s, trim=False)["klines"]
+        o, c = kl["open"].to_numpy(), kl["close"].to_numpy()
+        lg = np.log(c / np.r_[m["first_open"], c[:-1]])                         # log(G_row * CR_row) of the world
+        cnt = np.bincount(ld[act], minlength=m["nd"])[:m["nd"]]
+        x = np.bincount(ld[act], weights=lrt[act] - m["m"], minlength=m["nd"])[:m["nd"]]
+        got = np.exp(np.bincount(ld[act], weights=lg[act], minlength=m["nd"])[:m["nd"]])
+        for d in np.nonzero(cnt)[0]:
+            if d == ld[0]:
+                continue                                                         # the first day: G[0] = 1
+            fl = bool(w.flip[d + m["sd0"] - src.D0])
+            want = Gc ** (cnt[d] / 24.0) * ((1.0 - np.tanh(x[d])) if fl else (1.0 + np.tanh(x[d])))
+            assert abs(got[d] / want - 1.0) <= 1e-12, (s, d, fl)
+            kinds["flipped" if fl else "unflipped"] += 1
+            kinds["partial"] += int(cnt[d] < 24)
+        F = w.flip[ld + m["sd0"] - src.D0] & act                                 # shapes as before R-M
+        hr, lr, cr = (np.asarray(src.rows(s, nm)) for nm in ("hr", "lr", "cr"))
+        np.testing.assert_allclose(kl["high"].to_numpy()[act] / o[act], np.where(F, 1.0 / lr, hr)[act], rtol=1e-12)
+        np.testing.assert_allclose(kl["low"].to_numpy()[act] / o[act], np.where(F, 1.0 / hr, lr)[act], rtol=1e-12)
+        np.testing.assert_allclose(c[act] / o[act], np.where(F, 1.0 / cr, cr)[act], rtol=1e-12)
+    assert kinds["flipped"] > 100 and kinds["unflipped"] > 100 and kinds["partial"] > 5
     frames = []
     for s in (panel[1], panel[4]):
         t = w.tables(s, trim=False)
         frames += [t["klines"], t["funding"]]
-    assert _frames_sha(frames) == NULL_B_PIN
+    sha = _frames_sha(frames)
+    assert sha == NULL_B_PIN and sha != NULL_B_PIN_58BA59E
 
 
-def test_r_k_t5_a_version_4_partial_file_is_refused(tmp_path):
-    h5 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
-    assert h5["protocol_version"] == UC.PROTOCOL_VERSION == 5
-    p = tmp_path / "v4.partial.jsonl"
-    UC.Partial(p, dict(h5, protocol_version=4), log=lambda *a: None)
+def test_r_m_t5_a_version_5_partial_file_is_refused(tmp_path):
+    h6 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
+    assert h6["protocol_version"] == UC.PROTOCOL_VERSION == 6
+    p = tmp_path / "v5.partial.jsonl"
+    UC.Partial(p, dict(h6, protocol_version=5), log=lambda *a: None)
     with pytest.raises(UC.PartialMismatch):
-        UC.Partial(p, h5, log=lambda *a: None)
+        UC.Partial(p, h6, log=lambda *a: None)
 
 
 def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypatch):
@@ -774,3 +859,100 @@ def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypat
         o["B"]["summary"]["slow|1.5"]["mean_val_sharpe"] = 1.625
     monkeypatch.setattr(UC.CB, "RHO_BOUND", 0.125)
     assert adv(exact)[1] == []                                                   # exactly at both bounds: no STOP
+
+
+# ---------------------------------------------------------------- fix pass 8: FP8-4 the null advisory (log only)
+
+_GATES8 = {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}
+
+
+def _nrows(null, worlds, passes=None, start=0):
+    """worlds x families null rows; passes {family: [perm_p of its first worlds]} (the others 0.5)."""
+    rows = []
+    for i in range(start, start + worlds):
+        for f in UC.FAMILIES:
+            ps = (passes or {}).get(f, [])
+            rows.append({"null": null, "family": f, "world_seed": i, "submitted": True, "status": "evaluated",
+                         "params": {}, "val_sharpe": 0.1, "perm_p": ps[i - start] if i - start < len(ps) else 0.5,
+                         "gates": dict(_GATES8)})
+    return rows
+
+
+def _oracle8(slow_a_perm_p=0.001):
+    out = {}
+    for n in ("A", "B"):
+        rows = [{"speed": s, "level": 1.5, "world_seed": i, "status": "evaluated", "val_sharpe": 1.5, "rho": 0.1,
+                 "perm_p": slow_a_perm_p if (n == "A" and s == "slow") else 0.001, "gates": dict(_GATES8)}
+                for s in UC.USPEEDS for i in range(10)]
+        out[n] = {"summary": UC.oracle_summary(rows)}
+    return out
+
+
+def test_fp8_4_the_null_advisory_reads_the_counts_so_far():
+    fams, W = list(UC.FAMILIES), 100                     # caps: pooled 0.03 x 300 = 9 passes, a family 0.06 x 100 = 6
+    mom = "ucal_xs_momentum"
+    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 6}), "B": []}, W, fams, _oracle8())
+    assert stop == [] and len(lines) == 2 and "50 of 100 worlds" in lines[0]                 # nothing dead: silent
+    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 7}), "B": []}, W, fams, _oracle8())
+    assert len(stop) == 1 and stop[0].startswith("every G6 threshold is already dead") and "DEAD" in lines[0]
+    lines, stop = UC.null_advisory({"A": [], "B": _nrows("B", 40, {f: [0.01] * 4 for f in fams[:2]} |
+                                                         {fams[2]: [0.01, 0.01]})}, W, fams, _oracle8())
+    assert stop and stop[0].startswith("every G6 threshold is already dead")                # pooled 10 > 9
+    slow_low = _oracle8(slow_a_perm_p=0.04)              # null A slow: power 0 at 0.025, 1 at 0.05 and 0.10
+    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.04] * 7}), "B": []}, W, fams, slow_low)
+    assert stop == ["largest threshold not dead 0.025: null A slow: power at 0.025 below 0.5"]
+    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.08] * 7}), "B": []}, W, fams, slow_low)
+    assert stop == []                                    # only 0.10 dead; power at 0.05 is fine: silent
+    bad = _nrows("A", 2)
+    bad[1]["gates"] = {}
+    with pytest.raises(ValueError):
+        UC.null_advisory({"A": bad, "B": []}, W, fams, _oracle8())
+
+
+def _fake_null_run(monkeypatch, rows_for, malformed_first=False):
+    """calibrate_run with fabricated tasks: power rows at full power; every null task fills the partial's
+    done mapping and calls on_progress (once with a malformed row in it when malformed_first)."""
+    class Part:
+        done = {}
+
+    def fake_run_tasks(pool, partial, kind, arglist, log, label, on_progress=None):
+        if kind == "power":
+            return _power_rows(arglist[0][0], 0.001, seeds=range(len(arglist)))
+        out = []
+        for null, seed in arglist:
+            rows = rows_for(null, seed)
+            key = UC.task_key("null", [null, seed])
+            if malformed_first:
+                broken = [dict(r) for r in rows]
+                broken[0]["gates"] = {}
+                partial.done[key] = broken
+                on_progress()
+            partial.done[key] = rows
+            out.append(rows)
+            if on_progress is not None:
+                on_progress()
+        return out
+    monkeypatch.setattr(UC, "run_tasks", fake_run_tasks)
+    monkeypatch.setattr(UC, "tune_rho", lambda pool, partial, null, speed, seeds, log: {"1.5": {"rho": 0.1}})
+    logs = []
+    nulls, oracle = UC.calibrate_run(None, Part(), list(UC.FAMILIES), 20, 4, logs.append)
+    return logs, nulls
+
+
+def test_fp8_4_calibrate_run_logs_the_null_advisory_once_with_the_counts(monkeypatch):
+    mom = "ucal_xs_momentum"
+    logs, nulls = _fake_null_run(monkeypatch, lambda null, seed: _nrows(null, 1, {mom: [0.01]}, start=seed))
+    adv = [ln for ln in logs if ln.startswith("ADVISORY: the seal rule will STOP whatever the rest of the null")]
+    assert len(adv) == 1 and "every G6 threshold is already dead" in adv[0]
+    i = logs.index(adv[0])
+    assert logs[i - 3].startswith("  null advisory, null A") and logs[i - 2].startswith("  null advisory, null B")
+    assert len(nulls["A"]["rows"]) == 60 and not any("unavailable" in ln for ln in logs)
+    quiet, _ = _fake_null_run(monkeypatch, lambda null, seed: _nrows(null, 1, start=seed))
+    assert not any("null advisory" in ln or "rest of the null" in ln for ln in quiet)       # nothing dead: silent
+
+
+def test_fp8_4_a_malformed_row_makes_the_advisory_unavailable_once_and_the_run_goes_on(monkeypatch):
+    logs, nulls = _fake_null_run(monkeypatch, lambda null, seed: _nrows(null, 1, start=seed), malformed_first=True)
+    un = [ln for ln in logs if ln.startswith("null advisory unavailable: ")]
+    assert len(un) == 1 and un[0].startswith("null advisory unavailable: ValueError: ") and "gate G1 is missing" in un[0]
+    assert len(nulls["A"]["rows"]) == 60 and len(nulls["B"]["rows"]) == 60

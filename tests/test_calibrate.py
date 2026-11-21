@@ -301,8 +301,9 @@ def test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form():
         r["val_sharpe"] = np.float64(r["val_sharpe"])
         if i % 7 == 3:
             r["gates"]["G3"] = np.bool_(False)
-        elif i % 7 == 5:
-            r["gates"]["G3"] = None
+        elif i % 7 == 5:                                                         # FP8-2: G3 None would be malformed
+            r["status"] = "kernel_fault"
+            del r["gates"], r["perm_p"]
         elif i % 7 == 6:
             r["gates"]["G3"] = False
     rows[1]["gates"]["G3"] = np.bool_(True)
@@ -320,8 +321,10 @@ def test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form():
     assert mem["by_threshold"]["0.1"]["pass_rate_dev_positive"] == 3 / want
     one = {"family": "a", "world_seed": 0, "submitted": True, "status": "evaluated", "perm_p": 0.5, "params": {},
            "val_sharpe": 0.1, "stage1": {}}
-    for g3, n in ((np.bool_(True), 1), (True, 1), (np.bool_(False), 0), (False, 0), (None, 0)):
-        assert K.null_summary([dict(one, gates={"G3": g3})], ["a"])["n_dev_positive"] == n, g3
+    for g3, n in ((np.bool_(True), 1), (True, 1), (np.bool_(False), 0), (False, 0)):
+        assert K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=g3))], ["a"])["n_dev_positive"] == n
+    with pytest.raises(ValueError):                                              # FP8-2: an evaluated row needs G3
+        K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=None))], ["a"])
 
 
 def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):

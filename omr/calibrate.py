@@ -85,7 +85,7 @@ RHO_BOUND = 0.1
 HOUR_NS = 3_600_000_000_000
 DAY_NS = 24 * HOUR_NS
 OTHER = ["volume", "quote_volume", "trades", "taker_buy_volume", "taker_buy_quote_volume"]
-GATES = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10"]
+GATES = list(pipeline.TIER_GATES)              # ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10"]
 SEEDS = {"A": 1000, "B": 4000, "oracle_A": 7000, "oracle_B": 8000}
 OPTS = pipeline.Opts(include_g8=False, keep_detail=False)
 
@@ -398,12 +398,9 @@ def task_oracle_power(args) -> list:
 
 # ---------------------------------------------------------------- summaries and the rule
 
-def tier_at(row: dict, p_max: float) -> bool:
-    """Tier 1 re-read at G6 threshold p_max from stored gate outcomes and the p-value."""
-    if row.get("status") != "evaluated":
-        return False
-    others = [v for k, v in row["gates"].items() if k != "G6" and v is not None]
-    return all(others) and row["perm_p"] <= p_max + 1e-12
+# Tier 1 re-read at G6 threshold p_max from a stored row: the one implementation is omr.pipeline.tier_at (fix pass
+# 8, FP8-2: an evaluated row that is malformed raises ValueError, which the unit verdict turns into its STOP)
+tier_at = pipeline.tier_at
 
 
 def gate_rates(rows: list, p_max: float) -> dict:

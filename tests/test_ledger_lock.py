@@ -522,3 +522,106 @@ def test_r_l_f_the_seal_refuses_a_unit_whose_family_passes_too_often_and_shows_t
         k.seal(art, uart=k.write_art(ua, name="ucalibration_f.json"))
     assert "family_pass_rate" in str(e.value) and "ucal_xs_momentum" in str(e.value)
     assert "seal" not in KL.read_lock(k.lock)
+
+
+# ---------------------------------------------------------------- fix pass 8: FP8-2 malformed rows stop, FP8-3 any exception
+
+
+def _malform(row, how):
+    if how == "missing_gate":
+        del row["gates"]["G4"]
+    elif how == "no_gates":
+        row["gates"] = {}
+    elif how == "g3_none":
+        row["gates"]["G3"] = None
+    elif how == "gate_as_1":
+        row["gates"]["G1"] = 1
+    elif how == "perm_p_none":
+        row["perm_p"] = None
+    elif how == "perm_p_nan":
+        row["perm_p"] = float("nan")
+    elif how == "perm_p_text":
+        row["perm_p"] = "0.01"
+    elif how == "perm_p_negative":
+        row["perm_p"] = -0.1
+    elif how == "perm_p_above_one":
+        row["perm_p"] = 1.5
+    else:
+        raise AssertionError(how)
+
+
+@pytest.mark.parametrize("kind", ["null", "oracle"])
+@pytest.mark.parametrize("how", ["missing_gate", "no_gates", "g3_none", "gate_as_1", "perm_p_none", "perm_p_nan",
+                                 "perm_p_text", "perm_p_negative", "perm_p_above_one"])
+def test_fp8_2_a_malformed_evaluated_row_is_the_malformed_stop(kind, how):
+    core, top = _two_units()
+    rows = top["nulls" if kind == "null" else "oracle"]["A"]["rows"]
+    assert rows[3]["world_seed"] == 3
+    _malform(rows[3], how)
+    v = UC.decide_both(core, top)
+    assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ValueError: ")
+    assert "world_seed 3" in v["reason"] and v["chosen_threshold"]["core"] == 0.10
+    with pytest.raises(ValueError):
+        K.tier_at(rows[3], 0.1)
+
+
+def test_fp8_2_numpy_booleans_and_numpy_floats_are_read_like_python_ones():
+    import numpy as np
+    core, top = _two_units()
+    base = UC.decide_both(core, top)
+    for part in ("nulls", "oracle"):
+        for n in ("A", "B"):
+            for r in top[part][n]["rows"]:
+                r["gates"] = {g: (np.bool_(v) if isinstance(v, bool) else v) for g, v in r["gates"].items()}
+                r["perm_p"] = np.float64(r["perm_p"])
+    assert UC.decide_both(core, top) == base and not base["STOP"]
+
+
+def _tier_at_58ba59e(row, p_max):
+    """The reading before fix pass 8, for rows of the real shape."""
+    if row.get("status") != "evaluated":
+        return False
+    others = [v for k, v in row["gates"].items() if k != "G6" and v is not None]
+    return all(others) and row["perm_p"] <= p_max + 1e-12
+
+
+def test_fp8_2_rows_of_the_real_shape_read_exactly_as_before():
+    core, top = _two_units(core_pass=(9, 4), top_pass=(6, 2))
+    rows = [r for a in (core, top) for part in ("nulls", "oracle") for n in ("A", "B") for r in a[part][n]["rows"]]
+    for i, r in enumerate(rows):                                      # every gate pattern the stored rows can have
+        if i % 5 == 1:
+            r["gates"]["G2"] = False
+        if i % 11 == 2:
+            r["gates"]["G7"] = False
+        if i % 13 == 3:
+            r["gates"]["G8"] = bool(i % 2)                             # a G8 that was run counts
+        if i % 17 == 4:
+            r["gates"]["G6"] = True                                    # a stored G6 is ignored (re-read from perm_p)
+        if i % 19 == 5:
+            rows[i] = {"world_seed": i, "family": "x", "status": "liquidated", "reason": "liquidation"}
+    n_true = 0
+    for r in rows:
+        for t in C.G6_GRID:
+            assert K.tier_at(r, t) == _tier_at_58ba59e(r, t)
+            n_true += int(K.tier_at(r, t))
+    assert n_true > 50
+    from omr import pipeline
+    assert K.tier_at is pipeline.tier_at                                                # one implementation
+    bad = dict(rows[0], gates=dict(rows[0]["gates"], G8="yes"))
+    with pytest.raises(ValueError):
+        K.tier_at(bad, 0.1)
+
+
+@pytest.mark.parametrize("case", ["gates_null", "row_is_a_number", "no_family"])
+def test_fp8_3_any_exception_from_a_malformed_row_is_the_unit_stop(case):
+    core, top = _two_units()
+    rows = top["nulls"]["A"]["rows"]
+    if case == "gates_null":
+        rows[0]["gates"] = None
+    elif case == "row_is_a_number":
+        rows[0] = 7
+    else:
+        del rows[0]["family"]
+    v = UC.decide_both(core, top)                                      # no exception
+    assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ")
+    assert v["chosen_threshold"]["core"] == 0.10

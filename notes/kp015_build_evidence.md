@@ -899,3 +899,77 @@ sha256 of the changed kernel files (fix pass 7b as a whole):
   87e735510faea1592ddb7a5e3a622c5be913abd08adf4990a7207d6a526b6f86  omr/ucalibrate.py
   b2cdaf7a476de2a98f1df471e05f7ac946334faecc6433efe31979d83912e578  tests/test_calibrate.py
   6f5f551a9ad5a039c8030ea1cd665d8e93a1e55acc0c3b3af4c008bf3a02c397  tests/test_ucalibrate.py
+
+Fix pass 8, stage A (ruling R-M and FP8-2 to FP8-4; working tree on 2dd58a2, kernel files as at 58ba59e before this
+pass; unapproved, not re-keyed; the full suite follows in stage B).
+Before any edit (code at 58ba59e; the test source of tests/test_ucalibrate.py, 44 synthetic symbols): the draws
+pick (null A seed 17) 413a4e1ba9aac100e26c4bbd937e50c7d85d6b1f08357d0340a18a17f14255e4, every symbol's
+source_days (null A seed 17, concatenated) 53dd79441e6188c110c3a367a961ad229dbaa1d46d479398ccdc91c8535d6c82, flip
+(null B seed 4) c4d6431be672a4a85a5304b38c991981b71fb3b474b5f845276afaf71714e0e9; they are unchanged after the edit
+(test_r_m_t2). The spread of the expected day gross across the 44 symbols under the 58ba59e construction (SD of
+(expected day gross - 1) x 365): null A 0.685 (whole-period set; median over the 62 pooled months' members 0.709),
+null B 0.684 (members 0.709); after R-M zero within rounding (test_r_m_t3: largest relative deviation from G below
+1e-12 under both nulls).
+FP8-1, R-M (omr/ucalibrate.py). USource.build keeps per symbol and local day the full day's log gross (sum of the
+24 rows' log(g * cr), NaN where not full) only long enough to build the pools (no "dret" or "sym_c" in the shared
+spec any more). _build_pools: Qd = exp(sum) on a full day with a finite sum; G = the mean of Qd over all full
+finite symbol-days (meta pools common_day_gross); M(s) over s's full finite days; M(Q, s) over the days of each set
+Q (the pools, then the whole period [pool_lo, ND)); arrays pool_adj[j, k] = log G - log M(Q_j, s_k) and
+fb_adj[k] = log G - log M(s_k), per day, 0.0 where undefined; meta pools gains common_day_gross,
+shared_adj_abs_max_per_day, fallback_adj_abs_max_per_day, member_adj_sd_per_year_median (per pooled month the SD,
+ddof 1, of pool_adj[pool, member] x 365; the median) and keeps full_days_nonfinite; the run-start log line states
+R-M. UWorld._build, null A: every active row of a shared-branch day gets G_row *= exp(pool_adj[Q, s] / 24), of a
+fallback day exp(fb_adj[s] / 24) (new), a symbol without a full day (okb None) nothing. Null B: today's mirror, then
+per local day over its active rows with a finite lrt (n, x = sum of lrt - m) every active row of the day gets
+G_row *= exp(log G / 24 - m - log(cosh x) / n) (log cosh as logaddexp(x, -x) - log 2). HR, LR, CR, the draws, the
+pools, funding and its sign coin, G[0] = 1 are unchanged. PROTOCOL_VERSION 6. An active row with a non-finite lrt
+(none on the test source or the dry-run universes; the real source is expected to have none): it is left out of n
+and x, still gets the day factor (every active row does), and stays non-finite as before; a day without a finite
+active row takes exp(log G / 24 - m).
+Numbers. Test source: G 1.0013278978251412 a day; largest |shared adjustment| 0.015585327873645284 and |fallback
+adjustment| 0.004068771989792309 (log, per day); median members' SD of the shared adjustment 0.9443732354893171 a
+year; full_days_nonfinite 0. Dry-run synthetic universe (synthetic_source(), 170 symbols): G 1.00195493603859;
+0.0526805549308387; 0.007142146291285913; 1.1322925403321595; 0. Reduced dry run below (60 symbols):
+G 1.001740350457411; 0.09765208908491096; 0.005791119630101154; 1.0414527028913656; 0. Checks on the test source:
+null A enumeration from the raw rows equals G to 6.7e-16 relative over every (set, symbol); null B day products
+equal G ** (n / 24) * (1 +- tanh x) to 8.0e-15 relative over 60,547 days (30 partial).
+FP8-2 (omr/pipeline.py tier_at, the one implementation; omr/calibrate.py tier_at = pipeline.tier_at and
+GATES = list(pipeline.TIER_GATES)). Shapes of the stored rows (the sealed core artifact, 3,000 null and 1,600
+oracle rows; the pilot dry run): an evaluated row (null or oracle) has gates with exactly G1 G2 G3 G4 G5 G6 G7 G8
+G10, G6 and G8 None, the others Python bool, and perm_p a number in [0, 1]; a row with any other status
+(not_submitted, stage1_*, liquidated, kernel_fault) has no gates and no perm_p (by code; only not_submitted occurs
+in the stored artifacts). The pipeline hands over Python bool for every gate (bool(...) everywhere). tier_at now
+raises ValueError naming the row and the gate for an evaluated row whose gates is not a mapping, lacks a gate of
+TIER_GATES but G6, holds a non-boolean there or a non-boolean non-None G6, G8 or other gate, or whose perm_p is not
+a finite number in [0, 1]; G6's stored value is ignored (re-read from perm_p) and G8 counts when present. The
+verdicts recomputed with the present code and with the 58ba59e code are byte-identical (no exception) on the sealed
+core artifact (core 0.1, also through unit_verdict), the pilot dry run (top30 STOP, power at A/slow) and the fresh
+reduced dry run below (top30 0.1). FP8-3: unit_verdict catches every Exception. FP8-4: null_advisory(rows_by_null,
+worlds, fams, oracle) and run_tasks(..., on_progress=None); calibrate_run checks after every progress line of the
+null phases and logs the counts and one ADVISORY block once, an error once as "null advisory unavailable"; the
+order of tasks, the results and the artifact are unchanged; oracle_advisory takes an optional threshold.
+Tests. Replaced: the R-K tests T1-T5 by R-M T1 (null A enumeration from raw rows, every set and symbol), T2 (world
+rows carry exp(pool_adj / 24) or exp(fb_adj / 24), shapes, full days Qd x factor ** 24, the draws equal the
+hashes above), T3 (the finding in miniature, both nulls), T4 (null B day products flipped / unflipped, full /
+partial; flipped shapes; the new null B pin 50fe43f66e8c08bfd0b0b03ce5f8c13d309c2a2a4b148ef62530d620ced3e6a7, the
+old pin e7ec7d09... no longer matches), T5 (a version-5 partial is refused). Changed to the rulings: test_f6's fake
+run_tasks takes on_progress; tests/test_calibrate.py test_7b_2 (an evaluated row with G3 None is now malformed:
+those rows became kernel_fault rows, and the G3 None case expects ValueError). Added: FP8-2 (18 malformed cases,
+null and oracle row, through decide_both; numpy booleans and floats; the real shape read as the 58ba59e rule did;
+a G8 that is not a boolean), FP8-3 (gates null, a row that is a number, a row without family), FP8-4 (counts and
+dead thresholds, pooled and family, the largest open threshold's power; calibrate_run logs the advisory once and an
+advisory error once). Runs: tests/test_ucalibrate.py 37 passed in 1041.88 s; tests/test_structure.py +
+tests/test_calibrate.py + tests/test_ledger_lock.py 89 passed in 26.18 s. Reduced dry run (the kernel's entry
+point through a scratch wrapper that points the access log and the trial ledger at the scratch folder and builds
+the synthetic universe with 60 symbols instead of 170; --worlds 1 --oracle-worlds 1 --workers 0): exit 0 in
+980.6 s; the R-M log line printed; oracle power 1.0 in all four cells; no null advisory (nothing dead); the
+full-size dry run was not run. ledger/, data/, kernel.lock, audits/ and STATE.md unchanged.
+sha256 of the changed kernel and test files:
+  1964b4c0aa42b18309b0ef6f5c119029c67e7877f6ef4e4080f20fa42b19b6dd  CONSTITUTION.md
+  d9bfa50683810a965e89193b3774c40065d338551d9adb1889962ae83d62d588  omr/calibrate.py
+  f650b7fd9f0bf196c1c6a154ddcafab1ad21a3601043f2139ec40073926aa9d7  omr/pipeline.py
+  9c6c46cb2f0d0f64af2f464b258c0baf1efe76c6c44ae21d0c04ea32473a27cb  omr/ucalibrate.py
+  5cb0957be68e08cad2e2df45bc85b6cf5b22c660d6ab6a12c30a5db9bbd6a074  tests/test_calibrate.py
+  12fd8e37d08a47a7e5660eeedec9e01450d30cd7718baaaa79baedb481e38633  tests/test_ledger_lock.py
+  38aba87fa35d99ff4f708a684192557c6b5001c50043a790b3285b64ddf1ab43  tests/test_ucalibrate.py
+KERNEL_PROPOSALS.md (not a kernel file): fcd2b6863cb872ba741a9552219860ff3612f46c2a40e61f1f6f0ee43a28800a

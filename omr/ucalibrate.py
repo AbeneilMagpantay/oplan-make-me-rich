@@ -30,17 +30,26 @@ NULL A (bootstrap): every world day draws one source day iid, shared by all symb
   (mostly non-members). Funding keeps the settlement times and intervals of the real day and takes the rates of the
   source day used for that symbol, in order (cycled if the counts differ; a source day without a
   settlement is replaced by a day with one, drawn by the same generator).
-  ONE EXPECTED DAILY RETURN (fix pass 7, R-K): a pool's days have their own mean return per symbol, and a
-  cross-section of expected returns that changes with the membership is predictability a no-skill world must
-  not have (it reads as timing in the lag test). So every symbol s has ONE expected daily log return c_s in
-  every month: c_s = its mean day log return over ALL its fully active source days (the set its fallback
-  draws from); every active row of a world day on the SHARED branch, drawn from the set Q (the month's pool,
-  or the whole period), has its open / previous close ratio multiplied by exp((c_s - mean of s over Q's
-  full days) / 24); a fallback day is already at c_s and gets nothing; high / open, low / open and close /
-  open are untouched, so every bar keeps its source shape. The correction is per day, spread evenly over
-  the 24 hours: hour-of-day means are deliberately not equalised. Null B is unchanged.
 NULL B (sign-flip): the real order; per day ONE fair coin shared by all symbols mirrors each symbol's
   demeaned hourly log-return path; funding rates as recorded.
+ONE EXPECTED DAY GROSS, BOTH NULLS (fix pass 8, R-M; it replaces fix pass 7's R-K): a symbol's sample mean over
+  a few years is mostly luck, and a world that keeps it as the symbol's expected return holds a permanent
+  difference between symbols that a slow momentum book collects; a no-skill world must not contain it. The day
+  gross of a full source day is the product of its 24 hourly close / previous close ratios; G = its mean over
+  all fully active symbol-days of the source (one number: meta pools common_day_gross). Null A: every active
+  row of a world day on the SHARED branch, drawn from the set Q (the month's pool, or the whole period), has its
+  open / previous close ratio multiplied by (G / M(Q, s)) ** (1 / 24), M(Q, s) = the symbol's mean day gross
+  over Q's fully active days; every active row of a FALLBACK day by (G / M(s)) ** (1 / 24), M(s) = its mean
+  over all its fully active days (the set the fallback draws from); so a full world day's expected gross is G
+  for every symbol (a symbol without any fully active day keeps its own days, unadjusted). Null B: on a day
+  with n active rows and x = the day's sum of (hourly log return - m), every active row, on either face of the
+  coin, has its open / previous close ratio multiplied by G ** (1 / 24) * exp(-m) * cosh(x) ** (-1 / n): the
+  day's gross is G ** (n / 24) * (1 + tanh x) unflipped and G ** (n / 24) * (1 - tanh x) flipped, G ** (n / 24)
+  in expectation whatever the path. Simple returns per day are equalised, not log returns, because the engine
+  holds positions between rebalances and the families' signals are n-day simple returns. High / open, low /
+  open and close / open are untouched (every bar keeps its source shape); hour-of-day means and the path
+  inside a source day are kept by design; the draws, the funding and a symbol's first row (the real first
+  open) are unchanged.
 FUNDING SIGN (R-E, both nulls): every settlement's rate is then multiplied by a fair coin drawn per
   settlement HOUR of the world (its own generator of the world seed), the same coin for every symbol that
   settles in that hour, so no funding payment can be predicted from earlier funding and a carry strategy
@@ -73,7 +82,12 @@ results stops the run); a restart with the same header skips the finished tasks 
 apart from created_at and wall_seconds), another header is refused unless --restart. A memory preflight
 refuses to start when the workers do not fit (--force). The oracle phases run first (fix pass 6); their power
 is logged, and if the power at the largest threshold is below POWER_MIN (or a level misses its bound) a
-prominent line says the seal rule will STOP whatever the null worlds give.
+prominent line says the seal rule will STOP whatever the null worlds give. During the null phases (fix pass 8,
+FP8-4) null_advisory reads the rows finished so far at every progress line and logs the same prominent line
+once when the Tier-1 passes already exceed what the pooled or a family bound can allow at every threshold, or
+when the largest threshold still open has oracle power below POWER_MIN in a cell or a level outside its bound
+(log only: the tasks, their order, the results and the artifact are unchanged; an advisory error is logged once
+and the run goes on).
 """
 from __future__ import annotations
 
@@ -104,9 +118,9 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 5                        # fix pass 7: R-K (one expected daily return per symbol and month under
-                                            # null A) and R-L (the family pass bound); 4 = fix pass 6 (per-unit seal
-                                            # rule, partial lines with a sha, oracle phases first); 3 = pass 5
+PROTOCOL_VERSION = 6                        # fix pass 8: R-M (one expected day gross for every symbol under both
+                                            # nulls; replaces R-K); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6 (per-unit
+                                            # seal rule, partial lines with a sha, oracle phases first); 3 = pass 5
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
 SEEDS = {"A": 11000, "B": 14000, "oracle_A": 17000, "oracle_B": 18000}
 OPTS = PL.Opts(include_g8=False, keep_detail=False)
@@ -150,7 +164,7 @@ _ROW_F = ("g", "hr", "lr", "cr") + tuple(OTHER)
 _ROW_B = ("gap", "act")
 _ACT = ("a_active", "a_qv", "a_usable")
 _FUND = ("f_ns", "f_iv", "f_rate", "f_offms")
-_DAY = ("full", "fd_off", "dret")
+_DAY = ("full", "fd_off")
 
 
 class USource:
@@ -171,6 +185,7 @@ class USource:
         until = dict(until or {})
         cap = T(C.VAL_END)
         parts = {n: [] for n in _ROW_F + _ROW_B + _ACT + _FUND + _DAY}
+        dsums = []                                                  # R-M: per symbol and local day (not shared)
         metas, off, aoff, foff, doff, full_off = [], 0, 0, 0, 0, 0
         for s in sorted(symbols):
             t = get_tables(s)
@@ -199,11 +214,11 @@ class USource:
             sd1 = int(max(day_r[-1], fv[-1] // DAY_NS if len(fv) else day_r[-1]))
             nd = sd1 - sd0 + 1
             full = np.bincount(day_r[act] - sd0, minlength=nd)[:nd] == 24
-            # R-K: a full day's log return = the sum of its 24 rows' log(g * cr) (0.0 where the day is not full;
-            # a non-finite sum stays non-finite and is left out of every mean)
+            # R-M: a full day's log gross = the sum of its 24 rows' log(g * cr) (NaN where the day is not full; a
+            # non-finite sum stays non-finite and is left out of every mean)
             with np.errstate(invalid="ignore"):
                 dsum = np.bincount(day_r[act] - sd0, weights=lrt[act], minlength=nd)[:nd]
-            dret = np.where(full, dsum, 0.0)
+            dsums.append(np.where(full, dsum, np.nan))
             fd_off = np.searchsorted(fv // DAY_NS - sd0, np.arange(nd + 1), side="left").astype(np.int64)
             a = U.activity_of(kl, until.get(s))
             for name, v in zip(_ROW_F, (g, hr, lr, cr) + tuple(kl[x].to_numpy(dtype=np.float64) for x in OTHER)):
@@ -217,7 +232,6 @@ class USource:
             for name, col in (("f_iv", "interval_hours"), ("f_rate", "rate"), ("f_offms", "offset_ms")):
                 parts[name].append(fu[col].to_numpy(dtype=np.float64)[order])
             parts["full"].append(full)
-            parts["dret"].append(dret)
             parts["fd_off"].append(fd_off)
             metas.append({"name": s, "start": int(ns[0]), "n": n, "off": off, "first_open": float(o[0]),
                           "m": float(np.mean(lrt[ok])) if ok.any() else 0.0, "sd0": sd0, "nd": nd, "doff": doff,
@@ -234,33 +248,43 @@ class USource:
         meta = {"symbols": metas, "D0": D0, "ND": ND, "pool_lo": int(T(C.UNIVERSE_START).value // DAY_NS) - D0,
                 "btc": btc}
         src = cls(meta, arr)
-        src._build_pools()
+        src._build_pools(np.concatenate(dsums) if dsums else np.zeros(0))
         return src
 
-    def _build_pools(self) -> None:
+    def _build_pools(self, dsum: np.ndarray) -> None:
         """R-F: per calendar month m of the world, POOL(m) = the source days (UNIVERSE_START .. VAL end) on which
         EVERY top30 member of month m (the kernel's own rule on the source, the schedule every world
         reproduces) has 24 active hours. A month with no unit or a pool under POOL_MIN_DAYS uses the
-        whole-period pool. Arrays: day_pool (per global day: pool id or -1), pool_days, pool_off."""
+        whole-period pool. Arrays: day_pool (per global day: pool id or -1), pool_days, pool_off.
+        R-M (fix pass 8): dsum = per symbol and local day the full day's log gross (NaN where not full), laid
+        out like "full". Qd = exp(dsum) on a full day with a finite sum; G = the mean of Qd over all full finite
+        symbol-days of the source (meta pools common_day_gross); M(s) = the mean of Qd over s's full finite days
+        (the set its fallback draws from); M(Q, s) = the mean over the days of set Q (each pool, then the whole
+        period [pool_lo, ND)) on which s is full and finite. Arrays, per DAY (applied as exp(adj / 24) per active
+        row): pool_adj[j, k] = log G - log M(Q_j, s_k), fb_adj[k] = log G - log M(s_k); 0.0 where undefined."""
         ND, D0, lo = self.ND, self.D0, self.meta["pool_lo"]
-        full_g, dret_g, c_sym = {}, {}, np.zeros(len(self.symbols))
-        n_nonfinite = 0
+        full_g, qd_g, m_sym = {}, {}, np.full(len(self.symbols), np.nan)
+        n_nonfinite, q_total, q_count = 0, 0.0, 0
         for k, s in enumerate(self.symbols):
             m = self.sym(s)
             g = np.zeros(ND, dtype=bool)
-            dg = np.full(ND, np.nan)
+            qg = np.full(ND, np.nan)
             shift = m["sd0"] - D0
             fl = np.asarray(self.arr["full"][m["full_off"]:m["full_off"] + m["nd"]], dtype=bool)
-            dr = np.asarray(self.arr["dret"][m["full_off"]:m["full_off"] + m["nd"]], dtype=np.float64)
-            n = min(len(fl), ND - shift)
-            g[shift:shift + n] = fl[:n]
-            dg[shift:shift + n] = np.where(fl[:n], dr[:n], np.nan)
-            full_g[s] = g
+            dr = np.asarray(dsum[m["full_off"]:m["full_off"] + m["nd"]], dtype=np.float64)
             fin = fl & np.isfinite(dr)
             n_nonfinite += int((fl & ~np.isfinite(dr)).sum())
-            dret_g[s] = np.where(g & np.isfinite(dg), dg, np.nan)
-            # R-K: c_s = the mean day log return over ALL the symbol's full days (the set its fallback draws from)
-            c_sym[k] = float(np.mean(dr[fin])) if fin.any() else 0.0
+            qd = np.where(fin, np.exp(np.where(fin, dr, 0.0)), np.nan)
+            n = min(len(fl), ND - shift)
+            g[shift:shift + n] = fl[:n]
+            qg[shift:shift + n] = qd[:n]
+            full_g[s] = g
+            qd_g[s] = qg
+            if fin.any():
+                m_sym[k] = float(np.mean(qd[fin]))
+                q_total += float(np.sum(qd[fin]))
+                q_count += int(fin.sum())
+        common = q_total / q_count if q_count else 1.0
         acts = self.acts(T(C.VAL_END).value)
         mem = U.membership(acts, list(acts), T(C.UNIVERSE_START).value, T(C.VAL_END).value)
         pools, sizes, pool_of = [], [], np.full(len(mem.months), -1, dtype=np.int64)
@@ -276,16 +300,18 @@ class USource:
                 pool_of[i] = len(pools)
                 pools.append(days)
                 sizes.append(len(days))
-        # R-K: per set Q (each pool, then the whole period [pool_lo, ND)) and symbol: c_s - mean over Q's days on
-        # which s is full (0.0 when s is full on no day of Q, or has no full day at all)
+        # R-M: per set Q (each pool, then the whole period [pool_lo, ND)) and symbol: log G - log M(Q, s), and per
+        # symbol log G - log M(s) for its fallback days (0.0 where s has no full finite day in Q, or at all)
         sets = list(pools) + [np.arange(lo, ND)]
         adj = np.zeros((len(sets), len(self.symbols)))
+        lg = math.log(common)
         for j, Q in enumerate(sets):
             for k, s in enumerate(self.symbols):
-                v = dret_g[s][Q]
+                v = qd_g[s][Q]
                 v = v[np.isfinite(v)]
                 if len(v):
-                    adj[j, k] = c_sym[k] - float(np.mean(v))
+                    adj[j, k] = lg - math.log(float(np.mean(v)))
+        fb = np.where(np.isfinite(m_sym), lg - np.log(np.where(np.isfinite(m_sym), m_sym, 1.0)), 0.0)
         day_ns = (D0 + np.arange(ND, dtype=np.int64)) * DAY_NS
         mi = np.searchsorted(mem.months, day_ns, side="right") - 1
         day_pool = np.where(mi >= 0, pool_of[np.clip(mi, 0, max(len(mem.months) - 1, 0))], -1) if len(mem.months) \
@@ -295,8 +321,8 @@ class USource:
         self.arr["pool_off"] = np.r_[0, np.cumsum(sizes)].astype(np.int64)
         months = pd.DatetimeIndex(pd.to_datetime(day_ns, unit="ns", utc=True)).strftime("%Y-%m")
         whole = sorted(set(months[day_pool < 0]))
-        self.arr["sym_c"] = c_sym
         self.arr["pool_adj"] = adj
+        self.arr["fb_adj"] = np.asarray(fb, dtype=np.float64)
         sds = []
         for i in range(len(mem.months)):
             if pool_of[i] >= 0:
@@ -307,8 +333,10 @@ class USource:
                               "smallest_pool_days": int(min(sizes)) if sizes else None,
                               "median_pool_days": float(np.median(sizes)) if sizes else None,
                               "full_days_nonfinite": n_nonfinite,
-                              "pool_adj_abs_max_per_day": float(np.max(np.abs(adj))) if adj.size else 0.0,
-                              "pool_adj_member_sd_per_year_median": float(np.median(sds)) if sds else None}
+                              "common_day_gross": float(common),
+                              "shared_adj_abs_max_per_day": float(np.max(np.abs(adj))) if adj.size else 0.0,
+                              "fallback_adj_abs_max_per_day": float(np.max(np.abs(fb))) if len(fb) else 0.0,
+                              "member_adj_sd_per_year_median": float(np.median(sds)) if sds else None}
 
     # ---- sharing with the workers
     def to_shared(self) -> tuple:
@@ -458,21 +486,40 @@ class UWorld:
             G, HR, LR, CR = (np.ones(n) for _ in range(4))
             G[ai], HR[ai], LR[ai], CR[ai] = g[sr], hr[sr], lr[sr], cr[sr]
             if okb is not None:
-                # R-K: an active row of a day on the SHARED branch moves its gap ratio by exp(adj(Q, s) / 24), Q the set
-                # that global day draws from (its month's pool, or the whole period): the day's expected log return
-                # becomes c_s; fallback days are already at c_s; HR, LR, CR (the bar's shape) are untouched
+                # R-M: every active row of a day on the SHARED branch, drawn from set Q (its month's pool, or the whole
+                # period), has its gap ratio multiplied by (G / M(Q, s)) ** (1 / 24); every active row of a FALLBACK
+                # day by (G / M(s)) ** (1 / 24): a full world day's expected gross is G for every symbol. HR, LR, CR
+                # (the bar's shape) are untouched; a symbol without a fully active day (okb None) gets no factor
                 sh = okb[ld[ai]]
+                adjd = np.full(len(ai), float(src.arr["fb_adj"][src.k[s]]))
                 if sh.any():
                     dp = np.asarray(src.arr["day_pool"], dtype=np.int64)
                     pa = np.asarray(src.arr["pool_adj"], dtype=np.float64)
                     gd = ld[ai][sh] + shift
                     q = np.where(dp[gd] >= 0, dp[gd], pa.shape[0] - 1)
-                    G[ai[sh]] = G[ai[sh]] * np.exp(pa[q, src.k[s]] / 24.0)
+                    adjd[sh] = pa[q, src.k[s]]
+                G[ai] = G[ai] * np.exp(adjd / 24.0)
         else:
             F = self.flip[ld + shift] & act
             G = np.where(F, np.exp(2.0 * m["m"]) / g, g)
             HR, LR = np.where(F, 1.0 / lr, hr), np.where(F, 1.0 / hr, lr)
             CR = np.where(F, 1.0 / cr, cr)
+            # R-M: per local day, over its active rows with a finite lrt = log(g * cr): n of them, x = sum(lrt - m);
+            # every active row of the day (either face of the coin) has its gap ratio multiplied by
+            # exp(log G / 24 - m - log(cosh x) / n), so the day's gross is G ** (n / 24) * (1 + tanh x) unflipped and
+            # G ** (n / 24) * (1 - tanh x) flipped: G ** (n / 24) in expectation whatever the path. A day without a
+            # finite active row takes exp(log G / 24 - m) (its rows are non-finite anyway, as before)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                lrt = np.log(g * cr)
+            fin = np.asarray(act, dtype=bool) & np.isfinite(lrt)
+            nd = int(m["nd"])
+            cnt = np.bincount(ld[fin], minlength=nd)[:nd]
+            x = np.bincount(ld[fin], weights=lrt[fin] - m["m"], minlength=nd)[:nd]
+            lcosh = np.logaddexp(x, -x) - math.log(2.0)
+            dlog = math.log(float(src.meta["pools"]["common_day_gross"])) / 24.0 - m["m"] - \
+                np.where(cnt > 0, lcosh / np.where(cnt > 0, cnt, 1), 0.0)
+            aa = np.asarray(act, dtype=bool)
+            G = np.where(aa, G * np.exp(dlog[ld]), G)
         G = np.where(act, G, 1.0)
         G[0] = 1.0                                                  # cumulated from the real first open
         HR, LR, CR = np.where(act, HR, 1.0), np.where(act, LR, 1.0), np.where(act, CR, 1.0)
@@ -877,9 +924,10 @@ def _hms(s: float) -> str:
     return f"{s // 3600}h{(s % 3600) // 60:02d}m"
 
 
-def run_tasks(pool, partial: Partial, kind: str, arglist: list, log, label: str) -> list:
+def run_tasks(pool, partial: Partial, kind: str, arglist: list, log, label: str, on_progress=None) -> list:
     """Results in the order of arglist; finished tasks are reused, new ones recorded as they finish, with
-    progress lines (elapsed time and an estimate of the time left in this phase)."""
+    progress lines (elapsed time and an estimate of the time left in this phase). on_progress() (FP8-4) is called
+    after every progress line; it reads `partial` and changes nothing here."""
     keys = [task_key(kind, a) for a in arglist]
     todo = [(kind, a) for a, k in zip(arglist, keys) if k not in partial.done]
     t0, n_all, n_new = time.time(), len(arglist), 0
@@ -892,6 +940,8 @@ def run_tasks(pool, partial: Partial, kind: str, arglist: list, log, label: str)
             left = el / n_new * (len(todo) - n_new)
             log(f"  {label}: {n_all - len(todo) + n_new}/{n_all} done ({n_all - len(todo)} resumed); "
                 f"{_hms(el)} elapsed, about {_hms(left)} left in this phase")
+            if on_progress is not None:
+                on_progress()
     return [partial.done[k] for k in keys]
 
 
@@ -997,7 +1047,7 @@ def unit_verdict(art: dict, unit: str) -> dict:
         return {"STOP": True, "chosen_threshold": None, "reason": f"{unit} artifact incomplete: " + "; ".join(gaps)}
     try:
         return verdict_from_rows(art)
-    except (KeyError, TypeError, ValueError) as e:             # FP6-1: a malformed row stops, it does not raise
+    except Exception as e:                                      # FP6-1, FP8-3: a malformed row stops, it does not raise
         return {"STOP": True, "chosen_threshold": None,
                 "reason": f"{unit} artifact malformed: {type(e).__name__}: {e}"}
 
@@ -1039,11 +1089,11 @@ def run_header(k: dict, rh: str, fams: list, worlds: int, oracle_worlds: int, sy
             "pool_min_days": POOL_MIN_DAYS}
 
 
-def oracle_advisory(oracle: dict) -> tuple:
+def oracle_advisory(oracle: dict, at: float | None = None) -> tuple:
     """F6: (log lines of the Tier-1 power per null, speed, level and grid threshold, reasons the seal rule must
-    STOP whatever the null worlds give: power at the LARGEST grid threshold below POWER_MIN, or an achieved
-    oracle level outside RHO_BOUND)."""
-    lines, stop, top = [], [], max(C.G6_GRID)
+    STOP whatever the null worlds give: power at the LARGEST grid threshold (or at threshold `at`, FP8-4) below
+    POWER_MIN, or an achieved oracle level outside RHO_BOUND)."""
+    lines, stop, top = [], [], (max(C.G6_GRID) if at is None else at)
     for n in ("A", "B"):
         summ = (oracle.get(n) or {}).get("summary") or {}
         for s in USPEEDS:
@@ -1059,6 +1109,40 @@ def oracle_advisory(oracle: dict) -> tuple:
                 if not (mv is not None and abs(mv - lvl) <= CB.RHO_BOUND):
                     stop.append(f"null {n} {s}: level {lvl} achieved outside its bound")
     return lines, stop
+
+
+def null_advisory(rows_by_null: dict, worlds: int, fams: list, oracle: dict) -> tuple:
+    """FP8-4 (log only): (lines with the Tier-1 counts so far, reasons the seal rule must STOP whatever the rest
+    of the null worlds give) from the null rows finished SO FAR. Threshold t is DEAD when under either null its
+    passes so far already exceed what the final rate allows: pooled passes / (worlds x families) above
+    NULL_PASS_MAX, or one family's passes / worlds above FAMILY_PASS_MAX (the final denominators cannot exceed
+    these totals; the rule's 1e-12 tolerance on the rate). STOP when every threshold is dead, or when at the
+    LARGEST threshold that is not dead the oracle power is below POWER_MIN in a cell or a level is outside its
+    bound (oracle_advisory at that threshold; power cannot rise at a smaller threshold)."""
+    lines, dead = [], set()
+    tot = worlds * len(fams)
+    for n in ("A", "B"):
+        rows = [r for r in rows_by_null.get(n) or [] if r.get("submitted")]
+        seen = len({r["world_seed"] for r in rows_by_null.get(n) or []})
+        parts = []
+        for t in C.G6_GRID:
+            passers = [r for r in rows if CB.tier_at(r, t)]
+            per = {f: sum(1 for r in passers if r["family"] == f) for f in fams}
+            bad = [] if tot and len(passers) / tot <= C.NULL_PASS_MAX + 1e-12 else ["pooled"]
+            bad += [f for f in fams if not (worlds and per[f] / worlds <= C.FAMILY_PASS_MAX + 1e-12)]
+            if bad:
+                dead.add(t)
+            parts.append(f"at {t:g}: {len(passers)} (cap {C.NULL_PASS_MAX * tot:g}), per family " +
+                         ", ".join(f"{f} {per[f]}" for f in fams) + (f" DEAD ({', '.join(bad)})" if bad else ""))
+        lines.append(f"  null advisory, null {n}: {seen} of {worlds} worlds so far; Tier-1 passes " + "; ".join(parts) +
+                     f" (family cap {C.FAMILY_PASS_MAX * worlds:g})")
+    alive = [t for t in C.G6_GRID if t not in dead]
+    if not alive:
+        return lines, ["every G6 threshold is already dead: the null passes so far exceed the bounds at "
+                       + ", ".join(f"{t:g}" for t in C.G6_GRID)]
+    top = max(alive)
+    _, stop = oracle_advisory(oracle, at=top)
+    return lines, [f"largest threshold not dead {top:g}: {x}" for x in stop]
 
 
 def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds: int, log) -> tuple:
@@ -1085,8 +1169,32 @@ def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds
         log("ADVISORY: the seal rule will STOP whatever the null worlds give (" + "; ".join(stop) + "). The run can "
             "be interrupted now: the partial file keeps the finished work.")
         log("!" * 100)
+    adv = {"shown": False, "unavailable": False}
+
+    def null_check():
+        """FP8-4: log only; never stops or fails the run."""
+        try:
+            rbn = {}
+            for nl in ("A", "B"):
+                ks = [task_key("null", [nl, SEEDS[nl] + i]) for i in range(worlds)]
+                rbn[nl] = [r for kk in ks if kk in partial.done for r in partial.done[kk]]
+            nlines, nstop = null_advisory(rbn, worlds, fams, oracle)
+            if nstop and not adv["shown"]:
+                adv["shown"] = True
+                for ln in nlines:
+                    log(ln)
+                log("!" * 100)
+                log("ADVISORY: the seal rule will STOP whatever the rest of the null worlds give (" + "; ".join(nstop) +
+                    "). The run can be interrupted now: the partial file keeps the finished work.")
+                log("!" * 100)
+        except Exception as e:                                       # noqa: BLE001 (an advisory never fails the run)
+            if not adv["unavailable"]:
+                adv["unavailable"] = True
+                log(f"null advisory unavailable: {type(e).__name__}: {e}")
+
     for null in ("A", "B"):
-        res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}")
+        res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}",
+                        on_progress=null_check)
         rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
         nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
     return nulls, oracle
@@ -1140,9 +1248,11 @@ def main(argv=None):
                                         "null worlds on the real membership calendar of the top30 panel")
         src = load_source(handle, log)
     pl = src.meta.get("pools") or {}
-    log(f"null A pool adjustment (R-K): median over pooled months of the members' SD {pl.get('pool_adj_member_sd_per_year_median')} "
-        f"per year; largest |adjustment| {pl.get('pool_adj_abs_max_per_day')} per day; full days with a non-finite "
-        f"return {pl.get('full_days_nonfinite')}")
+    log(f"null worlds (R-M): one expected day gross G = {pl.get('common_day_gross')} for every symbol under both nulls; "
+        f"largest |shared adjustment| {pl.get('shared_adj_abs_max_per_day')} and |fallback adjustment| "
+        f"{pl.get('fallback_adj_abs_max_per_day')} per day (log); median over pooled months of the members' SD of the "
+        f"shared adjustment {pl.get('member_adj_sd_per_year_median')} per year; full days with a non-finite return "
+        f"{pl.get('full_days_nonfinite')}")
     src_bytes = int(sum(v.nbytes for v in src.arr.values()))
     if a.workers > 0:
         mem = memory_preflight(a.workers, src_bytes)

@@ -292,7 +292,9 @@ read under a logged calibration handle; nothing enters the trial ledger:
   top30 null worlds reversal and carry never pass, so 3% over all submitted pairs would allow the one
   family that can pass 9%). Why 0.06: the conventional 5% level plus a sampling allowance; with 200
   worlds a family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is
-  refused in about 91%. The family bound can only lower a threshold. The artifact also stores, per
+  refused in about 91%. The family bound can only lower a threshold. What it permits: a family that
+  passes every other gate in null worlds may reach Tier 1 in up to 6% of its own submitted pairs, above
+  the pooled 3%. The artifact also stores, per
   threshold, the family rates and the pass rate over the submitted pairs that pass G3 (DEV-positive,
   KP-016); the rule does not read the latter.
 
@@ -483,17 +485,24 @@ Live risk limits the loop can never change:
   cumulated from the real first open, a present zero-trade bar flat; null A draws one source day per
   world day for all symbols, in a month with a unit from the days on which every top30 member of that
   month is fully active (fix pass 5; a pool under 90 days falls back to the whole period), a symbol not
-  fully active on it uses a personal fallback day; fix pass 7 (R-K): every symbol has ONE expected
-  daily log return in every month, its mean over all its fully active source days (the set its
-  fallback draws from), so on a world day that uses the shared source day drawn from a set Q (the
-  month's pool, or the whole period) every active hour's open / previous close ratio is multiplied by
-  exp((that mean - the symbol's mean over Q's fully active days) / 24), every bar keeping its source
-  shape, and a fallback day gets nothing (hour-of-day means are deliberately not equalised); without it
-  the pools, windows of history that change with the membership, gave every month its own
-  cross-section of expected returns, which a slow momentum book held and the lag test read as timing
-  (audits/AUDIT_LOG.md, round 7, X10); funding keeps
+  fully active on it uses a personal fallback day; funding keeps
   the real settlement calendar with the source day's rates; null B mirrors every symbol's demeaned path
-  with one coin per day, funding rates as recorded before the sign coin below; three hash-locked
+  with one coin per day, funding rates as recorded before the sign coin below; fix pass 8 (R-M, which
+  replaces fix pass 7's R-K): in both nulls every symbol has ONE expected day gross G on every world
+  day, G = the mean over all fully active symbol-days of the source of the day gross (the product of
+  the day's 24 hourly close / previous close ratios). A symbol's sample mean over a few years is mostly
+  luck, and a world that keeps it as the symbol's expected return holds a permanent difference between
+  symbols that a slow momentum book collects; a no-skill world must not contain it. Simple day returns
+  are equalised, not log returns, because positions are held between rebalances. Null A: every active
+  hour of a shared-branch day drawn from the set Q (the month's pool, or the whole period) has its open /
+  previous close ratio multiplied by (G / M(Q, s))^(1/24), M(Q, s) the symbol's mean day gross over Q's
+  fully active days, and every active hour of a fallback day by (G / M(s))^(1/24), M(s) its mean over
+  all its fully active days. Null B: on a day with n active hours and x the day's sum of (hourly log
+  return - m), every active hour is multiplied by G^(1/24) exp(-m) cosh(x)^(-1/n) on either face of the
+  coin, so the day's gross is G^(n/24) (1 + tanh x) or G^(n/24) (1 - tanh x), G^(n/24) in expectation
+  whatever the path. Every bar keeps its shape (high, low and close over open); hour-of-day means and the
+  path inside a source day are kept by design; the draws and the funding are unchanged; the core unit's
+  nulls are unchanged (audits/AUDIT_LOG.md, round 7, X10 and X11); three hash-locked
   cross-sectional families (momentum and reversal on daily returns, n from 3 to 60 and from 3 to 20 days -
   the reversal mirrors the momentum since fix pass 6 - and funding carry), the same
   screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds
@@ -520,7 +529,9 @@ Live risk limits the loop can never change:
   runs the oracle phases of both nulls FIRST and then logs the oracle power per null, speed and threshold;
   if the power at the largest threshold is below 50%, or an oracle level misses its bound, it logs that
   the seal rule will stop whatever the null worlds give (the run may be interrupted; the partial file
-  keeps the finished work; the artifact does not depend on the order).
+  keeps the finished work; the artifact does not depend on the order). Fix pass 8: during the null phases
+  it logs the same warning once when the Tier-1 passes so far already exceed what the pooled or a family
+  bound allows at every threshold, or when the largest threshold still open lacks oracle power (log only).
 - The seal, fix pass 6 (R-H): the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its
   OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3% under both of that
   unit's nulls and at which no family of that unit passes more than 6% of its own submitted pairs under
