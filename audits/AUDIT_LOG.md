@@ -911,3 +911,56 @@ round 3 also the coordinator's own read of the core modules.
 - Fix pass 11 stage B (builder): the full suite on 305e2c6 gave 962 passed, 0 failed, 0 skipped
   in 1757 s (910 at 306eb8c; 52 new: test_ledger_lock 45, test_calibrate 5, test_ucalibrate 2);
   ledger verify OK; ledger/, data/ and kernel.lock untouched.
+
+## Round 7, addendum X12 (round 1 closed) - 2026-11-22 - bit-for-bit on the committed code, controls, the premium arm, cost; the extension is running
+
+- Bit-for-bit on 306eb8c (the committed code, no patch). Null A worlds 0 to 11: 29 of 36 rows
+  identical in every field, the kernel's G6 p included; the 7 that differ are carry rows changed
+  by R-Q alone (3 not submitted, 4 with the new stage-1 counts). Carry in all 48 null A worlds:
+  27 identical, 12 not submitted, 9 with the new counts only; no pair picks another draw. Null
+  B, 25 worlds (0 to 11 and every world with a liquidated or R-Q row): 75 of 75 identical. Power
+  arms: 48 of 48 rows identical under each null, tuning picks and achieved means equal; under
+  null A the coarse tuning curve of the fast speed differs at 31 of 81 points, all at rho of 0.40
+  and above, where the copy before R-O had liquidations that R-O removes (the bracket, the picks
+  and the power rows are not touched). The kernel's memory statistic differs from the auditor's
+  own by at most 5e-15 and every p is equal. So the rows of round 1 stand as measured, with the
+  carry rows of the commit.
+- Controls (the X10 source with independent days, through R-M, R-O and R-Q; 12 worlds per null):
+  no family reaches Tier 1, no pair passes every other gate, every pair is evaluated. Mean VAL
+  Sharpe under null A and null B: momentum -0.72 and -0.70, reversal -0.88 and -1.28, carry
+  -3.11 and -3.21. In X11 the same worlds gave momentum a VAL Sharpe of 1.15 to 3.63 with every
+  other gate passed in 11 and 10 of 12 worlds: R-M removed that source's premium.
+- Premium arm (worlds that keep each symbol's mean, with R-O and R-Q; the momentum family; 20
+  lags with the speed limit). Admitted books and their G6 passes at 0.05 and at 0.10: X source
+  null A 37 with 3 and 5, null B 16 with 0 and 0; source D null A 16 with 1 and 2, null B 9 with
+  0 and 0; together 78 with 4 and 7 (5.1% and 9.0%). Rule (P) is not triggered (5 of 37 at 0.10
+  has a probability of 0.31 under a true 10%). The spread across worlds of the gap between the
+  actual and the stale Sharpe against the spread of the stale Sharpes inside a world: 0.61 to
+  0.51, 0.45 to 0.49, 0.59 to 0.51, 0.46 to 0.51 (X11: 0.87 to 0.53); adjacent lagged Sharpe
+  ratios correlate +0.25 to +0.44. With 20 lags G6 holds its nominal level among books that earn
+  a premium without timing.
+- G1 in the R-M worlds of the size arm passes less often than its nominal 10% in every family
+  and null (null A 1 of 48, 1 of 48, 0 of 36; null B 0 of 45, 1 of 38, 0 of 41).
+- Odds of round 1 on the commit's rows: 0.305 under R-R (0.02 under the former cap of R-P). NOT
+  READY stands; the extension decides.
+- The auditor's reading of the delta 1442b42..306eb8c: R-N, R-O, R-P and R-Q are as ruled and
+  identical in expression to its own patches; the reproductions above confirm it.
+- Cost of the real top30 calibration (auditor, measured): about 34 worker-hours (26 to 29
+  without contention). Wall time about 34 hours with one worker (oracle phases done after about
+  14.5), 17 with two (7.3), 9 to 10 with four (about 4). About 1.6 GiB per worker and 0.44 GB for
+  the shared source; three workers fit on this machine with the editor open. Core: about 5 hours
+  with one worker.
+- Limitation sentences the auditor proposes for CONSTITUTION section 12, and the coordinator's
+  reading. (1) Carry pairs liquidated on DEV are not submitted: stated since fix pass 11. (2)
+  Null A can draw a real extreme bar more than once in a world (2022-05-11, 2022-06-07), and a
+  no-skill book is short where the real book was not, so concentrated short books are liquidated
+  there more often than history did: the text states the mechanism and the denominator; this
+  nuance is recorded here and enters the text with the next text pass, if there is one. (3) A
+  world row without trades stays flat although the real evaluation would read its mark wick:
+  stated in section 13 (R-O). (4) 0.025 cannot be reached with 20 lags and slow books fail the
+  speed limit: stated in sections 12 and 13. No text pass for these now.
+- The extension started at 12:19 on 305e2c6 and runs detached: null worlds 48 to 143 under each
+  null, then the oracle worlds to 71 in each cell, then the interim reading, expected about 16
+  hours after the start; the full size follows only if that reading is under 0.75.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file with section X12-R (sha256
+  7524ed5b364f91bee57fb93fd970423a161a48adc8f4a0c48c1530c5dc0913bc).

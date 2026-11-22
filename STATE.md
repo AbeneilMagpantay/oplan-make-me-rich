@@ -145,15 +145,19 @@ sizes is refused at the start. The coordinator's review and the auditor's attack
 synthetic dry run the new kernel reproduces the sealed kernel's rows exactly, so core should seal at 0.10
 again (it met its 3% bound with 44 of 1498, one pass to spare); if a row did move, it would seal at 0.05 with
 power of 0.81 or more.
-Next: the rest of the auditor's runs (controls, the premium arm for G6, the bit-for-bit runs on the committed
-code; null A is done and identical but for the carry pairs R-Q removes); ONE extension of the pilot on
-305e2c6, fixed in AUDIT_LOG before its first world: 192 worlds per null and 96 books per power cell, with an
+Round 1 of the pilot is closed (2026-11-22): every row checked on the committed code reproduces (carry
+differing only through R-Q), the controls pass nothing, and the premium arm shows G6 at its nominal level with
+20 lags (7 of 78 books that earn a premium without timing pass at 0.10, 4 at 0.05).
+Next: ONE extension of the pilot on 305e2c6 (running since 2026-11-22 12:19),
+fixed in AUDIT_LOG before its first world: 192 worlds per null and 96 books per power cell, with an
 interim reading at 144 and 72 (0.75 or more ends it and the human is asked; at the full size 0.70 or more
 asks, 0.40 to 0.70 gives the human the odds with the advice not to run yet, under 0.40 is NOT READY and back
 to design); about 16 hours to the interim reading and 11 more to the full size, one process at a time. Then,
 if that reading allows, the human's approval, asked with the odds of a successful seal; re-key; both
-calibrations (core again, since its artifact must carry the new header; top30 to be estimated again by the
-auditor; resumable; the oracle phases come first and show early whether the seal can succeed), the reading of
+calibrations (core again, about 5 hours with one worker, since its artifact must carry the new header; top30
+about 34 worker-hours, that is 11 to 12 hours with the three workers that fit on this PC at about 1.6 GiB
+each; resumable; the oracle phases come first, done after about 5 hours, and show early whether the seal can
+succeed), the reading of
 the evaluated shares before the seal, seal of both units, selftest, independent recount, merge into `main`.
 
 ## Open decisions for the human

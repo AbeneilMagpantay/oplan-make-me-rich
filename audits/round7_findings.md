@@ -1271,3 +1271,250 @@ process left); its partial file is kept. sizeA continues.
 With R-O liquidations should be rare, and at rho 0.05-0.09 they do not depend on rho, so averaging the survivors does
 not bias the chosen rho. Recording the number of liquidated tuning books at the chosen rho (per cell) is enough; no
 change to the rule.
+
+# X12-R - the arms rerun after R-O (final) and R-P (coordinator's rulings, AUDIT_LOG 8bfabc4 "Round 7, addendum X12
+# (power arm)"); my own patch from the ruling text alone
+## Patch (my copies; diffs x12/delta_1442_ro.diff and x12/delta_ead_ro.diff)
+- kern1442ro = kern1442 (1442b42) + R-O in omr/ucalibrate.py only: USource.build requires "mark_klines" from
+  get_tables (KeyError if missing; an empty table means no mark bar), lq = datasets.liquidation_ratios(kl, mk or None),
+  hm = where(has_mark, up, NaN), lm = where(has_mark, dn, NaN) for every stored row, two float64 row fields (shared
+  with the workers by the generic to_shared loop; not in R-M's dsum or pools); meta "marks" over active rows (row
+  count, count without valid mark, smallest effective low / open, largest effective high / open), logged once by my
+  harness. UWorld._build: null A HM = LM = NaN but on the active rows ai, (hm[sr], lm[sr]); null B HM = where(F, 1.0 /
+  lm, hm), LM = where(F, 1.0 / hm, lm); use = act & isfinite(HM) & isfinite(LM); mark high = where(use, o * HM, o * HR),
+  low = where(use, o * LM, o * LR) after the act masking of HR / LR; mark open = o, close = c, the non-gap rows, samples
+  3600.0, trimming as before; index_klines is the same object. Docstring corrected (the zero-trade row stays flat);
+  PROTOCOL_VERSION 8 in my copy; load_source returns the mark table too (unused by me). The R-N patch (p32_rn.py) is
+  applied at run time as before.
+- kerneadro = kernead (58ba59e world builders: R-K null A, old null B) + the same R-O lines, for the premium arm's
+  source D parts ("the patched copy"; my reading: the arm keeps its kept-mean worlds and gains R-O; the X10 parts stay
+  on kernead because R-O changes nothing with empty mark tables).
+- Source D (p30_srcD.py): mark tables by my F5 plan (real mark rows up to DEV end read with a DEV-end filter; after DEV
+  end the mark bar of the same donor symbol, DEV day and hour, scaled to the constructed open; none where the donor's
+  is invalid). All 2,781,983 active post-DEV panel rows received a mark bar. The X10 source passes an empty mark table.
+- Harness: a mode name ending in "ro" runs on kern1442ro (powerBro, sizeBro); premDA / premDB / premDH run on
+  kerneadro; everything else as before. N null A (sizeA) continues on the unpatched copy as ordered.
+## Self-checks before the runs (p43_selfcheck.py ro / base, p43_ro_out.txt, p43_base_out.txt; p30 check
+## p30_out_check_ro.txt)
+- Source D on kern1442ro, meta marks: 4,146,843 active rows, 3,162 without valid mark ratios (the 2019 rows), smallest
+  effective low / open 0.2985, largest effective high / open 6.9872.
+- (i) Null B world 18002 (its coin flips both days): 2020-03-13 02:00 world liquidation up 1.179146 = 1 / lm exactly
+  (difference 0; dn 0.792105 = 1 / hm), 2020-04-14 07:00 up 1.013521 = 1 / lm exactly (dn 0.995461 = 1 / hm); has_mark
+  True; without R-O they were 485.0 and 735.6.
+- (ii) Null B world 18000 with every coin set to unflipped, every panel symbol with DEV rows (87), all 1,361,288 active
+  DEV rows from 2020-01-01 (all with a valid mark row): the world's effective liquidation ratios against the real
+  pipeline's (datasets.liquidation_ratios on the stored klines and mark rows, read up to DEV end): largest difference
+  2.22e-16 absolute, 2.21e-16 relative (one rounding of (o * r) / o).
+- (iii) Klines tables of worlds A 11000, 11001 and B 14000, 14001, all 134 symbols each (536 tables): sha256 equal
+  between kern1442ro and the unpatched kern1442 (0 differ); every other source array and the meta (without hm / lm /
+  marks): 26 compared, 0 differ.
+- Scramble check of source D with marks on kern1442ro (real post-DEV klines prices and funding rates replaced by noise
+  before construction; no post-DEV mark row is ever read): 28 arrays + meta, 0 differ; hm / lm fingerprints equal.
+- R-P on the stored core artifacts of the copy (p44_core_rp.py): the latest core artifact (calibration_7446278556aadd8f)
+  has 1,498 / 1,500 submitted pairs under null A / B and 0 not evaluated; every stored core artifact has 0. R-P does not
+  touch the core.
+## Attack on R-P (NULL_NOT_EVALUATED_MAX = 0.03 of a null's submitted pairs, pooled over its families; written before
+## the N results)
+- Right in kind: a submitted pair that is not evaluated cannot pass, so it silently lowers the pass rate; failing
+  closed is the only safe reading, and counting every non-"evaluated" status (kernel_fault too) is right.
+- Place: pooled per null mirrors the pooled pass bound but not the family bound. Not-evaluated pairs that concentrate in
+  ONE family (three families: up to 9% of that family's pairs while the pool stays at 3%) lower that family's rate by
+  up to that share - a true 6.6% reads 6.0%. Mirroring both bounds (pooled <= 3% AND each family <= 6% of its own
+  submitted pairs) closes it. A one-constant alternative with the same effect: count every submitted pair that is not
+  evaluated as a PASS in the numerator of both rates (the worst case of what it could have been); then no separate
+  bound is needed and a small dose tightens the threshold instead of passing silently.
+- Size: 3% of about 600 pairs is 18 pairs - a tripwire, not a tolerance. It cannot tell an artefact from a genuine
+  liquidation, which is why fail-closed is right; but it means a null whose worlds REPEAT a genuine extreme bar (null A
+  draws source days iid, so a day is used several times per world) can fail on structure, not on a bug (see N below).
+## W after R-O (p34 powerBro on kern1442ro + R-N patch, source D with marks; p37_summary.py W -> p37_W_out.txt)
+| cell | copy | rho (achieved) | not evaluated | K = 20 Tier-1 at 0.05 / 0.10 (G6 alone) | K = 40 at 0.025 / 0.05 / 0.10 (G6 alone) | memory K20 / K40 max |
+| A fast | kern1442 (as measured) | 0.047750 (1.502) | 0 / 24 | 15 / 16 (21 / 22) | 12 / 14 / 15 (17 / 20 / 23) | 0.03 / 0.04 |
+| A slow | kern1442 (as measured) | 0.078500 (1.500) | 0 / 24 | 11 / 16 (14 / 20) | 10 / 13 / 15 (13 / 16 / 19) | 0.09 / 0.36 |
+| B fast | kern1442ro (R-O) | 0.046750 (1.502) | 0 / 24 | 12 / 15 (18 / 23) | 12 / 13 / 15 (17 / 18 / 23) | 0.04 / 0.04 |
+| B slow | kern1442ro (R-O) | 0.081875 (1.499) | 0 / 24 | 14 / 16 (16 / 19) | 13 / 16 / 16 (14 / 18 / 19) | 0.06 / 0.37 |
+- Liquidated tuning books at the chosen rho: 0 of 24 in every cell (null B fast and slow under R-O: the 1-rho curves
+  have no non-finite value; null A likewise). Liquidations in the coarse curves under R-O only at rho >= 0.76 (fast,
+  4 worlds) and >= 0.98 (slow, 2 worlds), far from the bracket; unpatched null A fast has them from rho 0.40 up.
+- Reading rule: no power cell has 2 or more liquidated books (0 in all four).
+- THE CHOICE OF K (rule fixed in AUDIT_LOG; null A as measured on the unpatched copy, to be confirmed bit for bit on
+  306eb8c): Tier-1 at 0.10 with the limit, K = 20: 16 / 16 / 15 / 16 -> every cell >= 14 -> K = 20 (K = 40 would also
+  qualify: 15 / 15 / 15 / 16). The kernel's UNIVERSE_G6_LAGS = 20 stands. No book is over the memory limit.
+## N so far, before R-O, under the R-Q reading (p50_rq_counts.py)
+- Null A (sizeA, unpatched kern1442, 45 of 48 worlds): carry - every screened draw liquidated on DEV in 12 of 45
+  pairs (not submitted under R-Q), liquidated after DEV 0 of 33 submitted; momentum and reversal 0 and 0. R-P after the
+  R-Q reading: 0 of 123 submitted pairs not evaluated.
+- Null B BEFORE R-O (sizeB partial, 16 worlds, stopped): carry 5 all-DEV + 5 after DEV of 11 submitted; momentum 0 +
+  11 of 16; reversal 1 + 12 of 15. R-P after R-Q: 28 of 42 not evaluated - the null fails.
+- Final null A on the unpatched copy (48 worlds): carry 12 of 48 every draw liquidated on DEV, 0 of 36 after DEV;
+  momentum, reversal 0 / 0. R-P after the R-Q reading: 0 of 132.
+## Carry study (R-Q ruled after my early warning; p46_carry_liq.py on kern1442ro = R-O + R-Q, carry alone;
+## p46_out_ro.txt; panel counts p51_carry_wicks.py / p51_out.txt)
+- Worlds 11003, 11005, 11006, 11014, 11018 (the first five liquidated carry pairs) and controls 11000, 11001.
+  All five: 20 of 20 screened draws liquidated on DEV -> not submitted under R-Q. Controls: rows identical in every
+  field to the unpatched sizeA rows (p52_cmp_rows.py).
+- Every liquidation is at ONE source bar: source day 2022-05-11 13:00, one symbol (null A redraws that day into world
+  dates 2021-05 .. 2022-05). Effective up 4.895 (mark) / 5.52 (last): R-O lowers it but does not remove it. The book
+  is short that name with w = -0.33 .. -0.42, rank 1 by |w| of 29-30 names held (the funding outlier); its
+  contribution -1.27 .. -1.64 of equity; the next contribution at most 0.05. The signed funding the program read gives
+  SHORT (reproduces the actual side); the UNSIGNED rates of the same rows give LONG in all five: real funding that day
+  -0.41% per 8 hours (n = 4) against a cross-sectional median |rate| of 0.005%.
+- Panel-wide, active rows, effective ratios: DEV up >= 2 / 3 / 4: 5 / 3 / 3; dn <= 1/2, 1/3, 1/4: 10 / 2 / 0. The three
+  rows at up >= 3: 2022-05-11 13:00 (4.895) and 2022-05-12 10:00 (4.873), the same symbol, both on extreme NEGATIVE
+  funding (a real carry book is long there), and 2022-06-07 20:00 (6.987, another symbol, funding not extreme). After
+  DEV end (counts only): up >= 2 / 3 / 4: 4 / 1 / 0; dn <= 1/2, 1/3: 2 / 0; none on an extreme-funding day.
+- Judgment (accepted by the coordinator): a property of the null world - extreme funding stays on the day of its
+  extreme wick and the R-E coin puts the book short where real funding puts it long; R-Q is the treatment (such pairs
+  leave both numerator and denominator; the DEV coins that decide survival are independent of the VAL coins, so no
+  selection bias is expected; the pooled bound is a mixture over submitted pairs, and dropping never-passing carry
+  pairs makes it slightly TIGHTER for the other families, 3% x 132/96 = 4.1% instead of 4.5% under null A).
+## N null B after R-O and R-Q (p34 sizeBro on kern1442ro + R-N patch, 48 worlds; p50_rq_counts.py, p37_summary.py N)
+| family | not submitted (R-Q: every draw DEV-liquidated) | evaluated | not evaluated after DEV | Tier-1 K20 0.05 / 0.10 | mean VAL Sharpe |
+| momentum | 0 | 45 | 3 | 0 / 0 | -0.51 |
+| reversal | 5 | 38 | 5 | 0 / 0 | -0.24 |
+| carry | 7 | 41 | 0 | 0 / 0 | -1.49 |
+- R-P: 8 of 132 submitted pairs not evaluated = 6.1% > 0.03: on source D null B FAILS every threshold. Reading rule
+  (more than 1 liquidated row): explained below. No family's mean VAL Sharpe above +0.5; none at 4 or more of 48.
+- Null A (sizeA, unpatched, R-Q reading): momentum 0 / 48 / 0, Tier-1 1 / 1, -0.26; reversal 0 / 48 / 0, 0 / 0,
+  -0.66; carry 12 / 36 / 0, 0 / 0, -1.44; R-P 0 of 132 (carry rows to be replaced by the commit's carryAf).
+- Artifact (c), G1 (PSR >= 0.90, about 10% under no skill) among evaluated rows: null A momentum 1 / 48, reversal
+  1 / 48, carry 0 / 36; null B momentum 0 / 45, reversal 1 / 38, carry 0 / 41 - every family below the nominal rate:
+  neither reversal nor momentum passes G1 more often than luck allows on source D.
+## The 8 null B rows (p53_diag.py -> p46 on kern1442ro, chain_out_sizeBro.txt)
+- All 8 (reversal 14003, 14021, 14037, 14041, 14046; momentum 14030, 14031, 14039) are liquidated in stage 2 at ONE
+  world bar, 2022-10-19 20:00 (VAL part, coin unflipped), which is source D's copy of the DEV bar 2022-06-07 20:00 (the
+  block sequence places DEV day 2022-06-07 exactly once after DEV end, at 2022-10-19): effective up 6.987 by mark,
+  7.56 by last, one symbol, funding not extreme. Every book is short that name as its largest position (w -0.16 ..
+  -0.34, rank 1 by |w| of 30); contribution -0.98 .. -2.00 of equity, the next at most -0.005; a lone short is
+  liquidated there at w >= 0.975 / 5.99 = 0.16.
+- Without that one reused bar null B's R-P share on source D is 0 of 132. In the real run the bar occurs once, at its
+  real DEV date, where it can only cause DEV liquidations (R-Q: not submitted); after DEV end the real panel rows have
+  1 bar at effective up >= 3 and none at >= 4 (p51), where a lone short needs w >= 0.33: of the 8 books only one
+  (w -0.335) would reach that. R-P is at risk on source D only because of one reused DEV day (8 of 132 pairs).
+## First seal odds (p37_odds.py 20 sizeA sizeBro powerA powerBro; p37_odds_first.txt, p37_odds_first_neB0.txt)
+- As measured: P(seal) = 0.02 (R-P fails null B in about 95% of simulated runs: 8 of 132).
+- With null B's 8 counted as source D artefacts (0): P(seal) = 0.31; the threshold chosen is 0.10 in 38% of runs, 0.05
+  in 33%, and in 28% only the unreachable 0.025 qualifies (no power). The limits are the pooled 3% and momentum's 6%
+  under null A (momentum 1 of 48 at 0.05; the Jeffreys prior gives the zero-count families about 2% each at 0.10, which
+  the pooled 3% feels) and power at 0.05 (A slow 11 of 24). Both are below 0.40: by the reading fixed in AUDIT_LOG,
+  NOT READY; final odds after the commit's null A carry rows.
+## Cost of the real top30 calibration after fix passes 9 and 10 (the coordinator's question; from my measured per-task
+## times on source D, one worker process, with one other process and the builder's tests on the machine: an upper
+## estimate; AMD Ryzen 3 PRO 5450U, 4 cores / 8 threads, 15 GB)
+- Measured (p34_out_powerBro.txt, p34_out_sizeA.txt / sizeBro, side-line timings of p32_rn.py): tuning curve tasks per
+  oracle world 0.80 / 0.82 min (81 rhos, fast / slow), 0.50 / 0.53 (41 rhos), 0.28 / 0.25 (1 rho); power task (both
+  speeds) 1.94 min; null world (three families, about 2.75 submitted pairs) 3.4-4.3 min, mean about 4.0. My harness runs
+  G6 twice (K = 40 inside ugates, K = 20 in the wrapper, plus two memory statistics): measured on carry books
+  ugates(K = 40) 34 s and the K = 20 extra 10.7 s, so the kernel's K = 20 costs about 23.5 s less per evaluated book
+  -> about 1.16 min per power task and 2.9 min per null world for the kernel.
+- Kernel defaults (--worlds 200, --oracle-worlds 100), oracle phases first: per null, tuning 100 x (1.58 + 1.60) min
+  = 5.3 h and power 100 x 1.16 min = 1.9 h -> oracle phases 7.2 h per null, 14.5 worker-hours for both; null worlds
+  2 x 200 x 2.9 min = 19.3 worker-hours. TOTAL about 34 worker-hours (uncontended perhaps 15-25% less, 26-29 h).
+- Wall time: 1 worker about 34 h (oracle phases done after about 14.5 h); 2 workers about 17 h (7.3 h); 4 workers
+  about 9-10 h on this 4-core machine (scaling about 3.5x; oracle phases done after about 4 h).
+- Memory: a worker peaks near the kernel's WORKER_PEAK_BYTES (1.6 GiB; my single processes, which also hold the
+  source, showed 1.4-1.9 GB working set); the shared real-structure source about 0.44 GB (4.21 M stored rows x 90 B
+  for the row fields incl. hm / lm, about 42 MB of activity arrays, about 18 MB of funding). 4 workers need about
+  6.9 GB plus the 2 GiB margin: on this machine with the editor open (2.2 GB) 3 workers fit, 4 only with it closed.
+## Attack on R-R (coordinator's proposal; ruled with my two additions: pooled evaluated floor 0.75, designed pairs from
+## the protocol; plus the coordinator's (d) row-count and (e) header checks)
+- (a) rates over EVALUATED pairs are never looser on the rate (same passes, evaluated <= submitted); the one loosening
+  besides the intended one is the loss of R-P's breakage sentinel (a defect that hurts survivors' returns as well as
+  liquidating some): W-F1 would still be caught by a 0.50 family floor (null B before R-O: 5/16, 3/16, 6/16), a milder
+  defect would not -> the pooled floor 0.75 (pilot pooled 0.92 / 0.86; W-F1 0.29). Traps closed in the ruling: designed
+  pairs from the protocol, not len(rows); 0 evaluated fails; the advisory uses the largest possible final evaluated
+  denominator.
+- Floors: pilot evaluated / designed - null A momentum 48/48, reversal 48/48, carry 36/48 = 0.75; null B momentum
+  45/48, reversal 38/48 = 0.79, carry 41/48. I proposed 0.60 per family; the coordinator kept 0.50 (carry's share under
+  null A is known only to 0.61-0.85 from 48 worlds) with the pooled 0.75 as the sentinel - accepted.
+- Core under R-R (sealed artifact calibration_7446278556aadd8f, p58_out.txt): every family >= 0.997 evaluated of 300;
+  evaluated = submitted everywhere, so every core rate is unchanged; thin margin noted: null A pooled at 0.10 = 44/1498
+  = 2.94%, largest family donchian 4.67%.
+- KP-016 information rate and the oracle side unchanged.
+## The core unit's margin (p58, p62, p63, p64, p65)
+- Delta sealed kernel (main 521687f; my copy kernmain verifies against kernel.lock, 54 of 54 files; semantic
+  7446278556aadd8f = the sealed artifact's) -> 306eb8c over what the core calibration imports: unreachable (engine
+  additions, interp Panel / cs_inplay, lang top30 checks with the core canonical form unchanged, data acquisition,
+  probe universe panel, Opts.u_lags); rule-level only (tier_at moved, null_summary, decide, R-L, R-P); output-changing
+  with no effect on the core: R-Q (the sealed artifact has 0 submitted rows with a non-finite best), interp S1 (real
+  BTC / ETH funding 6,362 / 6,128 settlements all 8 h apart, 0 trip it for n = 6, 21, 90), U7 (no core family reads
+  funding8h), index_klines in every frame (no core family reads index_close). Data (not kernel): BTC / ETH mark rows
+  topped up since genesis (60,312 -> 60,528 and 60,456 -> 60,528; klines and funding identical by sha256), acting only
+  through the liquidation check of a one-symbol book.
+- Core dry run, fully synthetic, same seeds, 30 / 10 worlds, both kernels: null rows 300 and oracle rows 80 identical
+  in every field; tuning picks equal. Verdicts differ by the rule only (R-L's family bound on 30 worlds).
+- Sealed artifact, power at level 1.5 (0.025 / 0.05 / 0.10): A fast 0.84 / 0.84 / 0.84, A slow 0.75 / 0.83 / 0.855,
+  B fast 0.905 / 0.905 / 0.905, B slow 0.76 / 0.81 / 0.855; null rates at 0.05: pooled A 1.74%, B 1.20%, largest family
+  3.0% -> the core seals at 0.05 if it lost 0.10. A fresh re-run (300 / 200) in my model: threshold 0.10 13%, 0.05 76%,
+  0.025 11%, P(core seals) 0.997. If the rows reproduce (expected), 0.10 again.
+## Odds study (p60_odds_study.py / p60_out.txt; p66_extension_check.py / p66_out.txt)
+- Current data under R-R semantics: P(seal) 0.305; at 0.10 pooled A 0.58 / B 0.72, family cap A momentum 0.78; at 0.05
+  power A slow 0.34, B fast 0.49; threshold 0.10 in 37%, 0.05 in 34%, neither in 29%.
+- Ceiling for a 48 / 24 pilot (0 Tier-1 everywhere, 24 / 24 in every cell): 0.856 - reachable only by a near-perfect
+  outcome; the reading is held down by the Jeffreys mass on zero-count cells (about 2% per family at 0.10).
+- Pre-posterior of one extension (96 / 144 / 192 null worlds x 48 / 72 / 96 books): P(reading >= 0.70) 0.02-0.10,
+  median about 0.27 - the posterior predictive draws the truth from the same prior-weighted posterior.
+- If the extension repeats round 1 in proportion: full 192 / 96 -> 0.911 (0.10 qualifies 0.959; pooled A 0.980; momentum
+  A cap 0.969); interim 144 / 72 -> 0.853. The coordinator ordered the extension (null worlds to 191, oracle worlds to
+  95, interim at 144 / 72) with its reading rule recorded in AUDIT_LOG before any world.
+## Wick sizes and short weights (p61_out.txt; p59_weights.py)
+- Panel active rows, effective ratios: DEV up >= 2.0 / 2.5 / 3.0 / 3.5: 5 / 4 / 3 / 3, dn <= 0.5 / 0.4 / 1/3: 10 / 3 / 2;
+  after DEV end (counts only) up 4 / 1 / 1 / 0, dn 2 / 0 / 0.
+- Largest short |w| at any hour (first 12 worlds per null): null A momentum median 0.274, 90% 0.356, max 0.411; reversal
+  median 0.415, 90% 0.495, max 0.500 (the whole short side); null B momentum 0.333 / 0.393 / 0.476; reversal 0.404 /
+  0.438 / 0.459. Hours whose largest short is >= 0.33: 0.0-0.7% per book. After DEV end the real panel has 1 bar in
+  [3.0, 3.5), where a lone short needs w >= 0.39-0.49.
+- All 48 worlds per null (p67_out.txt): null A momentum median 0.234, 90% 0.323, 99% 0.416, max 0.420 (pairs >= 0.16 /
+  0.25 / 0.33 / 0.39 / 0.49: 47 / 18 / 5 / 2 / 0); reversal 0.436 / 0.491 / 0.500 / 0.500 (48 / 48 / 47 / 34 / 6); null B
+  momentum 0.307 / 0.398 / 0.464 / 0.476 (48 / 41 / 18 / 6 / 0); reversal 0.409 / 0.480 / 0.497 / 0.497 (43 / 43 / 40 /
+  26 / 3).
+## C - controls on the X10 iid source (kern1442ro: R-M + R-O + R-Q + my R-N patch; p37_C_out.txt)
+- ctrlA / ctrlB, 12 worlds each: every family Tier-1 0 at 0.05 and 0.10; nothing passes all other gates; momentum mean
+  VAL Sharpe -0.72 / -0.70, reversal -0.88 / -1.28, carry -3.11 / -3.21; 0 not evaluated; G1 0 of 36 each.
+- World by world against X11 (R-K null A / old null B worlds of the same source): X11 momentum VAL 1.15 .. 3.63 with
+  others passing in 11 of 12 (A) and 10 of 12 (B); here VAL -1.43 .. 0.61 and 0 passing - R-M removes the premium the
+  X10 source carried.
+## P - premium arm (kerneadro: 58ba59e kept-mean worlds + R-O + R-Q; momentum; K = 20 with the limit 0.5; p37_P_out.txt)
+- Admitted books (all other gates pass, memory <= 0.5) and G6 passes at 0.05 / 0.10: premXA 37: 3 / 5 (P(>= 5 of 37 |
+  10%) = 0.31); premXB 16: 0 / 0; premDA 16: 1 / 2 (P = 0.49); premDB 9: 0 / 0; pooled 78: 4 / 7 (5.1% / 9.0%). Reading
+  rule (P) not triggered: no pass rate a true 10% would give in fewer than 1 run in 20.
+- Gap mean(A_k) - mean(S_k) over worlds against the SD of S_k inside a world (K = 20): premXA +0.01 sd 0.61 vs 0.51;
+  premXB -0.06 sd 0.45 vs 0.49; premDA -0.05 sd 0.59 vs 0.51; premDB -0.06 sd 0.46 vs 0.51 - over-dispersion at most
+  1.2x (X11 had 0.87 vs 0.53); adjacent lagged-Sharpe correlation +0.25 .. +0.44 (K = 40: +0.54 .. +0.70).
+- Momentum VAL Sharpe: kept-mean worlds of source D +1.11 (A) / +0.80 (B); source D's own history (premDH) +1.78; the
+  R-M worlds of source D -0.26 (A) / -0.51 (B).
+## Bit-for-bit on 306eb8c (kern306, no patch; p55_*.txt)
+- sizeAf (null A worlds 0-11): 29 of 36 rows identical in every field incl. G6 (the kernel's p = my K = 20 p, same
+  step); 7 differ, all carry and only through R-Q (3 liquidated -> not submitted, 4 stage-1 counts only).
+- carryAf (all 48 carry rows): 27 identical; 12 DEV-liquidated -> not submitted; 9 stage-1 counts only; no different
+  draw.
+- sizeBf (null B worlds 0-11 + every world with a liquidated or R-Q row, 25 worlds): 75 of 75 identical.
+- powerAf: 48 of 48 rows identical, tuning picks and achieved means equal; the fast coarse mean curve differs at 31 of
+  81 points, all at rho >= 0.40 (R-O changes the high-rho liquidations of the unpatched null A copy; the bracket, picks
+  and power rows are unaffected). powerBf: 48 of 48 identical, curves identical.
+- g6_memory (kernel, sequential sums) against my pairwise sums: at most 5.0e-15; every p equal.
+## Final odds of round 1 (rows as reproduced on the commit; carry from carryAf)
+- Under 306eb8c's rule (R-P): 0.02 (p37_odds_final.txt). Under 305e2c6's rule (R-R, p60 semantics): 0.305. NOT READY by
+  the rule fixed in advance; the coordinator ordered ONE extension (AUDIT_LOG 305e2c6) after my check that a
+  proportional repeat reads 0.911 at the full size.
+## 305e2c6 (fix pass 11 stage A, R-R) - delta and attack
+- p72: no world, draw or per-pair row can differ from 306eb8c (identical upipeline, engine, universe, interp,
+  datasets, data, pipeline, lang and the programs; unchanged USource, UWorld, UOracle, task functions, tune_rho,
+  run_tasks, Partial, _seed, draw_params, summarise, dev_candidate) -> the extension runs on 305e2c6.
+- Attack: no thin or foreign artifact path found (integer sizes; exact design rows with the module's seeds; floors on
+  the protocol's designed count; families outside the set raise -> STOP; 0 evaluated fails; faults fail-closed; core
+  main writes protocol = protocol_header). The advisory cannot call a threshold dead falsely (denominators designed
+  minus known not evaluated; its fault test is lenient). No header field legitimately differs between run and seal.
+  Notes: the genesis core artifact now fails the header test (a core re-run is part of the re-key, about 5 h with one
+  worker); in the universe artifact only run_header is compared key by key, the parallel protocol dict is read for
+  sizes and seeds only.
+## Extension (started 12:19 on kern305, detached, log guard_chain_t5.txt): null worlds 48-143 per null, oracle 0-71,
+## interim reading (p69_interim_out.txt; >= 0.75 stops), then 144-191 / 0-95 and the final reading.
+## Suggested limitation sentences (CONSTITUTION section 12)
+- Carry pairs whose every screened draw is liquidated on DEV are not submitted (R-Q): under null A about a quarter of
+  carry pairs, because the R-E sign coin puts the book short a coin whose extreme negative funding (a real carry book
+  would be long) shares its source day with a mark-confirmed bounce; the carry null rate is conditional on surviving DEV.
+- Null A redraws real DEV days, so a real mark-confirmed extreme bar (2022-05-11 / 2022-06-07) recurs at many world
+  dates and liquidates concentrated short books more often than history did once; such pairs leave the denominator.
+- A usable zero-trade row stays flat in a world although the real evaluation would read its mark wick.
+- With UNIVERSE_G6_LAGS = 20 the smallest G6 p is 1/21: the 0.025 threshold is unreachable for top30, and a book whose
+  weights stay correlated above 0.5 a lag step apart (windows beyond about 60 days) has p = 1.
