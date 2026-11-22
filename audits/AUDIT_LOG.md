@@ -1038,3 +1038,9 @@ round 3 also the coordinator's own read of the core modules.
   belong to the protocol, so no run is repeated with other seeds.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file ending with "EXTENSION -
   INTERIM READING" (sha256 e31c899ad21a04ec0bd0f115ee1e1a99f0b22baee99239a650e24425d97725bc).
+- Added after commit 2ede291 (coordinator's count on the same rows, for KP-016; information).
+  Evaluated pairs with a positive DEV Sharpe (G3 true): null A 124 of 396 (momentum 67, reversal
+  49, carry 8), null B 153 of 372 (74, 46 and 33). Tier-1 over those: null A 1 of 124 at 0.05
+  and 3 of 124 (2.4%) at 0.10 (momentum 2 of 67, reversal 1 of 49); null B none of 153. This is
+  the count the real run reports for KP-016. The owner is asked for the approval of KP-015 with
+  the odds, the limit of the pilot stated above, and this count.

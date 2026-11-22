@@ -183,4 +183,6 @@ into `main`. If a unit stops, nothing is sealed, `main` stays on 521687f and the
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7
    builds a weaker safeguard into KP-015 (R-L, no family above 6%); KP-016 would be stricter (core 0.05
-   instead of 0.10; top30 0.025 at best, with a real chance that no threshold qualifies).
+   instead of 0.10). For top30 the pooled pilot of 2026-11-23 counts, over DEV-positive evaluated pairs, 3
+   of 124 (2.4%) at 0.10 and 1 of 124 at 0.05 under null A and none of 153 under null B: near the 3% bound
+   at 0.10, well under it at 0.05. The real run reports the same count.
