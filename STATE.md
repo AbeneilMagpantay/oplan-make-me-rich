@@ -148,24 +148,30 @@ power of 0.81 or more.
 Round 1 of the pilot is closed (2026-11-22): every row checked on the committed code reproduces (carry
 differing only through R-Q), the controls pass nothing, and the premium arm shows G6 at its nominal level with
 20 lags (7 of 78 books that earn a premium without timing pass at 0.10, 4 at 0.05).
-Next: ONE extension of the pilot on 305e2c6 (running since 2026-11-22 12:19),
-fixed in AUDIT_LOG before its first world: 192 worlds per null and 96 books per power cell, with an
-interim reading at 144 and 72 (0.75 or more ends it and the human is asked; at the full size 0.70 or more
-asks, 0.40 to 0.70 gives the human the odds with the advice not to run yet, under 0.40 is NOT READY and back
-to design); about 16 hours to the interim reading and 11 more to the full size, one process at a time. Then,
-if that reading allows, the human's approval, asked with the odds of a successful seal; re-key; both
-calibrations (core again, about 5 hours with one worker, since its artifact must carry the new header; top30
-about 34 worker-hours, that is 11 to 12 hours with the three workers that fit on this PC at about 1.6 GiB
-each; resumable; the oracle phases come first, done after about 5 hours, and show early whether the seal can
-succeed), the reading of
-the evaluated shares before the seal, seal of both units, selftest, independent recount, merge into `main`.
+The ONE extension of the pilot (on 305e2c6, 2026-11-22 12:19 to 2026-11-23 00:05; size and reading rule
+fixed in AUDIT_LOG before its first world) ended at its interim reading. Pooled with round 1 the pilot
+holds 144 worlds per null and 72 books per power cell, and the auditor's odds of a successful seal read
+0.84 against the 0.75 fixed for "ask the human with the odds". No-skill side: 3 Tier-1 passes among 396
+evaluated pairs under null A at 0.10 (1 at 0.05) and none among 372 under null B; every family's mean VAL
+Sharpe is negative; 0.76 to 1.00 of each family's pairs are evaluated. Power at 0.10: 52, 45, 47 and 44
+of 72 (at 0.05: 48, 39, 42 and 38); no book liquidated. None of the checks that would have to be explained
+before a re-key fires, and the coordinator's own recount from the result files agrees. What the odds cannot
+cover: the pilot's days after DEV end are DEV days, so the real VAL period can differ in either direction.
+Next: the human's approval of KP-015 (open decision 2), asked on 2026-11-23 with these odds. After a yes:
+re-key on the branch; `data validate`; the top30 calibration first (about 34 worker-hours, that is 11 to
+12 hours with the three workers that fit on this PC at about 1.6 GiB each; resumable; its oracle phases
+come first, done after about 5 hours, and show early whether the seal can succeed); then the core
+calibration again (about 5 hours with one worker, since its artifact must carry the new header); the
+reading of the evaluated shares before the seal; seal of both units; selftest; independent recount; merge
+into `main`. If a unit stops, nothing is sealed, `main` stays on 521687f and the build returns to design.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12 size arm
-   (2026-11-22): one sized extension of the pilot comes first (fix pass 11 is built). Run time on this PC: see
+2. KP-015 (built, unlocked): approve the semantic re-key. ASKED on 2026-11-23: the pilot's extension reads
+   odds of 0.84 for a successful seal (audit round 7, X12 extension, interim reading; build at 305e2c6
+   with fix pass 11). Not approved until the human says so. Run time on this PC: see
    Next. The approval covers the rulings made during the build, among them R-L (no family above 6%), R-M
    (the same expected return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally
    spaced lags and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-Q (a draw

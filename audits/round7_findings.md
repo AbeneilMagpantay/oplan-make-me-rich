@@ -1518,3 +1518,21 @@ change to the rule.
 - A usable zero-trade row stays flat in a world although the real evaluation would read its mark wick.
 - With UNIVERSE_G6_LAGS = 20 the smallest G6 p is 1/21: the 0.025 threshold is unreachable for top30, and a book whose
   weights stay correlated above 0.5 a lag step apart (windows beyond about 60 days) has p = 1.
+## EXTENSION - INTERIM READING (kern305 = 305e2c6, no patch; p69_ext_reading.py interim -> p69_interim_out.txt;
+## runs: extAx / extBx null worlds 48-143, power72Ax / power72Bx oracle worlds 0-71 tuned on all 72, worlds 0-23's
+## tasks seeded from the 306eb8c runs; 12:19 .. 00:05)
+- Pooled pilot, 144 worlds per null (round 1 as reproduced on the commit: null A momentum / reversal from sizeA,
+  carry from carryAf; null B sizeBro), K = 20 with the limit 0.5, per family [Tier-1 <= 0.05, 0.05-0.10, evaluated
+  without, not evaluated], evaluated share, mean VAL Sharpe:
+  null A carry [0, 0, 109, 35] 0.757, -1.46; momentum [1, 1, 142, 0] 1.000, -0.26; reversal [0, 1, 142, 1] 0.993, -0.59;
+  null B carry [0, 0, 120, 24] 0.833, -1.51; momentum [0, 0, 136, 8] 0.944, -0.38; reversal [0, 0, 116, 28] 0.806, -0.41.
+  Null A evaluated 396 / 432 = 0.917, null B 372 / 432 = 0.861.
+- Power, 72 books per cell at the 72-world tuning (rho A fast 0.047625, A slow 0.07425, B fast 0.047375, B slow
+  0.086375; achieved 1.497 .. 1.500): Tier-1 at 0.05 / 0.10: A fast 48 / 52, A slow 39 / 45, B fast 42 / 47, B slow
+  38 / 44; 0 books not evaluated.
+- P(seal) = 0.843 (model p60 unchanged, R-R semantics, core 0.997): threshold 0.10 0.932, 0.05 only 0.062, neither
+  0.007; pooled evaluated floors 1.000. READING (fixed in AUDIT_LOG 305e2c6): interim >= 0.75 -> the extension STOPS;
+  ask the owner with the odds. The full-size steps found the stop flag and ran nothing.
+- Explain-before-re-key checks: no family's mean VAL Sharpe above +0.5; no family's Tier-1 share at 0.10 among its
+  evaluated pairs above 6% (largest null A momentum 1.4%); no family under 0.60 evaluated (smallest null A carry 0.757)
+  and no null under 0.80; no power cell with liquidated books; the premium rule (P) not triggered. None fires.

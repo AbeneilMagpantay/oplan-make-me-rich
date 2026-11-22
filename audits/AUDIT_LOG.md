@@ -964,3 +964,77 @@ round 3 also the coordinator's own read of the core modules.
   hours after the start; the full size follows only if that reading is under 0.75.
 - Detail: `audits/round7_findings.md`, replaced by the auditor's file with section X12-R (sha256
   7524ed5b364f91bee57fb93fd970423a161a48adc8f4a0c48c1530c5dc0913bc).
+
+## Round 7, addendum X12 (extension, interim reading) - 2026-11-23 - the pooled pilot reads 0.843; the rule says: ask the owner with the odds
+
+- Run (auditor): on 305e2c6 without a patch, source D unchanged, seeds continued, one process at
+  a time, 2026-11-22 12:19 to 2026-11-23 00:05. Null worlds 48 to 143 under each null (288 pairs
+  per null), then the oracle worlds 0 to 71 in each cell, tuned on all 72 (the tasks of worlds 0
+  to 23 reused from the runs on 306eb8c, keyed by world, seed and rho). The reading script and
+  the model carry file times of 2026-11-22 09:04 and 03:00, before the first extension world.
+  The full-size steps found the stop flag and ran nothing.
+- Pooled pilot, 144 worlds per null (round 1 as reproduced on the commit: null A momentum and
+  reversal from the size arm, carry from the commit's rerun; null B from the copy with R-O).
+  Per family: Tier-1 with p <= 0.05; Tier-1 with 0.05 < p <= 0.10; evaluated without Tier-1; not
+  evaluated (not submitted + liquidated after DEV end); evaluated share; mean VAL Sharpe.
+  Null A momentum: 1; 1; 142; 0; 1.000; -0.26.
+  Null A reversal: 0; 1; 142; 1 (0 + 1); 0.993; -0.59.
+  Null A carry: 0; 0; 109; 35 (35 + 0); 0.757; -1.46.
+  Null B momentum: 0; 0; 136; 8 (0 + 8); 0.944; -0.38.
+  Null B reversal: 0; 0; 116; 28 (17 + 11); 0.806; -0.41.
+  Null B carry: 0; 0; 120; 24 (24 + 0); 0.833; -1.51.
+  Null A: 396 of 432 evaluated (0.917), Tier-1 over evaluated 1 of 396 at 0.05 and 3 of 396
+  (0.76%) at 0.10. Null B: 372 of 432 evaluated (0.861), no Tier-1 pass. No faulted row.
+- Power, 72 books per cell at the 72-world tuning, Tier-1 at 0.05 and at 0.10: A fast (rho
+  0.047625) 48 and 52; A slow (0.07425) 39 and 45; B fast (0.047375) 42 and 47; B slow
+  (0.086375) 38 and 44. Achieved mean VAL Sharpe 1.497 to 1.500. No book liquidated, none over
+  the memory limit. Books passing every gate but G6: 54, 50, 48 and 55.
+- Model (the auditor's, unchanged; R-R; core 0.997; 60000 simulated runs): P(seal) 0.843. The
+  null side qualifies 0.10 in 0.932 of the runs, 0.05 only in 0.062, neither in 0.007; the
+  pooled evaluated floor holds in every run under both nulls. Before the first extension world
+  the same model read 0.853 for a proportional repeat of round 1 at this size.
+- Checks to be explained before any re-key (the extension entry): none fires. Mean VAL Sharpe:
+  negative for every family under both nulls. Largest Tier-1 share at 0.10 among evaluated
+  pairs: null A momentum, 2 of 144 = 1.4% (trigger above 6%). Smallest evaluated share of a
+  family: null A carry 0.757 (trigger under 0.60); nulls 0.917 and 0.861 (trigger under 0.80).
+  No power book liquidated (trigger above 5%). Premium rule (P): not triggered (round 1, 7 of 78
+  at 0.10).
+- Coordinator's own recount from the result files (counts only): the six null cells and the
+  four power cells as above. On every row that carries the kernel's own G6 fields (all rows run
+  on 305e2c6, the carry rerun on 306eb8c, both power arms) the kernel's p and memory flag equal
+  the auditor's side line in every evaluated row, and the Tier-1 counts from the kernel's
+  fields alone are the same. Every evaluated row has a side-line p (a missing one would have
+  read as "no Tier-1"). Statuses are evaluated, liquidated and not submitted only. Seeds are
+  contiguous (11000 to 11143, 14000 to 14143, 17000 to 17071, 18000 to 18071), one row per
+  pair. Reading of the two scripts: the model applies R-R (rates over evaluated pairs, family
+  floor 0.50, pooled 3%, family 6%); the pooled floor is reported and not applied, and holds in
+  every run; faults are not modelled, and none occurred.
+- Observation (coordinator; information, no trigger). Pairs passing every gate but G6: null A 5
+  of 396 (momentum 4, reversal 1), null B 0 of 372; G1 alone: 13 of 396 and 5 of 372. Of the 5,
+  3 pass G6 at 0.10 and 1 at 0.05. Against luck G6 is not a 1-in-10 filter: a pair that passes
+  G1 by luck has an actual Sharpe in the upper tail of its own lagged copies, so few of the 20
+  lags beat it. The no-skill bound therefore rests on the joint rate of the other gates, which
+  the calibration measures as part of Tier 1; G6's own level is what the premium arm measured
+  (9% at 0.10).
+- Reading, by the rule fixed before the extension's first world: interim P(seal) 0.843 is at
+  least 0.75, so the extension stops and the reading is "ask the owner with the odds". What the
+  odds do not cover, as stated before the run: the pilot's days after DEV end are DEV days. The
+  no-skill rates and the power of the real VAL period can differ from the pilot's in either
+  direction, and only the real calibration measures them. Known, counts only (the extension
+  entry): after DEV end the real panel has fewer extreme rows than DEV, so the pairs lost after
+  DEV end should be fewer than in the pilot.
+- Reading before the seal (the size-arm entry), reference renewed on the pooled pilot with the
+  same convention (pairs liquidated after DEV end by the source's replayed days counted as
+  evaluated): null A momentum 144, reversal 144, carry 109 of 144; null B momentum 144, reversal
+  127, carry 120 of 144. A cell of the real calibration that differs by more than 0.15 is
+  explained before the seal. A reading, not a bound.
+- Order of the real run, fixed before the owner is asked. Re-key on the branch; `data validate`;
+  the top30 calibration first, at the protocol's size with three workers (its oracle phases
+  come first, and its advisories say within about 5 hours whether a threshold can still
+  qualify); then the core calibration at the protocol's size; the reading before the seal; the
+  seal of both units; the selftest; the auditor's independent recount; the DEV-positive null
+  pass rate reported for KP-016 (information); merge into `main`. If a unit stops, nothing is
+  sealed, `main` stays on the sealed kernel (521687f) and the build returns to design; the seeds
+  belong to the protocol, so no run is repeated with other seeds.
+- Detail: `audits/round7_findings.md`, replaced by the auditor's file ending with "EXTENSION -
+  INTERIM READING" (sha256 e31c899ad21a04ec0bd0f115ee1e1a99f0b22baee99239a650e24425d97725bc).
