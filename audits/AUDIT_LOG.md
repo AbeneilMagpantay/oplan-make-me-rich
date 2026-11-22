@@ -1044,3 +1044,53 @@ round 3 also the coordinator's own read of the core modules.
   and 3 of 124 (2.4%) at 0.10 (momentum 2 of 67, reversal 1 of 49); null B none of 153. This is
   the count the real run reports for KP-016. The owner is asked for the approval of KP-015 with
   the odds, the limit of the pilot stated above, and this count.
+
+## Round 7, addendum X12 (decision) - 2026-11-23 - KP-015 approved by delegation and re-keyed; how the real calibrations start
+
+- The owner was asked on 2026-11-23, after commit 36b8665, to approve KP-015 as built. The request
+  stated: the odds of a successful seal (0.843) and what they cannot cover (the pilot's days after
+  DEV end are DEV days); the change (the unit top30 with the index price, a G6 threshold per unit,
+  and the six rulings R-L, R-M, R-N, R-O, R-Q and R-R, any of which he may decline at the cost of
+  a rebuild and a new pilot); the known limits (a book that earns a premium without timing passes
+  G6 about 1 time in 10 at 0.10; holding periods of roughly 5 to 50 days; the null pass rate is
+  counted over all evaluated pairs, the DEV-positive count of the pilot being 3 of 124 and 0 of
+  153; carry is not submitted in about a fifth of the null worlds; the five counted trials keep
+  their place in M but their ids belong to the sealed kernel); the run time; and that a failed run
+  seals nothing. The coordinator recommended approval.
+- The owner's reply, in full: "decide whats the best". That is a delegation, not a yes in his own
+  words, and it is recorded as that. CONSTITUTION section 10, step 2, provides for "the
+  coordinator acting for the human, recorded as such". The delegation covers the question that
+  was asked and nothing else.
+- The coordinator's decision, acting for the owner: KP-015 is approved as built at 305e2c6 with
+  all six rulings, and the real calibrations run. Reasons: the reading rule fixed before the
+  extension's first world says "ask", and none of its checks fires; each ruling answers a defect
+  that an audit measured, and the auditor attacked each one before it was built; what is still
+  unknown (the real VAL period) can only be measured by the real run; a run that stops costs
+  machine hours, seals nothing and leaves `main` on the sealed kernel. NOT decided here, and still
+  the owner's: KP-016, KP-014, the confirmation of the rule set as a whole, and the other open
+  items of STATE.md.
+- KP-016 and the order of things. A semantic re-key after generation 2 has scored trials would
+  orphan them. The count over DEV-positive pairs of the real run, for both units, therefore goes
+  to the owner together with the result of the seal and BEFORE generation 2 opens.
+- Pre-flight before the re-key (read only). The kernel files are those of 305e2c6 (no difference
+  in omr/, tests/, CONSTITUTION.md, LANGUAGE.md and requirements.txt between 305e2c6 and
+  36b8665); no environment problem; research hash 28d9084a8c5c7659..., validation passed for the
+  data as stored; every ledger chain verifies.
+- Re-key (2026-11-23, branch kp015-build): semantic
+  5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687 (39 files), text
+  1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924 (35 files), not sealed.
+  `kernel_lock verify` and `ledger verify` are OK; ledger/kernel_history.jsonl has its ninth row,
+  with the approval recorded in the words above. The seal of the earlier kernel (semantic
+  7446278556aadd8f..., G6 0.10) stays on `main` (521687f) until both units seal here.
+- Memory, and how the run starts. At 00:41 the machine had 1.4 GiB of physical memory available
+  and under 4 GiB of commit headroom (the owner's other editor windows and sessions, opened at
+  about 00:39). The kernel's own preflight needs 1.6 GiB per worker plus the shared source, so not
+  even one worker fits, and the coordinator does not use --force. The real run therefore starts
+  through a detached supervisor outside the kernel and outside git (`_build/kp015_lock_run/`): it
+  waits for memory, starts `python -m omr.ucalibrate` with as many workers as fit (3 at most),
+  ends the run when the kernel's own advisory says that the seal rule will stop whatever the rest
+  gives (so that no null row is looked at without need), and starts `python -m omr.calibrate`
+  after a top30 verdict that is not a stop. The commands, sizes and seeds are the protocol's own;
+  the supervisor decides only when a process starts and with how many workers, and the artifact
+  does not depend on either (the partial file binds the run header, which has no worker count).
+  The seal, the reading before it, the selftest and the recount stay with the coordinator.

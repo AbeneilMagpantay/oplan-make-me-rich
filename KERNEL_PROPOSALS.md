@@ -392,6 +392,17 @@ rates, status.
   R-R changes nothing (evaluated = submitted, every family at least 299 of 300 evaluated; chosen 0.10).
   omr/calibrate.py PROTOCOL_VERSION 6, omr/ucalibrate.py PROTOCOL_VERSION 9. Texts: CONSTITUTION sections 8, 12 and
   13. Evidence: notes/kp015_build_evidence.md.
+- Decision (2026-11-23). The pilot's extension read odds of 0.843 for a successful seal against the 0.75 fixed in
+  advance (audits/AUDIT_LOG.md, round 7, X12 extension, interim reading). The coordinator stated the exact change to
+  the human again (the unit top30 with the index price, a G6 threshold per unit, the rulings R-L, R-M, R-N, R-O, R-Q
+  and R-R, each of which he may decline), with the odds, what the pilot cannot cover, the known limits and the run
+  time, recommended approval and asked for it. The human replied, in full: "decide whats the best". Acting for the
+  human on that delegation (CONSTITUTION section 10, step 2; recorded as such, it is not a yes in his own words), the
+  coordinator approved KP-015 as built at 305e2c6 with all six rulings. KP-016, KP-014 and the confirmation of the
+  rule set as a whole are NOT covered and stay open. Re-keyed on 2026-11-23 on branch kp015-build: semantic
+  5ea66b0fb79ca267..., text 1366fb8fd0b69768..., not sealed (ledger/kernel_history.jsonl, row 9). Both calibrations,
+  the seal, the selftest, an independent recount and the merge into `main` follow (audits/AUDIT_LOG.md, round 7, X12
+  decision).
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 

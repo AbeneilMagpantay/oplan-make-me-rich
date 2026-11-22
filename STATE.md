@@ -2,10 +2,14 @@
 
 ## Where things stand
 
-- Kernel (sealed): semantic `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1`
+- Kernel on `main` (sealed): semantic `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1`
   (32 files), text `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files),
   G6 threshold 0.10 from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth
   audit; artifact, calibration-log row and seal are in commit d2c2d4f.
+- Kernel on branch `kp015-build` (KP-015; re-keyed 2026-11-23; NOT SEALED): semantic
+  `5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687` (39 files), text
+  `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files). Nothing can be
+  evaluated on it until both units are calibrated and sealed.
 - Generation 0 (`generations/gen000/REPORT.md`): five textbook baselines; SMA cross rejected in
   stage 1 (uncounted); four evaluated, none Tier 1; best VAL Sharpe 0.384.
 - Generation 1 (`generations/gen001/REPORT.md`): five pre-registered hypotheses, 18 DEV sandbox runs,
@@ -16,12 +20,11 @@
 - Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
 - Data: the counted trials above were scored on research_hash
   `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`. The data store has since been
-  extended and hole-filled for the KP-015 build (research hash `28d9084a8c5c7659...`), which is not
-  locked yet.
+  extended and hole-filled for the KP-015 build (research hash `28d9084a8c5c7659...`); the
+  calibrations of the re-keyed kernel bind to it.
 - Repository: git, private GitHub remote. `main` holds approved, verifying states only (HEAD 521687f).
-  The unapproved KP-015 build is on branch `kp015-build` (snapshots bd6920b, 973e413, e4e44e2, 32e32e0,
-  then fix pass 6)
-  and is merged into `main` only after approval, re-key and seal. The coordinator commits and pushes at
+  The KP-015 build is on branch `kp015-build` (approved by delegation and re-keyed on 2026-11-23)
+  and is merged into `main` only after the seal. The coordinator commits and pushes at
   gates (`tools/git_gate.ps1`, which pushes the current branch). Research sessions make no git writes.
 
 ## How a generation runs (as done in generation 1)
@@ -157,28 +160,36 @@ Sharpe is negative; 0.76 to 1.00 of each family's pairs are evaluated. Power at 
 of 72 (at 0.05: 48, 39, 42 and 38); no book liquidated. None of the checks that would have to be explained
 before a re-key fires, and the coordinator's own recount from the result files agrees. What the odds cannot
 cover: the pilot's days after DEV end are DEV days, so the real VAL period can differ in either direction.
-Next: the human's approval of KP-015 (open decision 2), asked on 2026-11-23 with these odds. After a yes:
-re-key on the branch; `data validate`; the top30 calibration first (about 34 worker-hours, that is 11 to
-12 hours with the three workers that fit on this PC at about 1.6 GiB each; resumable; its oracle phases
-come first, done after about 5 hours, and show early whether the seal can succeed); then the core
-calibration again (about 5 hours with one worker, since its artifact must carry the new header); the
-reading of the evaluated shares before the seal; seal of both units; selftest; independent recount; merge
+Decision (2026-11-23): asked for the approval with these odds, the known limits and the run time, the human
+replied "decide whats the best". Acting for the human on that delegation (recorded as such; CONSTITUTION
+section 10, step 2), the coordinator approved KP-015 as built at 305e2c6 with all six rulings and re-keyed
+the branch (not sealed). KP-016, KP-014 and the confirmation of the rule set are not covered by it.
+Now: the real calibrations. At the re-key the PC had 1.4 GiB of memory available against 1.6 GiB per
+worker plus the shared source, so the run starts through a detached supervisor in `_build/kp015_lock_run/`
+(outside the kernel and git; being built and tested; its `status.txt` tells the state): it waits for
+memory, starts the top30 calibration with up to three workers (about 34 worker-hours, that is 11 to 12
+hours with three workers and 17 with two; resumable; its oracle phases come first and its advisories say
+early whether the seal can still succeed; the supervisor ends the run on a certain stop), and then the core
+calibration (about 5 hours with one worker, since its artifact must carry the new header). Then, by the
+coordinator: the reading of the evaluated shares before the seal; seal of both units; selftest;
+independent recount; the DEV-positive count for KP-016 put to the human BEFORE generation 2 opens; merge
 into `main`. If a unit stops, nothing is sealed, `main` stays on 521687f and the build returns to design.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015 (built, unlocked): approve the semantic re-key. ASKED on 2026-11-23: the pilot's extension reads
-   odds of 0.84 for a successful seal (audit round 7, X12 extension, interim reading; build at 305e2c6
-   with fix pass 11). Not approved until the human says so. Run time on this PC: see
-   Next. The approval covers the rulings made during the build, among them R-L (no family above 6%), R-M
+2. KP-015: approved by delegation and re-keyed on 2026-11-23. Asked with odds of 0.84 for a successful
+   seal (audit round 7, X12 extension, interim reading; build at 305e2c6 with fix pass 11), the human
+   replied "decide whats the best"; the coordinator decided for him and recorded it as that. Both
+   calibrations and the seal are still to come. The approval covers the rulings made during the build,
+   among them R-L (no family above 6%), R-M
    (the same expected return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally
    spaced lags and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-Q (a draw
    liquidated on DEV is never submitted) and R-R (null pass rates over evaluated pairs; no seal when a
    family keeps under half or a null under 75% of its designed pairs, when more than 3% of the submitted
    pairs fault, or when a calibration is not of the protocol's size; it replaces R-P); the human may
-   decline any of them.
+   still decline any of them (that means a rebuild, a new pilot and another re-key).
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
 5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7
