@@ -373,6 +373,25 @@ rates, status.
   a quarter" at a weight correlation of 0.5; the auditor measured 0.35 to 0.46 at a memory of 0.49 to 0.53 (the
   phrase stood only in audits/AUDIT_LOG.md, not in the kernel texts; the design and the constants do not change).
   Evidence: notes/kp015_build_evidence.md.
+- Fix pass 11 (2026-11-22; audit round 7, addendum X12 (size arm): the pilot read NOT READY and the coordinator found
+  a gap in the rule after R-Q; ruling R-R, both units, replacing the cap of R-P; the human may decline it). Why: after
+  R-Q a liquidation on DEV turns a pair into "not submitted", R-P counted submitted pairs only and decide skipped a
+  family without a submitted pair, so a breakage whose bad rows lie in DEV would read as safety; and R-P's 3% is a
+  hard stop on a count that one real bar moves by several points (8 of 132 null B pairs on the pilot's source, one
+  replayed DEV bar). R-R: (a) the pooled and the family rates are Tier-1 passes over EVALUATED pairs (the rate over
+  submitted pairs is kept as information) and a missing rate fails; (b) FAMILY_EVALUATED_MIN = 0.50 per family and
+  NULL_EVALUATED_MIN = 0.75 per null of the DESIGNED pairs (the worlds ordered); (c) NULL_FAULT_MAX = 0.03 of the
+  submitted pairs neither evaluated nor liquidated (NULL_NOT_EVALUATED_MAX removed); (d) the stored rows exactly the
+  protocol design (one null row per seed and family, one oracle row per seed, speed and level, the module's seeds),
+  else STOP; (e) CALIBRATION_WORLDS = 300, CALIBRATION_ORACLE_WORLDS = 200, UNIVERSE_CALIBRATION_WORLDS = 200,
+  UNIVERSE_CALIBRATION_ORACLE_WORLDS = 100: the argparse defaults read them, and the seal refuses an artifact whose
+  protocol header is not the one the checking kernel writes for a real run of the protocol's size, key by key after a
+  JSON round trip (core: calibrate.protocol_header, written by main as "protocol"; universe: run_header, now stored in
+  the artifact; both carry the options object); (f) a real run with other sizes (and a core real run with a subset of the families) is refused
+  before any data access; (g) the universe null advisory follows the rule and stays certain. On the sealed core rows
+  R-R changes nothing (evaluated = submitted, every family at least 299 of 300 evaluated; chosen 0.10).
+  omr/calibrate.py PROTOCOL_VERSION 6, omr/ucalibrate.py PROTOCOL_VERSION 9. Texts: CONSTITUTION sections 8, 12 and
+  13. Evidence: notes/kp015_build_evidence.md.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 

@@ -544,7 +544,7 @@ def test_f6_the_artifact_does_not_depend_on_the_phase_order(tiny_run, tmp_path, 
         for null in ("A", "B"):
             res = UC.run_tasks(pool, partial, "null", [[null, UC.SEEDS[null] + i] for i in range(worlds)], log, null)
             rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
-            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
+            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams, worlds)}   # R-R: designed pairs
         _, oracle = real(pool, partial, fams, worlds, oracle_worlds, log)     # null tasks are reused from partial
         return nulls, oracle
     monkeypatch.setattr(UC, "calibrate_run", nulls_first)
@@ -837,13 +837,14 @@ def test_r_m_t4_null_b_day_products_flipped_and_unflipped_full_and_partial(world
     assert sha == NULL_B_PIN and sha != NULL_B_PIN_58BA59E
 
 
-def test_r_o_t8_a_version_7_partial_file_is_refused(tmp_path):
-    """Was the fix pass 9 protocol test (versions 5 and 6 refused); fix pass 10 raises the protocol to 8. The header
-    names the universe lag count and the speed limit instead of perm_n."""
+def test_r_r_a_version_8_partial_file_is_refused(tmp_path):
+    """Was the fix pass 10 protocol test (versions 5 to 7 refused, protocol 8); fix pass 11 raises the protocol to 9
+    (R-R). The header names the universe lag count and the speed limit instead of perm_n and carries the options."""
     h8 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
-    assert h8["protocol_version"] == UC.PROTOCOL_VERSION == 8
+    assert h8["protocol_version"] == UC.PROTOCOL_VERSION == 9
     assert h8["g6_lags"] == C.UNIVERSE_G6_LAGS and h8["g6_memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and "perm_n" not in h8
-    for old in (5, 6, 7):
+    assert h8["opts"]["u_lags"] == UC.OPTS.u_lags
+    for old in (5, 6, 7, 8):
         p = tmp_path / f"v{old}.partial.jsonl"
         UC.Partial(p, dict(h8, protocol_version=old), log=lambda *a: None)
         with pytest.raises(UC.PartialMismatch):
@@ -1245,19 +1246,108 @@ def test_r_o_t9_the_real_source_loader_reads_mark_klines_through_the_logged_hand
     assert np.isfinite(src.rows(src.symbols[0] if src.symbols[0] != nomark else src.symbols[1], "hm")).any()
 
 
-def test_r_p_t7_the_null_advisory_counts_the_pairs_not_evaluated():
-    fams, W = list(UC.FAMILIES), 100                     # cap: 0.03 x 300 = 9 submitted pairs not evaluated
-    rows = _nrows("A", 40)
-    for r in rows[:9]:
-        r["status"] = "liquidated"
-        r.pop("gates")
-        r.pop("perm_p")
-    lines, stop = UC.null_advisory({"A": rows, "B": []}, W, fams, _oracle8())
-    assert stop == [] and "not evaluated 9 (cap 9)" in lines[0] and "DEAD" not in lines[0]
-    rows[9]["status"] = "kernel_fault"
-    lines, stop = UC.null_advisory({"A": rows, "B": []}, W, fams, _oracle8())
-    assert stop and stop[0].startswith("every G6 threshold is already dead")
-    assert "not evaluated 10 (cap 9) DEAD" in lines[0] and lines[0].count("DEAD (not evaluated)") == 3
+def _ended(rows, status):
+    for r in rows:
+        r["status"] = status
+        r.pop("gates", None)
+        r.pop("perm_p", None)
+        if status == "not_submitted":
+            r["submitted"] = False
+    return rows
+
+
+def test_r_r_t8_the_null_advisory_boundaries():
+    """R-R (g): designed 3 x 100 = 300 pairs under null A; every boundary of the advisory, one pair inside and one
+    beyond."""
+    fams, W = list(UC.FAMILIES), 100
+    by = lambda rows, f: [r for r in rows if r["family"] == f]                      # noqa: E731
+
+    def dead(rows):
+        return UC._null_dead({"A": rows, "B": []}, W, fams)[1]
+    rows = _nrows("A", 100)
+    _ended(by(rows, fams[0])[:50], "liquidated")                            # a family at 50 of 100 still reachable
+    assert dead(rows) == set()
+    _ended(by(rows, fams[0])[50:51], "not_submitted")
+    assert dead(rows) == set(C.G6_GRID)                                     # 49 of 100 at most: below its floor
+    rows = _nrows("A", 100)
+    for f in fams:
+        _ended(by(rows, f)[:25], "liquidated")                              # 225 of 300 at most: the null floor
+    assert dead(rows) == set()
+    _ended(by(rows, fams[1])[25:26], "liquidated")
+    assert dead(rows) == set(C.G6_GRID)
+    rows = _nrows("A", 100)
+    _ended(by(rows, fams[2])[:9], "kernel_fault")                           # 9 faults of 300 designed: at the bound
+    assert dead(rows) == set()
+    _ended(by(rows, fams[2])[9:10], "weird")
+    assert dead(rows) == set(C.G6_GRID)
+    rows = _nrows("A", 100)
+    for f in fams:
+        _ended(by(rows, f)[:25], "liquidated")                              # 225 evaluated at most: pooled cap 6.75
+    passers = [by(rows, f)[25 + i] for f in fams for i in range(2)]          # 6 passes (2 per family) at 0.10 only
+    for r in passers:
+        r["perm_p"] = 0.08
+    assert dead(rows) == set()
+    by(rows, fams[0])[27]["perm_p"] = 0.08                                   # 7 of 225: the pooled rate is lost
+    assert dead(rows) == {0.1}
+    rows = _nrows("A", 100)
+    for f in fams:
+        _ended(by(rows, f)[:25], "liquidated")
+    for r in by(rows, fams[0])[25:29]:
+        r["perm_p"] = 0.04                                                  # family 4 of 75 at most: cap 4.5
+    assert dead(rows) == set()
+    by(rows, fams[0])[29]["perm_p"] = 0.04                                   # 5 of 75 (pooled 5 of 225 still fine)
+    assert dead(rows) == {0.05, 0.1}
+
+
+def test_r_r_t8_the_null_advisory_never_calls_a_threshold_dead_that_the_completed_rows_could_still_qualify(monkeypatch):
+    """Enumeration: one family, 3 worlds; every outcome of each pair (a pass at 0.025, an evaluated pair without a pass,
+    liquidated, not submitted, a fault), every prefix of rows finished so far, every completion of the rest. Wherever
+    the advisory calls a threshold dead, no completion qualifies it under the rule (decide, null B perfect)."""
+    import itertools
+    monkeypatch.setattr(C, "NULL_PASS_MAX", 0.34)                           # bounds a 3-world null can meet
+    monkeypatch.setattr(C, "FAMILY_PASS_MAX", 0.5)
+    monkeypatch.setattr(C, "NULL_FAULT_MAX", 0.34)
+    fam, W = "f", 3
+    outcomes = ("pass", "fail", "liquidated", "not_submitted", "fault")
+
+    def row(i, o, null="A"):
+        r = {"null": null, "family": fam, "world_seed": UC.SEEDS[null] + i, "submitted": True, "status": "evaluated",
+             "params": {}, "val_sharpe": 0.1, "perm_p": 0.01 if o == "pass" else 0.5, "gates": dict(_GATES8)}
+        if o in ("liquidated", "not_submitted", "fault"):
+            _ended([r], {"fault": "kernel_fault"}.get(o, o))
+        return r
+    good_b = [row(i, "fail", "B") for i in range(W)]
+    oracle = _oracle8()
+
+    def qualifies(final):
+        nulls = {"A": {"summary": CB.null_summary(final, [fam], W)}, "B": {"summary": CB.null_summary(good_b, [fam], W)}}
+        return set(CB.decide(nulls, oracle)["qualifying"])
+    seen_dead = 0
+    for full in itertools.product(outcomes, repeat=W):
+        for j in range(W + 1):
+            prefix = [row(i, full[i]) for i in range(j)]
+            dead = UC._null_dead({"A": prefix, "B": []}, W, [fam])[1]
+            if not dead:
+                continue
+            seen_dead += 1
+            for rest in itertools.product(outcomes, repeat=W - j):
+                final = prefix + [row(j + i, o) for i, o in enumerate(rest)]
+                assert not (dead & qualifies(final)), (full[:j], rest, dead)
+    assert seen_dead > 50
+
+
+def test_r_r_t7_a_real_universe_run_with_reduced_sizes_is_refused_before_any_data_access(monkeypatch):
+    from omr import access, data, kernel_lock
+
+    def boom(*a, **k):
+        raise AssertionError("data, the kernel lock or a source was read")
+    for mod, name in ((kernel_lock, "verify"), (data, "load_manifest"), (data, "validation_ok"),
+                      (access, "for_calibration"), (UC, "load_source"), (UC, "synthetic_source")):
+        monkeypatch.setattr(mod, name, boom)
+    for argv in (["--worlds", "10"], ["--oracle-worlds", "5"], ["--worlds", "10", "--workers", "0"]):
+        with pytest.raises(SystemExit) as e:
+            UC.main(argv)
+        assert "protocol's sizes" in str(e.value)
 
 
 # ---------------------------------------------------------------- fix pass 10: R-Q in the universe unit
@@ -1290,7 +1380,7 @@ def test_r_q_universe_tq1_to_tq4(monkeypatch):
     assert row["submitted"] is False and row["status"] == "not_submitted" and calls == []
     assert row["stage1"] == {"passed": n, "dev_liquidated": n}
     s = CB.null_summary([row], ["ucal_xs_momentum"])                                      # TQ4
-    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 0 and s["n_submitted_not_evaluated"] == 0
+    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 0 and s["n_submitted_fault"] == 0
     row, draws, calls = _rq_universe(monkeypatch, [float("-inf"), 0.5] + [0.1] * (n - 2))   # TQ2
     assert row["submitted"] and row["params"] == draws[1] and calls == ["stage1", "stage2"]
     assert row["stage1"] == {"passed": n, "dev_liquidated": 1}

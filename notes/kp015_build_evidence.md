@@ -1110,3 +1110,26 @@ passed in 2139.16 s, 0 failed, 0 skipped (895 at db32ce2 plus the 15 tests of fi
 10, tests/test_calibrate.py 4, tests/test_ledger_lock.py 1); python -m omr.ledger verify OK (trials 10, stage1_log 1,
 kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/, data/ and kernel.lock unchanged,
 and STATE.md and audits/ equal to 306eb8c (git status clean before this paragraph).
+Fix pass 11, stage A (ruling R-R with the amended item (e); working tree on 5d10da4, kernel and test files as at
+306eb8c before this pass; unapproved, not re-keyed; the full suite follows in stage B). omr/constants.py: NULL_FAULT_MAX
+0.03 (NULL_NOT_EVALUATED_MAX removed), FAMILY_EVALUATED_MIN 0.50, NULL_EVALUATED_MIN 0.75, CALIBRATION_WORLDS 300,
+CALIBRATION_ORACLE_WORLDS 200, UNIVERSE_CALIBRATION_WORLDS 200, UNIVERSE_CALIBRATION_ORACLE_WORLDS 100.
+omr/calibrate.py: null_summary(rows, families, designed) with the rates over evaluated pairs (pass_rate_submitted kept),
+n_evaluated, n_submitted_liquidated, n_submitted_fault, designed_per_family and per-family evaluated counts;
+fault_share, evidence_floors, design_problems, design_stop and protocol_header; decide fails a missing rate (no family
+skipped), a floor not met and too many faults at every threshold and records the floors, the shares and the faults;
+verdict_from_rows and main check the design before the rule; main refuses a real run with other sizes or a subset of
+the families before any data access and writes protocol_header as "protocol"; PROTOCOL_VERSION 6. omr/ucalibrate.py:
+unit_design and verdict_from_rows(art, unit) (the design first; unit_verdict passes the unit), null_summary with the
+designed pairs in calibrate_run, the null advisory after R-R (its reading in _null_dead), main refuses a real run with
+other sizes, checks the design before the rule and stores run_header (which now carries the options object) in the
+artifact; PROTOCOL_VERSION 9. omr/kernel_lock.py: check_artifact and check_universe_artifact refuse other sizes and a
+protocol header that is not the one the checking kernel writes for a real run of the protocol's size, key by key
+after a JSON round trip (universe: semantic_hash, research_hash and families keep their own checks). On the sealed core
+artifact (read only) the design holds and the verdict is unchanged: chosen 0.10, every family at least 299 of 300
+evaluated, faults 0, the rates equal to the former submitted rates. Tests: tests/test_calibrate.py 24 passed in 18.18 s,
+tests/test_ledger_lock.py 111 passed in 16.25 s, tests/test_structure.py 9 passed in 6.82 s, tests/test_ucalibrate.py 49
+passed and 1 failed in 978.03 s (test_f6, whose nulls-first fake built null_summary without the designed pairs; the
+fake was given them and the test passed alone: 1 passed, 49 deselected in 487.99s (0:08:07)). Reduced dry run (60 synthetic symbols, worlds 1, oracle worlds 1,
+in-process, through the scratch wrapper): exit 0 in 576.1 s; every null pair evaluated (shares 1.0, faults 0); unit
+verdict 0.10, no STOP.

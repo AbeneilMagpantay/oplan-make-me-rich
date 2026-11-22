@@ -308,7 +308,41 @@ def check_artifact(art: dict, lock: dict, research_hash: str) -> list:
     for k in ("nulls", "oracle"):
         if k not in art:
             bad.append(f"artifact has no {k}")
+    bad += _size_problems(art, C.CALIBRATION_WORLDS, C.CALIBRATION_ORACLE_WORLDS, "artifact")
+    bad += _header_problems(art.get("protocol"), calibrate.protocol_header(C.CALIBRATION_WORLDS,
+                                                                           C.CALIBRATION_ORACLE_WORLDS),
+                            "artifact protocol")
     return bad
+
+
+def _header_problems(stored, expected: dict, what: str, skip=()) -> list:
+    """R-R (e): the stored protocol header against the one the checking kernel writes for a real run of the
+    protocol's size, after a JSON round trip, key by key: a missing key, an extra key or an unequal value is refused
+    and named (keys in skip have their own checks)."""
+    if not isinstance(stored, dict):
+        return [f"{what}: no header"]
+    exp = json.loads(json.dumps(ledger.clean({k: v for k, v in expected.items() if k not in skip}), sort_keys=True))
+    got = json.loads(json.dumps(ledger.clean({k: v for k, v in stored.items() if k not in skip}), sort_keys=True))
+    out = []
+    for key in sorted(set(exp) | set(got)):
+        if key not in got:
+            out.append(f"{what} key {key} is missing")
+        elif key not in exp:
+            out.append(f"{what} key {key} is not one the kernel writes")
+        elif got[key] != exp[key]:
+            out.append(f"{what} key {key} {got[key]!r} is not the kernel's {exp[key]!r}")
+    return out
+
+
+def _size_problems(art: dict, worlds: int, oracle_worlds: int, what: str) -> list:
+    """R-R (e): the protocol's sizes; a missing or non-integer size is refused."""
+    prot = art.get("protocol") if isinstance(art.get("protocol"), dict) else {}
+    out = []
+    for key, want in (("worlds_per_null", worlds), ("oracle_worlds", oracle_worlds)):
+        v = prot.get(key)
+        if isinstance(v, bool) or not isinstance(v, int) or v != want:
+            out.append(f"{what} protocol {key} {v!r} is not the protocol's {want}")
+    return out
 
 
 def check_universe_artifact(art: dict, lock: dict, research_hash: str) -> list:
@@ -332,6 +366,11 @@ def check_universe_artifact(art: dict, lock: dict, research_hash: str) -> list:
     for k in ("nulls", "oracle"):
         if k not in art:
             bad.append(f"universe artifact has no {k}")
+    bad += _size_problems(art, C.UNIVERSE_CALIBRATION_WORLDS, C.UNIVERSE_CALIBRATION_ORACLE_WORLDS, "universe artifact")
+    want = ucalibrate.run_header(lock, research_hash, list(ucalibrate.FAMILIES), C.UNIVERSE_CALIBRATION_WORLDS,
+                                 C.UNIVERSE_CALIBRATION_ORACLE_WORLDS, False)
+    bad += _header_problems(art.get("run_header"), want, "universe artifact run_header",
+                            skip=("semantic_hash", "research_hash", "families"))
     return bad
 
 

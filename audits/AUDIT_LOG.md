@@ -794,3 +794,98 @@ round 3 also the coordinator's own read of the core modules.
   0.4 or 1/3 and less (counts only; no price, name or date after 2022-06-30).
 - Detail: the auditor's findings file is copied into `audits/round7_findings.md` at its final
   report.
+
+## Round 7, addendum X12 (extension) - 2026-11-22 - the odds model opened, the core unit, and ONE extension of the pilot fixed before its first world
+
+- The auditor's odds model, as written before the run and used for the reading of the last entry.
+  Per null and family four categories (Tier-1 with p <= 0.05; Tier-1 with 0.05 < p <= 0.10;
+  evaluated without Tier-1; not evaluated), posterior Dirichlet(counts + 0.5). A real run draws
+  200 pairs per family. Rates over evaluated pairs, pooled 3% and family 6%, floors as in R-R.
+  The larger qualifying of 0.05 and 0.10 is chosen (0.025 cannot be reached with 20 lags). Power:
+  per cell Dirichlet(counts + 0.5) over the bands, 100 books, at least 50 in all four cells at
+  the chosen threshold. Families, nulls and cells independent; core as a factor.
+- Its decomposition at the data of the last entry (P(seal) 0.305, the 8 rows out of the
+  denominator). At 0.10: pooled bound met with probability 0.58 under null A and 0.72 under null
+  B; family caps 0.78 (A momentum), 0.94 (A reversal), 0.88 (A carry), 0.93, 0.89 and 0.91 (B);
+  power cells 0.94 (A fast), 0.95 (A slow), 0.89 (B fast), 0.95 (B slow). At 0.05: pooled 0.84
+  and 0.94; family caps 0.87 to 0.98; power 0.85, 0.34, 0.49 and 0.75. Threshold chosen: 0.10 in
+  37% of the simulated runs, 0.05 in 34%, neither in 29%. The floors never bind. Pairs passing
+  every gate but G6: 1 of 264 (null A momentum, p <= 0.05).
+- Correction of the coordinator's suspicion in the last entry. The ceiling of the model at this
+  pilot size is 0.856 (no pass anywhere, 24 of 24 at 0.05 in every power cell): 0.70 could be
+  read, by a nearly perfect outcome, so the pilot's size was not a bar in principle. What holds
+  the reading down is the prior mass on the cells without a pass: two Tier-1 bands at +0.5 each
+  give a family without a pass 2% at 0.10 on 48 pairs, and three families at that level fill the
+  pooled 3%. The auditor's pre-posterior calculation (the truth drawn from that same posterior)
+  gives no extension size more than 1 chance in 10 of a reading of 0.70 and a median reading of
+  0.25 to 0.29 at every size: the model expects a bad truth two times in three. Coordinator:
+  whether the truth is bad is what is not known. The evidence outside the counts (mean VAL
+  Sharpe of -0.66, -1.44, -0.51, -0.24 and -1.49 in the five cells without a pass; one pair in
+  264 passing every gate but G6) says those cells lie well under 2%. The model is not changed
+  after the data; more data decides.
+- Core (auditor; reading and fully synthetic runs only). "Core 0.98" in the earlier odds was a
+  judgment. The delta from the sealed kernel (`main` 521687f, semantic 7446278556aadd8f) to
+  306eb8c over what the core calibration imports: not reachable from it (the universe additions
+  in engine, interp, lang, data, the pipeline options, probe); rule-level only, no stored row
+  (tier_at moved; null_summary, decide, R-L, R-P); output-changing but without effect on core
+  (R-Q: the sealed core artifact has no submitted row with a DEV liquidation; the freshness rule
+  of funding_mean: the real BTC and ETH settlements are all 8 hours apart; funding8h freshness
+  and index_klines: no core family reads them). Data: the BTC and ETH mark tables grew by about
+  288 bars since genesis, klines and funding are identical by sha256, and a core book would need
+  a move of about -97.5% inside one bar to be liquidated. Expected: the rows reproduce, hence
+  0.10 again. If they did not, core would seal at 0.05: the sealed artifact's power at 0.05 is
+  0.84, 0.83, 0.905 and 0.81 (A fast, A slow, B fast, B slow), its null rates at 0.05 are 1.74%
+  and 1.20% pooled and 3.0% for the largest family; for a fresh run of the protocol's size the
+  model gives 0.10 in 13%, 0.05 in 76%, 0.025 in 11% and P(core seals) 0.997. A comparison of
+  both kernels on a synthetic dry run is under way. Core is not the weak point.
+- Exposure after DEV end (counts only). Panel rows with an effective up of 2.0 / 2.5 / 3.0 / 3.5
+  and more: DEV 5 / 4 / 3 / 3, after DEV end 4 / 1 / 1 / 0. With an effective dn of 0.5 / 0.4 /
+  1/3 and less: DEV 10 / 3 / 2, after DEV end 2 / 0 / 0. Largest short weight held at any hour
+  by the submitted books (12 worlds per null so far): momentum median 0.27 and maximum 0.41 under
+  null A, 0.33 and 0.48 under null B; reversal 0.42 and 0.50 (the whole short side in one name)
+  under null A, 0.40 and 0.46 under null B; hours with a short of 0.33 or more are 0.0% to 0.7%
+  of a book's hours. After DEV end the one bar at 3.0 or more needs a lone short of 0.39 to 0.49.
+- R-R (e) widened on the auditor's advice: the seal compares the whole protocol header of an
+  artifact (seeds, sizes, draws per pair, speeds, levels, rho grid, fine points, G6 lags and
+  memory bound, pool minimum) with the one the locked kernel writes for a real run of the
+  protocol's size; the semantic hash pins the constants, not what a run can change at run time.
+- ONE extension of the pilot, fixed here before its first world.
+  Condition: the auditor's model must read 0.70 or more for a proportional repeat of round 1 at
+  the full size (192 worlds per null with 4 Tier-1 passes for momentum under null A and none
+  elsewhere; 64, 64, 60 and 64 of 96 in the power cells at 0.10). If it does not, the extension
+  cannot do its job with this instrument and is not run.
+  Size and order: on the committed code and the auditor's source D unchanged, seeds continued.
+  Null worlds 48 to 143 under each null and oracle worlds 24 to 71 in each cell; interim reading;
+  then null worlds 144 to 191 and oracle worlds 72 to 95; final reading. About 15 hours to the
+  interim reading and 22 in all, one process at a time.
+  Data: both rounds pooled. A row of round 1 counts only as reproduced bit for bit on the
+  committed code; the null A rows measured before R-O are replaced by their reruns where they
+  differ.
+  Model: the auditor's as above, unchanged, with core at 0.997 and R-R.
+  Reading: an interim P(seal) of 0.75 or more stops the extension and reads "ask the owner with
+  the odds". Otherwise the full size, and then: 0.70 or more, ask; 0.40 to 0.70, the owner gets
+  the odds with the advice not to run yet; under 0.40, not ready, and then no further extension
+  but design.
+  To be explained before any re-key whatever the odds: a family with a mean VAL Sharpe above
+  +0.5 under either null; a family whose Tier-1 share at 0.10 among its evaluated pairs is above
+  6% in the pooled pilot; a family under 0.60 or a null under 0.80 evaluated of designed in the
+  pooled pilot; a power cell with more than 5% of its books liquidated; the premium rule (P) as
+  fixed in the X12-prep entry.
+  Known and no trigger: source D replays DEV days after DEV end, so the bar of 2022-06-07 20:00
+  again liquidates short books in the worlds where its day is not flipped; under R-R those pairs
+  leave the denominator. And a limit of the pilot that no size removes: its days after DEV end
+  are DEV days, so its no-skill rates are those of the DEV period's kind of market, not of the
+  real VAL period's.
+- Condition met, before any extension world (auditor, same model unchanged): for a proportional
+  repeat of round 1 the model reads P(seal) 0.911 at the full size (0.10 qualifies in 0.959 of
+  the simulated runs; pooled bound at 0.10 met with 0.980 under null A and 0.999 under null B;
+  momentum's cap under null A 0.969; every power cell at 0.10 at 0.970 or more) and 0.853 at the
+  interim size (3 of 144 for momentum under null A; 48, 48, 45 and 48 of 72). The extension can
+  therefore read "ask" on good data and is ordered; it starts when this entry is committed.
+- Core comparison done (auditor): on a fully synthetic dry run with the same seeds (30 null and
+  10 oracle worlds per null) the sealed kernel and 306eb8c give identical null rows (150 and
+  150), oracle rows (40 and 40) and tuning picks. The two verdicts differ through the rule
+  alone: R-L's family bound, added after genesis, fails on that 30-world sample (null B
+  funding_carry 2 of 30); the sealed core artifact meets R-L with room (largest family 4.67% at
+  0.10). On real data the open channels stay R-Q, where a draw is liquidated on DEV (the sealed
+  artifact has none), and the added mark rows through the liquidation check.

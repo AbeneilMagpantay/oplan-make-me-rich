@@ -88,9 +88,15 @@ MAX_PARAMS = 6
 
 # ---------------------------------------------------------------- calibration rule (applied by the seal)
 G6_GRID = (0.025, 0.05, 0.10)
-NULL_PASS_MAX = 0.03          # per SUBMITTED pair, under BOTH nulls
-FAMILY_PASS_MAX = 0.06        # per family, per its own SUBMITTED pairs, under BOTH nulls (fix pass 7, R-L)
-NULL_NOT_EVALUATED_MAX = 0.03 # per null: SUBMITTED pairs not evaluated (liquidated or other) / SUBMITTED (fix pass 10, R-P)
+NULL_PASS_MAX = 0.03          # per EVALUATED pair, under BOTH nulls (fix pass 11, R-R; was per submitted pair)
+FAMILY_PASS_MAX = 0.06        # per family, per its own EVALUATED pairs, under BOTH nulls (R-L; R-R)
+FAMILY_EVALUATED_MIN = 0.50   # R-R: every family's evaluated / designed pairs, under each null
+NULL_EVALUATED_MIN = 0.75     # R-R: the null's evaluated / designed pairs
+NULL_FAULT_MAX = 0.03         # R-R: submitted pairs neither evaluated nor liquidated / submitted (replaces R-P's cap)
+CALIBRATION_WORLDS = 300                # the protocol's sizes (R-R): core null worlds per null
+CALIBRATION_ORACLE_WORLDS = 200         # core oracle worlds per null
+UNIVERSE_CALIBRATION_WORLDS = 200       # top30 null worlds per null
+UNIVERSE_CALIBRATION_ORACLE_WORLDS = 100  # top30 oracle worlds per null
 POWER_MIN = 0.50              # oracle power at true Sharpe 1.5, both speeds, both nulls
 
 # ---------------------------------------------------------------- pool

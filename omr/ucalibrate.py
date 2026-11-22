@@ -1,13 +1,16 @@
 """Universe calibration (unit top30, KP-015):
 
     python -m omr.ucalibrate [--worlds 200] [--oracle-worlds 100] [--workers 4] [--restart] [--force]
+    (a real run takes exactly the protocol's sizes, UNIVERSE_CALIBRATION_WORLDS and _ORACLE_WORLDS; fix pass 11)
     python -m omr.ucalibrate --unlocked-dry-run --out FILE      (fully synthetic universe; never sealable)
 
 The core calibration (omr.calibrate) is unchanged but for the family bound (fix pass 7, R-L), which the
 rule applies in both units. The seal (omr.kernel_lock seal) applies decide_both,
 PER UNIT (fix pass 6, R-H): each unit's G6 threshold is the LARGEST of G6_GRID whose null pass rate is <=
-NULL_PASS_MAX under both of THAT unit's nulls and whose every family's null pass rate (per its own submitted
-pairs) is <= FAMILY_PASS_MAX under both of them (fix pass 7, R-L), with oracle power at true Sharpe 1.5 >=
+NULL_PASS_MAX under both of THAT unit's nulls and whose every family's null pass rate (per its own EVALUATED
+pairs since fix pass 11, R-R) is <= FAMILY_PASS_MAX under both of them (fix pass 7, R-L), every family and the null
+meeting the evidence floors over the designed pairs and the faults bounded (R-R), the stored rows exactly the
+protocol's design, with oracle power at true Sharpe 1.5 >=
 POWER_MIN for both speeds under both of its nulls at THAT threshold (each unit's oracle levels as present in its artifact: the
 core 1.0 and 1.5, top30 1.5 only). Both units seal or neither; kernel.lock holds {"core": x, "top30": y}.
 
@@ -102,7 +105,8 @@ refuses to start when the workers do not fit (--force). The oracle phases run fi
 is logged, and if the power at the largest threshold is below POWER_MIN (or a level misses its bound) a
 prominent line says the seal rule will STOP whatever the null worlds give. During the null phases (fix pass 8,
 FP8-4) null_advisory reads the rows finished so far at every progress line and logs the same prominent line
-once when the Tier-1 passes already exceed what the pooled or a family bound can allow at every threshold, or
+once when the Tier-1 passes already exceed what the pooled or a family bound can allow at every threshold (fix
+pass 11: or a family or the null can no longer reach its evidence floor, or the faults exceed their bound), or
 when the largest threshold still open has oracle power below POWER_MIN in a cell or a level outside its bound
 (log only: the tasks, their order, the results and the artifact are unchanged; an advisory error is logged once
 and the run goes on).
@@ -110,6 +114,7 @@ and the run goes on).
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime as dt
 import json
 import math
@@ -136,7 +141,8 @@ from omr import stats as S
 from omr import universe as U
 from omr import upipeline as UP
 
-PROTOCOL_VERSION = 8                        # fix pass 10: R-O (mark wicks in the null worlds), R-P, R-Q; 7 = pass 9
+PROTOCOL_VERSION = 9                        # fix pass 11: R-R (the null side of the rule); 8 = fix pass 10 (R-O,
+                                            # R-P, R-Q); 7 = pass 9
                                             # (R-N); 6 = fix pass 8 (R-M); 5 = fix pass 7 (R-K, R-L); 4 = fix pass 6
                                             # (per-unit seal rule, partial lines with a sha, oracle phases first)
 FAMILIES = ("ucal_xs_momentum", "ucal_xs_reversal", "ucal_xs_carry")
@@ -1075,19 +1081,33 @@ def oracle_summary(rows: list) -> dict:
     return out
 
 
-def verdict_from_rows(art: dict) -> dict:
-    """The unit's own verdict recomputed from its stored rows (oracle levels as present)."""
+def unit_design(unit: str) -> tuple:
+    """R-R (d): (seeds, families, speeds, levels) of a unit's protocol."""
+    if unit == "core":
+        return CB.SEEDS, CB.FAMILIES, CB.SPEEDS, CB.LEVELS
+    return SEEDS, FAMILIES, USPEEDS, ULEVELS
+
+
+def verdict_from_rows(art: dict, unit: str = "top30") -> dict:
+    """The unit's own verdict recomputed from its stored rows (oracle levels as present). R-R (d): rows that are not
+    exactly the unit's protocol design stop the unit before the rule is read."""
+    problems = CB.design_problems(art, *unit_design(unit))
+    if problems:
+        return CB.design_stop(unit, problems)
     fams = list(art["families"])
-    nulls = {n: {"summary": CB.null_summary(art["nulls"][n]["rows"], fams)} for n in ("A", "B")}
+    W = art["protocol"]["worlds_per_null"]
+    nulls = {n: {"summary": CB.null_summary(art["nulls"][n]["rows"], fams, W)} for n in ("A", "B")}
     oracle = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
     return CB.decide(nulls, oracle)
 
 
 RULE_PER_UNIT = ("G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose "
-                 "null pass rate (Tier-1 passes / SUBMITTED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit "
-                 "and whose every family's null pass rate (per its own SUBMITTED pairs) is <= FAMILY_PASS_MAX under "
-                 "BOTH nulls of that unit (fix pass 7, R-L), a null of that unit with more than NULL_NOT_EVALUATED_MAX "
-                 "of its SUBMITTED pairs not evaluated failing every threshold (fix pass 10, R-P); "
+                 "null pass rate (Tier-1 passes / EVALUATED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit "
+                 "and whose every family's null pass rate (per its own EVALUATED pairs; a missing rate fails) is <= "
+                 "FAMILY_PASS_MAX under BOTH nulls of that unit (R-L, R-R), a null of that unit failing every threshold "
+                 "below FAMILY_EVALUATED_MIN (a family) or NULL_EVALUATED_MIN (the null) of its DESIGNED pairs "
+                 "evaluated or above NULL_FAULT_MAX of its SUBMITTED pairs in a fault, the unit's stored rows exactly "
+                 "its protocol design (fix pass 11, R-R); "
                  "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at "
                  "that unit's threshold, every oracle level present in that unit's artifact achieved within "
                  "RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below "
@@ -1121,7 +1141,7 @@ def unit_verdict(art: dict, unit: str) -> dict:
     if gaps:
         return {"STOP": True, "chosen_threshold": None, "reason": f"{unit} artifact incomplete: " + "; ".join(gaps)}
     try:
-        return verdict_from_rows(art)
+        return verdict_from_rows(art, unit)                     # R-R (d): the unit's protocol design first
     except Exception as e:                                      # FP6-1, FP8-3: a malformed row stops, it does not raise
         return {"STOP": True, "chosen_threshold": None,
                 "reason": f"{unit} artifact malformed: {type(e).__name__}: {e}"}
@@ -1156,13 +1176,17 @@ def memory_preflight(workers: int, source_bytes: int) -> dict:
 
 
 def run_header(k: dict, rh: str, fams: list, worlds: int, oracle_worlds: int, synthetic: bool) -> dict:
+    """The header of a run: binds the partial file, and (fix pass 11, R-R (e)) is stored in the artifact as run_header,
+    which the seal compares key by key with the value the checking kernel computes for a real run of the protocol's
+    sizes (the hashes and families keep their own checks). It pins the options object, which a run can change at run
+    time and the semantic hash does not pin."""
     return {"protocol_version": PROTOCOL_VERSION, "semantic_hash": k["semantic"], "research_hash": rh,
             "synthetic_dry_run": synthetic, "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
             "seeds": SEEDS, "worlds_per_null": worlds, "oracle_worlds": oracle_worlds, "levels": list(ULEVELS),
             "speeds_days": USPEEDS, "g6_lags": OPTS.u_lags, "g6_memory_max": C.UNIVERSE_G6_MEMORY_MAX,
             "draws_per_pair": CB.N_DRAWS,
             "rho_grid": [float(r) for r in RHO_GRID], "fine_points": FINE_POINTS,
-            "pool_min_days": POOL_MIN_DAYS}
+            "pool_min_days": POOL_MIN_DAYS, "opts": dataclasses.asdict(OPTS)}
 
 
 def oracle_advisory(oracle: dict, at: float | None = None) -> tuple:
@@ -1188,40 +1212,56 @@ def oracle_advisory(oracle: dict, at: float | None = None) -> tuple:
 
 
 def null_advisory(rows_by_null: dict, worlds: int, fams: list, oracle: dict) -> tuple:
-    """FP8-4 (log only): (lines with the Tier-1 counts so far, reasons the seal rule must STOP whatever the rest
-    of the null worlds give) from the null rows finished SO FAR. Threshold t is DEAD when under either null its
-    passes so far already exceed what the final rate allows: pooled passes / (worlds x families) above
-    NULL_PASS_MAX, or one family's passes / worlds above FAMILY_PASS_MAX (the final denominators cannot exceed
-    these totals; the rule's 1e-12 tolerance on the rate). STOP when every threshold is dead, or when at the
-    LARGEST threshold that is not dead the oracle power is below POWER_MIN in a cell or a level is outside its
-    bound (oracle_advisory at that threshold; power cannot rise at a smaller threshold)."""
-    lines, dead = [], set()
-    tot = worlds * len(fams)
-    for n in ("A", "B"):
-        rows = [r for r in rows_by_null.get(n) or [] if r.get("submitted")]
-        seen = len({r["world_seed"] for r in rows_by_null.get(n) or []})
-        n_ne = sum(1 for r in rows if r.get("status") != "evaluated")     # R-P: over the largest final denominator
-        ne_bad = not (tot and n_ne / tot <= C.NULL_NOT_EVALUATED_MAX + 1e-12)
-        parts = [f"not evaluated {n_ne} (cap {C.NULL_NOT_EVALUATED_MAX * tot:g})" + (" DEAD" if ne_bad else "")]
-        for t in C.G6_GRID:
-            passers = [r for r in rows if CB.tier_at(r, t)]
-            per = {f: sum(1 for r in passers if r["family"] == f) for f in fams}
-            bad = ["not evaluated"] if ne_bad else []
-            bad += [] if tot and len(passers) / tot <= C.NULL_PASS_MAX + 1e-12 else ["pooled"]
-            bad += [f for f in fams if not (worlds and per[f] / worlds <= C.FAMILY_PASS_MAX + 1e-12)]
-            if bad:
-                dead.add(t)
-            parts.append(f"at {t:g}: {len(passers)} (cap {C.NULL_PASS_MAX * tot:g}), per family " +
-                         ", ".join(f"{f} {per[f]}" for f in fams) + (f" DEAD ({', '.join(bad)})" if bad else ""))
-        lines.append(f"  null advisory, null {n}: {seen} of {worlds} worlds so far; Tier-1 passes " + "; ".join(parts) +
-                     f" (family cap {C.FAMILY_PASS_MAX * worlds:g})")
+    """FP8-4, R-R (fix pass 11), log only: (lines with the counts so far, reasons the seal rule must STOP whatever the
+    rest of the null worlds give) from the null rows finished SO FAR. Certain by construction: a pair known not
+    evaluated (not submitted, liquidated, a fault) can never become evaluated, so the final evaluated count is at
+    most designed - known; passes only grow; submitted <= designed. Under either null a threshold is DEAD once the
+    passes so far over (designed - known not evaluated so far) exceed NULL_PASS_MAX, or one family's passes over
+    its (worlds - known not evaluated) exceed FAMILY_PASS_MAX (a zero denominator: the rate will be missing), or a
+    family can no longer reach FAMILY_EVALUATED_MIN, or the null NULL_EVALUATED_MIN, of its designed pairs, or the
+    faults so far exceed NULL_FAULT_MAX x designed pairs (the rule's 1e-12 tolerances). STOP when every threshold is
+    dead, or when at the LARGEST threshold that is not dead the oracle power is below POWER_MIN in a cell or a level
+    is outside its bound (oracle_advisory at that threshold; power cannot rise at a smaller threshold)."""
+    lines, dead = _null_dead(rows_by_null, worlds, fams)
     alive = [t for t in C.G6_GRID if t not in dead]
     if not alive:
-        return lines, ["every G6 threshold is already dead: the null passes so far exceed the bounds at "
+        return lines, ["every G6 threshold is already dead: the null rows so far exceed the bounds at "
                        + ", ".join(f"{t:g}" for t in C.G6_GRID)]
     top = max(alive)
     _, stop = oracle_advisory(oracle, at=top)
     return lines, [f"largest threshold not dead {top:g}: {x}" for x in stop]
+
+
+def _null_dead(rows_by_null: dict, worlds: int, fams: list) -> tuple:
+    """(lines, thresholds that are dead under either null) from the null rows so far: the reading of null_advisory."""
+    lines, dead = [], set()
+    tot = worlds * len(fams)
+    for n in ("A", "B"):
+        allr = rows_by_null.get(n) or []
+        rows = [r for r in allr if r.get("submitted")]
+        seen = len({r["world_seed"] for r in allr})
+        known = sum(1 for r in allr if r.get("status") != "evaluated")
+        known_f = {f: sum(1 for r in allr if r["family"] == f and r.get("status") != "evaluated") for f in fams}
+        faults = sum(1 for r in rows if r.get("status") not in ("evaluated", "liquidated"))
+        den, den_f = tot - known, {f: worlds - known_f[f] for f in fams}
+        null_bad = [f"floor {f}" for f in fams if not (worlds and den_f[f] / worlds >= C.FAMILY_EVALUATED_MIN - 1e-12)]
+        null_bad += [] if tot and den / tot >= C.NULL_EVALUATED_MIN - 1e-12 else ["floor pooled"]
+        null_bad += [] if tot and faults / tot <= C.NULL_FAULT_MAX + 1e-12 else ["faults"]
+        parts = [f"evaluated at most {den} of {tot} designed (floor {C.NULL_EVALUATED_MIN * tot:g}), faults {faults} "
+                 f"(cap {C.NULL_FAULT_MAX * tot:g})" + (f" DEAD ({', '.join(null_bad)})" if null_bad else "")]
+        for t in C.G6_GRID:
+            passers = [r for r in rows if CB.tier_at(r, t)]
+            per = {f: sum(1 for r in passers if r["family"] == f) for f in fams}
+            bad = list(null_bad)
+            bad += [] if den > 0 and len(passers) / den <= C.NULL_PASS_MAX + 1e-12 else ["pooled"]
+            bad += [f for f in fams if not (den_f[f] > 0 and per[f] / den_f[f] <= C.FAMILY_PASS_MAX + 1e-12)]
+            if bad:
+                dead.add(t)
+            parts.append(f"at {t:g}: {len(passers)} (cap {C.NULL_PASS_MAX * den:g}), per family " +
+                         ", ".join(f"{f} {per[f]}" for f in fams) + (f" DEAD ({', '.join(bad)})" if bad else ""))
+        lines.append(f"  null advisory, null {n}: {seen} of {worlds} worlds so far; Tier-1 passes " + "; ".join(parts) +
+                     f" (family cap {C.FAMILY_PASS_MAX * worlds:g})")
+    return lines, dead
 
 
 def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds: int, log) -> tuple:
@@ -1275,14 +1315,14 @@ def calibrate_run(pool, partial: Partial, fams: list, worlds: int, oracle_worlds
         res = run_tasks(pool, partial, "null", [[null, SEEDS[null] + i] for i in range(worlds)], log, f"null {null}",
                         on_progress=null_check)
         rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
-        nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams)}
+        nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams, worlds)}
     return nulls, oracle
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m omr.ucalibrate")
-    ap.add_argument("--worlds", type=int, default=200)
-    ap.add_argument("--oracle-worlds", type=int, default=100)
+    ap.add_argument("--worlds", type=int, default=C.UNIVERSE_CALIBRATION_WORLDS)
+    ap.add_argument("--oracle-worlds", type=int, default=C.UNIVERSE_CALIBRATION_ORACLE_WORLDS)
     ap.add_argument("--workers", type=int, default=4, help="0: run every task in this process")
     ap.add_argument("--unlocked-dry-run", action="store_true")
     ap.add_argument("--out", default=None)
@@ -1291,6 +1331,12 @@ def main(argv=None):
     ap.add_argument("--force", action="store_true", help="start although the memory preflight says it does not fit")
     a = ap.parse_args(argv)
     t0 = time.time()
+    if not a.unlocked_dry_run and (a.worlds != C.UNIVERSE_CALIBRATION_WORLDS or
+                                   a.oracle_worlds != C.UNIVERSE_CALIBRATION_ORACLE_WORLDS):
+        # R-R (f): no reduced real run (it would be a look at the null side before the run that counts)
+        raise SystemExit(f"a real universe calibration takes the protocol's sizes: --worlds "
+                         f"{C.UNIVERSE_CALIBRATION_WORLDS}, --oracle-worlds {C.UNIVERSE_CALIBRATION_ORACLE_WORLDS} "
+                         "(reduced sizes only with --unlocked-dry-run)")
 
     def log(s):
         print(s, flush=True)
@@ -1357,13 +1403,16 @@ def main(argv=None):
         for b in blocks:
             b.close()
             b.unlink()
-    verdict = CB.decide(nulls, oracle)
+    design = CB.design_problems({"protocol": {"worlds_per_null": a.worlds, "oracle_worlds": a.oracle_worlds,
+                                              "seeds": SEEDS}, "nulls": nulls, "oracle": oracle},
+                                *unit_design("top30"))              # R-R (d), before the rule
+    verdict = CB.design_stop("top30", design) if design else CB.decide(nulls, oracle)
     out = {"protocol_version": PROTOCOL_VERSION, "unit": "top30", "kernel_hash": k["combined"],
            "semantic_hash": k["semantic"], "text_hash": k["text"], "kernel_lock_verified": lock_ok and not synthetic,
            "synthetic_dry_run": synthetic, "research_hash": rh, "panel": src.symbols,
            "source_liq": src.meta.get("liq"),
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-           "families": header["families"],
+           "families": header["families"], "run_header": header,          # R-R (e): compared by the seal
            "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": CB.N_DRAWS, "oracle_worlds": a.oracle_worlds,
                         "speeds_days": USPEEDS, "levels": list(ULEVELS), "seeds": SEEDS, "g6_lags": OPTS.u_lags,
                         "g6_memory_max": C.UNIVERSE_G6_MEMORY_MAX,

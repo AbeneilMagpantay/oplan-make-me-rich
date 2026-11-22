@@ -1,4 +1,4 @@
-"""Instrument calibration (protocol v4, formula language):
+"""Instrument calibration (protocol v6, formula language):
 
     python -m omr.calibrate [--worlds 300] [--oracle-worlds 200] [--workers 6]
 
@@ -29,7 +29,7 @@ DEV-overfit protocol (false-positive rate): for each (world, family) draw 20 par
   the screen, nothing is submitted for that pair. Fix pass 10 (R-Q): a draw liquidated on DEV (stage1
   count dev_liquidated) or with a DEV Sharpe that is otherwise not finite (dev_sharpe_not_finite) is never a
   candidate, so it is never submitted; a pair without a candidate is not submitted. Null pass rate =
-  Tier-1 passes / SUBMITTED pairs.
+  Tier-1 passes / EVALUATED pairs (fix pass 11, R-R; the rate over submitted pairs is kept as information).
   Every gate value and the G6 p-value of every submitted pair are stored.
 Dry run (--unlocked-dry-run --out FILE): the same protocol on FULLY SYNTHETIC core prices (omr.probe
   generator); no real bar after DEV end is read; the artifact can never be sealed.
@@ -50,14 +50,19 @@ Rule (decide): the LARGEST G6 threshold in G6_GRID whose null pass rate is <= NU
 BOTH nulls and whose every family's null pass rate (per its own submitted pairs; fix pass 7, R-L) is <=
 FAMILY_PASS_MAX under both nulls; then oracle power at true Sharpe 1.5 must be >= POWER_MIN for both
 speeds under both nulls. None qualifies, or the power rule fails -> STOP (the seal refuses). The pass
-rate over DEV-positive pairs (KP-016) is stored as information; the rule does not read it. Fix pass 10 (R-P):
-under each null at most NULL_NOT_EVALUATED_MAX of the submitted pairs may end without an evaluation (liquidated,
-a kernel fault or anything else); otherwise that null fails every threshold, because such a pair cannot pass and
-so lowers the null pass rate, which the rule must not read as safety.
+rate over DEV-positive pairs (KP-016) is stored as information; the rule does not read it. Fix pass 11 (R-R,
+which replaces fix pass 10's cap R-P): the pooled and the family rates are Tier-1 passes over EVALUATED pairs and a
+missing rate fails (no family is skipped); under each null every family must have at least FAMILY_EVALUATED_MIN
+and the null as a whole at least NULL_EVALUATED_MIN of its DESIGNED pairs (the worlds ordered for the null)
+evaluated, and at most NULL_FAULT_MAX of the submitted pairs may end neither evaluated nor liquidated; otherwise
+that null fails every threshold. The stored rows must be exactly the protocol's design (design_problems: one null
+row per seed and family, one oracle row per seed, speed and level, the module's SEEDS), else the unit STOPs. A
+real run takes the protocol's sizes (CALIBRATION_WORLDS, CALIBRATION_ORACLE_WORLDS; the seal refuses others).
 """
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime as dt
 import json
 import math
@@ -79,8 +84,8 @@ from omr import paths as P
 from omr import pipeline
 from omr import stats as S
 
-PROTOCOL_VERSION = 5                  # fix pass 10: R-P (pairs not evaluated) and R-Q (DEV-liquidated draws are
-                                      # never candidates); 4 = fix pass 7 (R-L)
+PROTOCOL_VERSION = 6                  # fix pass 11: R-R (rates over evaluated pairs, evidence floors, faults,
+                                      # complete rows, protocol sizes); 5 = fix pass 10 (R-P, R-Q); 4 = pass 7 (R-L)
 FAMILIES = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls",
             "gen000_voltarget_trend_ls", "gen000_funding_carry")
 N_DRAWS = 20
@@ -438,31 +443,40 @@ def gate_rates(rows: list, p_max: float) -> dict:
     return out
 
 
-def null_summary(rows: list, families) -> dict:
+def null_summary(rows: list, families, designed=None) -> dict:
+    """The null side of one null. R-R (fix pass 11): designed = the worlds ordered for this null (the run's --worlds;
+    protocol.worlds_per_null of a stored artifact), never the rows present: every family's designed pairs. The rates
+    of the rule are Tier-1 passes over EVALUATED pairs; a submitted pair that ends liquidated or in a fault leaves the
+    denominator, as a pair never submitted does."""
     sub = [r for r in rows if r.get("submitted")]
+    ev = [r for r in sub if r.get("status") == "evaluated"]
     out = {"n_pairs": len(rows), "n_submitted": len(sub),
-           "n_not_submitted": len(rows) - len(sub),
+           "n_not_submitted": len(rows) - len(sub), "n_evaluated": len(ev),
+           "n_submitted_liquidated": sum(1 for r in sub if r.get("status") == "liquidated"),
+           "n_submitted_fault": sum(1 for r in sub if r.get("status") not in ("evaluated", "liquidated")),
+           "designed_per_family": designed,
            "submitted_status": {}, "stage1_draws": {}, "by_threshold": {},
-           "per_family": {f: {"pairs": 0, "submitted": 0} for f in families}}
+           "per_family": {f: {"pairs": 0, "submitted": 0, "evaluated": 0} for f in families}}
     for r in rows:
         out["per_family"][r["family"]]["pairs"] += 1
         out["per_family"][r["family"]]["submitted"] += int(bool(r.get("submitted")))
+        out["per_family"][r["family"]]["evaluated"] += int(bool(r.get("submitted")) and r.get("status") == "evaluated")
         for k, v in r.get("stage1", {}).items():
             out["stage1_draws"][k] = out["stage1_draws"].get(k, 0) + v
     for r in sub:
         out["submitted_status"][r["status"]] = out["submitted_status"].get(r["status"], 0) + 1
-    out["n_submitted_not_evaluated"] = sum(1 for r in sub if r.get("status") != "evaluated")      # R-P
     # 7b-2: truthiness, as tier_at reads a gate (a numpy bool in memory counts as it does after JSON)
     dev_pos = [r for r in sub if r.get("status") == "evaluated" and bool((r.get("gates") or {}).get("G3"))]
     out["n_dev_positive"] = len(dev_pos)
-    sub_f = {f: sum(1 for r in sub if r["family"] == f) for f in families}
+    ev_f = {f: out["per_family"][f]["evaluated"] for f in families}
     for t in C.G6_GRID:
         passers = [r for r in sub if tier_at(r, t)]
         out["by_threshold"][str(t)] = {
             "tier1": len(passers),
-            "pass_rate": len(passers) / len(sub) if sub else None,           # per SUBMITTED pair (the rule)
-            "family_pass_rate": {f: (sum(1 for r in passers if r["family"] == f) / sub_f[f]) if sub_f[f] else None
-                                 for f in families},                            # per family (R-L, the rule)
+            "pass_rate": len(passers) / len(ev) if ev else None,             # per EVALUATED pair (the rule, R-R)
+            "pass_rate_submitted": len(passers) / len(sub) if sub else None,  # information (the rule before R-R)
+            "family_pass_rate": {f: (sum(1 for r in passers if r["family"] == f) / ev_f[f]) if ev_f[f] else None
+                                 for f in families},                            # per family (R-L, R-R: the rule)
             "pass_rate_dev_positive": len(passers) / len(dev_pos) if dev_pos else None,   # information (KP-016)
             "pass_rate_all_pairs": len(passers) / len(rows) if rows else None,
             "passer_families": {f: sum(1 for r in passers if r["family"] == f) for f in families},
@@ -488,11 +502,12 @@ def oracle_summary(rows: list) -> dict:
     return out
 
 
-RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / SUBMITTED pairs) is "
+RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / EVALUATED pairs) is "
         "<= NULL_PASS_MAX under BOTH nulls AND whose every family's null pass rate (its Tier-1 passes / its "
-        "SUBMITTED pairs; a family without a submitted pair is skipped) is <= FAMILY_PASS_MAX under BOTH nulls, "
-        "where a null at which more than NULL_NOT_EVALUATED_MAX of the SUBMITTED pairs were not evaluated "
-        "(liquidated or otherwise) fails every threshold; "
+        "EVALUATED pairs; a missing rate fails) is <= FAMILY_PASS_MAX under BOTH nulls, where a null fails every "
+        "threshold when a family has fewer than FAMILY_EVALUATED_MIN or the null fewer than NULL_EVALUATED_MIN of "
+        "its DESIGNED pairs evaluated, or when more than NULL_FAULT_MAX of its SUBMITTED pairs ended neither "
+        "evaluated nor liquidated, and the stored rows must be exactly the protocol's design; "
         "then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds "
         "under BOTH nulls, with every oracle level's achieved mean VAL Sharpe within RHO_BOUND (0.1) of nominal; "
         "otherwise STOP")
@@ -501,7 +516,7 @@ RULE = ("G6 threshold = the LARGEST of G6_GRID whose null pass rate (Tier-1 pass
 def _bound_failure(null: str, what: str, r, bound: str) -> str:
     """The text of one failed bound; never raises (None, NaN, inf or a non-number)."""
     if r is None:
-        return f"null {null}: {what} rate missing (no submitted pair)"
+        return f"null {null}: {what} rate missing (no evaluated pair)"
     try:
         x = float(r)
     except (TypeError, ValueError):
@@ -515,19 +530,114 @@ def _count(v) -> bool:
     return isinstance(v, (int, np.integer)) and not isinstance(v, (bool, np.bool_))
 
 
-def not_evaluated_share(summary: dict, null: str) -> tuple:
-    """R-P (fix pass 10): (share or None, failure text or None) of the submitted pairs of one null that were not
-    evaluated. Fail-closed: the bound holds only when both counts are proper (integers, 0 <= count <= n_submitted,
-    n_submitted > 0) and the share IS <= NULL_NOT_EVALUATED_MAX (+1e-12)."""
-    cnt, nsub = summary.get("n_submitted_not_evaluated"), summary.get("n_submitted")
+def fault_share(summary: dict, null: str) -> tuple:
+    """R-R (c): (share or None, failure text or None) of the submitted pairs of one null that ended in a fault
+    (status neither "evaluated" nor "liquidated"). Fail-closed: the bound holds only when both counts are proper
+    (integers, 0 <= count <= n_submitted, n_submitted > 0) and the share IS <= NULL_FAULT_MAX (+1e-12)."""
+    cnt, nsub = summary.get("n_submitted_fault"), summary.get("n_submitted")
     if not (_count(cnt) and _count(nsub) and nsub > 0 and 0 <= cnt <= nsub):
-        return None, (f"null {null}: the count of submitted pairs not evaluated is missing or malformed "
-                      f"({cnt!r} of {nsub!r})")
+        return None, f"null {null}: the count of submitted pairs in a fault is missing or malformed ({cnt!r} of {nsub!r})"
     share = int(cnt) / int(nsub)
-    if not (share <= C.NULL_NOT_EVALUATED_MAX + 1e-12):
-        return share, (f"null {null}: {int(cnt)} of {int(nsub)} submitted pairs not evaluated ({share:.4f}) > "
-                       f"NULL_NOT_EVALUATED_MAX")
+    if not (share <= C.NULL_FAULT_MAX + 1e-12):
+        return share, f"null {null}: {int(cnt)} of {int(nsub)} submitted pairs ended in a fault ({share:.4f}) > NULL_FAULT_MAX"
     return share, None
+
+
+def _floor(null: str, what: str, ev, designed, floor: float, name: str) -> tuple:
+    """(share or None, failure text or None): evaluated / designed must be proper counts (designed > 0, 0 <= ev <=
+    designed) and the share IS >= the floor (-1e-12)."""
+    if not (_count(ev) and _count(designed) and designed > 0 and 0 <= ev <= designed):
+        return None, f"null {null}: {what}: evaluated / designed counts missing or malformed ({ev!r} of {designed!r})"
+    share = int(ev) / int(designed)
+    if not (share >= floor - 1e-12):
+        return share, f"null {null}: {what} evaluated {int(ev)} of {int(designed)} designed ({share:.4f}) < {name}"
+    return share, None
+
+
+def evidence_floors(summary: dict, null: str) -> tuple:
+    """R-R (b): ({"pooled": share, "families": {f: share}}, failure texts) of one null against the floors: every
+    family evaluated / designed >= FAMILY_EVALUATED_MIN, the null evaluated / (designed x families) >=
+    NULL_EVALUATED_MIN; designed = the summary's designed_per_family (the worlds ordered)."""
+    designed = summary.get("designed_per_family")
+    per = summary.get("per_family")
+    shares, fails = {"pooled": None, "families": {}}, []
+    if not isinstance(per, dict) or not per:
+        return shares, [f"null {null}: no families in the summary"]
+    for f in sorted(per):
+        ev = per[f].get("evaluated") if isinstance(per[f], dict) else None
+        shares["families"][f], why = _floor(null, f"family {f}", ev, designed, C.FAMILY_EVALUATED_MIN,
+                                            "FAMILY_EVALUATED_MIN")
+        if why:
+            fails.append(why)
+    total = designed * len(per) if _count(designed) else None
+    shares["pooled"], why = _floor(null, "pooled", summary.get("n_evaluated"), total, C.NULL_EVALUATED_MIN,
+                                   "NULL_EVALUATED_MIN")
+    if why:
+        fails.append(why)
+    return shares, fails
+
+
+def _key_problems(label: str, rows, want: set, key, null: str, limit: int) -> list:
+    if not isinstance(rows, list):
+        return [f"{label}: no list of rows"]
+    seen, bad = {}, []
+    for i, r in enumerate(rows):
+        if not isinstance(r, dict):
+            bad.append(f"row {i} is not a mapping")
+            continue
+        k = key(r)
+        if r.get("null") != null:
+            bad.append(f"row {k} carries null {r.get('null')!r}")
+        seen[k] = seen.get(k, 0) + 1
+    missing = sorted((k for k in want if k not in seen), key=repr)
+    double = sorted((k for k, c in seen.items() if c > 1 and k in want), key=repr)
+    foreign = sorted((k for k in seen if k not in want), key=repr)
+    out = []
+    for what, ks in (("missing", missing), ("double", double), ("foreign", foreign)):
+        if ks:
+            out.append(f"{label}: {len(ks)} {what} row(s), first {', '.join(repr(k) for k in ks[:limit])}")
+    if bad:
+        out.append(f"{label}: {len(bad)} malformed row(s), first {', '.join(bad[:limit])}")
+    return out
+
+
+def _level(v):
+    return float(v) if isinstance(v, (int, float, np.integer, np.floating)) and not isinstance(v, (bool, np.bool_)) else v
+
+
+def design_problems(art: dict, seeds: dict, families, speeds, levels, limit: int = 3) -> list:
+    """R-R (d), shared by both units: the stored rows against the protocol's design. protocol.worlds_per_null and
+    protocol.oracle_worlds must be positive integers and protocol.seeds the module's SEEDS; then under each null
+    exactly one null row per (world_seed, family) for world_seed in seeds[null] + 0 .. worlds - 1 and every family of
+    the unit, and exactly one oracle row per (world_seed, speed, level) for world_seed in seeds["oracle_" + null] +
+    0 .. oracle_worlds - 1, the unit's speeds and the levels it tunes; every row also carries its own null. Returns
+    the problems (empty = the design), naming the first few missing, double, foreign or malformed rows."""
+    prot = art.get("protocol") if isinstance(art.get("protocol"), dict) else {}
+    W, OW = prot.get("worlds_per_null"), prot.get("oracle_worlds")
+    out = []
+    if not (_count(W) and W > 0):
+        out.append(f"protocol worlds_per_null {W!r} is not a positive integer")
+    if not (_count(OW) and OW > 0):
+        out.append(f"protocol oracle_worlds {OW!r} is not a positive integer")
+    if prot.get("seeds") != dict(seeds):
+        out.append(f"protocol seeds {prot.get('seeds')!r} are not the module's {dict(seeds)!r}")
+    if out:
+        return out
+    fams, spd, lvl = list(families), list(speeds), [float(x) for x in levels]
+    for n in ("A", "B"):
+        want = {(seeds[n] + i, f) for i in range(W) for f in fams}
+        rows = ((art.get("nulls") or {}).get(n) or {}).get("rows")
+        out += _key_problems(f"null {n}", rows, want, lambda r: (r.get("world_seed"), r.get("family")), n, limit)
+        want = {(seeds["oracle_" + n] + i, s, x) for i in range(OW) for s in spd for x in lvl}
+        rows = ((art.get("oracle") or {}).get(n) or {}).get("rows")
+        out += _key_problems(f"oracle {n}", rows, want,
+                             lambda r: (r.get("world_seed"), r.get("speed"), _level(r.get("level"))), n, limit)
+    return out
+
+
+def design_stop(unit: str, problems: list) -> dict:
+    return {"STOP": True, "chosen_threshold": None,
+            "reason": f"{unit} artifact malformed: rows do not match the protocol design: " + "; ".join(problems)}
 
 
 def decide(nulls: dict, oracle: dict) -> dict:
@@ -535,30 +645,35 @@ def decide(nulls: dict, oracle: dict) -> dict:
     def rate(n, t, k="pass_rate"):
         return nulls[n]["summary"]["by_threshold"][str(t)][k]
 
-    ne = {n: not_evaluated_share(nulls[n]["summary"], n) for n in ("A", "B")}         # R-P
+    flt = {n: fault_share(nulls[n]["summary"], n) for n in ("A", "B")}                 # R-R (c)
+    flo = {n: evidence_floors(nulls[n]["summary"], n) for n in ("A", "B")}             # R-R (b)
 
     def failures(t) -> list:
         """Which bound fails at threshold t under which null (pooled, or the family's NAME). Fail-closed (7b-1):
         a bound holds only when the rate IS <= it, so a NaN, an inf or a missing pooled rate fails."""
         out = []
         for n in ("A", "B"):
-            if ne[n][1] is not None:                      # R-P: this null fails every threshold
-                out.append(ne[n][1])
+            out += flo[n][1]                              # R-R (b): a floor not met fails every threshold
+            if flt[n][1] is not None:                     # R-R (c): too many faults
+                out.append(flt[n][1])
             r = rate(n, t)
             if not (r is not None and r <= C.NULL_PASS_MAX + 1e-12):
                 out.append(_bound_failure(n, "pooled", r, "NULL_PASS_MAX"))
             for f, fr in sorted(rate(n, t, "family_pass_rate").items()):
-                if fr is not None and not (fr <= C.FAMILY_PASS_MAX + 1e-12):
+                if not (fr is not None and fr <= C.FAMILY_PASS_MAX + 1e-12):    # R-R (a): a missing rate fails
                     out.append(_bound_failure(n, f"family {f}", fr, "FAMILY_PASS_MAX"))
         return out
     fails = {str(t): failures(t) for t in C.G6_GRID}
     qualifying = [t for t in C.G6_GRID if not fails[str(t)]]
     chosen = max(qualifying) if qualifying else None
     verdict = {"rule": RULE, "grid": list(C.G6_GRID), "null_pass_max": C.NULL_PASS_MAX, "power_min": C.POWER_MIN,
-               "family_pass_max": C.FAMILY_PASS_MAX, "denominator": "submitted pairs",
-               "null_not_evaluated_max": C.NULL_NOT_EVALUATED_MAX,
-               "null_not_evaluated_share": {n: ne[n][0] for n in ("A", "B")},
+               "family_pass_max": C.FAMILY_PASS_MAX, "denominator": "evaluated pairs",
+               "family_evaluated_min": C.FAMILY_EVALUATED_MIN, "null_evaluated_min": C.NULL_EVALUATED_MIN,
+               "evaluated_share": {n: flo[n][0] for n in ("A", "B")},
+               "null_fault_max": C.NULL_FAULT_MAX, "null_fault_share": {n: flt[n][0] for n in ("A", "B")},
                "null_pass_rate": {n: {str(t): rate(n, t) for t in C.G6_GRID} for n in ("A", "B")},
+               "null_pass_rate_submitted": {n: {str(t): rate(n, t, "pass_rate_submitted") for t in C.G6_GRID}
+                                            for n in ("A", "B")},
                "family_pass_rate": {n: {str(t): rate(n, t, "family_pass_rate") for t in C.G6_GRID} for n in ("A", "B")},
                "null_pass_rate_dev_positive": {n: {str(t): rate(n, t, "pass_rate_dev_positive") for t in C.G6_GRID}
                                                for n in ("A", "B")},
@@ -592,9 +707,14 @@ def decide(nulls: dict, oracle: dict) -> dict:
 
 
 def verdict_from_rows(art: dict) -> dict:
-    """Recompute every summary from the stored per-pair rows and apply the rule (no re-run)."""
+    """Recompute every summary from the stored per-pair rows and apply the rule (no re-run). R-R (d): rows that are
+    not exactly the protocol's design stop the unit before the rule is read."""
+    problems = design_problems(art, SEEDS, FAMILIES, SPEEDS, LEVELS)
+    if problems:
+        return design_stop("core", problems)
     fams = list(art["families"])
-    nulls = {n: {"summary": null_summary(art["nulls"][n]["rows"], fams)} for n in ("A", "B")}
+    W = art["protocol"]["worlds_per_null"]
+    nulls = {n: {"summary": null_summary(art["nulls"][n]["rows"], fams, W)} for n in ("A", "B")}
     oracle = {n: {"summary": oracle_summary(art["oracle"][n]["rows"])} for n in ("A", "B")}
     return decide(nulls, oracle)
 
@@ -639,10 +759,22 @@ def tune_rho(pool, null: str, speed: str, seeds: list, log) -> dict:
     return out
 
 
+def protocol_header(worlds: int, oracle_worlds: int) -> dict:
+    """R-R (e), fix pass 11: the protocol header of a core calibration artifact ("protocol"): everything that fixes
+    the run apart from the data and the families (their own checks), the options object included, because a run can
+    change it at run time and the semantic hash does not pin that. main writes it; the seal compares the stored one
+    with this function's value for the protocol's sizes, key by key."""
+    return {"protocol_version": PROTOCOL_VERSION, "worlds_per_null": worlds, "oracle_worlds": oracle_worlds,
+            "draws_per_pair": N_DRAWS, "speeds_days": dict(SPEEDS), "levels": list(LEVELS), "seeds": dict(SEEDS),
+            "rho_tol": RHO_TOL, "rho_grid": [float(r) for r in RHO_GRID], "opts": dataclasses.asdict(OPTS),
+            "reduced_pipeline": "G8 not run (no extended universe; G8 can only veto, so null pass rates are upper "
+                                "bounds); oracles: G5 passes by definition (no params)"}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m omr.calibrate")
-    ap.add_argument("--worlds", type=int, default=300, help="null worlds per null (x 5 families = pairs)")
-    ap.add_argument("--oracle-worlds", type=int, default=200)
+    ap.add_argument("--worlds", type=int, default=C.CALIBRATION_WORLDS, help="null worlds per null (x 5 families)")
+    ap.add_argument("--oracle-worlds", type=int, default=C.CALIBRATION_ORACLE_WORLDS)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--families", nargs="*", default=None, help="subset of the kernel's five baselines")
     ap.add_argument("--unlocked-dry-run", action="store_true",
@@ -650,6 +782,12 @@ def main(argv=None):
     ap.add_argument("--out", default=None, help="output path (required with --unlocked-dry-run)")
     a = ap.parse_args(argv)
     t0 = time.time()
+    if not a.unlocked_dry_run and (a.worlds != C.CALIBRATION_WORLDS or a.oracle_worlds != C.CALIBRATION_ORACLE_WORLDS
+                                   or (a.families is not None and sorted(a.families) != sorted(FAMILIES))):
+        # R-R (f): no reduced real run (it would be a look at the null side before the run that counts)
+        raise SystemExit(f"a real calibration takes the protocol's sizes and families: --worlds {C.CALIBRATION_WORLDS}, "
+                         f"--oracle-worlds {C.CALIBRATION_ORACLE_WORLDS}, all of {list(FAMILIES)} (reduced sizes only "
+                         "with --unlocked-dry-run)")
 
     def log(s):
         print(s, flush=True)
@@ -694,13 +832,13 @@ def main(argv=None):
                 if (i + 1) % 20 == 0:
                     log(f"    {i + 1}/{a.worlds} worlds  ({time.time() - t0:.0f} s)")
             rows.sort(key=lambda r: (r["world_seed"], r["family"]))
-            sm = null_summary(rows, fams)
+            sm = null_summary(rows, fams, a.worlds)
             nulls[null] = {"rows": rows, "summary": sm}
             for t in C.G6_GRID:
                 b = sm["by_threshold"][str(t)]
                 rate = "n/a" if b["pass_rate"] is None else f"{b['pass_rate']:.4f}"
-                log(f"    null {null} p<={t}: {b['tier1']}/{sm['n_submitted']} submitted = {rate} "
-                    f"({sm['n_pairs']} pairs)  passers {b['passer_families']}")
+                log(f"    null {null} p<={t}: {b['tier1']}/{sm['n_evaluated']} evaluated = {rate} "
+                    f"({sm['n_submitted']} submitted, {sm['n_pairs']} pairs)  passers {b['passer_families']}")
             log(f"    submitted status {sm['submitted_status']}  stage-1 draws {sm['stage1_draws']}")
         for null in ("A", "B"):
             seeds = [SEEDS[f"oracle_{null}"] + i for i in range(a.oracle_worlds)]
@@ -720,16 +858,16 @@ def main(argv=None):
                 log(f"    null {null} {key}: mean VAL SR {sm['mean_val_sharpe']:.3f}  power " +
                     "  ".join(f"p<={t}: {sm['by_threshold'][str(t)]['tier1']}/{sm['n']}" for t in C.G6_GRID))
 
-    verdict = decide(nulls, oracle)
+    problems = design_problems({"protocol": {"worlds_per_null": a.worlds, "oracle_worlds": a.oracle_worlds,
+                                             "seeds": SEEDS}, "nulls": nulls, "oracle": oracle},
+                               SEEDS, FAMILIES, SPEEDS, LEVELS)             # R-R (d), before the rule
+    verdict = design_stop("core", problems) if problems else decide(nulls, oracle)
     out = {"protocol_version": PROTOCOL_VERSION, "kernel_hash": kh, "semantic_hash": sem, "text_hash": k["text"],
            "kernel_lock_verified": lock_ok and not synthetic, "synthetic_dry_run": synthetic,
            "research_hash": rh,
            "created_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "families": {f: ledger.sha256_file(family_path(f)) for f in fams},
-           "protocol": {"worlds_per_null": a.worlds, "draws_per_pair": N_DRAWS, "oracle_worlds": a.oracle_worlds,
-                        "speeds_days": SPEEDS, "levels": list(LEVELS), "seeds": SEEDS, "rho_tol": RHO_TOL,
-                        "reduced_pipeline": "G8 not run (no extended universe; G8 can only veto, so null pass rates "
-                                            "are upper bounds); oracles: G5 passes by definition (no params)"},
+           "protocol": protocol_header(a.worlds, a.oracle_worlds),       # R-R (e): compared by the seal
            "nulls": nulls, "oracle": oracle, "verdict": verdict, "wall_seconds": round(time.time() - t0, 1)}
     if a.out:
         path = Path(a.out)

@@ -140,42 +140,60 @@ def test_environment_pins(tmp_path):
 
 # ---------------------------------------------------------------- seal
 
-def null_rows(n, passes_010, passes_005, families=K.FAMILIES):
+# R-R (fix pass 11): the hand-built artifacts carry complete rows and protocol sizes; for this module the seal's size
+# constants are set to these small sizes (the checks themselves are unchanged)
+CORE_WORLDS, TOP_WORLDS, ORACLE_WORLDS = 20, 30, 10
+GATES_OK = {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}
+
+
+@pytest.fixture(autouse=True)
+def _protocol_sizes(monkeypatch):
+    monkeypatch.setattr(C, "CALIBRATION_WORLDS", CORE_WORLDS)
+    monkeypatch.setattr(C, "CALIBRATION_ORACLE_WORLDS", ORACLE_WORLDS)
+    monkeypatch.setattr(C, "UNIVERSE_CALIBRATION_WORLDS", TOP_WORLDS)
+    monkeypatch.setattr(C, "UNIVERSE_CALIBRATION_ORACLE_WORLDS", ORACLE_WORLDS)
+
+
+def null_rows(n, passes_010, passes_005, families=K.FAMILIES, null="A", seeds=K.SEEDS):
+    """n rows, one per (world, family): row i is world seeds[null] + i // len(families), family i % len(families)."""
     rows = []
     for i in range(n):
         p = 0.08 if i < passes_010 - passes_005 else (0.04 if i < passes_010 else 0.5)
-        rows.append({"family": families[i % len(families)], "world_seed": i, "submitted": True, "status": "evaluated",
-                     "params": {}, "val_sharpe": 0.1, "perm_p": p, "stage1": {"passed": 20},
-                     "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None, "G8": None}})
+        rows.append({"null": null, "family": families[i % len(families)], "world_seed": seeds[null] + i // len(families),
+                     "submitted": True, "status": "evaluated", "params": {}, "val_sharpe": 0.1, "perm_p": p,
+                     "stage1": {"passed": 20}, "gates": dict(GATES_OK)})
     return rows
 
 
-def oracle_rows(power):
+def oracle_rows(power, levels=K.LEVELS, null="A", seeds=K.SEEDS):
     rows = []
     for s in K.SPEEDS:
-        for lvl in K.LEVELS:
-            for i in range(10):
-                ok = i < power * 10
-                rows.append({"speed": s, "level": lvl, "world_seed": i, "status": "evaluated", "val_sharpe": lvl,
-                             "perm_p": 0.001 if ok else 0.5, "rho": 0.1,
-                             "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None,
-                                                                                                         "G8": None}})
+        for lvl in levels:
+            for i in range(ORACLE_WORLDS):
+                ok = i < power * ORACLE_WORLDS
+                rows.append({"null": null, "speed": s, "level": lvl, "world_seed": seeds["oracle_" + null] + i,
+                             "status": "evaluated", "val_sharpe": lvl, "perm_p": 0.001 if ok else 0.5, "rho": 0.1,
+                             "gates": dict(GATES_OK)})
     return rows
 
 
 def artifact(lock, root, passes_010=4, passes_005=2, power=0.8, verified=True):
     return {"kernel_lock_verified": verified, "semantic_hash": lock["semantic"], "research_hash": "r" * 64,
             "families": {f: LG.sha256_file(root / "omr" / "programs" / f"{f}.omr") for f in K.FAMILIES},
-            "nulls": {n: {"rows": null_rows(100, passes_010, passes_005)} for n in ("A", "B")},
-            "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
+            "protocol": K.protocol_header(CORE_WORLDS, ORACLE_WORLDS),         # R-R (e): the kernel's header
+            "nulls": {n: {"rows": null_rows(CORE_WORLDS * 5, passes_010, passes_005, null=n)} for n in ("A", "B")},
+            "oracle": {n: {"rows": oracle_rows(power, null=n)} for n in ("A", "B")}}
 
 
 def uartifact(lock, root, passes_010=2, passes_005=1, power=0.8, verified=True):
     return {"unit": "top30", "kernel_lock_verified": verified, "semantic_hash": lock["semantic"],
             "research_hash": "r" * 64,
             "families": {f: LG.sha256_file(root / "omr" / "programs" / f"{f}.omr") for f in UC.FAMILIES},
-            "nulls": {n: {"rows": null_rows(90, passes_010, passes_005, UC.FAMILIES)} for n in ("A", "B")},
-            "oracle": {n: {"rows": oracle_rows(power)} for n in ("A", "B")}}
+            "protocol": {"worlds_per_null": TOP_WORLDS, "oracle_worlds": ORACLE_WORLDS, "seeds": dict(UC.SEEDS)},
+            "run_header": UC.run_header(lock, "r" * 64, list(UC.FAMILIES), TOP_WORLDS, ORACLE_WORLDS, False),
+            "nulls": {n: {"rows": null_rows(TOP_WORLDS * 3, passes_010, passes_005, UC.FAMILIES, n, UC.SEEDS)}
+                      for n in ("A", "B")},
+            "oracle": {n: {"rows": oracle_rows(power, UC.ULEVELS, n, UC.SEEDS)} for n in ("A", "B")}}
 
 
 def test_the_seal_needs_both_units_and_decides_each_unit_alone(tmp_path):
@@ -350,16 +368,14 @@ def test_d3_decide_both_reads_the_levels_present_in_each_unit(tmp_path):
 # ---------------------------------------------------------------- fix pass 6: R-H per-unit thresholds, F2
 
 
-def oracle_rows_at(p_values):
-    """Oracle rows (both speeds, levels 1.0 and 1.5, 10 worlds) whose i-th world has perm_p p_values[i]."""
+def oracle_rows_at(p_values, levels=K.LEVELS, null="A", seeds=K.SEEDS):
+    """Oracle rows (both speeds, the unit's levels, one world per p value) whose i-th world has perm_p p_values[i]."""
     rows = []
     for s in K.SPEEDS:
-        for lvl in K.LEVELS:
+        for lvl in levels:
             for i, p in enumerate(p_values):
-                rows.append({"speed": s, "level": lvl, "world_seed": i, "status": "evaluated", "val_sharpe": lvl,
-                             "perm_p": p, "rho": 0.1,
-                             "gates": {g: True for g in ("G1", "G2", "G3", "G4", "G5", "G7", "G10")} | {"G6": None,
-                                                                                                         "G8": None}})
+                rows.append({"null": null, "speed": s, "level": lvl, "world_seed": seeds["oracle_" + null] + i,
+                             "status": "evaluated", "val_sharpe": lvl, "perm_p": p, "rho": 0.1, "gates": dict(GATES_OK)})
     return rows
 
 
@@ -367,10 +383,10 @@ def _two_units(core_p=None, top_p=None, core_pass=(2, 1), top_pass=(6, 2)):
     lock = {"semantic": "s"}
     core = artifact(lock, ROOT, passes_010=core_pass[0], passes_005=core_pass[1])
     top = uartifact(lock, ROOT, passes_010=top_pass[0], passes_005=top_pass[1])
-    for art, ps in ((core, core_p), (top, top_p)):
+    for art, ps, lv, sd in ((core, core_p, K.LEVELS, K.SEEDS), (top, top_p, UC.ULEVELS, UC.SEEDS)):
         if ps is not None:
             for n in ("A", "B"):
-                art["oracle"][n]["rows"] = oracle_rows_at(ps)
+                art["oracle"][n]["rows"] = oracle_rows_at(ps, lv, n, sd)
     return core, top
 
 
@@ -494,8 +510,8 @@ def test_r_l_e_a_summary_without_family_rates_stops_the_unit_as_malformed(monkey
     core, top = _two_units()
     orig = K.null_summary
 
-    def no_family(rows, fams):
-        s = orig(rows, fams)
+    def no_family(rows, fams, designed=None):                          # R-R: null_summary takes the designed pairs
+        s = orig(rows, fams, designed)
         if "ucal_xs_momentum" in fams:                                  # the top30 unit only
             for b in s["by_threshold"].values():
                 del b["family_pass_rate"]
@@ -556,11 +572,11 @@ def _malform(row, how):
 def test_fp8_2_a_malformed_evaluated_row_is_the_malformed_stop(kind, how):
     core, top = _two_units()
     rows = top["nulls" if kind == "null" else "oracle"]["A"]["rows"]
-    assert rows[3]["world_seed"] == 3
+    ws = rows[3]["world_seed"]                                          # R-R: the rows carry the protocol's seeds
     _malform(rows[3], how)
     v = UC.decide_both(core, top)
     assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ValueError: ")
-    assert "world_seed 3" in v["reason"] and v["chosen_threshold"]["core"] == 0.10
+    assert f"world_seed {ws}" in v["reason"] and v["chosen_threshold"]["core"] == 0.10
     with pytest.raises(ValueError):
         K.tier_at(rows[3], 0.1)
 
@@ -627,27 +643,143 @@ def test_fp8_3_any_exception_from_a_malformed_row_is_the_unit_stop(case):
     assert v["chosen_threshold"]["core"] == 0.10
 
 
-# ---------------------------------------------------------------- fix pass 10: R-P in both units
+# ---------------------------------------------------------------- fix pass 11: R-R in both units
 
 
-def test_r_p_t7_both_units_stop_on_too_many_submitted_pairs_not_evaluated():
-    def gone(rows, k):
-        for r in rows[50:50 + k]:
-            r["status"] = "liquidated"
-            r.pop("gates", None)
-            r.pop("perm_p", None)
+def _end(row, status):
+    row["status"] = status
+    row.pop("gates", None)
+    row.pop("perm_p", None)
+
+
+def test_r_r_both_units_faults_and_floors():
     core, top = _two_units()
     assert not UC.decide_both(core, top)["STOP"]
-    gone(top["nulls"]["B"]["rows"], 2)                                      # top30: 2 of 90 (2.2%)
-    assert not UC.decide_both(core, top)["STOP"]
-    gone(top["nulls"]["B"]["rows"], 3)                                      # 3 of 90 (3.3%)
+    rows = top["nulls"]["B"]["rows"]                                    # top30: 90 designed, 30 per family
+    for r in rows[30:45]:
+        _end(r, "liquidated")                                           # 15 liquidated: 5 per family, no fault
+    v = UC.decide_both(core, top)
+    assert not v["STOP"] and v["per_unit"]["top30"]["null_fault_share"]["B"] == 0.0
+    for r in rows[45:48]:
+        _end(r, "kernel_fault")                                         # 3 of 90 submitted in a fault: 3.3%
     v = UC.decide_both(core, top)
     assert v["STOP"] and v["reason"].startswith("top30: ") and v["chosen_threshold"] == {"core": 0.10, "top30": None}
-    assert "null B: 3 of 90 submitted pairs not evaluated (0.0333) > NULL_NOT_EVALUATED_MAX" in v["reason"]
+    assert "null B: 3 of 90 submitted pairs ended in a fault (0.0333) > NULL_FAULT_MAX" in v["reason"]
     core, top = _two_units()
-    gone(core["nulls"]["A"]["rows"], 3)                                     # core: 3 of 100, at the bound
-    assert UC.decide_both(core, top)["chosen_threshold"] == {"core": 0.10, "top30": 0.05}
-    gone(core["nulls"]["A"]["rows"], 4)                                     # 4 of 100
+    rows = core["nulls"]["A"]["rows"]                                   # core: 100 designed, 20 per family
+    fam = rows[0]["family"]
+    sel = [r for r in rows if r["family"] == fam]
+    for r in sel[:10]:
+        _end(r, "liquidated")                                           # 10 of 20 left: exactly the family floor
+    assert UC.decide_both(core, top)["chosen_threshold"]["core"] == 0.10
+    _end(sel[10], "liquidated")
     v = UC.decide_both(core, top)
     assert v["STOP"] and v["reason"].startswith("core: ") and v["chosen_threshold"]["core"] is None
-    assert v["per_unit"]["core"]["null_not_evaluated_share"] == {"A": 0.04, "B": 0.0}
+    assert f"null A: family {fam} evaluated 9 of 20 designed (0.4500) < FAMILY_EVALUATED_MIN" in v["reason"]
+    assert v["per_unit"]["core"]["evaluated_share"]["A"]["families"][fam] == 0.45
+
+
+@pytest.mark.parametrize("unit", ["core", "top30"])
+@pytest.mark.parametrize("case", ["missing", "double", "foreign_seed", "foreign_family", "oracle_missing",
+                                  "oracle_double", "oracle_foreign_seed", "oracle_foreign_speed",
+                                  "oracle_foreign_level", "seeds_header", "worlds_header", "wrong_null"])
+def test_r_r_t5_rows_that_are_not_the_protocol_design_stop_the_unit(unit, case):
+    core, top = _two_units()
+    art = core if unit == "core" else top
+    nr, orows = art["nulls"]["A"]["rows"], art["oracle"]["B"]["rows"]
+    if case == "missing":
+        nr.pop(7)
+    elif case == "double":
+        nr.append(dict(nr[7]))
+    elif case == "foreign_seed":
+        nr[7]["world_seed"] += 10 ** 6
+    elif case == "foreign_family":
+        nr[7]["family"] = "gen000_somebody_else"
+    elif case == "oracle_missing":
+        orows.pop(2)
+    elif case == "oracle_double":
+        orows.append(dict(orows[2]))
+    elif case == "oracle_foreign_seed":
+        orows[2]["world_seed"] = 123
+    elif case == "oracle_foreign_speed":
+        orows[2]["speed"] = "medium"
+    elif case == "oracle_foreign_level":
+        orows[2]["level"] = 1.25
+    elif case == "seeds_header":
+        art["protocol"]["seeds"] = dict(art["protocol"]["seeds"], A=art["protocol"]["seeds"]["A"] + 1)
+    elif case == "worlds_header":
+        art["protocol"]["worlds_per_null"] = None
+    else:
+        nr[7]["null"] = "B"
+    v = UC.decide_both(core, top)
+    other = "top30" if unit == "core" else "core"
+    assert v["STOP"] and v["chosen_threshold"][unit] is None and v["chosen_threshold"][other] is not None
+    assert v["reason"].startswith(f"{unit}: {unit} artifact malformed: rows do not match the protocol design: ")
+    if unit == "core":
+        assert K.verdict_from_rows(core)["STOP"]                        # the core module's own path as well
+
+
+def test_r_r_t5_the_problems_name_the_rows():
+    core, _ = _two_units()
+    gone = core["nulls"]["A"]["rows"].pop(0)
+    core["oracle"]["A"]["rows"].append(dict(core["oracle"]["A"]["rows"][0]))
+    probs = K.design_problems(core, K.SEEDS, K.FAMILIES, K.SPEEDS, K.LEVELS)
+    assert probs == [f"null A: 1 missing row(s), first {(gone['world_seed'], gone['family'])!r}",
+                     f"oracle A: 1 double row(s), first {(K.SEEDS['oracle_A'], 'fast', 1.0)!r}"]
+
+
+@pytest.mark.parametrize("unit", ["core", "top30"])
+@pytest.mark.parametrize("bad", ["fewer_worlds", "fewer_oracle_worlds", "missing", "text", "bool"])
+def test_r_r_t6_the_seal_refuses_sizes_that_are_not_the_protocols(tmp_path, unit, bad):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = artifact(lock, tmp_path, passes_010=2, passes_005=1)
+    ua = uartifact(lock, tmp_path, passes_010=6, passes_005=2)
+    target = art if unit == "core" else ua
+    key = "oracle_worlds" if bad == "fewer_oracle_worlds" else "worlds_per_null"
+    if bad == "missing":
+        del target["protocol"][key]
+    else:
+        target["protocol"][key] = {"fewer_worlds": target["protocol"][key] - 1, "fewer_oracle_worlds": ORACLE_WORLDS - 1,
+                                   "text": str(target["protocol"][key]), "bool": True}[bad]
+    with pytest.raises(KL.SealRefused) as e:
+        k.seal(k.write_art(art), uart=k.write_art(ua, name="ucalibration_s.json"))
+    assert f"protocol {key}" in str(e.value) and "seal" not in KL.read_lock(k.lock)
+
+
+def test_r_r_t6_the_same_artifacts_seal_with_the_protocols_sizes(tmp_path):
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    k.seal(k.write_art(artifact(lock, tmp_path, passes_010=2, passes_005=1)),
+           uart=k.write_art(uartifact(lock, tmp_path, passes_010=6, passes_005=2), name="ucalibration_s.json"))
+    assert KL.read_lock(k.lock)["seal"]["g6_threshold"] == {"core": 0.10, "top30": 0.05}
+
+
+@pytest.mark.parametrize("unit,change", [("core", "altered"), ("core", "missing"), ("core", "extra"), ("core", "opts"),
+                                         ("top30", "altered"), ("top30", "missing"), ("top30", "extra"),
+                                         ("top30", "opts"), ("top30", "dry_run")])
+def test_r_r_e_the_seal_refuses_a_protocol_header_that_is_not_the_kernels(tmp_path, unit, change):
+    """Amended R-R (e): the stored header must be the one the checking kernel writes for a real run of the protocol's
+    size (core: draws_per_pair altered, rho_grid missing, an extra key, the options object; universe: g6_lags
+    altered, fine_points missing, an extra key, the options object, a dry run's header)."""
+    k = Kern(tmp_path)
+    lock = k.rekey()
+    art = artifact(lock, tmp_path, passes_010=2, passes_005=1)
+    ua = uartifact(lock, tmp_path, passes_010=6, passes_005=2)
+    h = art["protocol"] if unit == "core" else ua["run_header"]
+    key = {"altered": "draws_per_pair" if unit == "core" else "g6_lags",
+           "missing": "rho_grid" if unit == "core" else "fine_points", "extra": "notes", "opts": "opts",
+           "dry_run": "synthetic_dry_run"}[change]
+    if change == "altered":
+        h[key] += 1
+    elif change == "missing":
+        del h[key]
+    elif change == "extra":
+        h[key] = "anything"
+    elif change == "opts":
+        h[key] = dict(h[key], perm_n=h[key]["perm_n"] + 1)
+    else:
+        h[key] = True
+    with pytest.raises(KL.SealRefused) as e:
+        k.seal(k.write_art(art), uart=k.write_art(ua, name="ucalibration_h.json"))
+    assert f" key {key} " in str(e.value) and "seal" not in KL.read_lock(k.lock)

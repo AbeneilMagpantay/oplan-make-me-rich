@@ -94,7 +94,8 @@ def test_null_summary_counts_submitted_pairs_only():
     s = K.null_summary(rows, ["a"])
     assert s["n_pairs"] == 4 and s["n_submitted"] == 3 and s["n_not_submitted"] == 1
     b = s["by_threshold"]["0.025"]
-    assert b["tier1"] == 1 and b["pass_rate"] == 1 / 3 and b["pass_rate_all_pairs"] == 1 / 4
+    assert b["tier1"] == 1 and b["pass_rate"] == 1 / 2 and b["pass_rate_all_pairs"] == 1 / 4     # R-R: / evaluated
+    assert b["pass_rate_submitted"] == 1 / 3 and s["n_evaluated"] == 2 and s["n_submitted_liquidated"] == 1
     assert b["gate_pass_rate_submitted"]["G1"] == 2 / 3                       # the liquidated pair fails every gate
     assert s["stage1_draws"] == {"passed": 43, "activity_dev": 37}
     assert s["submitted_status"] == {"evaluated": 2, "liquidated": 1}
@@ -172,8 +173,14 @@ def _oracle_rows():
             for s in K.SPEEDS for lvl in K.LEVELS for i in range(10)]
 
 
-def _decide(rows_a, rows_b, fams):
-    nulls = {"A": {"summary": K.null_summary(rows_a, fams)}, "B": {"summary": K.null_summary(rows_b, fams)}}
+def _designed(rows, fams):
+    """The worlds of a hand-built null: the largest number of rows of one family (R-R needs the designed pairs)."""
+    return max([sum(1 for r in rows if r["family"] == f) for f in fams] + [1])
+
+
+def _decide(rows_a, rows_b, fams, designed=None):
+    nulls = {n: {"summary": K.null_summary(rows, fams, designed or _designed(rows, fams))}
+             for n, rows in (("A", rows_a), ("B", rows_b))}
     oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
     return K.decide(nulls, oracle), nulls
 
@@ -214,7 +221,9 @@ def test_r_l_b_a_family_at_exactly_the_bound_qualifies():
     assert v4["chosen_threshold"] == 0.05 and v4["threshold_failures"]["0.1"] == ["null A: family c 0.0800 > FAMILY_PASS_MAX"]
 
 
-def test_r_l_c_a_family_without_a_submitted_pair_is_skipped():
+def test_r_l_c_a_family_without_a_submitted_pair_is_no_longer_skipped():
+    """Was "is skipped" (R-L); fix pass 11 (R-R (a), (b)): a family without an evaluated pair fails every threshold,
+    by its missing rate and by its evidence floor."""
     fams = ("a", "b", "c", "d", "e", "f")
     rows = _null_rows({f: 40 for f in ("a", "b", "c", "d")}, {"a": [0.08, 0.08]})
     rows += [{"family": "e", "world_seed": 900 + i, "submitted": False, "status": "not_submitted",
@@ -223,7 +232,12 @@ def test_r_l_c_a_family_without_a_submitted_pair_is_skipped():
     for n in ("A", "B"):
         fr = nulls[n]["summary"]["by_threshold"]["0.1"]["family_pass_rate"]
         assert fr["e"] is None and fr["f"] is None and fr["a"] == 2 / 40
-    assert v["chosen_threshold"] == 0.1 and not v["STOP"] and v["threshold_failures"]["0.1"] == []
+    assert v["STOP"] and v["chosen_threshold"] is None and v["qualifying"] == []
+    for t in C.G6_GRID:
+        for f in ("e", "f"):
+            assert f"null A: family {f} rate missing (no evaluated pair)" in v["threshold_failures"][str(t)]
+            assert f"null A: family {f} evaluated 0 of 40 designed (0.0000) < FAMILY_EVALUATED_MIN" in \
+                v["threshold_failures"][str(t)]
 
 
 def test_r_l_d_the_dev_positive_rate_is_information_only():
@@ -245,7 +259,7 @@ def test_r_l_d_the_dev_positive_rate_is_information_only():
         w = K.decide(nulls, oracle)
         assert (w["chosen_threshold"], w["qualifying"], w["STOP"]) == (v["chosen_threshold"], v["qualifying"], v["STOP"])
     assert K.null_summary([], FIVE)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
-    assert K.PROTOCOL_VERSION == 5                                                # fix pass 10 (R-P, R-Q); 4 before
+    assert K.PROTOCOL_VERSION == 6                                                # fix pass 11 (R-R); 5, 4 before
 
 
 # ---------------------------------------------------------------- fix pass 7b: fail-closed bounds, numpy gate values
@@ -287,7 +301,7 @@ def test_7b_1_a_rate_that_is_not_a_number_never_qualifies():
         bt["A"][str(t)]["family_pass_rate"]["e"] = float("nan")
     v = _redecide(nulls)
     assert v["STOP"] and v["chosen_threshold"] is None
-    assert K._bound_failure("A", "pooled", None, "NULL_PASS_MAX") == "null A: pooled rate missing (no submitted pair)"
+    assert K._bound_failure("A", "pooled", None, "NULL_PASS_MAX") == "null A: pooled rate missing (no evaluated pair)"
     assert K._bound_failure("A", "pooled", "x", "NULL_PASS_MAX") == "null A: pooled 'x' is not a finite rate"
 
 
@@ -369,11 +383,13 @@ def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):
         x = np.nextafter(x, 2.0)
 
 
-# ---------------------------------------------------------------- fix pass 10: R-P pairs not evaluated
+# ---------------------------------------------------------------- fix pass 11: R-R the null side of the rule
 
 
-def _not_evaluated(rows, k, status="liquidated"):
-    for r in rows[:k]:
+def _gone(rows, k, status="liquidated", family=None):
+    """The first k rows (of one family) end with status instead of evaluated (no gates, no p)."""
+    sel = [r for r in rows if family is None or r["family"] == family][:k]
+    for r in sel:
         r["status"] = status
         r["reason"] = status
         r.pop("gates", None)
@@ -381,36 +397,137 @@ def _not_evaluated(rows, k, status="liquidated"):
     return rows
 
 
-def test_r_p_t7_a_null_with_too_many_pairs_not_evaluated_fails_every_threshold():
-    assert C.NULL_NOT_EVALUATED_MAX == 0.03
-    n_sub = {f: 20 for f in FIVE}                                           # 100 submitted pairs per null
-    v, _ = _decide(_null_rows(n_sub), _not_evaluated(_null_rows(n_sub), 3), FIVE)     # 3 of 100: at the bound
-    assert not v["STOP"] and v["chosen_threshold"] == 0.1 and v["null_not_evaluated_max"] == 0.03
-    assert v["null_not_evaluated_share"] == {"A": 0.0, "B": 0.03}
-    rows_b = _not_evaluated(_null_rows(n_sub), 3)
-    _not_evaluated(rows_b[3:], 1, "kernel_fault")                            # a kernel fault counts as well
-    v, _ = _decide(_null_rows(n_sub), rows_b, FIVE)
-    why = "null B: 4 of 100 submitted pairs not evaluated (0.0400) > NULL_NOT_EVALUATED_MAX"
-    assert v["STOP"] and v["chosen_threshold"] is None and v["qualifying"] == []
-    assert all(why in v["threshold_failures"][str(t)] for t in C.G6_GRID) and why in v["reason"]
-    assert v["null_not_evaluated_share"]["B"] == 0.04
-    _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)
-    for bad in ("missing", None, 3.0, True, -1, 101):                        # fail-closed on the counts
-        s = nulls["A"]["summary"]
-        keep = s["n_submitted_not_evaluated"]
-        if bad == "missing":
-            del s["n_submitted_not_evaluated"]
-        else:
-            s["n_submitted_not_evaluated"] = bad
+def _why(v, t, text):
+    return text in v["threshold_failures"][str(t)]
+
+
+def test_r_r_t1_the_rate_is_over_evaluated_pairs():
+    n_sub = {f: 40 for f in FIVE}                                           # 200 submitted (and designed) pairs
+    rows = _null_rows(n_sub, {f: [0.5] * 8 + [0.08] for f in FIVE})         # one pass at 0.10 per family
+    for f in FIVE:
+        _gone(rows, 8, family=f)                                            # 8 liquidated per family: 160 evaluated
+    v, nulls = _decide(rows, _null_rows(n_sub), FIVE)
+    s = nulls["A"]["summary"]
+    assert s["n_evaluated"] == 160 and s["n_submitted_liquidated"] == 40 and s["n_submitted_fault"] == 0
+    b = s["by_threshold"]["0.1"]
+    assert b["pass_rate_submitted"] == 5 / 200 <= C.NULL_PASS_MAX                 # inside 3% over submitted pairs
+    assert b["pass_rate"] == 5 / 160 > C.NULL_PASS_MAX                            # outside over evaluated pairs
+    assert b["family_pass_rate"]["a"] == 1 / 32
+    assert v["chosen_threshold"] == 0.05 and v["denominator"] == "evaluated pairs"
+    assert v["threshold_failures"]["0.1"] == ["null A: pooled 0.0312 > NULL_PASS_MAX"]
+    assert v["null_pass_rate_submitted"]["A"]["0.1"] == 5 / 200
+
+
+def test_r_r_t2_a_family_without_an_evaluated_pair_fails_every_threshold(monkeypatch):
+    monkeypatch.setattr(C, "FAMILY_EVALUATED_MIN", 0.0)                     # isolate the missing rate from the floor
+    monkeypatch.setattr(C, "NULL_EVALUATED_MIN", 0.0)
+    n_sub = {f: 40 for f in FIVE}
+    v, _ = _decide(_gone(_null_rows(n_sub), 40, family="e"), _null_rows(n_sub), FIVE)
+    assert v["STOP"] and v["chosen_threshold"] is None
+    assert all(_why(v, t, "null A: family e rate missing (no evaluated pair)") for t in C.G6_GRID)
+
+
+def test_r_r_t3_the_evidence_floors():
+    assert (C.FAMILY_EVALUATED_MIN, C.NULL_EVALUATED_MIN) == (0.50, 0.75)
+    n_sub = {f: 40 for f in FIVE}
+    v, _ = _decide(_gone(_null_rows(n_sub), 20, family="c"), _null_rows(n_sub), FIVE)     # family c: exactly 0.50
+    assert not v["STOP"] and v["evaluated_share"]["A"]["families"]["c"] == 0.5
+    assert v["family_evaluated_min"] == 0.5 and v["null_evaluated_min"] == 0.75
+    v, _ = _decide(_gone(_null_rows(n_sub), 21, family="c"), _null_rows(n_sub), FIVE)     # one pair fewer
+    assert v["STOP"] and v["chosen_threshold"] is None
+    why = "null A: family c evaluated 19 of 40 designed (0.4750) < FAMILY_EVALUATED_MIN"
+    assert all(_why(v, t, why) for t in C.G6_GRID)
+    rows = _null_rows(n_sub)
+    for f in FIVE:
+        _gone(rows, 10, "not_submitted", family=f)                          # every family 30 of 40, the null 150 of 200
+    for r in rows:
+        if r["status"] == "not_submitted":
+            r["submitted"] = False
+    v, _ = _decide(rows, _null_rows(n_sub), FIVE)
+    assert not v["STOP"] and v["evaluated_share"]["A"]["pooled"] == 0.75
+    _gone(rows, 11, "not_submitted", family="a")
+    rows[[i for i, r in enumerate(rows) if r["family"] == "a"][10]]["submitted"] = False
+    v, nulls = _decide(rows, _null_rows(n_sub), FIVE)                       # 149 of 200
+    assert v["STOP"] and v["evaluated_share"]["A"]["pooled"] == 149 / 200
+    assert all(_why(v, t, "null A: pooled evaluated 149 of 200 designed (0.7450) < NULL_EVALUATED_MIN")
+               for t in C.G6_GRID)
+    _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)          # fail-closed on the counts
+    s = nulls["A"]["summary"]
+    for key, bad in (("designed_per_family", None), ("designed_per_family", 0), ("designed_per_family", True),
+                     ("designed_per_family", 40.0), ("designed_per_family", -40), ("n_evaluated", 201),
+                     ("n_evaluated", None)):
+        keep = s[key]
+        s[key] = bad
         w = _redecide(nulls)
-        assert w["STOP"] and w["chosen_threshold"] is None and w["null_not_evaluated_share"]["A"] is None, bad
-        assert "null A: the count of submitted pairs not evaluated is missing or malformed" in w["reason"]
-        s["n_submitted_not_evaluated"] = keep
-    nulls["B"]["summary"]["n_submitted"] = 0
+        assert w["STOP"] and w["chosen_threshold"] is None, (key, bad)
+        assert "evaluated / designed counts missing or malformed" in w["reason"], (key, bad)
+        s[key] = keep
+    keep = s["per_family"]["a"]["evaluated"]
+    s["per_family"]["a"]["evaluated"] = 41
     assert _redecide(nulls)["STOP"]
-    nulls["B"]["summary"]["n_submitted"] = 100
+    s["per_family"]["a"]["evaluated"] = keep
     assert not _redecide(nulls)["STOP"]
-    assert K.null_summary(_not_evaluated(_null_rows(n_sub), 7), FIVE)["n_submitted_not_evaluated"] == 7
+
+
+def test_r_r_t4_faults_count_kernel_faults_and_unknown_statuses_not_liquidations():
+    assert C.NULL_FAULT_MAX == 0.03 and not hasattr(C, "NULL_NOT_EVALUATED_MAX")
+    n_sub = {f: 40 for f in FIVE}
+    rows = _null_rows(n_sub)
+    for f in FIVE:
+        _gone(rows, 6, family=f)                                            # 30 liquidated: no fault
+    v, nulls = _decide(rows, _null_rows(n_sub), FIVE)
+    assert not v["STOP"] and v["null_fault_share"] == {"A": 0.0, "B": 0.0} and v["null_fault_max"] == 0.03
+    rows = _gone(_null_rows(n_sub), 6, "kernel_fault")                      # 6 of 200: at the bound
+    v, _ = _decide(rows, _null_rows(n_sub), FIVE)
+    assert not v["STOP"] and v["null_fault_share"]["A"] == 0.03
+    _gone(rows[6:], 1, "weird")                                             # an unknown status is a fault too
+    v, _ = _decide(rows, _null_rows(n_sub), FIVE)
+    assert v["STOP"] and all(_why(v, t, "null A: 7 of 200 submitted pairs ended in a fault (0.0350) > NULL_FAULT_MAX")
+                             for t in C.G6_GRID)
+    _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)
+    s = nulls["B"]["summary"]
+    for key, bad in (("n_submitted_fault", None), ("n_submitted_fault", True), ("n_submitted_fault", -1),
+                     ("n_submitted_fault", 201), ("n_submitted", 0)):
+        keep = s[key]
+        s[key] = bad
+        w = _redecide(nulls)
+        assert w["STOP"] and w["null_fault_share"]["B"] is None, (key, bad)
+        assert "the count of submitted pairs in a fault is missing or malformed" in w["reason"]
+        s[key] = keep
+    assert not _redecide(nulls)["STOP"]
+
+
+def test_r_r_t9_the_two_shapes_that_started_it():
+    fams = ("momentum", "reversal", "carry")
+    n_sub = {f: 16 for f in fams}                                           # W-F1: null B, 16 worlds before R-O
+    rows = _null_rows(n_sub)
+    for f, kept in zip(fams, (5, 3, 6)):
+        _gone(rows, 16 - kept, family=f)                                    # 14 of 48 evaluated, no pass
+    v, _ = _decide(_null_rows(n_sub), rows, fams)
+    assert v["STOP"] and v["chosen_threshold"] is None
+    assert all(_why(v, t, "null B: pooled evaluated 14 of 48 designed (0.2917) < NULL_EVALUATED_MIN") for t in C.G6_GRID)
+    assert all(_why(v, t, "null B: family reversal evaluated 3 of 16 designed (0.1875) < FAMILY_EVALUATED_MIN")
+               for t in C.G6_GRID)
+    rows = _null_rows(n_sub)                                                # every pair of one family not submitted
+    for r in rows:
+        if r["family"] == "carry":
+            r.update(submitted=False, status="not_submitted")
+    v, _ = _decide(rows, _null_rows(n_sub), fams)
+    assert v["STOP"] and all(_why(v, t, "null A: family carry rate missing (no evaluated pair)") for t in C.G6_GRID)
+
+
+def test_r_r_t7_a_real_core_run_with_reduced_sizes_is_refused_before_any_data_access(monkeypatch, tmp_path):
+    from omr import access, data, kernel_lock
+
+    def boom(*a, **k):
+        raise AssertionError("data or the kernel lock was read")
+    for mod, name in ((kernel_lock, "verify"), (data, "load_manifest"), (data, "validation_ok"),
+                      (access, "for_calibration")):
+        monkeypatch.setattr(mod, name, boom)
+    for argv in (["--worlds", "10"], ["--oracle-worlds", "5"], ["--families", "gen000_sma_cross_ls"]):
+        with pytest.raises(SystemExit) as e:
+            K.main(argv)
+        assert "protocol's sizes" in str(e.value)
 
 
 # ---------------------------------------------------------------- fix pass 10: R-Q DEV-liquidated draws are never submitted
@@ -461,5 +578,6 @@ def test_r_q_tq4_a_pair_without_a_candidate_is_not_submitted_in_the_summary(monk
     row, _, _ = _rq_core(monkeypatch, [float("-inf")] * K.N_DRAWS)
     ok = _row("gen000_sma_cross_ls", 7, 0.5)
     s = K.null_summary([row, ok], ["gen000_sma_cross_ls"])
-    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 1 and s["n_submitted_not_evaluated"] == 0
+    assert s["n_not_submitted"] == 1 and s["n_submitted"] == 1 and s["n_submitted_fault"] == 0
+    assert s["n_submitted_liquidated"] == 0 and s["n_evaluated"] == 1
     assert s["stage1_draws"]["dev_liquidated"] == K.N_DRAWS

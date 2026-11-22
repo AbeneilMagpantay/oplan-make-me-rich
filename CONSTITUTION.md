@@ -276,7 +276,7 @@ read under a logged calibration handle; nothing enters the trial ledger:
   self-checks) and is SUBMITTED to stage 2; none -> nothing submitted. A draw liquidated on DEV (or
   whose DEV Sharpe is otherwise not a finite number) is never a candidate and so never submitted
   (fix pass 10, R-Q; both units); a pair without a candidate is not submitted. Null pass rate
-  = Tier-1 passes / SUBMITTED pairs. Every gate value and G6 p is stored (G8 not run: no extended
+  = Tier-1 passes / EVALUATED pairs (fix pass 11, R-R). Every gate value and G6 p is stored (G8 not run: no extended
   universe; G8 can only veto, so the rates are upper bounds).
 - Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
   (fast k = 1, slow k = 20), weight = signal / K, injected after the interpreter into the gates
@@ -284,26 +284,42 @@ read under a logged calibration handle; nothing enters the trial ledger:
   ACHIEVED mean VAL Sharpe over those worlds is within 0.1 of the nominal 1.0 / 1.5 (reported).
 - Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
   under BOTH nulls and at which no single family's null pass rate (its Tier-1 passes / its own
-  SUBMITTED pairs; a family without a submitted pair is skipped) exceeds 6% (FAMILY_PASS_MAX, fix
+  EVALUATED pairs; a family without an evaluated pair fails) exceeds 6% (FAMILY_PASS_MAX, fix
   pass 7, R-L) under either null; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds
   under both nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule
   fails, nothing is sealed, generation 0 cannot run, and the human decides; the verdict names, for each
   threshold, the bound (pooled, or the family by name) and the null that failed. Since KP-015 the rule
   is applied to EACH unit on its own rows and the seal holds one threshold per unit (section 13).
   Why a family bound: the pooled rate is diluted by families that cannot pass in a null world (in the
-  top30 null worlds reversal and carry never pass, so 3% over all submitted pairs would allow the one
+  top30 null worlds reversal and carry never pass, so 3% over all evaluated pairs would allow the one
   family that can pass 9%). Why 0.06: the conventional 5% level plus a sampling allowance; with 200
   worlds a family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is
   refused in about 91%. The family bound can only lower a threshold. What it permits: a family that
-  passes every other gate in null worlds may reach Tier 1 in up to 6% of its own submitted pairs, above
+  passes every other gate in null worlds may reach Tier 1 in up to 6% of its own evaluated pairs, above
   the pooled 3%. The artifact also stores, per
   threshold, the family rates and the pass rate over the submitted pairs that pass G3 (DEV-positive,
   KP-016); the rule does not read the latter.
-  Fix pass 10 (R-P): under each null at most 3% (NULL_NOT_EVALUATED_MAX) of the submitted pairs may end
-  without an evaluation (liquidated, a kernel fault or anything else); otherwise that null fails every
-  threshold and the verdict is a STOP that names it. Such a pair cannot pass, so it lowers the null pass
-  rate, and the rule must not read that as safety; the bound holds only when both counts are proper and
-  the share is at most the bound. The verdict records the bound and each null's share.
+  Fix pass 11 (R-R, which replaces the cap of fix pass 10's R-P): (a) the pooled and the family rates
+  are Tier-1 passes over EVALUATED pairs (a submitted pair that ends liquidated or in a fault leaves the
+  denominator, as a pair never submitted does), and a rate without an evaluated pair fails, so no family
+  is skipped. (b) Evidence floors: under each null every family must end with at least 50%
+  (FAMILY_EVALUATED_MIN) of its designed pairs evaluated, and the null as a whole with at least 75%
+  (NULL_EVALUATED_MIN); designed pairs are the worlds ordered for the null, never the rows present.
+  (c) At most 3% (NULL_FAULT_MAX) of the submitted pairs may end neither evaluated nor liquidated (a
+  kernel fault or anything unknown). A null that misses (b) or (c) fails every threshold; every bound
+  holds only when its counts are proper and the share is inside it, and the verdict records the floors,
+  every share and the faults. (d) The stored rows must be exactly the protocol's design: one null row
+  per seed and family and one oracle row per seed, speed and level, with the module's seeds; a missing,
+  double or foreign row stops the unit. (e) The seal refuses a calibration whose protocol header is not
+  the one the locked kernel itself writes for a real run of the protocol's size (core 300 null worlds and
+  200 oracle worlds per null; top30 200 and 100), compared key by key: the sizes, the seeds, the levels and
+  speeds, the draws, the rho grid, the options object and every other field that fixes the run, because a
+  run can change some of them at run time and the semantic hash does not pin that. (f) A real run with
+  other sizes is refused before any data is read; only a dry run may be smaller. Why R-R replaces the
+  cap: after R-Q a liquidation on DEV makes a pair "not submitted", so a breakage could show only as
+  pairs never submitted, which the former rule skipped, and thin evidence read as safety. And the cap on
+  liquidated pairs was a hard stop that one real bar after DEV end moves by several points, although a
+  liquidated no-skill book is a non-pass in the real evaluation as well.
 
 The current seal, its artifact and its numbers are in `kernel.lock` and STATE.md.
 
@@ -428,6 +444,14 @@ Live risk limits the loop can never change:
   because stale copies do not share the actual book's luck; that rate is what the null worlds measure
   and the seal bounds. The core unit's G6 (200 circular shifts) has not been examined for the same
   effect; its seal measured its families' rates in worlds that keep each symbol's drift.
+- In the top30 null worlds the funding sign coin (R-E) can put the carry family short a name whose real
+  funding was strongly negative; with a real up-wick on that name (2022-05-11 13:00, about 4.9 times the
+  open by mark) every draw of such a pair is liquidated on DEV and the pair is not submitted (about a
+  quarter of the null A carry pairs in the pilot), so the carry family's null pass rate is conditional on
+  surviving DEV.
+- Liquidations in the top30 null worlds after R-O come from real mark wicks meeting concentrated books
+  (the calibration families scale their weights by signal without a cap per name), and the null pass rate
+  is taken over the pairs that end evaluated.
 
 ## 13. KP-015: the universe unit top30 (built 2026-11-19; NOT in force until the human approves the re-key)
 
@@ -542,8 +566,9 @@ Live risk limits the loop can never change:
   cross-sectional families (momentum and reversal on daily returns, n from 3 to 60 and from 3 to 20 days -
   the reversal mirrors the momentum since fix pass 6 - and funding carry), the same
   screen-and-submit protocol on the production block path, a cross-sectional noisy oracle at two speeds
-  on the same worlds, tuned and evaluated at true Sharpe 1.5 only, the level the rule reads). The
-  universe oracle's speeds (fix pass 6, R-I) are fast = 5 days and slow = 20 days; the core keeps 1 and
+  on the same worlds, tuned and evaluated at true Sharpe 1.5 only, the level the rule reads). The top30
+  calibration runs 200 null worlds and 100 oracle worlds per null (fix pass 11, R-R: the seal refuses other
+  sizes). The universe oracle's speeds (fix pass 6, R-I) are fast = 5 days and slow = 20 days; the core keeps 1 and
   20. At 12.5 bps per side the oracle's cost drag in Sharpe units is 3.86 at 1 day, 1.50 at 3, 0.93 at 5,
   0.64 at 7, 0.39 at 10 and 0.29 at 20 days, so no 1-day book with net Sharpe 1.5 keeps a positive Sharpe
   at doubled costs: on 24 audit worlds with the real membership structure and synthetic prices G4 passed
@@ -567,10 +592,12 @@ Live risk limits the loop can never change:
   the seal rule will stop whatever the null worlds give (the run may be interrupted; the partial file
   keeps the finished work; the artifact does not depend on the order). Fix pass 8: during the null phases
   it logs the same warning once when the Tier-1 passes so far already exceed what the pooled or a family
-  bound allows at every threshold, or when the largest threshold still open lacks oracle power (log only).
+  bound allows at every threshold, or when the largest threshold still open lacks oracle power (log only;
+  fix pass 11: also when a family or the null can no longer reach its evidence floor or the faults exceed
+  their bound).
 - The seal, fix pass 6 (R-H): the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its
   OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3% under both of that
-  unit's nulls and at which no family of that unit passes more than 6% of its own submitted pairs under
+  unit's nulls and at which no family of that unit passes more than 6% of its own evaluated pairs under
   either of them (fix pass 7, R-L; in top30 only the momentum family can pass in a null world, so this
   is the bound that binds there), then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
   that unit's threshold, every oracle level present within its bound. The two units use different G6
