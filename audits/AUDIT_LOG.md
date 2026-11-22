@@ -1094,3 +1094,17 @@ round 3 also the coordinator's own read of the core modules.
   the supervisor decides only when a process starts and with how many workers, and the artifact
   does not depend on either (the partial file binds the run header, which has no worker count).
   The seal, the reading before it, the selftest and the recount stay with the coordinator.
+- The run (added after commit 42487f8). By 01:04 the owner had freed memory (8.0 GiB available).
+  The coordinator started `python -m omr.ucalibrate --workers 3` directly at 01:05:30, detached
+  and at below-normal priority: the lock verified, the source loaded (134 symbols ever in top30;
+  4146843 active rows, 3162 without a valid mark bar; smallest effective low / open 0.298,
+  largest effective high / open 6.987, the known DEV bar), the kernel's memory preflight passed,
+  and the first oracle phase ran at about 100 tasks in 30 minutes. Meanwhile a helper built the
+  supervisor and tested it with a stand-in command only: single instance, the wait for memory,
+  exit codes 0, 4 and others, the stop on the advisory with the whole process tree, the stop on
+  request, the low-memory pause, the worker upgrade, the guards against recomputing an artifact
+  that exists, and a detached start that survives its launcher. The coordinator read the script.
+  At 01:34:05 the coordinator stopped its own process tree and started the supervisor, whose
+  first attempt began at 01:34:51 with 3 workers: "resuming: 91 finished tasks ...; 0 damaged
+  lines discarded". The resume path is thereby proven on the real run, at the price of the tasks
+  in flight. Every start of the calibration appends one row to ledger/val_access_log.jsonl.

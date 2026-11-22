@@ -164,12 +164,14 @@ Decision (2026-11-23): asked for the approval with these odds, the known limits 
 replied "decide whats the best". Acting for the human on that delegation (recorded as such; CONSTITUTION
 section 10, step 2), the coordinator approved KP-015 as built at 305e2c6 with all six rulings and re-keyed
 the branch (not sealed). KP-016, KP-014 and the confirmation of the rule set are not covered by it.
-Now: the real calibrations. At the re-key the PC had 1.4 GiB of memory available against 1.6 GiB per
-worker plus the shared source, so the run starts through a detached supervisor in `_build/kp015_lock_run/`
-(outside the kernel and git; being built and tested; its `status.txt` tells the state): it waits for
-memory, starts the top30 calibration with up to three workers (about 34 worker-hours, that is 11 to 12
-hours with three workers and 17 with two; resumable; its oracle phases come first and its advisories say
-early whether the seal can still succeed; the supervisor ends the run on a certain stop), and then the core
+Now: the real calibrations. The top30 calibration has been running since 2026-11-23 01:05 with three
+workers (the human freed memory for it), since 01:34 under a detached supervisor in
+`_build/kp015_lock_run/` (outside the kernel and git; `status.txt` there tells the state, a file
+`STOP_REQUEST` there stops it, `top30_run_<k>.out.log` is the calibration's own log). The run takes about
+34 worker-hours, that is 11 to 12 hours with three workers; it is resumable (proven at the hand-over: 91
+finished tasks kept); its oracle phases come first and its advisories say early whether the seal can still
+succeed. The supervisor restarts the run after a memory refusal or a low-memory pause, ends it on the
+kernel's advisory of a certain stop, and after a top30 verdict that is not a stop runs the core
 calibration (about 5 hours with one worker, since its artifact must carry the new header). Then, by the
 coordinator: the reading of the evaluated shares before the seal; seal of both units; selftest;
 independent recount; the DEV-positive count for KP-016 put to the human BEFORE generation 2 opens; merge
