@@ -131,29 +131,37 @@ auditor's odds of a successful seal are 0.02 as the rule stands and 0.31 with on
 against 0.70 to ask the human and 0.40 as the floor. The artefact: 8 of 132 submitted null B pairs were
 liquidated after DEV by one real DEV bar (2022-06-07 20:00, mark high 7 times the open) that the pilot's source
 replays after DEV end; in the real run that bar lies in DEV, where R-Q applies. The rest of the gap to 0.70
-is probably the pilot's size (48 worlds per null and 24 books per power cell; being confirmed). Reading the
+comes from the odds model itself: on 48 worlds per null it charges every family without a pass about 2% at
+0.10, which fills the pooled 3%; only more worlds can settle that (the same model reads 0.91 if four times
+the data look like the first round). Reading the
 rule against this, the coordinator found that after R-Q a breakage inside DEV would show as pairs never
 submitted, which R-P does not count, so a null with few submitted pairs could qualify every threshold. Fix
-pass 11 (ordered 2026-11-22), R-R, replaces R-P's cap: null pass rates are taken over EVALUATED pairs; under
-each null every family must end with at least half of its designed pairs evaluated and the null as a whole
-with at least 75%; faults stay bounded at 3% of the submitted pairs; the stored rows must be exactly the
-protocol's, and the seal refuses a calibration whose sizes are not the protocol's (core 300 and 200 worlds,
-top30 200 and 100), which nothing checked before. Open with the auditor: whether the new kernel reproduces
-the sealed core calibration's rows (core met its 3% bound at 0.10 with 44 of 1498, one pass to spare).
-Next: fix pass 11 built, reviewed and committed; the rest of the auditor's runs (controls, the premium arm
-for G6, the bit-for-bit runs on the committed code); ONE extension of the pilot, sized in advance so that its
-reading can be decisive, with the reading rule fixed before its first world; then, if that reading allows,
-the human's approval, asked with the odds of a successful seal; re-key; both calibrations (core about 40
-minutes; top30 to be estimated again by the auditor; resumable; the oracle phases come first and show early
-whether the seal can succeed), the reading of the evaluated shares before the seal, seal of both units,
-selftest, independent recount, merge into `main`.
+pass 11 (305e2c6; full suite 962 passed on it), R-R, replaces R-P's cap: null pass rates are taken over
+EVALUATED pairs; under each null every family must end with at least half of its designed pairs evaluated and
+the null as a whole with at least 75%; faults stay bounded at 3% of the submitted pairs; the stored rows must
+be exactly the protocol's, and the seal refuses a calibration whose sizes (core 300 and 200 worlds, top30 200
+and 100) or whose run header are not the kernel's own, which nothing checked before; a real run with other
+sizes is refused at the start. The coordinator's review and the auditor's attack found no defect. Core: on a
+synthetic dry run the new kernel reproduces the sealed kernel's rows exactly, so core should seal at 0.10
+again (it met its 3% bound with 44 of 1498, one pass to spare); if a row did move, it would seal at 0.05 with
+power of 0.81 or more.
+Next: the rest of the auditor's runs (controls, the premium arm for G6, the bit-for-bit runs on the committed
+code; null A is done and identical but for the carry pairs R-Q removes); ONE extension of the pilot on
+305e2c6, fixed in AUDIT_LOG before its first world: 192 worlds per null and 96 books per power cell, with an
+interim reading at 144 and 72 (0.75 or more ends it and the human is asked; at the full size 0.70 or more
+asks, 0.40 to 0.70 gives the human the odds with the advice not to run yet, under 0.40 is NOT READY and back
+to design); about 16 hours to the interim reading and 11 more to the full size, one process at a time. Then,
+if that reading allows, the human's approval, asked with the odds of a successful seal; re-key; both
+calibrations (core again, since its artifact must carry the new header; top30 to be estimated again by the
+auditor; resumable; the oracle phases come first and show early whether the seal can succeed), the reading of
+the evaluated shares before the seal, seal of both units, selftest, independent recount, merge into `main`.
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
 2. KP-015 (built, unlocked): approve the semantic re-key. NOT READY as of audit round 7, X12 size arm
-   (2026-11-22): fix pass 11 and one sized extension of the pilot come first. Run time on this PC: see
+   (2026-11-22): one sized extension of the pilot comes first (fix pass 11 is built). Run time on this PC: see
    Next. The approval covers the rulings made during the build, among them R-L (no family above 6%), R-M
    (the same expected return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally
    spaced lags and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-Q (a draw

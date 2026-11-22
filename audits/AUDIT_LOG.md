@@ -889,3 +889,25 @@ round 3 also the coordinator's own read of the core modules.
   funding_carry 2 of 30); the sealed core artifact meets R-L with room (largest family 4.67% at
   0.10). On real data the open channels stay R-Q, where a draw is liquidated on DEV (the sealed
   artifact has none), and the added mark rows through the liquidation check.
+- Fix pass 11 stage A is commit 305e2c6 (R-R as ruled, with this entry). Coordinator's review of
+  the kernel diff, line by line: built as ruled, no defect found; on the sealed core rows the
+  design holds and the verdict stays 0.10. The auditor's reading of the delta 306eb8c..305e2c6:
+  no world builder, draw or per-pair row can differ (upipeline, engine, universe, interp,
+  datasets, data, pipeline, lang, stats and the three programs are identical files; in
+  ucalibrate and calibrate only the decision side, the seal checks, the advisory and main
+  changed), so the extension runs on 305e2c6 and the bit-for-bit stage on 306eb8c stands. Its
+  attack on the pass found no defect: no path by which a thin or foreign artifact still seals;
+  the advisory cannot call a threshold dead that a completion could still qualify (its fault
+  test can only miss a death); no header field differs between a real run and the seal. Two
+  notes: the sealed genesis core artifact does not carry the new header, so the re-key
+  includes the core calibration again, as planned; in the universe artifact the run header is
+  compared key by key and the older "protocol" entry is read for sizes and seeds only.
+- Bit-for-bit on 306eb8c so far (auditor). Null A worlds 0 to 11: 29 of 36 rows identical in
+  every field, the kernel's G6 p included; the 7 that differ are all carry (3 liquidated rows
+  now not submitted under R-Q, 4 with the new stage-1 counts only); momentum and reversal 24 of
+  24. Carry in all 48 null A worlds: 27 identical, 12 the pairs liquidated on DEV and now not
+  submitted, 9 with the new stage-1 counts only; no pair picks another draw. Still to run: null
+  B and both power arms.
+- Fix pass 11 stage B (builder): the full suite on 305e2c6 gave 962 passed, 0 failed, 0 skipped
+  in 1757 s (910 at 306eb8c; 52 new: test_ledger_lock 45, test_calibrate 5, test_ucalibrate 2);
+  ledger verify OK; ledger/, data/ and kernel.lock untouched.

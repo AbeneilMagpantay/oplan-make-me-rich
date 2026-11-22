@@ -1133,3 +1133,7 @@ passed and 1 failed in 978.03 s (test_f6, whose nulls-first fake built null_summ
 fake was given them and the test passed alone: 1 passed, 49 deselected in 487.99s (0:08:07)). Reduced dry run (60 synthetic symbols, worlds 1, oracle worlds 1,
 in-process, through the scratch wrapper): exit 0 in 576.1 s; every null pair evaluated (shares 1.0, faults 0); unit
 verdict 0.10, no STOP.
+Fix pass 11, stage B (on 305e2c6, no kernel or test file changed; nothing was edited while the suite ran). Full
+suite: 962 passed in 1757.16s (0:29:17), 0 failed, 0 skipped (910 at 306eb8c plus 52: tests/test_ledger_lock.py 45, tests/test_calibrate.py 5,
+tests/test_ucalibrate.py 2, counting the replaced R-P tests); python -m omr.ledger verify OK (trials 10, stage1_log 1,
+kernel_history 8, calibration_log 2, sandbox_log 18, val_access_log 15); ledger/, data/ and kernel.lock unchanged.
