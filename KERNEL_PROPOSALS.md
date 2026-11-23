@@ -471,10 +471,59 @@ rates, status.
 - Text, at the next text pass (a text-only re-key keeps the seal and the trial ids): CONSTITUTION section 13,
   limit (2) of G6 in top30, to state the size and the direction that were measured; section 8 to state the
   1e-12 tolerance of the rule's comparisons, that the seal compares the research hash with the manifest, and
-  that of the top30 artifact the run header is the part compared key by key.
+  that of the top30 artifact the run header is the part compared key by key. From generation 2's researcher:
+  LANGUAGE.md section 3 to say that an integer window param cannot default to 1 (default - 1 lies below the
+  minimum of 1), so a one-bar horizon is always the literal 1 and is never jittered; CONSTITUTION section 13 to
+  say that in unit top30 the 2020 bucket of G7 is short (the unit needs seasoned members), so G7 is in effect
+  four of the five later buckets.
 - Code, at the next semantic re-key (each needs both calibrations again, so none is worth a re-key alone): the
   level check of an oracle cell averages the evaluated books while the power counts every book of the cell
   (omr/calibrate.py oracle_summary and its top30 counterpart); the docstring of omr/calibrate.py that still
   says "submitted pairs" for the family rate; a chosen draw that fails stage 1 is stored as not submitted and
   can never count against the 3% fault bound; tier_at does not check that p lies on its lattice.
 - Status: open. The measurement of S1 is ordered as audit work; every change needs the human's approval.
+
+## 2026-11-23 (researcher, generation 2 round 1) KP-018 Sandbox readings of G6's speed limit and of next30 for unit top30
+
+- Problem: two top30 gates can fail a counted trial on grounds a researcher cannot see on DEV. G6's speed limit
+  fails any book whose weights correlate above 0.5 with its own weights one lag step (about 26 days) earlier, a
+  hard p = 1 with no lag run. G8 needs a positive Sharpe on next30 (ranks 31 to 60). The sandbox prints neither,
+  so a slow or universe-specific book can only be found out by spending a counted trial (M + 1 forever).
+- Evidence: in generation 2 the researcher had to write DEV-only diagnostic programs (signal = c * w(t) *
+  w(t - k), read as avg net / avg gross) to bound the speed-limit statistic; their lookback had to fit inside
+  the 2,160-hour limit together with the program's own, which kept the baselines of three hypotheses to 4
+  weeks; the coordinator had to rule on whether such diagnostics are allowed. No next30 reading is possible
+  from inside the language (unit next30 cannot be declared).
+- Proposed change: `omr.sandbox`, for a unit top30 program, also prints (a) the speed-limit statistic computed
+  as G6 computes it, on DEV rows, for one to three lag steps, with the 0.5 limit shown, and (b) the DEV Sharpe
+  of the same program on unit next30. Both use DEV data only, are uncounted and are logged like every other
+  sandbox metric. No threshold, gate or trial rule changes.
+- Cost: omr/sandbox.py is a semantic file, so a re-key and both calibrations again (about 13 machine hours),
+  although no gate changes: worth it only together with another semantic change.
+- Expected effect: no change in any pass rate; fewer counted trials wasted on books that fail the speed limit
+  by construction or that work only in the top 30; diagnostic programs are no longer needed.
+- Status: open (needs the human's approval; to be batched with the next semantic re-key).
+
+## 2026-11-23 (researcher, generation 2 round 1) KP-019 Aggregate or sample a dimensionless expression over a timeframe
+
+- Problem: the timeframe functions take only a FIELD or btc(field). A signal built from an expression of hourly
+  data (realised skewness or signed jumps from hourly returns, returns by trading session, the shape of the
+  week's range) can only be a rolling window on hourly rows. It then re-ranks every hour, and the engine trades
+  whenever a name moves 0.01 off target: at 12.5 bps per side such a book pays about a full replacement a day
+  (about 0.9 of gross a year, 1.8 doubled), far beyond what G4 allows.
+- Evidence: generation 2's plan gave up two ideas for this reason alone (a lottery-demand skewness ranking and
+  an Asia against US session split) and kept only signals whose inputs are fields aggregated to weekly bars.
+  The plan's cost estimate for weekly rank books (about 0.09 of gross a year) was confirmed on DEV (0.055 to
+  0.092 a year in four runs).
+- Proposed change: one of (a) `tf_sum(x, tf)`, `tf_mean(x, tf)`, `tf_last(x, tf)` for a DIMENSIONLESS series x
+  and a timeframe tf: complete bins only, anchored as the existing timeframe functions, known only if x is
+  known on every hour of the bin, visible from the hour the bin closes; or (b) `sample(x, tf)`: x's value at
+  the last hour of each completed bin, held until the next. The input must be dimensionless (no price or volume
+  level can leak); lookback by the leaf rule of a timeframe plus the input's own; the probe, the truncation and
+  the start-cut self-checks apply unchanged.
+- Cost: a new function is a semantic change: a build, an audit of the new function against the constant probe
+  and the locality checks, a re-key and both calibrations.
+- Expected effect: no direct change in pass rates; it widens the ideas whose holding period fits the unit's
+  certified speed (5 to 20 days). Risk: more ways to write a near-constant (a weekly mean of hour, say); the
+  probe and the coordinator's source read already cover calendar averages.
+- Status: open (needs the human's approval; to be batched with the next semantic re-key).

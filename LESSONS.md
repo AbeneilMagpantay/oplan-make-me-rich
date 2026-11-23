@@ -35,6 +35,29 @@ on synthetic worlds. No lesson recommends a parameter value.
 11. An always-long, volatility-sized control is a cheap DEV check for any long-only switch: the
     switch has to beat the control, not zero. Process lesson from the same run log.
 
+## From generation 2, round 1 (KP-015 kernel 5ea66b0fb79ca267, unit top30; generations/gen002/REPORT.md)
+
+16. In unit top30 on DEV, a weekly cross-sectional reversal of beta-residual, volatility-scaled returns
+    lost (DEV Sharpe -1.566, negative in 2020, 2021 and 2022H1): a week's residual move tended to
+    continue, not reverse. generations/gen002/PLAN.md run log, run 1; no trial id. WEAK: DEV only, one
+    default, one researcher session.
+17. Ranking against weekly taker-buy flow that the week's return does not explain also lost on DEV (DEV
+    Sharpe -1.251, negative in all three DEV years). PLAN.md run log, run 10; no trial id. WEAK: DEV
+    only, one default, one researcher session. For 16 and 17 alike: DEV is spent as a screen for the
+    mirror rule; a later plan that registers a mirror must say it was written after this result, and
+    only its counted VAL run can test it.
+18. Two retail-crowding proxies built from trade counts (a weekly activity burst; a falling USD ticket
+    size) showed no usable DEV edge after weekly costs (DEV Sharpe 0.172 and -0.211). PLAN.md run log,
+    runs 4 and 7; no trial id. WEAK: DEV only, one default each, one researcher session.
+19. A dollar-neutral rank book over unit top30 rebalanced weekly paid about 0.055 to 0.092 of equity a
+    year in costs at 12.5 bps per side, close to the estimate of 4/3 of gross traded per week. PLAN.md
+    run log, runs 1, 4, 7 and 10. WEAK as a number (four programs, one DEV period); useful as a design
+    yardstick.
+20. Process: a DEV screen fixed in advance, which drops a hypothesis when its default fails and runs
+    neighbours, controls and diagnostics only for hypotheses still standing, spent 4 sandbox runs of 17
+    planned and no counted trial, with no room for tuning. PLAN.md exploration plan and run log. Certain
+    as an account of this round; not evidence about markets.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)

@@ -1,4 +1,4 @@
-# STATE (2026-11-23: generations 0 and 1 complete; the KP-015 kernel is sealed)
+# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 round 1 closed without a submission)
 
 ## Where things stand
 
@@ -18,8 +18,14 @@
 - Generation 1 (`generations/gen001/REPORT.md`): five pre-registered hypotheses, 18 DEV sandbox runs,
   one counted submission. gen001_tsmom_long_flat (24778ca0881b6c26): VAL Sharpe 0.830, PSR(0) 0.926,
   passes eight gates and fails G6 (p 0.279). Not Tier 1.
-- Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1), N = 4.86, Tier 1: 0, pool 0 of 5,
-  one uncounted stage-1 rejection; all chains verify.
+- Generation 2, round 1 (`generations/gen002/REPORT.md`; unit top30, KP-015 kernel): four pre-registered
+  weekly market-neutral hypotheses (residual reversal, activity fade, small tickets, absorbed flow),
+  committed as fd19943 BEFORE any sandbox run. All four failed the DEV screen fixed in advance at their
+  defaults (DEV Sharpe -1.57, 0.17, -0.21 and -1.25), so no neighbour, control or diagnostic run was due:
+  4 sandbox runs of 60, no counted submission, M unchanged. In the ledger generation 2 is still open
+  (0 of 5 counted), so a further round is PLAN version 2 in the same file.
+- Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 so far), N = 4.86,
+  Tier 1: 0, pool 0 of 5, one uncounted stage-1 rejection; all chains verify.
 - Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
 - Data: the counted trials above were scored on research_hash
   `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`. The data store has since been
@@ -38,7 +44,9 @@
 2. It writes generations/genNNN/PLAN.md with 3 to 5 hypotheses BEFORE its first sandbox run, then
    explores on DEV only with `python -m omr.sandbox` (at most 60 runs, every run logged in the plan).
 3. The coordinator commits and pushes the plan and programs BEFORE scoring, reads each candidate's
-   source (RESEARCH_PLAYBOOK section 5), and runs every counted `python -m omr.evaluate` itself.
+   source (RESEARCH_PLAYBOOK section 5), and runs every counted `python -m omr.evaluate` itself. Since
+   generation 2 the plan is committed and pushed before the FIRST sandbox run as well, and it fixes the
+   DEV screen and the order of the runs in advance.
 4. REPORT.md, LESSONS.md and this file are updated; the coordinator commits and pushes.
 
 ## Next
@@ -191,7 +199,12 @@ calibration family far above its nominal level under null B (53 of 166 pairs at 
 passes the other gates, so the seal does not depend on it, and the conjectured cause needs a book that
 loses money. A measurement on DEV-period worlds is ordered; until it is read, no funding-driven program is
 submitted for a counted trial in unit top30.
-Now: generation 2, in unit top30. The KP-016 counts of the real run were put to the human on 2026-11-23.
+Generation 2, round 1 (2026-11-23, unit top30): closed without a counted submission (see "Where things
+stand"; lessons 16 to 20). The KP-016 counts of the real run were put to the human on 2026-11-23.
+Now: generation 2, round 2: a fresh researcher session writes PLAN version 2 (new hypotheses, appended to
+generations/gen002/PLAN.md), which is committed before its first sandbox run; 56 sandbox runs and all 5
+counted submissions of the generation are left. Still to do when the machine is free: the measurement for
+KP-017 (the timing gate on funding-driven books).
 
 ## Open decisions for the human
 
@@ -226,3 +239,7 @@ Now: generation 2, in unit top30. The KP-016 counts of the real run were put to 
    G6 statistic is proposed only if it shows an effect on books that can pass the other gates. Also small
    alignments of text and code, each waiting for the next re-key of its kind. Every change needs the
    human's approval.
+7. KP-018 and KP-019 (open; requests of generation 2's researcher): the sandbox to print the speed-limit
+   statistic of G6 and a next30 reading on DEV; a way to aggregate or sample a dimensionless expression
+   over a timeframe, so that signals built from hourly data can be re-ranked weekly. Both are semantic
+   changes (a re-key and both calibrations), so they wait for the next semantic re-key.

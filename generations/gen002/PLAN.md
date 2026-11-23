@@ -370,6 +370,15 @@ the ratio R.
 
 | # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross | avg net | costs | total return | years + (of printed) | note |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H1 gen002_resid_reversal | (default n=30) | -1.566 | 2849 | 0.866 | 0.000 | 0.1369 | -0.644 | 0 of 3 (2020 -0.514 SR -4.046; 2021 -0.208 SR -0.638; 2022 -0.074 SR -0.493) | PSR(0) 0.006, maxDD 0.686, rebalances 921, funding paid 0.0212, 75 symbols, lookback 1127 h, 78 s. Fails S2 (wrong sign) and S4; H1 DROPPED, runs 2, 3 and 13 not made |
+| 4 | H2 gen002_activity_fade | (default m=4) | 0.172 | 1635 | 0.854 | -0.001 | 0.1669 | 0.031 | 2 of 3 (2020 -0.189 SR -1.098; 2021 0.130 SR 0.564; 2022 0.125 SR 1.063) | PSR(0) 0.607, maxDD 0.319, rebalances 625, funding paid 0.0141, 75 symbols, lookback 1175 h, 67 s. Fails S2 (0.172 < 0.6) and S4 (0.031 - 0.1669 < 0); H2 DROPPED, runs 5 and 6 not made |
+| 7 | H3 gen002_small_tickets | (default m=4) | -0.211 | 1648 | 0.856 | 0.001 | 0.2309 | -0.172 | 2 of 3 (2020 0.241 SR 1.445; 2021 0.005 SR 0.160; 2022 -0.336 SR -3.453) | PSR(0) 0.369, maxDD 0.485, rebalances 581, funding paid -0.0486 (received), 75 symbols, lookback 1175 h, 86 s. Fails S2 (wrong sign) and S4 (-0.172 - 0.2309 < 0); H3 DROPPED, runs 8 and 9 not made |
+| 10 | H4 gen002_absorbed_flow | (default m=4) | -1.251 | 1850 | 0.854 | 0.001 | 0.1649 | -0.466 | 0 of 3 (2020 -0.026 SR -0.150; 2021 -0.361 SR -1.830; 2022 -0.142 SR -1.478) | PSR(0) 0.023, maxDD 0.528, rebalances 575, funding paid 0.0145, 75 symbols, lookback 1175 h, 80 s. Fails S2 (wrong sign) and S4 (-0.466 - 0.1649 < 0); H4 DROPPED, runs 11 and 12 not made |
+
+Run numbers follow the plan's order table; numbers not listed were not due under its conditions. Total sandbox
+runs made: 4 (of the 17 planned and the cap of 20); none from the reserve; no stage-1 rejection, no kernel fault,
+no refusal. Every run: full stage 1 (25 truncation cuts), exit 0, nothing on stderr, 67 to 86 s. The
+benchmark line printed by every run (equal-weight long of the in-play members): DEV Sharpe 0.619, maxDD 0.847.
 
 ## Amendments
 
@@ -383,4 +392,57 @@ the ratio R.
 - The basis (close against index_close) was left out on purpose, as funding-adjacent under KP-017 (see the
   first section). The playbook does not say whether it counts as funding-driven.
 
+Coordinator's rulings, 2026-11-23, received after the plan was committed and pushed unchanged as fd19943
+(PLAN.md sha256 38d5d4a6...) and before run 1 (recorded here before any generation-2 sandbox run):
+(1) the D-ACF diagnostics are ALLOWED as DEV-only measurements; their runs count toward the sandbox cap, they
+are never submitted, and S6 stays as written; R is reported as a DEV proxy only (G6 reads VAL rows). (2) The
+perp-index basis stays OUT of this generation, together with funding (KP-017), as the plan has it. (3) The
+coordinator has read the source of the four candidates (playbook section 5): nothing to change. (4) The
+requests about the sandbox (printing the speed-limit statistic and a next30 reading) and about aggregating
+expressions over a timeframe will be filed as kernel proposals for the human after the generation; they are
+not to be worked around.
+
 Pre-registration: 2026-11-23T11:02:09Z; no sandbox run has been made for generation 2.
+
+---
+
+## Screen outcome per hypothesis (stage 2, DEV, appended after the runs; read from the run log above)
+
+Each hypothesis was run once, at its pre-registered default. Each failed S2 and S4 there, so by the plan's
+order its neighbours (S3), H1's control (S7) and its D-ACF (S6) were not due and were not run. No program text,
+param or default was changed; there is no amendment.
+
+| H | S1 (dir. changes >= 30; avg gross >= 0.5) | S2 (DEV Sharpe >= 0.6, sign as registered) | S3 | S4 (total - costs > 0) | S5 (years + of 3) | S6 | S7 | verdict |
+|---|---|---|---|---|---|---|---|---|
+| H1 gen002_resid_reversal | pass (2849; 0.866) | FAIL (-1.566, wrong sign) | not run | FAIL (-0.644 - 0.1369 = -0.781) | FAIL (0 of 3) | not run | not run (control not due) | DROPPED |
+| H2 gen002_activity_fade | pass (1635; 0.854) | FAIL (0.172) | not run | FAIL (0.031 - 0.1669 = -0.136) | pass (2 of 3: 2021, 2022) | not run | n/a | DROPPED |
+| H3 gen002_small_tickets | pass (1648; 0.856) | FAIL (-0.211, wrong sign) | not run | FAIL (-0.172 - 0.2309 = -0.403) | pass (2 of 3: 2020, 2021) | not run | n/a | DROPPED |
+| H4 gen002_absorbed_flow | pass (1850; 0.854) | FAIL (-1.251, wrong sign) | not run | FAIL (-0.466 - 0.1649 = -0.631) | FAIL (0 of 3) | not run | n/a | DROPPED |
+
+Against each pre-registered DEV falsifier:
+- H1: falsified on DEV. The weekly residual reversal lost in all three DEV years (2020 Sharpe -4.05).
+- H2: falsified on DEV. The sign was the one registered, but the size (0.172) was below the liveness bar and the
+  return did not cover a second payment of costs.
+- H3: falsified on DEV (wrong sign; the loss sits in 2022H1, Sharpe -3.45).
+- H4: falsified on DEV (wrong sign; 2021 Sharpe -1.83, 2022H1 -1.48).
+
+## DEV observations (stage 2; NOT hypotheses, never to be submitted from this plan)
+
+- H1 and H4 lost by more than one Sharpe unit with the registered sign. On DEV, the top30 cross-section tended
+  to CONTINUE a week's beta-residual move rather than reverse it. Aggressive flow beyond what the week's return
+  explains also went with continuation, not with the patient side. The plan forbids flipping a sign, and no
+  mirror was run. A mirror pays the same costs as the original, so its DEV Sharpe would be well below the size
+  of these losses. A weekly residual-momentum rule would also sit close to the calibration's momentum family
+  (LESSONS 13). If a later generation pre-registers such a mirror, DEV is no longer an out-of-sample screen for
+  it: the author has seen this result, and only the counted VAL run could test it.
+- Costs over DEV: 0.137 to 0.231 of equity in about 2.5 years, i.e. about 0.055 to 0.092 a year, as the plan
+  estimated (H3, whose ranks turn over most, paid the most).
+- All four books held positions over most of DEV (avg gross 0.854 to 0.866; 75 symbols ever in the unit), so a
+  market-wide missing hour did not flatten the weekly books for long.
+- WEAK: one DEV period, one default each; nothing here is a parameter recommendation.
+
+## Recommendation
+
+NONE. By the pre-registered selection rule no hypothesis passed the DEV screen (every default failed S2 and
+S4), so no program from this plan is recommended for a counted submission in generation 2. The DEV-only
+controls (gen002_diag_*) are never to be submitted.
