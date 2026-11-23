@@ -1,0 +1,25 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 2, D-ACF).
+# w is H5's weight row exactly as in strategies/gen002_resid_skew.omr at its defaults (a DAILY series, so
+# lag counts daily rows). The signal c * w(t) * w(t - k), k = 26 days (one G6 lag step is 25.9 days), makes
+# the sandbox's avg net / avg gross equal to sum w(t) w(t-k) / sum |w(t)| |w(t-k)|, an upper bound of the
+# correlation that G6's speed limit reads.
+name = "gen002_diag_acf_resid_skew"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: measures on DEV how strongly H5's weights are correlated with its own weights about one G6 lag step (26 days) earlier, to check G6's speed limit (0.5) before any counted run. Its returns mean nothing."
+
+n = param(21, 16, 26)
+k = param(26, 20, 32)
+c = param(20, 10, 30)
+
+d = daily(close)
+r = logret(d, 1)
+mk = cs_mean(r)
+beta = corr(r, mk, n) * std(r, n) / std(mk, n)
+e = r - beta * mk
+m2 = sma(e * e, n)
+m3 = sma(e * e * e, n)
+skew = m3 / (m2 * sqrt(m2))
+w = cs_scale(cs_demean(-cs_rank(skew)))
+signal = c * w * lag(w, k)

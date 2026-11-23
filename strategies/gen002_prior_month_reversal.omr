@@ -1,0 +1,23 @@
+# Generation 2, round 2, H7 (generations/gen002/PLAN.md, version 2). Prior-month residual reversal in top30.
+# resid = the coin's return over the m weeks that ended m weeks ago (weeks t-2m .. t-m; at m = 4 the month
+# before last month) minus beta x BTC's return over the same weeks; beta and the volatility scale are the
+# coin's current ones (daily returns against BTC over the last n days); z = resid / volatility. Short the
+# largest z, long the smallest; dollar neutral, gross 1. The most recent m weeks are skipped on purpose.
+name = "gen002_prior_month_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Delayed overreaction: momentum traders push a coin's residual move beyond its value for a few weeks and the excess reverts in the month after, as late chasers and slow trend rules unwind and supply meets the rally. Short the coins with the largest BTC-beta residual return over the m weeks before the last m weeks, long the smallest. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 5)
+n = param(30, 20, 45)
+
+d = daily(close)
+db = daily(btc(close))
+r = ret(d, 1)
+rb = ret(db, 1)
+vol = std(r, n)
+beta = corr(r, rb, n) * vol / std(rb, n)
+resid = lag(ret(weekly(close), m), m) - beta * lag(ret(weekly(btc(close)), m), m)
+z = resid / vol
+signal = cs_scale(cs_demean(-cs_rank(z)))

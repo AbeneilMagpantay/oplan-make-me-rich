@@ -446,3 +446,439 @@ Against each pre-registered DEV falsifier:
 NONE. By the pre-registered selection rule no hypothesis passed the DEV screen (every default failed S2 and
 S4), so no program from this plan is recommended for a counted submission in generation 2. The DEV-only
 controls (gen002_diag_*) are never to be submitted.
+
+---
+
+# Generation 2 - PLAN, version 2 (round 2, pre-registered 2026-11-24 before any round-2 sandbox run)
+
+Researcher session for generation 2, round 2, stage 1 (read, think, pre-register). Unit: top30. A fresh session:
+round 1 is known to it only through the files listed below. The date in the heading is local time (+08:00); the
+UTC time is in the last line.
+
+- Kernel: semantic 5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687 (39 files), text
+  1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924 (35 files) (`python -m omr.status`: kernel OK
+  bcc4b1aa255b4679, sealed). Sealed G6 thresholds: core 0.10, top30 0.10. Data research_hash 28d9084a8c5c7659...,
+  validated, snapshot_end 2026-11-18 10:00 UTC.
+- Ledger when this was written: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 of 5), N
+  4.86, rho 0.035, Tier 1: 0, pool 0 of 5, last census none, one uncounted stage-1 rejection (generation 0).
+  `omr.kernel_lock verify` OK (sealed, core 0.1, top30 0.1); `omr.ledger verify` OK, all six chains (trials 10
+  rows, stage1_log 1, kernel_history 10, calibration_log 4, sandbox_log 22, val_access_log 22). Sandbox runs used
+  in generation 2 so far: 4 of 60 (round 1).
+- Read: RESEARCH_PLAYBOOK.md (all, with section 4b), LANGUAGE.md (all, with section 10), CONSTITUTION.md sections
+  4 to 7 and 13, LESSONS.md (1 to 20), this file's version 1 with its run log, screen outcome and recommendation,
+  generations/gen002/REPORT.md, generations/gen001/REPORT.md, generations/gen000/REPORT.md, STATE.md, the trial
+  rows of `omr.ledger summary`, `omr.status`; program shapes omr/programs/ucal_xs_momentum.omr,
+  ucal_xs_reversal.omr, ucal_xs_carry.omr, kernel_noise_top30.omr and every strategies/gen002_*.omr of round 1.
+  Kernel source read only to learn how the tool behaves: omr/sandbox.py (what it prints), omr/engine.py (a
+  rebalance trades ALL names to target once any name is more than 0.01 off; avg gross and avg net are of held
+  positions), omr/lang.py (timeframe functions take only a field or btc(field); a cs_* keeps its input's
+  timeframe; mixing timeframes gives the hourly grid; lookback rules; lang.parse runs the constant probe).
+- Not opened: anything under data/, ledger/returns/, ledger/trials/, _build/, audits/, and every calibration file.
+  No VAL number exists for any program below. No round-2 sandbox run has been made.
+- Version 1 above is unchanged byte for byte (its first 35,535 bytes, sha256 abb4530b36d183da...). Round 1's
+  program files are unchanged; round 2 adds six new files (three candidates, three DEV-only controls).
+
+Three hypotheses, numbered on from version 1. All are market neutral (cs_demean: dollar neutral; cs_scale: gross
+1), all are residual to a market move, none reads funding, mark or index prices, none uses hour or weekday.
+
+| H | program | input | prediction | family |
+|---|---|---|---|---|
+| H5 | gen002_resid_skew | realised skewness of the coin's daily log returns net of its beta to the unit's mean, last n = 21 days | right-skewed coins (recent up-jumps) lag, left-skewed coins (recent crash days) lead | other |
+| H6 | gen002_resid_momentum | last m = 4 weeks' return net of its BTC-beta part, over own daily volatility | residual winners keep leading, residual losers keep lagging (CONTINUATION; written after round 1's DEV result) | relative |
+| H7 | gen002_prior_month_reversal | the same residual for the m weeks BEFORE the last m weeks (weeks 8 to 4 ago at m = 4) | last month's-but-one residual winners lag, its losers lead | meanrev |
+
+Which of these is a mirror of round 1: H6 is a continuation rule and falls under the provisions of LESSONS 16 and
+17 (section H6 below). H5 and H7 owe nothing to round 1's DEV numbers: H5 reads a higher moment that round 1 never
+used, and H7 is a reversal at a horizon (4 to 8 weeks back, the last 4 skipped) about which round 1's one-week
+result says nothing.
+
+## What a top30 idea must clear, and what a no-skill book looks like here
+
+- Costs. 12.5 bps per side. Round 1's weekly rank books paid 0.055 to 0.092 of equity a year (LESSONS 19) and
+  had an annual volatility of roughly 0.2 to 0.26 (from their printed Sharpe and returns), so their costs cost
+  about 0.25 to 0.4 Sharpe units, twice that under G4. G1 (VAL PSR(0) >= 0.90 over three years of VAL) needs a
+  net Sharpe of about 0.75, so a gross Sharpe of about 1.0 to 1.2. Turnover is therefore part of the design:
+  - H6 and H7 rank m-week returns on weekly bars: consecutive weekly rankings share 3 of their 4 weeks, so the
+    weights change by about half as much per week as a book whose ranks are new every week (sqrt(2 x 1/4) against
+    sqrt(2) in units of the weight's spread). Estimate 0.03 to 0.06 a year. Beta and volatility move daily, as in
+    round 1's H1, which was the cheapest of the four books (0.137 over DEV).
+  - H5 is a daily series, but its rank moves mostly when a large day enters or leaves the 21-day window, so it is
+    lumpy rather than continuous. Estimate 0.05 to 0.15 a year; S4 decides.
+  - A daily re-ranked book of the calibration's shape (2-week momentum re-ranked daily) changes by about
+    7 x sqrt(2/14) = 2.6 units a week against about 0.7 for H6 and H7.
+- What a no-skill book looks like here (LESSONS 12 to 14). In the calibration's no-skill worlds every symbol has
+  the same expected return, so a rank book earns nothing before costs and loses its costs; G1 then fails nearly
+  always, and the no-skill families passed Tier 1 in 1 of 1,089 evaluated pairs. G6 alone passes such a book about
+  1 time in 10: G6 compares the book with its OWN stale copies (lags of 30 days to half of VAL), so it does not
+  protect against luck; G1, G4, G5, G8 and the count M do. What G6 does stop is a book whose return comes from
+  holding the same names as its stale copies (a persistent tilt or a slow characteristic premium). Each hypothesis
+  below is therefore written as a TIMING claim, and each says what its stale copies hold:
+  - H5: the jump information of the last 3 weeks matters for the next weeks; a stale copy holds the skew of a
+    window that no longer overlaps. A persistent tilt (some coins always right-skewed) is shared by the copies and
+    earns no G6 credit.
+  - H6: the last month's residual move predicts better than the residual moves of 1 to 18 months ago. Its first
+    stale copies (lags of 30 to 56 days) hold the residual momentum of weeks 8 to 4 back, which is close to minus
+    H7. If crypto momentum lasts many months, the stale copies earn too and H6 fails G6.
+  - H7: the residual move of weeks 8 to 4 back predicts reversal better than the moves of older windows.
+- Speed limit (G6 fails a book whose weights correlate above 0.5 with its own weights one lag step, 25.9 days,
+  earlier, each name's mean removed). H5: a 21-day window of residuals; 26 days later the windows no longer
+  overlap. H6: a 28-day formation; 26 days later the windows share 2 days (9 days at m = 5). H7: the same as H6,
+  shifted back by m weeks. The persistent part of each input is what could still correlate; the DEV-only
+  diagnostic D-ACF measures an upper bound (it removes no name mean), as in version 1.
+- Lookback (limit 2,160 h, params at their highs; parse check): H5 1,271 h; H6 1,175 h; H7 2,015 h. D-ACF of H5
+  2,039 h; of H6 1,921 h. H7 leaves no room for a 26-day lag under the limit (2,015 + 621 > 2,160); its speed-limit
+  reading is a proxy (section H7).
+- Cross-sections. A cs_* needs at least 10 in-play names with a known input. H5 computes the unit's mean return
+  (cs_mean) INSIDE its windows: a cs_* is known only for in-play names, so a coin gets a known skew only after
+  about 2n - 1 = 41 days in play (21-day beta windows chained into a 21-day skew window). Month-start entrants
+  therefore trade from their second month on; G6 does not credit recent entrants either. H6 and H7 read windows
+  of per-symbol fields only (as round 1's H1), so membership history does not matter to them; but a weekly bin
+  is known only if every hour of it is known, so a name with one unknown hour drops out for m + 1 = 5 weekly bins
+  (H6) or 2m + 1 = 9 (H7), and a market-wide unknown hour would flatten H7 for about 9 weeks. Named in advance;
+  S1's avg gross shows it on DEV (round 1's weekly books held 0.85 to 0.87).
+- G8 runs the rule on ranks 31 to 60. Every input is a residual, a ratio or a rank, so the rule means the same
+  there.
+- G7: the unit needs 10 seasoned members, and H7 needs about 12 weeks of history, so 2020 is a short bucket;
+  in effect four of five buckets must be positive.
+- Funding and basis: no program reads funding8h, funding_mean, index_close or mark_close (KP-017 and the ruling
+  of 2026-11-23). Like every book, each pays or receives funding on what it holds; that is P&L, not an input.
+- Literals and G5: no program has a jitterable literal (n_literals 0). H5 has one integer param (n = 21: every
+  G5 variant is an n from 17 to 25 other than 21). H6 and H7 have two (m = 4: every G5 variant has m = 3 or m = 5,
+  because 4 x U(0.8, 1.2) rounds to 3, 4 or 5 and an unchanged 4 moves by 1; n = 30: 24 to 36). The DEV
+  neighbours below are those values.
+- No calendar sampling. None of the programs freezes an hourly expression with hour or weekday indicators: that
+  would work around KP-019, which the ruling of 2026-11-23 forbids.
+
+## Disclosures that apply to every hypothesis
+
+- The author model has read this market's history through DEV, VAL and the vault, and this session has read round
+  1's DEV numbers (one-week residual continuation, continuation of unexplained aggressive flow, weak activity and
+  ticket-size results). No rule below names a date, a coin, a price level or a remembered event; every tunable
+  number is a declared param. That does not remove hindsight from the CHOICE of ideas (KP-010); each hypothesis
+  states what I remember that could bias it.
+- What I remember about VAL that touches every market-neutral top30 book (as in version 1): BTC's share of crypto
+  market value rose through most of VAL and most altcoins lagged BTC; ETH lost ground to BTC over most of it;
+  memecoin waves (2023, 2024) in which a few coins rose for weeks; single-coin collapses (FTT, November 2022).
+  These memories favour continuation (H6) and argue against reversal (H7); for H5 they cut both ways.
+- At most TWO programs are recommended for a counted submission whatever DEV says. LESSONS 12 and 14: a true
+  Sharpe-1.5 book passes Tier 1 only 68 to 82% of the time in this unit, G6 does not protect against luck, and
+  every counted trial raises M forever.
+- Defaults are fixed now and are never changed after a run. Neighbours are a robustness check (the G5 values), not
+  a search; a better neighbour does not move the default. No sign is ever flipped.
+
+## DEV screen (round 2), fixed now, before any number
+
+A hypothesis is recommended for a counted submission only if it passes every item that applies to it, in the
+sandbox (full stage 1, no --quick). The numbers each item reads are named.
+
+- S1 at its default: stage 1 passes as written (parse, constant probe, truncation and start-cut self-checks; the
+  line "stage 1: ... -> PASS"), DEV direction changes >= 30, and avg gross >= 0.5.
+- S2 at its default: DEV Sharpe >= 0.6 with the registered sign. A negative DEV Sharpe drops the hypothesis; no
+  sign is flipped. For H6 S2 is necessary but is NOT evidence (its DEV is partly known from round 1, run 1).
+- S3 neighbours (the G5 values): H5 at n = 17 and n = 25, H7 at m = 3, m = 5, n = 24 and n = 36: DEV Sharpe > 0 at
+  each. H6 (stricter, because its default's DEV Sharpe is not evidence): at m = 3, m = 5, n = 24 and n = 36, DEV
+  Sharpe >= 0.6 AND (total return - costs) > 0 at each.
+- S4 at its default: DEV total return minus DEV costs > 0 (a rough DEV reading of G4: still positive with the
+  costs paid twice).
+- S5 at its default: net return positive in at least two of the three DEV years the sandbox prints (2020, 2021,
+  2022); H6: in all three.
+- S6 D-ACF ratio R = avg net / avg gross of the diagnostic (3 decimals each) <= 0.40: H5 from
+  gen002_diag_acf_resid_skew; H6 from gen002_diag_acf_resid_momentum; H7 from the same diagnostic as a proxy
+  (section H7).
+- S7 (H6 only): H6's DEV Sharpe at its default is above that of the control gen002_diag_plain_momentum at its
+  default (m = 4). Nobody has run plain weekly momentum, or any m-week version, in this unit.
+
+For H6 the readings that carry weight are S3, S4 at five settings, S6 and S7: none of them has been seen.
+
+Order and economy: the default runs first. If it fails S1, S2 or S4, the hypothesis is dropped and nothing else is
+run for it. Neighbours run in the listed order and stop at the first that fails S3 (the hypothesis is then
+dropped). The control runs only if H6 has passed S1 to S5. A D-ACF runs only for a hypothesis that has passed S1
+to S5 (H6: and S7); the H6 diagnostic also runs, once, if H7 has passed S1 to S5.
+
+---
+
+## H5. gen002_resid_skew
+
+- Family other. Kind portfolio. Unit top30. Dollar neutral, gross 1. A daily series (bins from 00:00 UTC, visible
+  at the 23:00 bar, traded at the 00:00 open).
+- Rule: for each coin in play, r = the daily log return; mk = the unit's equal-weighted mean of r (cs_mean over the
+  in-play coins); beta = the coin's beta to mk over the last n daily rows (correlation x volatility ratio); e = r -
+  beta x mk, each row with its own trailing beta; skew = sma(e^3, n) / sma(e^2, n)^1.5, the uncentred realised
+  skewness of e over the last n rows. Weight: minus the cross-sectional rank of skew, demeaned, scaled to gross 1.
+  Short the coins whose recent residual days were most right-skewed (up-jumps), long those most left-skewed
+  (crash days).
+- Program (default pre-registered; strategies/gen002_resid_skew.omr):
+
+      n = param(21, 16, 26)          # daily rows for the beta and for the skewness
+      d = daily(close)
+      r = logret(d, 1)
+      mk = cs_mean(r)
+      beta = corr(r, mk, n) * std(r, n) / std(mk, n)
+      e = r - beta * mk
+      m2 = sma(e * e, n)
+      m3 = sma(e * e * e, n)
+      skew = m3 / (m2 * sqrt(m2))
+      signal = cs_scale(cs_demean(-cs_rank(skew)))
+
+  1 param (integer; G5 range 17 to 25), 0 jitterable literals, 41 nodes, lookback 1,271 h.
+- Design choices, each made for a reason stated before any run: (1) log returns, because simple returns of a
+  lognormal coin are mechanically right-skewed in proportion to its volatility, which would turn H5 into a
+  volatility sort; (2) residual to the market, because on a market jump day a coin with beta above 1 moves more
+  than the mean, and with beta set to 1 a market jump would leak into the skew of high- and low-beta coins and make
+  H5 a bet on market reversal through beta; (3) the unit's mean rather than BTC as the market, because BTC is a
+  member, its residual against itself is zero up to rounding, and skewness is a ratio, so rounding noise would put
+  BTC at a random extreme rank every day (no coin equals the unit's mean); (4) a rolling beta (each row its own
+  trailing beta) rather than one beta fixed over the window, because the fixed-window residual moments need the
+  binomial coefficients 2 and 3, which would be jitterable literals (G5 would perturb an identity whose terms
+  nearly cancel, and the second moment could turn negative), and writing 3x as x + x + x would dodge the literal
+  rule; (5) n = 21 (three weeks), the longest default for which the D-ACF diagnostic still fits under the 90-day
+  limit (two chained 21-day windows plus a 26-day lag: 2,039 h at the highs).
+- Hypothesis: coins whose recent daily residual returns were right-skewed underperform the rest of the unit over
+  the following weeks; left-skewed coins outperform.
+- Mechanism: lottery preference. Investors who overweight small chances of large gains overpay for right-skewed
+  payoffs (Barberis and Huang 2008; Kumar 2009 on lottery stocks). Evidence in equities: Bali, Cakici and Whitelaw
+  (2011), the MAX effect; Amaya, Christoffersen, Jacobs and Vasquez (2015), weekly realised skewness predicting the
+  next week's return with a negative sign; Bollerslev, Li, Patton and Quaedvlieg (2020), signed jump variation, also
+  negative. In USDT perps leverage makes a right-skewed coin more lottery-like still, and a coin that just jumped
+  draws attention and leveraged longs hoping for a repeat. On the long side, coins with recent crash days are
+  shunned (disaster aversion) and must offer a premium; the book bears that crash risk.
+- Other side: lottery-seeking leveraged longs on the short side; holders dumping a crashed coin on the long side.
+  Why it can persist: it rests on a preference, shorting a right-skewed coin is exposed to squeezes (a limit to
+  arbitrage), and the long side's crash risk is real, which is why it would pay.
+- Costs: about 0.05 to 0.15 a year (S4 checks it).
+- Relation to earlier trials and lessons: new idea; no counted trial, no round-1 program and no calibration family
+  reads a higher moment. Answers LESSONS 8 to 11 (neutral; G6 credits only timing) and 13 to 14 (a timing claim,
+  not a characteristic). Round 1's DEV observation (LESSONS 16: a week's residual move tended to continue) argues
+  somewhat AGAINST H5 on DEV, since its short side includes coins that jumped up recently; it did not shape H5.
+- What I remember that could bias it: the crypto evidence I recall conflicts. I recall a paper titled "MAX
+  momentum in cryptocurrency markets" (Li, Urquhart, Wang and Zhang, about 2021) reporting that coins with a high
+  maximum daily return kept outperforming (the opposite sign), and work on lottery demand in crypto (I recall
+  Grobys and Junttila, 2021) that I remember, less surely, with the equity sign. Left-tail momentum in equities
+  (Atilgan, Bali, Demirtas and Gunaydin 2020: stocks with large recent losses keep losing) argues against the long
+  side. From DEV I remember the LUNA collapse (May 2022), in which a long-the-crash-day book holds a coin going to
+  zero, and 2021 memecoin jumps that continued for days. From VAL I remember FTT (November 2022; the long side
+  loses) and memecoin waves in 2023 and 2024 whose first jumps were followed by weeks of gains (the short side loses)
+  and then by collapses (the short side gains). I do not remember any net result. Nothing I remember argues for H5.
+  None of it shaped the rule: there is no crash filter and no per-coin cap beyond the rank weighting.
+- Falsifier. DEV (not submitted): S1 to S6 (a wrong DEV sign drops it). Counted (VAL): falsified if G1 (PSR(0) <
+  0.90), G4 (2x costs <= 0), G6 (p > 0.10, or the speed limit), G8 (next30 Sharpe <= 0), or any other Tier-1 gate
+  fails. Named risk: G7 and the long side in a single-coin collapse.
+- DEV exploration (at most 4 runs): default n = 21; then n = 17 and n = 25; then D-ACF
+  (gen002_diag_acf_resid_skew, k = 26 daily rows).
+
+## H6. gen002_resid_momentum (a continuation rule, written after round 1's DEV result)
+
+- Family relative. Kind portfolio. Unit top30. Dollar neutral, gross 1.
+- Rule: every week (weekly bins from Monday 00:00 UTC, visible at the Sunday 23:00 bar, traded at the Monday 00:00
+  open), for each coin in play: resid = the coin's return over the last m weeks minus beta x BTC's return over the
+  same weeks; beta = correlation x volatility ratio of daily returns against BTC over the last n days; z = resid /
+  the coin's daily-return volatility over the same n days. Weight: + the cross-sectional rank of z, demeaned, scaled
+  to gross 1. Beta and volatility update at each daily close. BTC's own residual is zero up to rounding, which puts
+  BTC at the middle rank (z is a level divided by a volatility, not a ratio of two noises).
+- Program (default pre-registered; strategies/gen002_resid_momentum.omr):
+
+      m = param(4, 3, 5)             # weeks in the formation window
+      n = param(30, 20, 45)          # daily rows for the BTC beta and the coin's volatility
+      d = daily(close)
+      db = daily(btc(close))
+      r = ret(d, 1)
+      rb = ret(db, 1)
+      vol = std(r, n)
+      beta = corr(r, rb, n) * vol / std(rb, n)
+      resid = ret(weekly(close), m) - beta * ret(weekly(btc(close)), m)
+      z = resid / vol
+      signal = cs_scale(cs_demean(cs_rank(z)))
+
+  2 params (integers; G5 values m = 3 or 5, n = 24 to 36), 0 jitterable literals, 36 nodes, lookback 1,175 h. The
+  weights are an hourly-grid series (daily and weekly bars mixed).
+- Hypothesis: a coin's return over the last month net of its BTC-beta part, in units of its own volatility,
+  continues over the following weeks.
+- Mechanism: underreaction. Coin-specific news diffuses slowly through a fragmented clientele (Hong and Stein
+  1999), and holders sell winners too early and keep losers too long (the disposition effect; Grinblatt and Han
+  2005, Frazzini 2006), so prices adjust in steps. The BTC-beta part is removed because a market move is not
+  coin-specific news, and because the beta tilt of total momentum is what drives momentum crashes after market
+  turns (Grundy and Martin 2001; Daniel and Moskowitz 2016); residual momentum has about half the volatility of
+  total momentum in equities (Blitz, Huij and Martens 2011). Volatility scaling ranks how unusual the move was for
+  that coin. Crypto: Liu, Tsyvinski and Wu (2022) report a cross-sectional momentum factor at one to four weeks.
+- Other side: early profit-takers in winners, dip buyers averaging into losers, mean-reversion market makers,
+  shorts fading a rally. Why it can persist: the behaviour is a property of the clientele; momentum's crash risk
+  (reduced, not removed, by the residual) is the reason not everyone trades it.
+- The provisions of LESSONS 16 and 17, point by point:
+  (a) This hypothesis was written AFTER round 1's DEV result: version 1, run 1, the weekly residual REVERSAL (H1,
+      the same beta and volatility machinery with a one-week return, n = 30) lost on DEV (Sharpe -1.566, negative
+      in all three DEV years). H6 is not the exact mirror (that would be m = 1, outside the declared range of 3 to
+      5), but its DEV result is partly predictable from run 1.
+  (b) Its default's DEV Sharpe is therefore NOT evidence. S2 stays as a necessary condition only. The screen
+      rests on readings nobody has seen: the four neighbours, each held to the liveness bar 0.6 and to S4 (S3,
+      stricter than for H5 and H7); the plain control (S7); the costs paid twice at five settings (S4 and S3); the
+      speed-limit diagnostic (S6). S5 is also stricter (all three DEV years), though per-year signs are partly
+      predictable too.
+  (c) How it differs from the calibration's momentum family (ucal_xs_momentum: the raw n-day return, n 3 to 60, on
+      daily bars, re-ranked every day, linear weights concentrated in the largest movers): H6 removes the BTC-beta
+      part, scales by volatility, weights by rank, and re-ranks once a week on a 4-week formation, so its
+      rankings change by about a quarter as much per week as a daily re-ranked 2-week book (section "What a top30
+      idea must clear"). Why it would survive costs: estimated 0.03 to 0.06 a year, about 0.1 to 0.25 Sharpe units
+      (0.2 to 0.5 doubled), against a gross Sharpe that would have to be about 1.0. In the no-skill worlds the
+      calibration family loses its costs (LESSONS 13); H6 would too, and that is what G1, G4 and M are for.
+- G6 is H6's main named risk: H6 can pass only if the last month's residual predicts better than older residuals
+  (short-lived momentum); its first stale copies hold roughly minus H7.
+- What I remember that could bias it: the Liu-Tsyvinski-Wu result covers a broad universe with many small coins
+  over 2014 to 2018; I believe the effect was weaker among large coins and later, but I do not remember it
+  reliably. From VAL: BTC gaining on most altcoins, ETH losing ground to BTC for most of the period, memecoin runs
+  lasting weeks, FTT falling over several days. All of these favour a momentum book, as a tilt or as
+  continuation; I do not remember a number for any cross-sectional crypto momentum book in VAL. These memories
+  argue FOR H6, and that is a bias I name. G6's stale copies carry a persistent tilt (BTC over altcoins, ETH under
+  BTC) as much as the book does, and the speed-limit statistic removes each name's mean, so a tilt alone should
+  not pass G6. m = 4 is the middle of the one-to-four-week range and halves the turnover of a one-week book; n = 30
+  is round 1's H1 value; neither comes from VAL.
+- Falsifier. DEV: S1 to S7 with H6's stricter S3 and S5. Counted (VAL): falsified if G1, G4, G6 (or the speed
+  limit), G8, or any other Tier-1 gate fails.
+- DEV exploration (at most 7 runs): default (m = 4, n = 30); then m = 3, m = 5, n = 24, n = 36; then the control
+  gen002_diag_plain_momentum; then D-ACF (gen002_diag_acf_resid_momentum, k = 621 hours).
+
+## H7. gen002_prior_month_reversal
+
+- Family meanrev. Kind portfolio. Unit top30. Dollar neutral, gross 1.
+- Rule: every week, for each coin in play: resid = the coin's return over the m weeks that ended m weeks ago
+  (weeks t-2m to t-m; at m = 4 the month before last month) minus beta x BTC's return over the same weeks; beta
+  and the volatility scale are the coin's current ones (daily returns against BTC over the last n days, as in H6);
+  z = resid / volatility. Weight: minus the cross-sectional rank of z, demeaned, scaled to gross 1. The most recent m
+  weeks are skipped on purpose.
+- Program (default pre-registered; strategies/gen002_prior_month_reversal.omr):
+
+      m = param(4, 3, 5)             # weeks in the formation window, and weeks skipped before it
+      n = param(30, 20, 45)          # daily rows for the BTC beta and the coin's volatility
+      d = daily(close)
+      db = daily(btc(close))
+      r = ret(d, 1)
+      rb = ret(db, 1)
+      vol = std(r, n)
+      beta = corr(r, rb, n) * vol / std(rb, n)
+      resid = lag(ret(weekly(close), m), m) - beta * lag(ret(weekly(btc(close)), m), m)
+      z = resid / vol
+      signal = cs_scale(cs_demean(-cs_rank(z)))
+
+  2 params (integers; G5 values m = 3 or 5, n = 24 to 36), 0 jitterable literals, 39 nodes, lookback 2,015 h (the
+  closest of the three to the 2,160-hour limit). One param sets both the window and the skip, so the G5 variants
+  are weeks 6 to 3 back (m = 3) and weeks 10 to 5 back (m = 5).
+- Hypothesis: a coin's BTC-beta residual return over the month before last month partly reverses over the
+  following weeks.
+- Mechanism: delayed overreaction. In the Hong and Stein (1999) model, slow news diffusion invites momentum
+  traders, whose buying carries prices past value, and the excess reverts later. In crypto the cycle would be
+  compressed into weeks: leveraged late chasers and slow trend rules (moving-average systems) are still long a
+  month after a rally began, and supply meets the rally with a lag (project treasuries and early holders selling
+  into strength). After a month of residual losses, forced and capitulating sellers are done.
+- Other side: late momentum chasers and slow trend followers who entered after the first month; holders who
+  capitulated late. Why it can persist: slow trend-following capital is large in this market, and supply responds to
+  price with a delay.
+- Why the skip: the fast reversal (the calibration's reversal family, 3 to 20 days with no skip; round 1's H1, one
+  week) is what round 1 found absent on DEV. H7 claims nothing about the last m weeks.
+- Costs: like H6 (3 of 4 weeks shared from week to week): about 0.03 to 0.06 a year (S4 checks it).
+- Speed limit: the window of weeks 8 to 4 back and the window 26 days later share about 2 days. A D-ACF of H7
+  itself cannot be written under the 90-day limit (2,015 h + a 621-h lag). Proxy: with the same m, H7's weights at t
+  are close to minus H6's weights at t - m weeks (beta and volatility are taken at different times), so the
+  correlation of H7's weights with their own values one lag step earlier is close to the same correlation for H6,
+  which gen002_diag_acf_resid_momentum measures. S6 for H7 reads that diagnostic, and the plan calls it a proxy.
+- Relation to earlier trials and lessons: not a mirror of round 1; its DEV result is unknown. It differs from the
+  calibration's reversal family (raw returns, no skip, daily re-ranking) and from H1 (one week, no skip). With H6 it
+  tests the term structure of residual predictability (continuation over the last month, reversal of the month
+  before); either, both or neither can hold, and the two books are close to uncorrelated (their windows do not
+  overlap at the defaults). Answers LESSONS 8 to 11 and 13 to 14 as above.
+- What I remember that could bias it: the theory (Hong and Stein 1999); in equities, reversal at three to five years
+  (De Bondt and Thaler 1985) and of momentum profits after a year (Jegadeesh and Titman 2001). For crypto I recall no
+  evidence of reversal at one to two months, only a vague sense that crypto momentum decays within weeks. From VAL:
+  most altcoins lagged BTC for long stretches and memecoin runs lasted months, so a book long the losers of the month
+  before last would have lost on those trends; FTT stayed down after its collapse (the long side loses). My memory
+  argues AGAINST H7.
+- Falsifier. DEV: S1 to S6 (S6 by the proxy; a wrong DEV sign drops it). Counted (VAL): falsified if G1, G4, G6 (or
+  the speed limit), G8, or any other Tier-1 gate fails. Named risks: G7, and a market-wide unknown hour flattening it
+  for about 9 weeks (G10, G1).
+- DEV exploration (at most 5 runs, plus the shared diagnostic): default (m = 4, n = 30); then m = 3, m = 5, n = 24,
+  n = 36; then, if H6 has not already run it, gen002_diag_acf_resid_momentum as the proxy.
+
+---
+
+## DEV-only controls, round 2 (never to be submitted; each file's hypothesis line says so)
+
+- strategies/gen002_diag_plain_momentum.omr: `signal = cs_scale(cs_demean(cs_rank(ret(weekly(close), m))))`,
+  m = param(4, 3, 5). The raw m-week momentum with H6's weekly re-ranking, without the residual and the volatility
+  scaling: H6's control for S7. Lookback 1,175 h.
+- D-ACF, the speed-limit diagnostic, built as in version 1 (`signal = c * w * lag(w, k)`, c = param(20, 10, 30) so
+  that positions are large against the engine's 0.01 band; R = avg net / avg gross = sum w w' / sum |w| |w'|,
+  an upper bound of the gate's statistic; read from the two printed numbers):
+  - strategies/gen002_diag_acf_resid_skew.omr: w = H5's weight row at its defaults (same text, same param range).
+    H5's weights are a DAILY series, so k = param(26, 20, 32) daily rows (one lag step is 25.9 days). Lookback
+    2,039 h.
+  - strategies/gen002_diag_acf_resid_momentum.omr: w = H6's weight row at its defaults. An hourly-grid series, so
+    k = param(621, 496, 746) hours, as in version 1's H1 diagnostic. Lookback 1,921 h. Also H7's proxy.
+- Their Sharpe and returns mean nothing.
+
+## Run order and budget (round 2, decided before any run)
+
+| order | run | runs only if |
+|---|---|---|
+| 1 | H5 default (n = 21) | - |
+| 2, 3 | H5 n = 17, then n = 25 | run 1 passed S1, S2, S4; run 3 only if run 2 passed S3 |
+| 4 | H7 default (m = 4, n = 30) | - |
+| 5 to 8 | H7 m = 3, m = 5, n = 24, n = 36, in this order | run 4 passed S1, S2, S4; each only if the one before passed S3 |
+| 9 | H6 default (m = 4, n = 30) | - |
+| 10 to 13 | H6 m = 3, m = 5, n = 24, n = 36, in this order | run 9 passed S1, S2, S4; each only if the one before passed H6's S3 |
+| 14 | control gen002_diag_plain_momentum (m = 4) | H6 passed S1 to S5 |
+| 15 | D-ACF gen002_diag_acf_resid_skew | H5 passed S1 to S5 |
+| 16 | D-ACF gen002_diag_acf_resid_momentum | H6 passed S1 to S5 and S7, or H7 passed S1 to S5 (run once) |
+
+Command form (from the project root, venv Python): `python -m omr.sandbox strategies/gen002_resid_skew.omr` and
+`python -m omr.sandbox strategies/gen002_resid_skew.omr --set n=17`; full stage 1 on every run.
+
+Planned: at most 16 sandbox runs. Reserve: 3 runs for an honest restatement after a stage-1 rejection the parse
+check cannot see (the activity floor or a self-check; the constant probe already ran with the parse check), each a
+recorded amendment of one of the forms the playbook lists in section 4, never a change of logic or of a default.
+Cap for this round: 19 (the instruction allows 20); generation 2 would then have used at most 23 of 60. Every run
+goes into the log below, including runs that fail.
+
+Logged per run: DEV Sharpe, PSR(0), total return, maxDD, direction changes, avg gross, avg net, costs, funding paid,
+rebalances, the per-year rows, the number of symbols ever in the unit, the lookback; for D-ACF the ratio R.
+
+## Selection rule (round 2)
+
+- A hypothesis is eligible only if it passes every screen item that applies to it.
+- At most TWO programs are recommended for a counted run. If one or two are eligible, they are recommended. If all
+  three are eligible, H5 and H7 are recommended and H6 is not, because H6's DEV numbers are not evidence and it
+  ranks last by rule. DEV Sharpe is a liveness check, not a ranking.
+- If H6 and H7 are both recommended, the coordinator should know that they are structurally linked (H7 is close to
+  minus H6 lagged by m weeks): together they test one theory at two horizons.
+- None eligible means none recommended; that is a result and is recorded as one.
+- A recommended program is submitted only at its declared defaults, unchanged, after the coordinator's source read
+  (playbook section 5). The DEV-only controls are never submitted.
+
+## Sandbox run log (round 2)
+
+(filled in during stage 2; every run, chosen or not)
+
+| # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross | avg net | costs | total return | years + (of printed) | note |
+|---|---|---|---|---|---|---|---|---|---|---|
+
+## Amendments (round 2)
+
+(none)
+
+## Notes for the coordinator (round 2, written with the plan)
+
+- The parse check's OK lines include the constant probe: omr.lang.parse_file runs it by default (on the kernel's
+  synthetic probe panel; no market data). The activity floor and the self-checks remain for the sandbox.
+- H7's speed-limit reading is a proxy (H6's diagnostic), because H7's own lookback leaves no room for a 26-day lag
+  under the 90-day limit. If the coordinator does not accept the proxy, S6 for H7 becomes an amendment written
+  before run 4, and the speed limit stays an unmeasured risk for H7.
+- Ideas stopped by the rules, not tested: (1) splitting a coin's return or volume by session (US hours against
+  Asian hours) or weekend against weekday, a clientele idea in the spirit of overnight-versus-intraday returns in
+  equities. Rolling hourly sums are legal but would re-rank every few hours (several times a weekly book's costs by
+  my estimate), and freezing them weekly with hour or weekday indicators would work around KP-019, which ruling (4)
+  forbids. (2) The exact window-fixed residual skewness for H5, which needs the binomial coefficients 2 and 3 as
+  literals (see H5, design choice 4).
+- Ambiguities: (a) whether a program that does not read funding but whose P&L includes funding (every book's does)
+  counts as "funding-driven" under KP-017; I read it as allowed. (b) Whether mark_close alone, not set against
+  close, is "built on the basis"; no program here reads it. (c) The playbook does not say how S3-type neighbours
+  should be chosen for a program with two params (G5 moves both at once); version 2 runs each param's two G5 ends
+  with the other at its default.
+
+Pre-registration (version 2): 2026-11-23T23:46:18Z; no round-2 sandbox run has been made.

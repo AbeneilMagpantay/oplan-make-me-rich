@@ -1,0 +1,23 @@
+# Generation 2, round 2, H5 (generations/gen002/PLAN.md, version 2). Lottery skew in unit top30.
+# mk = the unit's equal-weighted mean daily log return (cs_mean over the in-play coins); beta = the coin's
+# rolling beta to mk over the last n daily rows; e = r - beta * mk, each row with its own trailing beta.
+# skew = the uncentred realised skewness of e over the last n daily rows, sma(e^3) / sma(e^2)^1.5.
+# Short the most right-skewed coins (recent up-jumps), long the most left-skewed; dollar neutral, gross 1.
+# A daily series: the ranks change at each daily close, mostly when a large day enters or leaves the window.
+name = "gen002_resid_skew"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Lottery demand: leveraged retail overpays for coins whose recent daily moves were right-skewed (up-jumps) and shuns coins with recent crash days. Short the most positively skewed residual daily returns of the last n days, long the most negatively skewed; dollar neutral. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(21, 16, 26)
+
+d = daily(close)
+r = logret(d, 1)
+mk = cs_mean(r)
+beta = corr(r, mk, n) * std(r, n) / std(mk, n)
+e = r - beta * mk
+m2 = sma(e * e, n)
+m3 = sma(e * e * e, n)
+skew = m3 / (m2 * sqrt(m2))
+signal = cs_scale(cs_demean(-cs_rank(skew)))

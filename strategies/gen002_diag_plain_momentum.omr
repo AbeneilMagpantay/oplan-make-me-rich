@@ -1,0 +1,12 @@
+# DEV-ONLY CONTROL - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 2, H6).
+# Raw m-week cross-sectional momentum with the same weekly rebalancing as H6 but without the BTC-beta
+# residual and without the volatility scaling. H6 is recommended only if it beats this control on DEV.
+name = "gen002_diag_plain_momentum"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: raw m-week cross-sectional momentum on weekly bars (long the coins with the highest m-week return, short the lowest), used in the DEV sandbox only to see whether H6's BTC-beta residual and volatility scaling add anything."
+
+m = param(4, 3, 5)
+
+signal = cs_scale(cs_demean(cs_rank(ret(weekly(close), m))))

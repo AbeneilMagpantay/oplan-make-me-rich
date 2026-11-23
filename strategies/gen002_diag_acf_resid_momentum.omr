@@ -1,0 +1,28 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 2, D-ACF).
+# w is H6's weight row exactly as in strategies/gen002_resid_momentum.omr at its defaults (an hourly-grid
+# series, because it mixes daily and weekly bars). The signal c * w(t) * w(t - k), k = 621 hours (one G6
+# lag step, about 25.9 days), makes the sandbox's avg net / avg gross equal to
+# sum w(t) w(t-k) / sum |w(t)| |w(t-k)|, an upper bound of the correlation that G6's speed limit reads.
+# It is also the PROXY reading for H7 (gen002_prior_month_reversal), whose own weights at t are close to
+# minus H6's weights at t - m weeks, and whose 2,015-hour lookback leaves no room for a 26-day lag.
+name = "gen002_diag_acf_resid_momentum"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: measures on DEV how strongly H6's weights are correlated with its own weights one G6 lag step earlier (also the proxy for H7), to check G6's speed limit (0.5) before any counted run. Its returns mean nothing."
+
+m = param(4, 3, 5)
+n = param(30, 20, 45)
+k = param(621, 496, 746)
+c = param(20, 10, 30)
+
+d = daily(close)
+db = daily(btc(close))
+r = ret(d, 1)
+rb = ret(db, 1)
+vol = std(r, n)
+beta = corr(r, rb, n) * vol / std(rb, n)
+resid = ret(weekly(close), m) - beta * ret(weekly(btc(close)), m)
+z = resid / vol
+w = cs_scale(cs_demean(cs_rank(z)))
+signal = c * w * lag(w, k)

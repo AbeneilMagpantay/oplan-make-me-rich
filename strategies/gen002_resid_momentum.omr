@@ -1,0 +1,25 @@
+# Generation 2, round 2, H6 (generations/gen002/PLAN.md, version 2). Residual momentum in unit top30.
+# WRITTEN AFTER round 1's DEV result (PLAN version 1, run 1: the weekly residual REVERSAL lost on DEV), so
+# its DEV Sharpe is not evidence; its screen rests on neighbours, a plain control, costs and the speed limit.
+# resid = the coin's last-m-week return minus beta x BTC's last-m-week return; beta = correlation x
+# volatility ratio of daily returns against BTC over the last n days; z = resid / the coin's daily
+# volatility over the same n days. Long the largest z, short the smallest; dollar neutral, gross 1.
+# The m-week returns change once a week (bins from Monday 00:00 UTC); beta and volatility change daily.
+name = "gen002_resid_momentum"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Residual momentum (written after round 1's DEV result): a coin's m-week return net of its BTC-beta part, in units of its own volatility, continues over the next weeks, because coin-specific news diffuses slowly and holders sell winners early. Long the largest residual winners, short the largest residual losers, rebalanced weekly. Falsified if VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 5)
+n = param(30, 20, 45)
+
+d = daily(close)
+db = daily(btc(close))
+r = ret(d, 1)
+rb = ret(db, 1)
+vol = std(r, n)
+beta = corr(r, rb, n) * vol / std(rb, n)
+resid = ret(weekly(close), m) - beta * ret(weekly(btc(close)), m)
+z = resid / vol
+signal = cs_scale(cs_demean(cs_rank(z)))
