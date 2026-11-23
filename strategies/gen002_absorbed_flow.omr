@@ -1,0 +1,21 @@
+# Generation 2, H4 (generations/gen002/PLAN.md). Weekly absorbed aggressive flow in unit top30.
+# flow = this week's taker-buy share of base volume minus its mean over the last m weeks. It is the
+# SIGNAL INPUT (a deviation from the coin's own trailing mean, then cross-sectional); it is not used as a
+# constant, threshold or scale. Each week the cross-section of flow is regressed on the week's log return
+# (b = slope); excess = the aggressive buying the week's price move does not explain, orthogonal to the
+# return by construction. Short the largest excess, long the smallest; dollar neutral, gross 1.
+name = "gen002_absorbed_flow"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Absorbed flow: taker flow in perps is mostly impatient and limit-order traders are more often informed. If a coin saw more aggressive buying than its weekly return explains, someone sold patiently into it and the price follows that side (mirror for selling). Short the largest excess taker buying, long the largest excess taker selling, weekly. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 6)
+
+share = weekly(taker_buy_volume) / weekly(volume)
+flow = share - sma(share, m)
+x = cs_demean(flow)
+y = cs_demean(logret(weekly(close), 1))
+b = cs_mean(x * y) / cs_mean(y * y)
+excess = x - b * y
+signal = cs_scale(cs_demean(-cs_rank(excess)))

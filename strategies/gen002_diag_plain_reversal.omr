@@ -1,0 +1,10 @@
+# DEV-ONLY CONTROL - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, H1).
+# The raw weekly reversal with the same weekly rebalancing as H1 but without the BTC-beta residual and
+# without the volatility scaling. H1 is recommended only if it beats this control on DEV.
+name = "gen002_diag_plain_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: raw weekly cross-sectional reversal (long last week's relative losers, short its winners), used in the DEV sandbox only to see whether H1's beta residual and volatility scaling add anything."
+
+signal = cs_scale(cs_demean(-cs_rank(ret(weekly(close), 1))))

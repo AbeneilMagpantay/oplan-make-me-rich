@@ -1,0 +1,15 @@
+# Generation 2, H3 (generations/gen002/PLAN.md). Weekly average ticket size in unit top30.
+# ticket = quote volume / number of trades (USD per trade) over the week; abnormal = ticket / its mean
+# over the last m weeks (this week included). Long the coins whose tickets grew most, short those whose
+# tickets shrank most (a crowd of small traders arriving); dollar neutral, gross 1, rebalanced weekly.
+name = "gen002_small_tickets"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Retail crowding: when a coin's average trade size in USD falls well below its own recent normal, a crowd of small, leveraged, trend-chasing traders has arrived and overprices it; when it rises, larger and better-informed participants are trading it. Long the largest rises in ticket size, short the largest falls, rebalanced weekly. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 6)
+
+ticket = weekly(quote_volume) / weekly(trades)
+abn = ticket / sma(ticket, m)
+signal = cs_scale(cs_demean(cs_rank(abn)))

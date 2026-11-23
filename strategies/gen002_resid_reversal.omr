@@ -1,0 +1,21 @@
+# Generation 2, H1 (generations/gen002/PLAN.md). Weekly residual reversal in unit top30.
+# Last week's return net of its BTC-beta part, in units of the coin's own daily volatility; long the
+# coins that fell most by that measure, short those that rose most; dollar neutral, gross 1.
+# The weekly return changes once a week (bins from Monday 00:00 UTC); beta and volatility change daily.
+name = "gen002_resid_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity provision: a coin's weekly return net of its BTC-beta part, scaled by its own volatility, partly reverses over the next week, because forced or impatient flow (liquidations, stampedes) pushed it away from where patient holders value it. Long the largest residual losers, short the largest residual winners, rebalanced weekly. Falsified if VAL PSR(0) < 0.90, 2x costs turn it negative, G6 shows no timing, or next30 disagrees."
+
+n = param(30, 20, 45)
+
+d = daily(close)
+db = daily(btc(close))
+r = ret(d, 1)
+rb = ret(db, 1)
+vol = std(r, n)
+beta = corr(r, rb, n) * vol / std(rb, n)
+resid = ret(weekly(close), 1) - beta * ret(weekly(btc(close)), 1)
+z = resid / vol
+signal = cs_scale(cs_demean(-cs_rank(z)))

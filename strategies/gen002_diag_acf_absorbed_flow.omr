@@ -1,0 +1,23 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, D-ACF).
+# w is H4's weight row exactly as in strategies/gen002_absorbed_flow.omr at its defaults (a weekly series,
+# so lag counts weeks). The signal c * w(t) * w(t - k), k = 4 weeks, makes the sandbox's avg net / avg
+# gross equal to sum w(t) w(t-k) / sum |w(t)| |w(t-k)|, an upper bound of the correlation that G6's
+# speed limit reads.
+name = "gen002_diag_acf_absorbed_flow"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: measures on DEV how strongly H4's weights are correlated with its own weights about one G6 lag step (4 weeks) earlier, to check G6's speed limit (0.5) before any counted run. Its returns mean nothing."
+
+m = param(4, 3, 6)
+k = param(4, 3, 5)
+c = param(20, 10, 30)
+
+share = weekly(taker_buy_volume) / weekly(volume)
+flow = share - sma(share, m)
+x = cs_demean(flow)
+y = cs_demean(logret(weekly(close), 1))
+b = cs_mean(x * y) / cs_mean(y * y)
+excess = x - b * y
+w = cs_scale(cs_demean(-cs_rank(excess)))
+signal = c * w * lag(w, k)

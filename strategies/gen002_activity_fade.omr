@@ -1,0 +1,15 @@
+# Generation 2, H2 (generations/gen002/PLAN.md). Weekly attention fade in unit top30.
+# Activity shock = this week's trade count / the mean of the last m weekly trade counts (this week
+# included). Trade counts carry no price, so the shock is not mechanically tied to the week's return.
+# Short the largest shocks, long the smallest; dollar neutral, gross 1, rebalanced weekly.
+name = "gen002_activity_fade"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Attention fade: a coin whose weekly number of trades jumps far above its own recent normal has drawn a burst of attention from leveraged, mostly long traders whose demand lifts it above where it settles once attention moves on; neglected coins are the cheap side. Short the largest activity shocks, long the smallest, rebalanced weekly. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 6)
+
+act = weekly(trades)
+shock = act / sma(act, m)
+signal = cs_scale(cs_demean(-cs_rank(shock)))

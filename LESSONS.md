@@ -42,3 +42,27 @@ on synthetic worlds. No lesson recommends a parameter value.
 7. A program with a true VAL Sharpe of 1.0 passes Tier 1 only 55% to 63% of the time (1.5: 84% to
    91%), so most failures say little about a modest real edge. INSTRUMENT: 200 oracle worlds per
    configuration.
+
+Lessons 6 and 7 are about unit core. The KP-015 kernel (semantic 5ea66b0fb79ca267, sealed 2026-11-23
+at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
+(ledger/calibration_5ea66b0fb79ca267.json).
+
+## About the instrument, unit top30 (ledger/ucalibration_5ea66b0fb79ca267.json; audits/AUDIT_LOG.md, round 7)
+
+12. A market-neutral top30 book with a true VAL Sharpe of 1.5 passes Tier 1 in 68% to 82% of cases
+    at G6 0.10 (holding periods of 5 and 20 days). No Sharpe 1.0 level was measured in this unit, so
+    a failure says even less about a modest edge than in unit core. INSTRUMENT: 100 oracle books per
+    configuration.
+13. The no-skill calibration families of unit top30 (cross-sectional momentum and its mirror on
+    daily bars, and funding carry) lose money after costs in the no-skill worlds (mean VAL Sharpe
+    -0.5 to -1.9): 4 of 1,089 evaluated pairs pass G1 and 1 passes Tier 1. In this unit costs, not
+    the timing gate, are what stops a no-skill book built on daily signals. INSTRUMENT.
+14. G6 tests timing against the book's own stale copies; it does not test luck. A top30 book that
+    earns a premium without timing passes it about 1 time in 10 at 0.10 (7 of 78 in the pilot), and
+    in unit core 44 of the 112 (null A) and 35 of the 126 (null B) no-skill pairs that passed every
+    other gate passed G6 as well. Against luck the protection is the other gates and the trial
+    count M. INSTRUMENT.
+15. In unit top30 the timing gate passed a losing funding-carry book far above its nominal level in
+    the no-skill worlds that keep the real funding sizes (53 of 166 at 0.10, about 16 expected).
+    Not yet measured for a book that passes the other gates; until it is, no funding-driven program
+    is submitted in unit top30 (KERNEL_PROPOSALS KP-017). INSTRUMENT, open.
