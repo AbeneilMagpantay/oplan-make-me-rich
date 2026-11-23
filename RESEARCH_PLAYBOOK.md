@@ -87,6 +87,30 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
 - Do not try to see VAL any other way. Do not write scripts that read `data/` (the quarantine is
   procedural for session code; CONSTITUTION section 2).
 
+## 4b. Unit top30 (added 2026-11-23 by the coordinator, when the KP-015 kernel was sealed)
+
+`unit = "top30"` trades the point-in-time top 30 USDT perpetuals by volume. Read LANGUAGE.md section 10
+before writing a top30 program. What decides whether a top30 idea can pass at all:
+
+- Holding period. Costs are 12.5 bps per side on every symbol: a book that replaces itself every day pays
+  about 0.9 of its gross per year, and 1.8 at the doubled costs of G4. Design for holding periods of days
+  to weeks. The timing gate G6 is calibrated in this unit for books that turn over in about 5 to 20 days,
+  and it fails a program whose weights are still correlated above 0.5 with its own weights about 26 days
+  earlier, so a signal that is one slow average over most of the lookback is too slow.
+- Lookback: the program's total lookback must not exceed 90 days (`lookback_exceeds_seasoning`).
+- Cross-sections: a `cs_*` needs at least 10 in-play symbols with a known input; a symbol with a hole in
+  its window drops out until the window is clean.
+- G8 runs the same program on the next 30 symbols (ranks 31 to 60).
+- The sealed G6 threshold is 0.10 in unit top30 and 0.10 in unit core. G6 tests timing, not luck: a book
+  that earns a premium without timing passes it about 1 time in 10.
+- Memory: the evaluator refuses a top30 run, uncounted, when the machine is short of free memory (about
+  1.5 GiB for a small program).
+- Not yet (KERNEL_PROPOSALS KP-017, from the recount of the seal): no program driven by funding
+  (`funding8h`, `funding_mean`) is submitted for a counted trial in unit top30 until the coordinator lifts
+  this. In one kind of no-skill world the timing gate passed a losing funding-carry book far too often;
+  until that is measured, a funding-driven pass could not be trusted. Exploring such programs in the
+  sandbox is fine.
+
 ## 5. Submit: at most 5 counted submissions per generation (enforced by the evaluator)
 
 Before ANY counted submission the coordinator reads the program text for the patterns the constant

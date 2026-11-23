@@ -454,3 +454,27 @@ rates, status.
   hours, core 0.7), after a build, an audit and a re-key.
 - Status: open (needs the human's approval; to be decided before generation 2 opens, because a later
   semantic re-key would leave the ids of its trials with the earlier kernel).
+
+## 2026-11-23 (coordinator, seal recount) KP-017 Findings of the independent recount of the KP-015 seal
+
+- Source: audits/seal_recount_findings.md (verdict AGREE with the seal; no blocker) and audits/AUDIT_LOG.md,
+  round 7, X12 seal recount.
+- S1, G6 in top30 on books dominated by costs. Under null B the carry calibration family passes G6 alone in
+  53 of 166 evaluated pairs at 0.10 and in 31 at 0.05 (nominal 2/21 and 1/21). No such pair passes the other
+  gates, so the seal does not depend on it. Conjectured cause: each book pays its own costs and the test
+  compares Sharpe ratios, so of two losing books the more volatile one wins; under null B the actual carry
+  book is the more volatile one. Possible change, only if a measurement on DEV-period worlds shows an effect
+  on books that can pass the other gates: compare the two books on the difference of their return series (or
+  another statistic that a difference in volatility cannot move). Cost: a semantic change of omr/upipeline.py,
+  a pilot, a re-key and both calibrations. Until measured: no funding-driven program is submitted for a
+  counted trial in unit top30 (RESEARCH_PLAYBOOK section 4b).
+- Text, at the next text pass (a text-only re-key keeps the seal and the trial ids): CONSTITUTION section 13,
+  limit (2) of G6 in top30, to state the size and the direction that were measured; section 8 to state the
+  1e-12 tolerance of the rule's comparisons, that the seal compares the research hash with the manifest, and
+  that of the top30 artifact the run header is the part compared key by key.
+- Code, at the next semantic re-key (each needs both calibrations again, so none is worth a re-key alone): the
+  level check of an oracle cell averages the evaluated books while the power counts every book of the cell
+  (omr/calibrate.py oracle_summary and its top30 counterpart); the docstring of omr/calibrate.py that still
+  says "submitted pairs" for the family rate; a chosen draw that fails stage 1 is stored as not submitted and
+  can never count against the 3% fault bound; tier_at does not check that p lies on its lattice.
+- Status: open. The measurement of S1 is ordered as audit work; every change needs the human's approval.

@@ -2,17 +2,17 @@
 
 ## Where things stand
 
-- Kernel on `main` (sealed; the kernel of the five counted trials): semantic
+- Kernel (KP-015; sealed 2026-11-23 and on `main` since the merge of the same day): semantic
+  `5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687` (39 files), text
+  `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files), G6 threshold 0.10
+  for unit core and 0.10 for unit top30, from `ledger/calibration_5ea66b0fb79ca267.json` and
+  `ledger/ucalibration_5ea66b0fb79ca267.json`. Selftest OK. The seal was recounted by the coordinator
+  and by an independent auditor (audits/seal_recount_findings.md: AGREE, no blocker).
+- The earlier kernel (the one that scored the five counted trials; on `main` until 521687f): semantic
   `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1` (32 files), text
   `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files), G6 threshold 0.10
   from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth audit; artifact,
   calibration-log row and seal are in commit d2c2d4f.
-- Kernel on branch `kp015-build` (KP-015; re-keyed and SEALED on 2026-11-23): semantic
-  `5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687` (39 files), text
-  `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files), G6 threshold 0.10
-  for unit core and 0.10 for unit top30, from `ledger/calibration_5ea66b0fb79ca267.json` and
-  `ledger/ucalibration_5ea66b0fb79ca267.json`. Selftest OK. It replaces the kernel on `main` at the
-  merge, after the independent recount of the seal.
 - Generation 0 (`generations/gen000/REPORT.md`): five textbook baselines; SMA cross rejected in
   stage 1 (uncounted); four evaluated, none Tier 1; best VAL Sharpe 0.384.
 - Generation 1 (`generations/gen001/REPORT.md`): five pre-registered hypotheses, 18 DEV sandbox runs,
@@ -25,9 +25,9 @@
   `cf26f534cf1c9f4a0bff334c77a041ed66862484a7dc167581cd50562783b4d8`. The data store has since been
   extended and hole-filled for the KP-015 build (research hash `28d9084a8c5c7659...`); the
   calibrations of the re-keyed kernel bind to it.
-- Repository: git, private GitHub remote. `main` holds approved, verifying states only (HEAD 521687f).
-  The KP-015 build is on branch `kp015-build` (approved by delegation, re-keyed and sealed on
-  2026-11-23) and is merged into `main` after the independent recount. The coordinator commits and
+- Repository: git, private GitHub remote. `main` holds approved, verifying states only; since
+  2026-11-23 that is the sealed KP-015 kernel (approved by delegation; before the merge `main` stood at
+  521687f). The branch `kp015-build` is kept as the record of the build. The coordinator commits and
   pushes at gates (`tools/git_gate.ps1`, which pushes the current branch). Research sessions make no
   git writes.
 
@@ -43,12 +43,14 @@
 
 ## Next
 
-Generation 2 is the next research step (generations/gen001/REPORT.md exists). It opens on the KP-015
-kernel after the merge into `main` and after the human has decided KP-016 (open decision 5): a semantic
-re-key after generation 2 has scored trials would leave their ids with the earlier kernel. The evidence
-so far (LESSONS 8 to 10) says single-coin timing rules on two instruments mostly collect the market's
-drift; that is why KP-015 (a point-in-time universe for market-neutral rules, with the index price as
-new data) was built first. What follows is the history of that build.
+Generation 2 is the next research step (generations/gen001/REPORT.md exists). It runs on the KP-015
+kernel in unit top30 (RESEARCH_PLAYBOOK section 4b). The human has the KP-016 counts (open decision 5);
+in unit top30 that proposal changes no threshold, so trials scored there keep their verdicts if it is
+adopted later (their ids would then belong to this kernel). Until the finding of the seal recount is
+measured (open decision 6), no funding-driven program is submitted for a counted trial in unit top30.
+The evidence so far (LESSONS 8 to 10) says single-coin timing rules on two instruments mostly collect
+the market's drift; that is why KP-015 (a point-in-time universe for market-neutral rules, with the
+index price as new data) was built first. What follows is the history of that build.
 
 KP-015 feasibility (2026-11-19, `notes/kp015_feasibility.md`): open interest and long/short ratios are
 not admissible for backtests (short history, archive rewritten); index price is admissible; a
@@ -151,8 +153,8 @@ be exactly the protocol's, and the seal refuses a calibration whose sizes (core 
 and 100) or whose run header are not the kernel's own, which nothing checked before; a real run with other
 sizes is refused at the start. The coordinator's review and the auditor's attack found no defect. Core: on a
 synthetic dry run the new kernel reproduces the sealed kernel's rows exactly, so core should seal at 0.10
-again (it met its 3% bound with 44 of 1498, one pass to spare); if a row did move, it would seal at 0.05 with
-power of 0.81 or more.
+again (it met its 3% bound with 44 of 1498 and none to spare: a 45th pass would be 3.004%); if a row did
+move, it would seal at 0.05 with power of 0.81 or more.
 Round 1 of the pilot is closed (2026-11-22): every row checked on the committed code reproduces (carry
 differing only through R-Q), the controls pass nothing, and the premium arm shows G6 at its nominal level with
 20 lags (7 of 78 books that earn a premium without timing pass at 0.10, 4 at 0.05).
@@ -181,8 +183,15 @@ earlier sealed kernel's (44 of 1498 and 35 of 1500 at 0.10; power 0.84 to 0.905)
 recount from the stored rows equals both artifacts and the seal, and the selftest prints OK
 (audits/AUDIT_LOG.md, round 7, X12 seal). Top30 is certified for holding periods of about 5 days and
 longer.
-Now: an independent recount of the seal is running; the merge into `main` follows it. Before generation
-2 opens, the human decides KP-016 with the counts of the real run (open decision 5).
+The independent recount agrees with the seal and finds no blocker (audits/seal_recount_findings.md;
+audits/AUDIT_LOG.md, round 7, X12 seal recount), and `main` holds the sealed KP-015 kernel since
+2026-11-23.
+Open from the recount (KERNEL_PROPOSALS KP-017): in unit top30 the timing gate G6 passes the carry
+calibration family far above its nominal level under null B (53 of 166 pairs at 0.10). No such pair
+passes the other gates, so the seal does not depend on it, and the conjectured cause needs a book that
+loses money. A measurement on DEV-period worlds is ordered; until it is read, no funding-driven program is
+submitted for a counted trial in unit top30.
+Now: generation 2, in unit top30. The KP-016 counts of the real run were put to the human on 2026-11-23.
 
 ## Open decisions for the human
 
@@ -202,8 +211,9 @@ Now: an independent recount of the seal is running; the merge into `main` follow
    again).
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
-5. KP-016 (open; to be decided BEFORE generation 2 opens): count the null pass rate over DEV-positive
-   submissions only. Fix pass 7 built a weaker safeguard into KP-015 (R-L, no family above 6%). On the
+5. KP-016 (open; the counts of the real run were put to the human on 2026-11-23, with the coordinator's
+   recommendation: not now, and together with KP-017 if that one leads to a re-key): count the null pass
+   rate over DEV-positive submissions only. Fix pass 7 built a weaker safeguard into KP-015 (R-L, no family above 6%). On the
    sealed rows of 2026-11-23, over the evaluated pairs with a positive DEV Sharpe: top30 has no Tier-1
    pass among 165 under null A and 1 among 225 (0.44%) under null B at 0.10, so top30 would keep 0.10;
    core has 44 of 1144 (3.85%) and 35 of 1130 (3.10%) at 0.10 and 26 of 1144 (2.27%) and 18 of 1130
@@ -211,3 +221,8 @@ Now: an independent recount of the seal is running; the merge into `main` follow
    Adopting it is a semantic change: a build, an audit, a re-key and both calibrations again (about 13
    machine hours; the rows should come out the same). Left as it is, the count stays information that
    every calibration reports.
+6. KP-017 (open): the findings of the independent recount of the seal. S1: G6 in unit top30 on books
+   dominated by costs (see "Open from the recount" above); a measurement is ordered, and a change of the
+   G6 statistic is proposed only if it shows an effect on books that can pass the other gates. Also small
+   alignments of text and code, each waiting for the next re-key of its kind. Every change needs the
+   human's approval.

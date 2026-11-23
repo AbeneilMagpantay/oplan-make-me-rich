@@ -1197,3 +1197,91 @@ round 3 also the coordinator's own read of the core modules.
 - Next: the independent recount of the seal by an auditor that has seen neither the build nor
   the coordinator's recount; then the merge of kp015-build into `main`. Generation 2 does not
   open before the owner has the KP-016 numbers.
+
+## Round 7, addendum X12 (seal recount) - 2026-11-23 - an independent auditor recounts the seal and agrees; one finding on G6 in top30; merge into main
+
+- Who. A new auditor session (Opus) that had seen neither the build, nor the earlier rounds, nor
+  the coordinator's recount. It was told to read the rule in CONSTITUTION sections 8 and 13
+  first, to write its recount from the text, and not to read this log or the coordinator's
+  files. The auditor of rounds 6 and 7 was not resumed: a session without that history is the
+  more independent recount. Read-only on the project; no evaluation, no price file; the only
+  project commands were the two verifiers.
+- Verdict: AGREE with the seal (core 0.10, top30 0.10). Its recount in exact fractions gives the
+  counts of the seal entry above for every null, family, threshold and power cell. 1053 fields
+  of the stored summaries, the two verdicts, the seal block, the calibration log rows and the
+  last history row were compared: no difference. The gate booleans follow from the stored gate
+  values in every row; every p value lies on its lattice (k/201 in core, k/21 in top30) and none
+  at a grid boundary; both hash chains hold (its own check and the kernel's); the headers of
+  both artifacts equal what the kernel writes for a real run of the protocol's size, key by key;
+  both artifacts are byte-identical to the kernel's own serialisation; all 4600 core rows equal
+  the earlier sealed artifact's in every field. No blocker.
+- Finding S1 (should fix). In top30 the paired lag test is far from its nominal level for the
+  carry family under null B: 53 of 166 evaluated pairs have p <= 0.10 (15.8 expected; binomial
+  tail about 1e-15) and 31 have p = 1/21 (7.9 expected); the whole distribution is shifted
+  (median k about 4 of 21). Null A shows the opposite (6 of 149 at 0.10); momentum and reversal
+  are near nominal under both nulls. Measured on the stored rows: every null B carry pair has a
+  negative VAL Sharpe, and the family is dominated by costs (one more unit of costs takes about
+  1.8 from its Sharpe ratio, against 0.4 to 0.9 for the price families); the low-p rows do not
+  differ from the rest in n, memory, rebalances, direction changes or cost drag. The auditor's
+  conjecture, not tested: under null B the funding rates keep their real order and size, so the
+  actual book is aligned with the current cross-section of funding magnitudes and its flows vary
+  more than those of a copy 26 to 548 days stale; with no expected gross return and similar
+  costs a Sharpe ratio is about minus cost over volatility, so the more volatile actual book
+  loses less per unit of volatility and wins most of the 20 pairs together. Not excluded from
+  the rows: an asymmetry of the masking and re-centring; a leak of the funding coin (judged
+  unlikely: every Sharpe is negative and the rows are not all at 1/21).
+- The coordinator's reading of S1. (1) The seal does not depend on it: no carry pair passes G1,
+  G2, G4, G5 or G7 under either null. (2) If the mechanism is the one conjectured, it needs a
+  book that loses money: a Sharpe ratio rewards volatility only when the mean is negative, and
+  Tier 1 needs a positive one, where a larger volatility of the actual book counts against it.
+  That makes it first of all a property of G6 on losers, which the other gates stop; it is a
+  reading, not a measurement. (3) What stays true whatever the mechanism, and was recorded with
+  the seal: the top30 calibration families lose money in the no-skill worlds, so their Tier-1
+  rate says little about G6 for a book that passes the other gates by luck. In the core unit,
+  where the families do pass them, G6 at 0.10 lets through 44 of the 112 null A pairs that pass
+  every other gate and 35 of the 126 under null B. G6 tests timing, not luck; the bound of the
+  seal is on the joint rate of the calibration families. (4) CONSTITUTION section 13 names this
+  limit ("each book pays its own costs ... such books fail G1-G4 anyway") without its size or
+  its direction.
+- Rulings on S1 (none changes the kernel). (a) Until it is measured, generation 2 submits no
+  program driven by funding for a counted trial in unit top30 (a research rule of the
+  coordinator, written into RESEARCH_PLAYBOOK.md). (b) A measurement is ordered as audit work on
+  worlds built from DEV-period rows only, as the pilot's were: per lag the Sharpe ratio, the
+  volatility and the costs of the actual and of the stale book for the carry family under null
+  B, the same worlds with costs at zero, and a slower carry book with a smaller cost drag. (c)
+  The sentence of section 13 is corrected at the next text pass. (d) A change of the G6
+  statistic (the auditor suggests one on the difference of the two books' return series, which
+  a difference in volatility cannot move) would be a semantic change with a pilot, a re-key and
+  both calibrations; it is proposed only if (b) shows an effect on books that can pass the
+  other gates (KERNEL_PROPOSALS KP-017). Every kernel change stays the owner's decision.
+- The auditor's notes, with the coordinator's answers. N1: the core unit holds its 3% under null
+  A at 0.10 with no pass to spare (44 of 1498 = 2.937%; a 45th would be 3.004%), and two pairs
+  that pass every other gate sit at p = 21/201. STATE.md said "one pass to spare"; corrected.
+  N2: with KP-016's denominator core gets 0.05 and top30 keeps 0.10, under both readings of the
+  family bound, as counted in the seal entry. N4: the G5 median is stored as the string "-inf"
+  in 17 top30 rows; the rule reads booleans only. N5: the top30 artifact comes from an
+  interrupted and a resumed process (91 tasks of the first oracle curve were resumed); that a
+  resumed run gives the same artifact is tested on the small run (tests/test_ucalibrate.py,
+  test_d1_an_interrupted_run_resumes_to_the_same_artifact) and was not verified again on the
+  real one. N6: the re-key was approved by delegation and is recorded as that; it stays the
+  owner's to confirm.
+- Text against code, none triggered by these artifacts (collected in KP-017 for the next re-key
+  of each kind): the comparisons of the rule carry a tolerance of 1e-12 that the text does not
+  state; the level check of an oracle cell averages the evaluated books while the power counts
+  every book of the cell; a docstring in omr/calibrate.py still says "submitted pairs" for the
+  family rate; a chosen draw that fails stage 1 is stored as not submitted, so it can count
+  against the floors but never against the 3% fault bound; tier_at does not check that p lies on
+  its lattice; the seal compares the research hash with the manifest and does not recompute it;
+  of the top30 artifact only the run header is compared key by key, its protocol block only for
+  sizes and seeds.
+- Files. audits/seal_recount_findings.md is the auditor's report with one line changed (the path
+  of its scratch folder, a home directory path that the gate's scan refuses, replaced by a
+  phrase): sha256 28390aa58ff04517ba346fd5b56b7a7d3717c90cb92d2d49be781ca689511018. The
+  auditor's own file has sha256
+  33f9f1a4add578266c90507658699d114b3920d70241acca759cc86ca7640253. Its scripts are listed in
+  the report with their sha256 (binom.py:
+  26e589e27047922da684f6967f4d4d1f5f3a2f065f2ae68f8c4925477fd61ada).
+- Merge. With the seal, the selftest and both recounts done, `main` is fast-forwarded to the
+  commit that holds this entry; kp015-build stays as the record of the build. The KP-016 counts
+  go to the owner with this result. Generation 2 works in unit top30, where KP-016 changes no
+  threshold; RESEARCH_PLAYBOOK.md gets its section on the unit.
