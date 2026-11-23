@@ -403,6 +403,13 @@ rates, status.
   5ea66b0fb79ca267..., text 1366fb8fd0b69768..., not sealed (ledger/kernel_history.jsonl, row 9). Both calibrations,
   the seal, the selftest, an independent recount and the merge into `main` follow (audits/AUDIT_LOG.md, round 7, X12
   decision).
+- Sealed (2026-11-23). Both real calibrations ran to the end on the re-keyed kernel (top30 01:05 to 13:22 with three
+  workers, core 13:23 to 14:08) and neither stopped: G6 threshold 0.10 for core and 0.10 for top30
+  (ledger/kernel_history.jsonl, row 10; artifacts ledger/calibration_5ea66b0fb79ca267.json and
+  ledger/ucalibration_5ea66b0fb79ca267.json). Top30: no Tier-1 pass among 547 evaluated null pairs under null A and
+  1 among 542 under null B at 0.10; power at true Sharpe 1.5: 0.82, 0.74, 0.70 and 0.68. Core: every row equals the
+  earlier sealed kernel's. The reading before the seal, the coordinator's recount and the selftest are in
+  audits/AUDIT_LOG.md (round 7, X12 seal); an independent recount and the merge into `main` follow.
 
 ## 2026-11-21 (coordinator, audit round 7) KP-016 Count the null pass rate over DEV-positive submissions
 
@@ -438,4 +445,12 @@ rates, status.
   addition to the pooled 3%. It can only lower a threshold; on the stored core rows it changes nothing
   (worst family 4.67% at 0.10). The artifact stores the per-family rates and the rate over
   DEV-positive pairs. This proposal stays open as the stricter rule.
-- Status: open (needs the human's approval; not blocking).
+- Evidence added 2026-11-23 (the sealed rows of KP-015; audits/AUDIT_LOG.md, round 7, X12 seal). Over the
+  evaluated pairs with a positive DEV Sharpe, Tier-1 at 0.025 / 0.05 / 0.10: top30 null A 0 / 0 / 0 of 165,
+  null B 0 / 0 / 1 of 225 (0.44%); core null A 10 / 26 / 44 of 1144 (0.87%, 2.27%, 3.85%), null B 6 / 18 /
+  35 of 1130 (0.53%, 1.59%, 3.10%). After R-M and R-N the concern of 2026-11-21 about top30 is gone (top30
+  would keep 0.10); core would get 0.05, with power at true Sharpe 1.5 of 0.84, 0.83, 0.905 and 0.81. The
+  cost as measured: both calibrations again take about 13 machine hours with three workers (top30 11.8
+  hours, core 0.7), after a build, an audit and a re-key.
+- Status: open (needs the human's approval; to be decided before generation 2 opens, because a later
+  semantic re-key would leave the ids of its trials with the earlier kernel).

@@ -79,6 +79,67 @@
   "tests/test_universe.py": "9aabd2b61f484c7ad35d35bc1d01c1bbe9317ae1c4a825b0438b9d206d523f45"
  },
  "reason": "KP-015: the universe unit top30 (point-in-time top 30 USDT perpetuals from kline activity, index price admitted), a G6 threshold per unit, and the rulings of the build through fix pass 11 (R-L, R-M, R-N, R-O, R-Q, R-R); built at commit 305e2c6, full suite 962 passed; audits/AUDIT_LOG.md rounds 6 and 7",
+ "seal": {
+  "calibration_file": "ledger/calibration_5ea66b0fb79ca267.json",
+  "calibration_sha256": "a1ee5cfb86dda2b8b538cb7d685d0614ea3bfa516e84993620ccd7822b5ec0a5",
+  "g6_threshold": {
+   "core": 0.1,
+   "top30": 0.1
+  },
+  "null_pass_rate": {
+   "core": {
+    "A": {
+     "0.025": 0.006675567423230975,
+     "0.05": 0.017356475300400534,
+     "0.1": 0.029372496662216287
+    },
+    "B": {
+     "0.025": 0.004,
+     "0.05": 0.012,
+     "0.1": 0.023333333333333334
+    }
+   },
+   "top30": {
+    "A": {
+     "0.025": 0.0,
+     "0.05": 0.0,
+     "0.1": 0.0
+    },
+    "B": {
+     "0.025": 0.0,
+     "0.05": 0.0,
+     "0.1": 0.0018450184501845018
+    }
+   }
+  },
+  "power_at_1_5": {
+   "core": {
+    "A": {
+     "fast": 0.84,
+     "slow": 0.855
+    },
+    "B": {
+     "fast": 0.905,
+     "slow": 0.855
+    }
+   },
+   "top30": {
+    "A": {
+     "fast": 0.82,
+     "slow": 0.74
+    },
+    "B": {
+     "fast": 0.7,
+     "slow": 0.68
+    }
+   }
+  },
+  "rule": "G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / EVALUATED pairs) is <= NULL_PASS_MAX under BOTH nulls of that unit and whose every family's null pass rate (per its own EVALUATED pairs; a missing rate fails) is <= FAMILY_PASS_MAX under BOTH nulls of that unit (R-L, R-R), a null of that unit failing every threshold below FAMILY_EVALUATED_MIN (a family) or NULL_EVALUATED_MIN (the null) of its DESIGNED pairs evaluated or above NULL_FAULT_MAX of its SUBMITTED pairs in a fault, the unit's stored rows exactly its protocol design (fix pass 11, R-R); then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at that unit's threshold, every oracle level present in that unit's artifact achieved within RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below POWER_MIN or a level outside its bound",
+  "sealed_at": "2026-11-23T09:56:08Z",
+  "semantic_hash": "5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687",
+  "universe_calibration_file": "ledger/ucalibration_5ea66b0fb79ca267.json",
+  "universe_calibration_sha256": "24896cd3f99d84250668e93f5c043f3eb6153042c683b29bc415972c03cbcd61"
+ },
  "semantic": "5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687",
  "text": "1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924"
 }

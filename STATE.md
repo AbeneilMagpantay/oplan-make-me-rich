@@ -1,15 +1,18 @@
-# STATE (2026-11-19: generations 0 and 1 complete)
+# STATE (2026-11-23: generations 0 and 1 complete; the KP-015 kernel is sealed)
 
 ## Where things stand
 
-- Kernel on `main` (sealed): semantic `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1`
-  (32 files), text `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files),
-  G6 threshold 0.10 from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth
-  audit; artifact, calibration-log row and seal are in commit d2c2d4f.
-- Kernel on branch `kp015-build` (KP-015; re-keyed 2026-11-23; NOT SEALED): semantic
+- Kernel on `main` (sealed; the kernel of the five counted trials): semantic
+  `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1` (32 files), text
+  `d51a84cd8c13dc1b545b5f29a06c97a2d381c3bf972853c20381d28cd1b97ef1` (22 files), G6 threshold 0.10
+  from `ledger/calibration_7446278556aadd8f.json`. Seal recounted by the fifth audit; artifact,
+  calibration-log row and seal are in commit d2c2d4f.
+- Kernel on branch `kp015-build` (KP-015; re-keyed and SEALED on 2026-11-23): semantic
   `5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687` (39 files), text
-  `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files). Nothing can be
-  evaluated on it until both units are calibrated and sealed.
+  `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files), G6 threshold 0.10
+  for unit core and 0.10 for unit top30, from `ledger/calibration_5ea66b0fb79ca267.json` and
+  `ledger/ucalibration_5ea66b0fb79ca267.json`. Selftest OK. It replaces the kernel on `main` at the
+  merge, after the independent recount of the seal.
 - Generation 0 (`generations/gen000/REPORT.md`): five textbook baselines; SMA cross rejected in
   stage 1 (uncounted); four evaluated, none Tier 1; best VAL Sharpe 0.384.
 - Generation 1 (`generations/gen001/REPORT.md`): five pre-registered hypotheses, 18 DEV sandbox runs,
@@ -23,9 +26,10 @@
   extended and hole-filled for the KP-015 build (research hash `28d9084a8c5c7659...`); the
   calibrations of the re-keyed kernel bind to it.
 - Repository: git, private GitHub remote. `main` holds approved, verifying states only (HEAD 521687f).
-  The KP-015 build is on branch `kp015-build` (approved by delegation and re-keyed on 2026-11-23)
-  and is merged into `main` only after the seal. The coordinator commits and pushes at
-  gates (`tools/git_gate.ps1`, which pushes the current branch). Research sessions make no git writes.
+  The KP-015 build is on branch `kp015-build` (approved by delegation, re-keyed and sealed on
+  2026-11-23) and is merged into `main` after the independent recount. The coordinator commits and
+  pushes at gates (`tools/git_gate.ps1`, which pushes the current branch). Research sessions make no
+  git writes.
 
 ## How a generation runs (as done in generation 1)
 
@@ -39,11 +43,12 @@
 
 ## Next
 
-Generation 2 can open (generations/gen001/REPORT.md exists). The evidence so far (LESSONS 8 to 10)
-says single-coin timing rules on two instruments mostly collect the market's drift. The coordinator's
-recommendation is KP-015 (a point-in-time universe for market-neutral rules, and open interest,
-long/short ratios and basis as new data) before spending many more counted trials on the current
-two-coin instrument. KP-015 changes the kernel and needs the human's approval.
+Generation 2 is the next research step (generations/gen001/REPORT.md exists). It opens on the KP-015
+kernel after the merge into `main` and after the human has decided KP-016 (open decision 5): a semantic
+re-key after generation 2 has scored trials would leave their ids with the earlier kernel. The evidence
+so far (LESSONS 8 to 10) says single-coin timing rules on two instruments mostly collect the market's
+drift; that is why KP-015 (a point-in-time universe for market-neutral rules, with the index price as
+new data) was built first. What follows is the history of that build.
 
 KP-015 feasibility (2026-11-19, `notes/kp015_feasibility.md`): open interest and long/short ratios are
 not admissible for backtests (short history, archive rewritten); index price is admissible; a
@@ -164,38 +169,45 @@ Decision (2026-11-23): asked for the approval with these odds, the known limits 
 replied "decide whats the best". Acting for the human on that delegation (recorded as such; CONSTITUTION
 section 10, step 2), the coordinator approved KP-015 as built at 305e2c6 with all six rulings and re-keyed
 the branch (not sealed). KP-016, KP-014 and the confirmation of the rule set are not covered by it.
-Now: the real calibrations. The top30 calibration has been running since 2026-11-23 01:05 with three
-workers (the human freed memory for it), since 01:34 under a detached supervisor in
-`_build/kp015_lock_run/` (outside the kernel and git; `status.txt` there tells the state, a file
-`STOP_REQUEST` there stops it, `top30_run_<k>.out.log` is the calibration's own log). The run takes about
-34 worker-hours, that is 11 to 12 hours with three workers; it is resumable (proven at the hand-over: 91
-finished tasks kept); its oracle phases come first and its advisories say early whether the seal can still
-succeed. The supervisor restarts the run after a memory refusal or a low-memory pause, ends it on the
-kernel's advisory of a certain stop, and after a top30 verdict that is not a stop runs the core
-calibration (about 5 hours with one worker, since its artifact must carry the new header). Then, by the
-coordinator: the reading of the evaluated shares before the seal; seal of both units; selftest;
-independent recount; the DEV-positive count for KP-016 put to the human BEFORE generation 2 opens; merge
-into `main`. If a unit stops, nothing is sealed, `main` stays on 521687f and the build returns to design.
+The real calibrations (2026-11-23): the top30 calibration ran from 01:05 to 13:22 with three workers
+(the human freed memory for it; from 01:34 under a detached supervisor in `_build/kp015_lock_run/`,
+outside the kernel and git), the core calibration from 13:23 to 14:08. Neither stopped, restarted or
+raised an advisory.
+Result: SEALED on 2026-11-23 at G6 0.10 for core and 0.10 for top30. Top30, no-skill side: no Tier-1
+pass among 547 evaluated pairs under null A and 1 among 542 under null B at 0.10 (none at 0.05); 0.745 to
+1.00 of each family's pairs evaluated, within 0.012 of the reference fixed before the run; power at
+Sharpe 1.5 at 0.10: 0.82, 0.74, 0.70 and 0.68 (at 0.05 one cell reads 0.48). Core: every row equals the
+earlier sealed kernel's (44 of 1498 and 35 of 1500 at 0.10; power 0.84 to 0.905). The coordinator's
+recount from the stored rows equals both artifacts and the seal, and the selftest prints OK
+(audits/AUDIT_LOG.md, round 7, X12 seal). Top30 is certified for holding periods of about 5 days and
+longer.
+Now: an independent recount of the seal is running; the merge into `main` follows it. Before generation
+2 opens, the human decides KP-016 with the counts of the real run (open decision 5).
 
 ## Open decisions for the human
 
 1. The rule set (CONSTITUTION, LANGUAGE.md) and the lock's approval label still say "human
    confirmation pending".
-2. KP-015: approved by delegation and re-keyed on 2026-11-23. Asked with odds of 0.84 for a successful
-   seal (audit round 7, X12 extension, interim reading; build at 305e2c6 with fix pass 11), the human
-   replied "decide whats the best"; the coordinator decided for him and recorded it as that. Both
-   calibrations and the seal are still to come. The approval covers the rulings made during the build,
+2. KP-015: approved by delegation, re-keyed and sealed on 2026-11-23 (core 0.10, top30 0.10). Asked
+   with odds of 0.84 for a successful seal (audit round 7, X12 extension, interim reading; build at
+   305e2c6 with fix pass 11), the human replied "decide whats the best"; the coordinator decided for
+   him and recorded it as that. The approval covers the rulings made during the build,
    among them R-L (no family above 6%), R-M
    (the same expected return for every symbol in the top30 null worlds), R-N (G6 in top30: 20 equally
    spaced lags and a speed limit), R-O (mark-price liquidation wicks in the top30 null worlds), R-Q (a draw
    liquidated on DEV is never submitted) and R-R (null pass rates over evaluated pairs; no seal when a
    family keeps under half or a null under 75% of its designed pairs, when more than 3% of the submitted
    pairs fault, or when a calibration is not of the protocol's size; it replaces R-P); the human may
-   still decline any of them (that means a rebuild, a new pilot and another re-key).
+   still decline any of them (that means a rebuild, a new pilot, another re-key and both calibrations
+   again).
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
-5. KP-016 (open, not blocking): count the null pass rate over DEV-positive submissions only. Fix pass 7
-   builds a weaker safeguard into KP-015 (R-L, no family above 6%); KP-016 would be stricter (core 0.05
-   instead of 0.10). For top30 the pooled pilot of 2026-11-23 counts, over DEV-positive evaluated pairs, 3
-   of 124 (2.4%) at 0.10 and 1 of 124 at 0.05 under null A and none of 153 under null B: near the 3% bound
-   at 0.10, well under it at 0.05. The real run reports the same count.
+5. KP-016 (open; to be decided BEFORE generation 2 opens): count the null pass rate over DEV-positive
+   submissions only. Fix pass 7 built a weaker safeguard into KP-015 (R-L, no family above 6%). On the
+   sealed rows of 2026-11-23, over the evaluated pairs with a positive DEV Sharpe: top30 has no Tier-1
+   pass among 165 under null A and 1 among 225 (0.44%) under null B at 0.10, so top30 would keep 0.10;
+   core has 44 of 1144 (3.85%) and 35 of 1130 (3.10%) at 0.10 and 26 of 1144 (2.27%) and 18 of 1130
+   (1.59%) at 0.05, so core would get 0.05 instead of 0.10 (power at Sharpe 1.5 then 0.81 to 0.905).
+   Adopting it is a semantic change: a build, an audit, a re-key and both calibrations again (about 13
+   machine hours; the rows should come out the same). Left as it is, the count stays information that
+   every calibration reports.

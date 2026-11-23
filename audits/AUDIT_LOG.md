@@ -1108,3 +1108,92 @@ round 3 also the coordinator's own read of the core modules.
   first attempt began at 01:34:51 with 3 workers: "resuming: 91 finished tasks ...; 0 damaged
   lines discarded". The resume path is thereby proven on the real run, at the price of the tasks
   in flight. Every start of the calibration appends one row to ledger/val_access_log.jsonl.
+
+## Round 7, addendum X12 (seal) - 2026-11-23 - both real calibrations finished; the reading before the seal; KP-015 sealed at core 0.10 and top30 0.10
+
+- The run. The supervisor's first top30 attempt (started 01:34:51, three workers) ran to the end
+  without a restart, a pause or an advisory: TOP30_DONE at 13:22:54, exit 0, wall time 42469.9 s
+  after the resume (12 h 17 min after the first start at 01:05:30). The memory available stayed
+  between 5.1 and 6.5 GiB at every heartbeat. The helper read the artifact ("VERDICT OK chosen
+  0.1") and the supervisor started `python -m omr.calibrate --workers 3` at 13:23:40: CORE_DONE
+  at 14:08:18, exit 0, wall time 2647.3 s, then SUPERVISOR END CORE_DONE. Both error logs are
+  empty. ledger/val_access_log.jsonl has one row per start (rows 16 to 18).
+- The artifacts, as the calibrations wrote them and as ledger/calibration_log.jsonl logs them
+  (rows 3 and 4): ledger/ucalibration_5ea66b0fb79ca267.json, sha256
+  24896cd3f99d84250668e93f5c043f3eb6153042c683b29bc415972c03cbcd61 (protocol version 9; 200
+  worlds per null, 100 oracle worlds per null), and ledger/calibration_5ea66b0fb79ca267.json,
+  sha256 a1ee5cfb86dda2b8b538cb7d685d0614ea3bfa516e84993620ccd7822b5ec0a5 (protocol version 6;
+  300 and 200). Both carry the lock's semantic hash, research hash 28d9084a8c5c7659...,
+  kernel_lock_verified true and synthetic_dry_run false.
+- Top30, the no-skill side (Tier-1 passes over evaluated pairs at 0.025 / 0.05 / 0.10): null A
+  0 / 0 / 0 of 547; null B 0 / 0 / 1 of 542 (0.18%). The one pass is a reversal pair with
+  p = 2/21, the only one of the 1089 evaluated pairs that passes every gate but G6; 4 of them
+  pass G1. No family is above 0.57% (the bound is 6%). Evaluated of 200 designed pairs per
+  family: null A momentum 199, reversal 199, carry 149; null B momentum 200, reversal 176, carry
+  166; pooled 0.912 and 0.903 against the floor of 0.75, every family above its floor of 0.50.
+  Two submitted pairs were liquidated after DEV end (null A: one momentum, one reversal), no
+  pair faulted, and 51 pairs (null A, all carry) and 58 pairs (null B: carry 34, reversal 24)
+  were never submitted (R-Q). Mean VAL Sharpe of the evaluated pairs: null A momentum -0.53,
+  reversal -0.70, carry -1.45; null B -0.68, -0.87 and -1.94.
+- Top30, power at true Sharpe 1.5 (100 books per cell; Tier-1 at 0.025 / 0.05 / 0.10): null A
+  fast 0 / 69 / 82, null A slow 0 / 62 / 74, null B fast 0 / 66 / 70, null B slow 0 / 48 / 68.
+  At the chosen 0.10 every cell is at 0.68 or above (POWER_MIN 0.5). No book was liquidated; the
+  achieved mean VAL Sharpe is 1.502, 1.500, 1.500 and 1.499 at rho 0.061, 0.098, 0.071 and
+  0.107. At 0.05 the cell null B slow reads 0.48, so 0.05 could not have sealed top30; with 20
+  lags 0.025 is out of reach, as known.
+- Core. Every one of the 3000 null rows and 1600 oracle rows equals the row of the sealed
+  kernel's artifact (calibration_7446278556aadd8f.json) in status, p value, VAL and DEV Sharpe,
+  gates and parameters, although the research hash differs (the data store was extended for
+  KP-015; the core world's rows did not change). Tier-1 over evaluated pairs: null A 10 / 26 /
+  44 of 1498 (2.94% at 0.10), null B 6 / 18 / 35 of 1500 (2.33%); the worst family is at 4.67%
+  (donchian, null A) against 6%; power at 1.5 at 0.10: 0.84, 0.855, 0.905 and 0.855.
+- The reading before the seal, against the reference fixed on the pooled pilot (submitted pairs
+  over designed pairs). Null A: momentum 1.000 against 1.000, reversal 1.000 against 1.000,
+  carry 0.745 against 0.757. Null B: momentum 1.000 against 1.000, reversal 0.880 against 0.882,
+  carry 0.830 against 0.833. The largest difference is 0.012 and nothing differs by more than
+  0.15, so nothing had to be explained. The pilot's artefact (pairs liquidated after DEV end by
+  the one replayed DEV bar) is absent from the real run, as predicted: null B has no liquidated
+  pair.
+- Against the pilot's forecast. The odds model read 0.843 for a seal (0.932 for 0.10 qualifying
+  on the no-skill side); the run sealed at 0.10. The no-skill side came out quieter than in the
+  pilot's DEV-day worlds (pilot at 0.10: 3 of 396 and 0 of 372; run: 0 of 547 and 1 of 542) and
+  the power higher (pilot at 0.10: 0.72, 0.63, 0.65 and 0.61; run: 0.82, 0.74, 0.70 and 0.68),
+  with a larger rho needed for the same Sharpe in every cell. One run cannot test an odds model;
+  it does not contradict this one.
+- The coordinator's recount, a script of its own that reads the stored rows without the kernel's
+  summary code: the design, the statuses, the Tier-1 counts per threshold and family, the floors,
+  the faults, the power and the level bounds, then the rule. It equals the stored summaries and
+  verdicts of both artifacts in every count (top30 chosen 0.10, core chosen 0.10, no design
+  problem), and both artifacts' sha256 are those of the calibration log.
+- An observation handed to the independent recount (not a bound of the rule). Taken alone, G6
+  passes the top30 carry family under null B far more often than its nominal level: p <= 0.10 in
+  53 of 166 evaluated pairs and p <= 0.05 in 31 (null A: 6 and 3 of 149; momentum and reversal
+  stay under 10% and 5% under both nulls). No carry pair passes every other gate (under null B
+  none has a positive VAL Sharpe), so the reading of the rule does not depend on it. It does show
+  what the null side of top30 can and cannot say: its families lose money in the no-skill
+  worlds, so their Tier-1 rate measures the other gates much more than G6. The level of G6 for a
+  book that does pass the other gates was measured in the pilot's premium arm (7 of 78 at 0.10,
+  4 of 78 at 0.05). The auditor is asked what causes the carry reading and whether the same
+  mechanism can reach a book that passes the other gates.
+- The seal (2026-11-23, 09:56:08Z). `python -m omr.kernel_lock verify`: OK, not sealed. Then
+  `python -m omr.kernel_lock seal --calibration ledger/calibration_5ea66b0fb79ca267.json
+  --universe-calibration ledger/ucalibration_5ea66b0fb79ca267.json` printed "sealed: G6
+  threshold core 0.1 top30 0.1", and verify reads "sealed G6 core 0.1 top30 0.1". The seal
+  applied the rule in code to the logged bytes of both artifacts and checked their headers and
+  sizes against the kernel's own. ledger/kernel_history.jsonl has its tenth row (event seal).
+- Selftest, after the seal: `python -m omr.selftest` printed OK in 6.7 minutes (the five baseline
+  programs and the kitchen-sink program through the interpreter on the real frames; the three
+  noise programs, one of them in unit top30, through the complete evaluate path into a temporary
+  ledger that is deleted). It appended rows 19 to 22 to ledger/val_access_log.jsonl (its handle
+  and one row per noise program scored into the temporary ledger). A first start of the selftest
+  had been interrupted by the owner by mistake before it took its handle (no row, no file).
+  `kernel_lock verify` and `ledger verify` are OK afterwards (six chains).
+- For KP-016 (information): Tier-1 over the evaluated pairs with a positive DEV Sharpe, at
+  0.025 / 0.05 / 0.10. Top30: null A 0 / 0 / 0 of 165; null B 0 / 0 / 1 of 225 (0.44%). Core:
+  null A 10 / 26 / 44 of 1144 (0.87%, 2.27%, 3.85%); null B 6 / 18 / 35 of 1130 (0.53%, 1.59%,
+  3.10%). With KP-016's denominator top30 would keep 0.10 and core would get 0.05 (power at 1.5
+  at 0.05: 0.84, 0.83, 0.905 and 0.81), as the proposal said of the earlier core rows. The
+  numbers go to the owner before generation 2 opens.
+- Next: the independent recount of the seal by an auditor that has seen neither the build nor
+  the coordinator's recount; then the merge of kp015-build into `main`. Generation 2 does not
+  open before the owner has the KP-016 numbers.
