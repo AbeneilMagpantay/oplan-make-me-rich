@@ -1,0 +1,19 @@
+# Generation 2, round 3, H8 (generations/gen002/PLAN.md, version 3). Perp premium shock in unit top30.
+# bd = the perp's premium over its spot index at each daily close, (close - index_close) / index_close: one
+# snapshot per day (the 23:00 bar's close), the basis as LANGUAGE.md section 5 defines it. It is the SIGNAL
+# input (ranked), not a constant, threshold or scale. shock = the median of the last a daily premiums minus
+# the median of the last b (the coin's own recent norm), so a coin's lasting premium level drops out and only
+# its change is ranked. Medians, so that one bad snapshot (for example a stale index row carrying an hour's
+# price move) cannot set a rank. Short the largest shocks, long the smallest; dollar neutral, gross 1.
+name = "gen002_premium_shock"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Premium shock: a perp premium over the spot index rising above the coin's own norm means leveraged perp longs are piling in; their demand, passed to spot by arbitrage, and the funding they pay unwind within weeks. Short the largest premium shocks, long the largest drops; daily snapshots, dollar neutral. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs or funding stress negative, no G6 timing, or next30 disagrees."
+
+a = param(14, 11, 17)          # daily premium snapshots in the recent median (two weeks)
+b = param(42, 33, 51)          # daily premium snapshots in the coin's own norm (six weeks)
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+shock = median(bd, a) - median(bd, b)
+signal = cs_scale(cs_demean(-cs_rank(shock)))

@@ -1,0 +1,23 @@
+# Generation 2, round 3, H10 (generations/gen002/PLAN.md, version 3). Unrewarded leverage in unit top30.
+# bd = the perp's daily-close premium over its spot index (as in H8, the SIGNAL input, not a constant);
+# p = its median over the last n days; r = the coin's n-day log return. Each day the cross-section of p is
+# regressed on the cross-section of r (both demeaned; beta = slope), and e = p - beta x r is the premium that
+# the coin's own recent move does not explain, uncorrelated with that move across coins by construction (so
+# the book is neither a momentum nor a reversal book over the n days). Short the largest e, long the
+# smallest; dollar neutral, gross 1.
+name = "gen002_unrewarded_premium"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Unrewarded leverage: a coin whose perp premium is high for its recent return has longs paying for exposure the price has not rewarded; they give up and the short side collects funding. A premium low for its return marks a spot-led rally or shorts paying against the move. Short the premium left after a cross-sectional fit on the n-day return, long the lowest. Falsified if the DEV sign is wrong (never flipped), PSR(0) < 0.90, 2x costs or funding stress negative, no G6 timing, or next30 disagrees."
+
+n = param(14, 11, 17)          # days: the premium median and the return window
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+p = median(bd, n)
+r = logret(daily(close), n)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+signal = cs_scale(cs_demean(-cs_rank(e)))

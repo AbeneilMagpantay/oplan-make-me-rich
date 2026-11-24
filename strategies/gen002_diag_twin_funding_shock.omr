@@ -1,0 +1,22 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, S10).
+# s is the cross-sectional rank of H9's shock exactly as in strategies/gen002_funding_shock.omr at its
+# defaults. At each row s is regressed across coins on the coin's m-day log return (m = 14 days, H9's recent
+# window); the twin holds size x minus the residual, which has no linear exposure to that return across coins
+# (coins tied at a shock of 0 then carry small positions set by their return, which is what the fit needs).
+# Its DEV Sharpe shows whether H9's DEV result needs the part of the funding shock that moves with the price.
+name = "gen002_diag_twin_funding_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H9 made orthogonal to each coin's own m-day return across coins, to check on DEV that H9's result does not come from the price move that goes with a funding change (DEV rewarded continuation of recent moves)."
+
+a = param(42, 33, 51)
+b = param(126, 100, 152)
+size = param(0.1, 0.08, 0.12)
+m = param(14, 11, 17)
+
+shock = funding_mean(a) - funding_mean(b)
+s = cs_rank(shock)
+x = cs_demean(logret(daily(close), m))
+beta = cs_mean(x * s) / cs_mean(x * x)
+signal = size * cs_demean(beta * x - s)

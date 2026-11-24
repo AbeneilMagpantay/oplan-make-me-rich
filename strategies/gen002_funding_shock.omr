@@ -1,0 +1,20 @@
+# Generation 2, round 3, H9 (generations/gen002/PLAN.md, version 3). Funding shock in unit top30.
+# shock = the mean of the coin's last a funding settlements minus the mean of its last b (each as an 8-hour
+# rate; at 8-hour settlements 14 days against 42 days), so a coin's lasting funding level drops out and only
+# its change is ranked. Settled funding is clamped: a coin whose premium stays inside the exchange's band pays
+# exactly the default rate, so many coins can tie at a shock of exactly 0. A cs_scale book would then put its
+# whole gross on the few coins that differ; instead each name gets size x its centred rank (at most 0.1), the
+# kernel scales the book down when its gross exceeds 1, and the book is small when the shocks tie.
+# Short the largest shocks, long the smallest; dollar neutral.
+name = "gen002_funding_shock"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Funding shock: a coin's 14-day mean funding rising above its own 42-day norm means leveraged longs are crowding in and paying for it; the crowding unwinds within weeks (stop-outs, liquidations) while the short side collects the funding; a fall below the norm marks crowded shorts. Short the largest shocks, long the smallest, no name above 0.1. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs or funding stress negative, no G6 timing, or next30 disagrees."
+
+a = param(42, 33, 51)          # funding settlements in the recent mean (14 days at 8-hour settlements)
+b = param(126, 100, 152)       # funding settlements in the coin's own norm (42 days at 8-hour settlements)
+size = param(0.1, 0.08, 0.12)  # weight per unit of centred rank: no name above this size
+
+shock = funding_mean(a) - funding_mean(b)
+signal = size * cs_demean(-cs_rank(shock))

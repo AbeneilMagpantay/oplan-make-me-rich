@@ -1,0 +1,21 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, S10).
+# s is the cross-sectional rank of H8's shock exactly as in strategies/gen002_premium_shock.omr at its
+# defaults. Each day s is regressed across coins on the coin's m-day log return (m = H8's recent window); the
+# twin holds minus the residual, which has no linear exposure to that return across coins. Its DEV Sharpe
+# shows whether H8's DEV result needs the part of the premium shock that moves with the coin's own price.
+name = "gen002_diag_twin_premium_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H8 made orthogonal to each coin's own m-day return across coins, to check on DEV that H8's result does not come from the price move that goes with a premium change (DEV rewarded continuation of recent moves)."
+
+a = param(14, 11, 17)
+b = param(42, 33, 51)
+m = param(14, 11, 17)
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+shock = median(bd, a) - median(bd, b)
+s = cs_rank(shock)
+x = cs_demean(logret(daily(close), m))
+beta = cs_mean(x * s) / cs_mean(x * x)
+signal = cs_scale(cs_demean(beta * x - s))

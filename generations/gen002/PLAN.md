@@ -965,3 +965,518 @@ Against each pre-registered DEV falsifier:
 NONE. By the pre-registered selection rule a hypothesis is eligible only if it passes every screen item that
 applies to it: H5 failed S2, S4 and S5; H7 failed S2 and S4; H6 failed its strict S5. No program from version 2 is
 recommended for a counted submission. The DEV-only controls (gen002_diag_*) are never to be submitted.
+
+---
+
+# Generation 2 - PLAN, version 3 (round 3, pre-registered 2026-11-24 before any round-3 sandbox run)
+
+Researcher session for generation 2, round 3, stage 1 (read, think, pre-register). Unit: top30. A fresh session:
+rounds 1 and 2 are known to it only through the files listed below. The date in the heading is local time
+(+08:00); the UTC time is in the last line of this version.
+
+- Kernel: semantic 5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687 (39 files), text
+  1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924 (35 files) (`python -m omr.status`: kernel OK
+  bcc4b1aa255b4679, sealed). Sealed G6 thresholds: core 0.10, top30 0.10. Data research_hash 28d9084a8c5c7659...,
+  validated, snapshot_end 2026-11-18 10:00 UTC.
+- Ledger when this was written: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 of 5), N
+  4.86, rho 0.035, Tier 1: 0, pool 0 of 5, last census none, one uncounted stage-1 rejection (generation 0).
+  `omr.kernel_lock verify` OK (sealed, core 0.1, top30 0.1); `omr.ledger verify` OK, all six chains (trials 10
+  rows, stage1_log 1, kernel_history 10, calibration_log 4, sandbox_log 29, val_access_log 22). Sandbox runs used
+  in generation 2 so far: 11 of 60 (round 1: 4, round 2: 7).
+- Read: RESEARCH_PLAYBOOK.md (all, with section 4b), LANGUAGE.md (all; sections 5, 6 and 10 for funding8h,
+  funding_mean, mark_close and index_close, their freshness rules and their lookback leaves), CONSTITUTION.md
+  sections 4 to 7 and 13, LESSONS.md (1 to 26), generations/gen002/REPORT.md (both rounds), this file's versions 1
+  and 2 with their run logs, screen outcomes and recommendations, generations/gen001/REPORT.md,
+  generations/gen000/REPORT.md, KERNEL_PROPOSALS.md entry KP-017 only, STATE.md, the trial rows of `omr.ledger
+  summary`, `omr.status`; program shapes omr/programs/ucal_xs_carry.omr, ucal_xs_momentum.omr,
+  kernel_noise_top30.omr, strategies/gen000_funding_carry.omr and every strategies/gen002_*.omr of rounds 1 and 2.
+  Kernel source read only to learn how the tool behaves: omr/sandbox.py (it prints avg gross, avg net, the funding
+  paid as ONE net number, the costs and the per-year rows), omr/engine.py (funding: at each settlement open, equity
+  -= the drifted position held into that open x the settled rate; under G2's stress payments x1.5 and receipts
+  x0.5; a rebalance trades every name to target once any name is more than 0.01 off), omr/lang.py (lookback leaves:
+  index_close and mark_close 7 h, funding8h 17 h, funding_mean(n) 8n h; timeframe functions take a field or
+  btc(field); the Program fields). Also read for the same purpose, beyond the three files the brief named, and
+  stated here for that reason: the funding parts of omr/datasets.py (a settlement at hour t is visible from the
+  close of the bar that opens at t, one hour after the engine has charged it, so no program knows a rate before it
+  pays or receives it), of omr/interp.py (funding8h = rate x 8 / interval; funding_mean = the mean of the last n
+  settlements as 8-hour rates, held until the next) and a few constants of omr/constants.py (DEV and VAL dates, the
+  0.01 band). These are code, not data or results.
+- Not opened: anything under data/, ledger/returns/, ledger/trials/, _build/, audits/, and every calibration file.
+  No VAL number exists for any program below. No round-3 sandbox run has been made.
+- Versions 1 and 2 above are unchanged byte for byte (the first 80,097 bytes of this file, sha256
+  f31172f414ad274f...). No earlier program file was changed; round 3 adds eleven new files (three candidates and
+  eight DEV-only diagnostics).
+
+Three hypotheses, numbered on from version 2. All are market neutral (dollar neutral), and all read the inputs
+opened in this round. By the coordinator's ruling of 2026-11-24 they may be pre-registered and explored on DEV,
+and a COUNTED submission of any of them (each reads funding_mean or index_close) also needs the coordinator's
+KP-017 measurement of how the timing gate G6 behaves for funding-driven books. None uses hour or weekday.
+
+| H | program | input | prediction | family |
+|---|---|---|---|---|
+| H8 | gen002_premium_shock | the perp premium over the spot index at daily closes: the median of the last 14 days minus the median of the last 42 | coins whose premium rose above their own norm lag, coins whose premium fell below it lead | carry |
+| H9 | gen002_funding_shock | settled funding: the mean of the last 42 settlements minus the mean of the last 126 (14 against 42 days at 8-hour settlements) | coins whose funding rose above their own norm lag, coins whose funding fell below it lead | carry |
+| H10 | gen002_unrewarded_premium | the 14-day median premium net of the part that a cross-sectional fit on the 14-day return explains | coins with more premium than their recent move explains lag, coins with less lead | carry |
+
+H8 and H9 test one mechanism (a change in crowded leverage unwinds) with two measurements of it, so at most one of
+them is screened to the end and recommended (selection rule). H10 is a different mechanism (leverage that the price
+has not rewarded) and combines the basis with a price input.
+
+## What a funding or basis book must clear in unit top30
+
+- Costs. 12.5 bps per side. Round 1's weekly rank books paid 0.055 to 0.092 of equity a year, round 2's books
+  with a daily-moving part 0.07 to 0.15 (LESSONS 19, 24): the turnover of an hourly-grid signal is set by its
+  fastest-moving part. A dollar-neutral rank book here has a volatility of roughly 0.2 to 0.26 a year, so 0.1 a
+  year of costs is about 0.4 to 0.5 Sharpe units, twice that under G4. The three programs are built to move slowly:
+  - H8 and H10 read the premium only at daily closes (one snapshot a day, the 23:00 bar's close, through
+    `daily(close)` and `daily(index_close)`), so their weights change once a day, traded at the 00:00 open. H8 ranks
+    a difference of two medians; a median moves only when the entering or the leaving snapshot crosses it, so it is
+    stickier than a mean.
+  - H9 reads funding_mean, which changes at each settlement (every 8 hours on DEV) by 1/42 of the difference
+    between the newest and the oldest settlement in its window: a smooth path, whose small steps the engine's 0.01
+    band absorbs.
+  - An hourly mean of the premium would be the better measurement, but on hourly rows it would re-rank every hour,
+    and there is no way to average an hourly expression into a daily or weekly bar (KP-019). That is why the
+    premium is sampled at daily closes and smoothed by a median over days.
+- What a no-skill funding book looks like here (LESSONS 13 to 15, KP-017). In the calibration's null worlds every
+  funding rate is multiplied by a fair sign coin per settlement hour, so no funding is predictable, and the carry
+  family (ucal_xs_carry: minus the linear funding level over 3 to 30 settlements, re-ranked at every settlement)
+  loses its costs; G1 stops it. But G6 alone passed that losing book in 53 of 166 pairs at 0.10 under null B (about
+  16 expected). The suspected reason: G6 compares the book with its own stale copies by Sharpe, each paying its own
+  costs, and of two losing books the one with the larger flows at its actual timing has the less negative Sharpe.
+  So every hypothesis here is built to be:
+  - CHEAP: a cost ceiling (S9) next to the doubled-cost reading (S4).
+  - A PRICE claim, not only a funding claim: G2 halves receipts and adds half again to payments, and a book whose
+    advantage over its stale copies were only its larger funding flows is exactly the case KP-017 has not
+    measured. Each hypothesis claims that its input predicts RELATIVE PRICE moves, with the funding it receives as
+    a bonus; S8 asks that the DEV return stays positive with the whole net funding flow taken out.
+  - A TIMING claim: each says what its stale copies hold and why they would earn less, and a DEV-only stale copy
+    (S7, new in this version) checks it.
+- Speed limit. G6 fails a book whose weights correlate above 0.5 (each name's mean removed) with its own weights
+  one or more lag steps (25.9 days) earlier. A carry book on the funding LEVEL holds the same high-funding coins
+  month after month. H8 and H9 therefore rank the CHANGE against the coin's own 42-day norm: a coin's lasting level
+  drops out, and only the last two weeks' departure from it is ranked. Their 14-day windows and the windows 26 days
+  earlier do not overlap, and the 42-day norm of today contains the recent window of 26 days ago, which pulls the
+  correlation down. H10 ranks a level (net of the return) and is the most exposed of the three to the speed limit.
+  The D-ACF diagnostic (S6) measures an upper bound for each.
+- Lookback (limit 2,160 h, params at their highs; parse check): H8 1,253 h; H9 1,216 h; H10 455 h. Diagnostics:
+  stale copies 2,117 h (H8), 2,080 h (H9), 1,319 h (H10); price-neutral twins 1,253 h (H8), 1,216 h (H9); D-ACF
+  2,021 h (H8), 1,962 h (H9), 1,223 h (H10).
+- Cross-sections. A cs_* needs at least 10 in-play names with a known input. H8 needs every one of its last 42 daily
+  snapshots known (a daily bin is known only if all 24 of its hours are, and index_close is known while its bar is
+  at most 6 hours old), so a name with a hole in its klines or a gap of more than 6 hours in its index bars drops
+  out for up to 42 days; H10 needs 14 known days and 15 known daily closes; H9 needs its last 126 settlements inside
+  the last 1,008 hours, so one missing settlement takes a name out for up to 42 days. The sandbox does not print how
+  many names a book holds, so this coverage loss is a named risk that DEV shows only if the unit falls below 10
+  names (avg gross, S1).
+- G8 runs the rule on ranks 31 to 60. The inputs are ratios to the index, rates or ranks, so the rule means the same
+  there; funding and premiums are more extreme further down the ranking.
+- G7: with 90-day seasoning and 42 days of history, 2020 is a short bucket; in effect four of the five later
+  buckets must be positive.
+- Literals and G5: no program has a jitterable literal (n_literals 0). G5 multiplies every param by its own
+  U(0.8, 1.2) at once. The DEV neighbours (S3) are the two corners where all params sit at the same G5 end together
+  (all at about 0.8 x default, all at about 1.2 x default); mixed corners are not read.
+- No calendar sampling and no hour or weekday indicator (KP-019 is not worked around).
+
+## Disclosures that apply to every hypothesis
+
+- The author model has read this market's history through DEV, VAL and the vault, and this session has read rounds
+  1 and 2's DEV numbers. No rule below names a date, a coin, a price level or a remembered event; every tunable
+  number is a declared param. That does not remove hindsight from the CHOICE of ideas (KP-010); each hypothesis
+  states what I remember that could bias it.
+- What I remember about funding and premiums in VAL (July 2022 to June 2025), touching every book here: funding low
+  and often negative in the 2022H2 bear (after LUNA, Three Arrows, Celsius, FTX), low through most of 2023, very
+  high in February and March 2024 (spot ETF inflows, memecoin runs), low in mid-2024, high again in November and
+  December 2024, lower in 2025 with negative stretches. These levels move together across coins, which the
+  cross-sectional ranks remove. Structural changes: Binance moved many contracts to 4-hour funding and changed caps
+  in 2023 and 2024 (funding8h normalises the rate, but a funding_mean window of n settlements then covers half the
+  hours: H9, named); Ethena's basis trade grew large in 2024 and compressed BTC and ETH funding. Single-coin
+  collapses with deeply negative funding (FTT, November 2022); memecoins entering the top of the volume ranking in
+  2023 and 2024 with high funding during runs that lasted weeks before collapsing; squeezes of heavily shorted coins,
+  none of which I can name among top30 members. I do not remember the result of any cross-sectional funding or basis
+  book in VAL.
+- What I remember about DEV (2020 to June 2022), touching every book here: the 2021 manias (DOGE in spring 2021,
+  gaming and metaverse coins late in 2021) with very high funding for weeks while prices kept rising, then crashes
+  (May 2021 above all); DeFi tokens in 2020 likewise; LUNA in May 2022, whose funding and premium fell deeply
+  negative as it went to zero.
+- What this project's DEV results say about funding (read in the run logs above, so known to this session): residual
+  moves continued rather than reversed (LESSONS 16, 21, 23, 26); aggressive taker buying beyond the week's return
+  went with continuation (LESSONS 17). And the funding paid by round 1 and 2's books: H6, long residual winners and
+  short residual losers, RECEIVED 0.074 to 0.094 of equity over DEV; H1 and H7, both long recent residual losers,
+  PAID 0.021 and 0.012. So on DEV recent losers tended to carry higher funding than recent winners, and a book short
+  high or rising funding may ride DEV's continuation on DEV for a reason that is not its hypothesis. That is why
+  S10 (a price-neutral twin of H8 and H9) and H10's construction (orthogonal to the coin's own recent move) exist.
+- The clamp. I remember Binance's funding formula as the average premium index plus clamp(0.01% - premium,
+  -0.05%, +0.05%) per 8 hours, so a coin whose premium stays inside a band of about -0.04% to +0.06% pays exactly the
+  default 0.01%. That memory shaped H9's weighting (ties at a shock of exactly 0) and the choice of the premium as
+  the input of H8 and H10. It is a rule of the exchange, not a memory of any period's prices, and it is not verified
+  on data.
+- The literature I remember on crypto carry: Schmeling, Schrimpf and Todorov ("Crypto carry", BIS, about 2023):
+  carry is high when trend-chasing investors lever up, and high carry precedes sell-offs and liquidations; He,
+  Manela, Ross and von Wachter ("Fundamentals of perpetual futures", about 2022): large perp-spot gaps that
+  arbitrage closes only slowly; Christin, Routledge, Soska and Zetlin-Jones ("The crypto carry trade", about 2022).
+  As I remember them these are mostly time-series results on BTC and ETH, not a top30 cross-section; they favour the
+  registered (contrarian) direction of all three hypotheses, a bias I name.
+- At most TWO programs are recommended for a counted submission whatever DEV says, at most one of H8 and H9, and
+  each only as "eligible, subject to the KP-017 measurement". LESSONS 12 and 14: a true Sharpe-1.5 book passes
+  Tier 1 only 68 to 82% of the time in this unit, G6 does not protect against luck, and every counted trial raises
+  M forever.
+- Defaults are fixed now and are never changed after a run. Neighbours are a robustness check (G5 corners), not a
+  search; a better neighbour does not move the default. No sign is ever flipped.
+
+## DEV screen (round 3), fixed now, before any number
+
+A hypothesis is eligible only if it passes every item that applies to it, in the sandbox (full stage 1, no
+--quick). S1 to S6 are the items of versions 1 and 2 (S1 and S3 tightened); S7 to S10 are new and only add
+requirements. The sandbox lines each item reads: "stage 1: ... direction changes (DEV) X ... -> PASS"; "DEV Sharpe S
+... total T ..."; "rebalances ... avg gross G  avg net N  funding paid F  costs C  liquidated L"; the per-year rows.
+
+- S1 at its default: stage 1 PASS as written (parse, constant probe, truncation and start-cut self-checks), X >=
+  30, G >= 0.5, and L False.
+- S2 at its default: S >= 0.6 with the registered sign. A negative S drops the hypothesis; no sign is flipped.
+- S3 at both G5 corners: S > 0 AND T - C > 0 at each (tightened from S > 0 alone). H8: (a, b) = (11, 34) and
+  (17, 50). H9: (a, b, size) = (34, 101, 0.08) and (50, 151, 0.12). H10: n = 11 and n = 17.
+- S4 at its default: T - C > 0 (a rough DEV reading of G4: still positive with the costs paid twice).
+- S5 at its default: the year's return > 0 in at least two of the three DEV years printed (2020, 2021, 2022).
+- S6 speed limit: the D-ACF ratio R = N / G of the hypothesis's diagnostic (3 decimals each) <= 0.40. R is an upper
+  bound of the gate's statistic: it does not remove each name's mean, and even without lasting per-name parts it
+  reads about a third above the correlation for rank-shaped weights (for two uniformly spread weight rows with a
+  small correlation c, sum w w' / sum |w| |w'| is about 4c / 3). So S6 is stricter than the gate, most of all for
+  H10, whose weights keep a lasting per-name part. It stays at version 1's 0.40; it is not loosened.
+- S7 timing (new): the DEV Sharpe of the hypothesis's stale copy (gen002_diag_stale_*: its own default weights from
+  30 days earlier, held now on the names in play now, re-centred to net zero, not rescaled) is below 0.5 x S. The
+  copy pays its own costs, as in G6. 30 days is G6's shortest lag before its random phase, so this copy is the most
+  similar one G6 can draw; if it earns half as well as the book, the book's return is not a timing return. One copy
+  over DEV against G6's 20 over VAL: a necessary reading, not a proof.
+- S8 funding stress (new): at its default, T - |F| > 0: the DEV return stays positive with the whole net funding
+  flow taken out. Why: G2 multiplies receipts by 0.5 and payments by 1.5, so it costs 0.5 x (gross received + gross
+  paid), at least 0.5 x |F|, and the sandbox prints only the net F. Taking out all of |F| covers the stress when the
+  smaller of the two gross flows is at most half of |F|, as for a book that mostly receives. It is also the item that
+  asks for a PRICE edge rather than collected funding.
+- S9 cost ceiling (new): at its default, C <= 0.25 of equity over DEV (about 0.10 a year, inside the range of books
+  with a daily-moving part, LESSONS 24). Why: KP-017, a funding book must be cheap to trade; S4 alone would admit a
+  book whose costs are large next to its volatility.
+- S10 price-neutral twin (new; H8 and H9 only): the DEV Sharpe of the hypothesis's twin (gen002_diag_twin_*: the
+  rank of the same shock, regressed across coins on each coin's 14-day log return, the residual held with the
+  registered sign) is at least 0.5 x S. Why: on DEV recent losers carried higher funding (disclosures above), so a
+  book against rising funding or premium can lean on DEV's continuation of recent moves; if taking the
+  return-aligned part out of the shock costs the book more than half its DEV Sharpe, its DEV result is not evidence
+  for leverage information. H10 needs no twin: it is built orthogonal to its own 14-day return.
+
+Order and economy: the defaults run first. If a default fails S1, S2, S4, S5, S8 or S9, the hypothesis is dropped
+and nothing else is run for it. Otherwise its corners run in order and stop at the first that fails S3. The
+diagnostics run only for a hypothesis that passed S1 to S5, S8 and S9, one at a time, each only if the one before
+passed its item: the stale copy (S7), then the twin (S10, H8 or H9), then the D-ACF (S6). Of H8 and H9, only ONE
+gets diagnostics (the FIRST, defined under the run order): one mechanism gets one set of diagnostics, because a
+second set would be a second draw on DEV for the same claim.
+
+---
+
+## H8. gen002_premium_shock
+
+- Family carry. Kind portfolio. Unit top30. Dollar neutral, gross 1. A daily series (bins from 00:00 UTC, visible
+  at the 23:00 bar, traded at the 00:00 open).
+- Rule: for each coin in play, bd = (close - index_close) / index_close at each daily close, the perp's premium over
+  its spot index (the basis as LANGUAGE.md section 5 defines it). shock = the median of the last a = 14 daily
+  premiums minus the median of the last b = 42. Weight: minus the cross-sectional rank of shock, demeaned, scaled to
+  gross 1. Short the coins whose premium rose most above their own six-week norm, long those whose premium fell most
+  below it.
+- Program (default pre-registered; strategies/gen002_premium_shock.omr):
+
+      a = param(14, 11, 17)          # daily premium snapshots in the recent median (two weeks)
+      b = param(42, 33, 51)          # daily premium snapshots in the coin's own norm (six weeks)
+      bd = (daily(close) - daily(index_close)) / daily(index_close)
+      shock = median(bd, a) - median(bd, b)
+      signal = cs_scale(cs_demean(-cs_rank(shock)))
+
+  2 params (integers; G5 values a = 11 to 17 and b = 34 to 50, never the defaults themselves), 0 jitterable
+  literals, 18 nodes, lookback 1,253 h.
+- Design choices, each made for a reason stated before any run: (1) the premium, not settled funding, because
+  funding is clamped at the default rate for any coin whose premium stays inside the exchange's band, so in calm
+  periods most coins tie, while the premium keeps its information there; (2) the change against the coin's own
+  norm, not the level, because a lasting level (some coins always trade at a premium) is held by G6's stale copies
+  as much as by the book, earns no timing credit and slows the weights; (3) medians, because a daily snapshot whose
+  index row is stale (allowed up to 6 hours) carries up to six hours of price move, many times a typical premium,
+  and a mean would let one such snapshot set a rank for two weeks; (4) daily snapshots, for costs (section above);
+  (5) two weeks against six: two weeks is the horizon of a leverage cycle in the mechanism below and halves the
+  turnover of a one-week median; the norm is three times as long so that the recent window is a minority of it; and
+  the stale copy (30 days) and the D-ACF (26 days) still fit under the 90-day limit.
+- Hypothesis: a coin whose perp premium over the spot index has risen above its own recent norm underperforms the
+  rest of the unit over the following weeks; a coin whose premium has fallen below its norm outperforms.
+- Mechanism: the premium is the price of leverage on the perp. It rises when leveraged perp longs arrive faster
+  than arbitrage capital absorbs them (retail trend-chasers use perps because they are the cheapest leverage), and
+  the arbitrageurs who sell the perp to them hedge by buying spot, which passes the pressure into the spot price.
+  When the leverage unwinds (stop-outs, liquidation cascades, funding costs eating margin) the arbitrageurs sell the
+  spot again and the pressure reverses. The short side also collects the funding the new longs pay. A premium
+  falling below its norm marks the mirror: perp shorts arriving (hedgers of unlocked, staked or airdropped tokens,
+  bears) or leveraged longs leaving; the long side receives funding (or pays less) and gains when the hedges are
+  lifted or the shorts are squeezed. In other words, perp-led moves (premium moving with the price) reverse and
+  spot-led moves (price moving while the premium does not) continue: for one coin both cases come to minus the sign
+  of the premium change, which is the rule.
+- Who pays, why they keep paying, what the receiver is paid for: leveraged perp longs on the short side and perp
+  shorts on the long side pay the funding. Leverage demand is a clientele feature of perps and hedgers need their
+  hedge, while the arbitrage that would close a premium needs capital, and for a discount it needs borrowable spot,
+  which is scarce for many altcoins. The receiver bears squeeze risk on the short side (a mania can carry a crowded
+  coin much further) and single-coin collapse risk on the long side (a coin whose premium falls because informed
+  holders hedge or flee), and both legs lose together when the whole market de-levers. Rank weights cap a name at
+  about 1/15 of the gross.
+- What its stale copies hold (the timing claim): G6's copies, at lags of 30 days and more, hold the premium shocks
+  of one to eighteen months ago, whose 14-day windows no longer overlap the book's. If crowding unwinds within
+  weeks, they hold coins whose leverage has already left, earn about nothing on price and collect less funding
+  (their premium has normalised). If crowding regimes last for months, the copies earn too, and H8 fails S7 or G6,
+  as it should.
+- Costs: daily medians over 14 days; estimate 0.04 to 0.10 a year (0.10 to 0.25 over DEV). Funding: probably a net
+  receiver (the short side holds the coins whose premium, and so funding, has risen). S4, S8 and S9 read both.
+- Relation to earlier trials, lessons and rounds: the first program in this project to read index_close (the
+  selftest program kernel_noise_top30 ranks the basis as meaningless noise). It differs from the calibration's carry
+  family (minus the linear funding LEVEL, re-ranked at every settlement) in its input (the unclamped premium), in
+  ranking a change against the coin's own norm, and in daily re-ranking; and from gen000_funding_carry
+  (c30a93ef73a529bd, LESSONS 3: a single-coin time-series rule on the funding level with thresholds, lost in DEV and
+  VAL). Answers LESSONS 13 to 15 (cheap, a price claim, a timing claim) and 19 and 24 (daily snapshots, medians).
+  LESSONS 17 argues against it on DEV: aggressive taker buying beyond the week's return went with continuation, and
+  a rising premium is also perp buying pressure. LESSONS 16, 21 and 26 (bets against recent moves lost) argue
+  against it to the extent that a rising premium comes with a rising price; the funding paid by H1, H6 and H7 argues
+  for it on DEV for the wrong reason (S10).
+- What I remember that could bias it: the crypto-carry literature above (for the registered direction; mostly BTC
+  and ETH time series). Commodity evidence on hedging pressure (de Roon, Nijman and Veld 2000) and basis momentum
+  (Boons and Prado 2019) concerns futures curves, not perp premiums. From DEV: the 2021 manias, where H8's short side
+  loses during the run-up and gains in the crash; LUNA in May 2022, which H8's long side would have held as its
+  premium collapsed (against H8 in 2022H1). From VAL: the 2024 memecoin runs and the late-2024 rally (against H8
+  during the runs, for it after), FTT (against its long side). None of it shaped the rule: there is no crash filter,
+  no cap beyond the rank weighting, no coin and no date.
+- Falsifier. DEV (not submitted): S1 to S10 (a wrong DEV sign drops it). Counted (VAL), only after the KP-017
+  measurement: falsified if G1 (PSR(0) < 0.90), G2 (funding-stress Sharpe <= 0), G4 (2x costs <= 0), G6 (p > 0.10,
+  or the speed limit), G8 (next30 Sharpe <= 0), or any other Tier-1 gate fails. Named risks: G7 and a single-coin
+  collapse on the long side; coverage loss from index gaps.
+- DEV exploration (at most 6 runs): default (a = 14, b = 42); then (11, 34) and (17, 50); then, if it is the FIRST
+  of H8 and H9, the stale copy gen002_diag_stale_premium_shock (S7, k = 30 daily rows), the twin
+  gen002_diag_twin_premium_shock (S10, m = 14 days) and the D-ACF gen002_diag_acf_premium_shock (S6, k = 26 daily
+  rows).
+
+## H9. gen002_funding_shock
+
+- Family carry. Kind portfolio. Unit top30. Dollar neutral; no name above 0.1 of equity. An hourly-grid series that
+  changes at funding settlements (every 8 hours on DEV) and is held in between.
+- Rule: for each coin in play, shock = funding_mean(a) - funding_mean(b), with a = 42 and b = 126 settlements (each
+  as an 8-hour rate; at 8-hour settlements the last 14 days against the last 42). Weight: size x minus the
+  cross-sectional rank of shock (centred, in [-1, 1]), size = 0.1. The kernel scales the book down to gross 1 when
+  its gross exceeds 1, which it does whenever the shocks are spread out (about 1.55 for 30 distinct ranks). Short
+  the coins whose funding rose most above their own norm, long those whose funding fell most below it.
+- Program (default pre-registered; strategies/gen002_funding_shock.omr):
+
+      a = param(42, 33, 51)          # funding settlements in the recent mean (14 days at 8-hour settlements)
+      b = param(126, 100, 152)       # funding settlements in the coin's own norm (42 days at 8-hour settlements)
+      size = param(0.1, 0.08, 0.12)  # weight per unit of centred rank: no name above this size
+      shock = funding_mean(a) - funding_mean(b)
+      signal = size * cs_demean(-cs_rank(shock))
+
+  3 params (a and b integers: G5 values a = 34 to 50, b = 101 to 151; size 0.08 to 0.12), 0 jitterable literals,
+  9 nodes, lookback 1,216 h.
+- Why size instead of cs_scale: settled funding is clamped, so a coin whose premium stayed inside the band for all
+  42 days has a shock of exactly 0, and in calm stretches many coins tie there. cs_rank gives tied coins one average
+  rank (close to 0 after centring); cs_scale would then put the whole gross on the few coins that differ (with one
+  outlier and 29 ties, 0.5 of equity on one name). With size x rank no name exceeds 0.1, the book is small while the
+  shocks tie, and it is scaled to gross 1 otherwise. For the coordinator's source read: size is a plain per-name
+  size, not a near-constant, not a threshold and not used in a comparison; G5's jitter of it moves the gross of a
+  tied book by up to 20% and does nothing to a book the kernel scales down.
+- Hypothesis: a coin whose mean funding over the last two weeks has risen above its own six-week norm
+  underperforms the rest of the unit over the following weeks; a coin whose funding has fallen below its norm
+  outperforms.
+- Mechanism: H8's, read from the settled funding. Funding is the time average of the premium over each settlement
+  interval, clamped, so it is a precise, slow measure of crowded leverage that registers only crowding strong enough
+  to leave the band; it is also exactly what a held position pays or receives. Who pays, why, and what the receiver
+  bears: as in H8.
+- What its stale copies hold: the funding shocks of one to eighteen months ago, as in H8. A coin with structurally
+  high funding (lasting retail long demand) sits at its own norm and is not in the signal.
+- Costs: smooth 8-hourly steps; estimate 0.03 to 0.08 a year (0.08 to 0.20 over DEV). Funding: probably a net
+  receiver.
+- Relation to earlier trials, lessons and rounds: the closest of the three to the calibration's carry family
+  (ucal_xs_carry reads funding_mean too), and different from it in three ways that are the hypothesis: it ranks the
+  CHANGE against the coin's own norm (the family takes the level), over 14 against 42 days (the family 1 to 10 days
+  of level), with capped rank weights (the family is linear, so extreme rates dominate it). LESSONS 13 and 15 say
+  what happens to the family in no-skill worlds; that is why H9 must earn on price (S8), be cheap (S9) and survive
+  its twin (S10). gen000_funding_carry: LESSONS 3. The same relation to LESSONS 16, 17, 21 and 26 as H8.
+- What I remember that could bias it: as H8, plus the clamp formula and the 4-hour intervals of 2023 and 2024 (in
+  VAL a funding_mean window on a 4-hour coin spans 7 and 21 days instead of 14 and 42). Nothing shaped the rule
+  beyond the clamp, which is a rule of the exchange.
+- Falsifier. DEV: S1 to S10 (a wrong DEV sign drops it). Counted (VAL), only after the KP-017 measurement: as H8.
+  Named risks: G7; coverage loss from a missing settlement (a name drops out for up to 42 days); a book that is
+  small for long stretches (S1's avg gross shows it on DEV).
+- DEV exploration (at most 6 runs): default (42, 126, 0.1); then (34, 101, 0.08) and (50, 151, 0.12); then, if it
+  is the FIRST of H8 and H9, gen002_diag_stale_funding_shock (S7, k = 720 hours), gen002_diag_twin_funding_shock
+  (S10, m = 14 days) and gen002_diag_acf_funding_shock (S6, k = 621 hours).
+
+## H10. gen002_unrewarded_premium
+
+- Family carry. Kind portfolio. Unit top30. Dollar neutral, gross 1. A daily series.
+- Rule: for each coin in play, p = the median of its last n = 14 daily premiums (bd as in H8), r = its 14-day log
+  return. Each day the cross-section of p is regressed on the cross-section of r (both demeaned; beta = cs_mean(x
+  y) / cs_mean(x x)); e = p - beta x r is the premium that the coin's own recent move does not explain, uncorrelated
+  with that move across coins by construction. Weight: minus the cross-sectional rank of e, demeaned, scaled to
+  gross 1.
+- Program (default pre-registered; strategies/gen002_unrewarded_premium.omr):
+
+      n = param(14, 11, 17)          # days: the premium median and the return window
+      bd = (daily(close) - daily(index_close)) / daily(index_close)
+      p = median(bd, n)
+      r = logret(daily(close), n)
+      x = cs_demean(r)
+      y = cs_demean(p)
+      beta = cs_mean(x * y) / cs_mean(x * x)
+      e = y - beta * x
+      signal = cs_scale(cs_demean(-cs_rank(e)))
+
+  1 param (integer; G5 values 11 to 17, never 14), 0 jitterable literals, 36 nodes, lookback 455 h.
+- Hypothesis: a coin whose perp premium over the last two weeks is high for the return it has delivered
+  underperforms the rest of the unit over the following weeks; a coin whose premium is low for its return
+  outperforms.
+- Mechanism: leverage that the price has not rewarded. Longs who keep paying a premium (and so funding) for a coin
+  that has not moved as much as such a premium usually comes with are losing money to carry with nothing to show;
+  they give up, are stopped out or liquidated, and their selling and the arbitrageurs' unwinding push the price down,
+  while the short side collects their funding. A coin with a low premium for its return has rallied on spot demand
+  (buyers who did not need leverage, more often informed or long-term) or has perp shorts paying against a move that
+  went against them (squeeze fuel). The cross-sectional fit removes the part of the premium that simply follows the
+  price, so the book is neither a momentum nor a reversal book over the 14 days: it holds the leverage, not the move.
+- Who pays, why, what the receiver bears: as in H8; here the payers are the frustrated side (longs paying for
+  exposure that has not paid them; shorts paying against a rally). Why they persist: the disposition to hold losing
+  positions and keep paying their carry (Shefrin and Statman 1985), and the scarcity of capital willing to take the
+  other side of a crowded perp.
+- What its stale copies hold: month-old premium-versus-return gaps, which have resolved (positions closed,
+  liquidated or rewarded) if the mechanism works over weeks. The lasting part (coins whose premium is structurally
+  high for their return) is held by the copies as much as by the book and earns no timing credit; it is also why
+  H10 is the most exposed of the three to the speed limit, and why S6, which counts that lasting part, may drop it
+  where the gate would not.
+- Costs: daily; the 14-day return changes every day, and through beta x r so does e. Estimate 0.06 to 0.12 a year
+  (0.15 to 0.30 over DEV): the most likely of the three to fail S9.
+- Relation to earlier trials, lessons and rounds: the first program in this project to combine the basis with a
+  price input. Its construction (a cross-sectional regression slope recomputed every bar, the residual ranked with
+  the contrarian sign) is round 1's H4 (gen002_absorbed_flow) applied to the premium instead of taker flow; H4 lost
+  with the contrarian sign (LESSONS 17), which argues against H10 on DEV. Being orthogonal to the coin's own 14-day
+  move answers LESSONS 16, 21, 23 and 26: DEV's continuation of recent moves cannot carry it through its screen,
+  which is a conservative use of what is known about DEV, not a fit to it.
+- What I remember that could bias it: no crypto result on the premium net of the return that I can recall. The
+  neutralisation was chosen knowing that DEV rewarded continuation (LESSONS 16 to 26) and that recent losers carried
+  higher funding on DEV; it removes the return-explained part, which makes DEV less flattering for a book short high
+  premium, not more. From VAL as for H8 (FTT: a deeply negative premium with a deeply negative return; where it lands
+  depends on the fit, and I do not know). Nothing I remember argues clearly for H10.
+- Falsifier. DEV: S1 to S9 (a wrong DEV sign drops it). Counted (VAL), only after the KP-017 measurement: as H8.
+  Named risks: S6 (the lasting per-name part) and S9 (costs); G7.
+- DEV exploration (at most 5 runs): default n = 14; then n = 11 and n = 17; then gen002_diag_stale_unrewarded_premium
+  (S7, k = 30 daily rows); then gen002_diag_acf_unrewarded_premium (S6, k = 26 daily rows).
+
+---
+
+## DEV-only diagnostics, round 3 (never to be submitted; each file's hypothesis line says so)
+
+- Stale copies (S7; a technique new in this version, the coordinator's ruling is asked for below):
+  strategies/gen002_diag_stale_premium_shock.omr, gen002_diag_stale_funding_shock.omr and
+  gen002_diag_stale_unrewarded_premium.omr. Each computes w, the hypothesis's own weight row at its defaults (same
+  text, same param ranges), and sets `signal = cs_demean(lag(w, k))`, k = 30 days (param(30, 24, 36) daily rows for
+  H8 and H10; param(720, 576, 864) hours for H9, whose weights are an hourly-grid series). lag(w, k) is known only
+  where w was known on all k + 1 rows, so the copy holds only names in play now whose weight was known all along
+  since (close to G6's "tradable now and in play at the lagged row", a little stricter); cs_demean re-centres it to
+  net zero across those names (G6 re-centres each book to the net of its own row); there is no gross rescaling (G6
+  has none) other than the kernel's scale-down above gross 1, which H9's copy needs as H9 does. Its Sharpe is read
+  against the default's; its other numbers mean nothing. The copy starts trading 30 days after the book. Limits: one
+  copy at one lag over DEV against G6's 20 copies over VAL; the book in the comparison is the full book, not
+  restricted to the copy's names.
+- Price-neutral twins (S10; also new): strategies/gen002_diag_twin_premium_shock.omr and
+  gen002_diag_twin_funding_shock.omr. Each takes s = cs_rank(shock) of the hypothesis at its defaults, regresses it
+  across coins on x = the demeaned m-day log return (m = param(14, 11, 17), the hypothesis's recent window), and
+  holds minus the residual: `signal = cs_scale(cs_demean(beta * x - s))` for H8 and `signal = size *
+  cs_demean(beta * x - s)` for H9, beta = cs_mean(x s) / cs_mean(x x). For H9 the coins tied at a shock of 0 then
+  carry small positions set by their return, which is what the fit needs to have no linear exposure to it.
+- D-ACF (S6), as in versions 1 and 2 (`signal = c * w * lag(w, k)`, c = param(20, 10, 30), so that the positions are
+  large against the engine's 0.01 band; R = avg net / avg gross = sum w w' / sum |w| |w'|):
+  strategies/gen002_diag_acf_premium_shock.omr and gen002_diag_acf_unrewarded_premium.omr (daily series, k =
+  param(26, 20, 32) daily rows), gen002_diag_acf_funding_shock.omr (hourly grid, k = param(621, 496, 746) hours;
+  |w| <= 0.1, so |c w w'| <= 0.2).
+
+## Run order and budget (round 3, decided before any run)
+
+| order | run | runs only if |
+|---|---|---|
+| 1 | H8 default (a = 14, b = 42) | - |
+| 2 | H9 default (a = 42, b = 126, size = 0.1) | - |
+| 3 | H10 default (n = 14) | - |
+| 4, 5 | H8 corners (a = 11, b = 34), then (a = 17, b = 50) | run 1 passed S1, S2, S4, S5, S8 and S9; run 5 only if run 4 passed S3 |
+| 6, 7 | H9 corners (34, 101, 0.08), then (50, 151, 0.12) | run 2 passed S1, S2, S4, S5, S8 and S9; run 7 only if run 6 passed S3 |
+| 8, 9 | H10 n = 11, then n = 17 | run 3 passed S1, S2, S4, S5, S8 and S9; run 9 only if run 8 passed S3 |
+| 10, 11, 12 | stale copy (S7), then twin (S10), then D-ACF (S6), of the FIRST of H8 and H9 | it passed S1 to S5, S8 and S9; each run only if the one before passed its item |
+| 13, 14 | stale copy (S7), then D-ACF (S6), of H10 | H10 passed S1 to S5, S8 and S9; run 14 only if run 13 passed S7 |
+
+The FIRST of H8 and H9: if only one of them passed S1 to S5, S8 and S9, that one; if both did, the one with the
+higher MINIMUM DEV Sharpe over its default and its two corners (robustness, not the peak; a tie goes to H8). The
+other gets no diagnostic run and is not recommended.
+
+Command form (from the project root, venv Python): `python -m omr.sandbox strategies/gen002_premium_shock.omr` and
+`python -m omr.sandbox strategies/gen002_premium_shock.omr --set a=11 --set b=34`; full stage 1 on every run.
+
+Planned: at most 14 sandbox runs. Reserve: 3 runs for an honest restatement after a stage-1 rejection the parse
+check cannot see (the activity floor or a self-check; the constant probe already ran with the parse check), each a
+recorded amendment of one of the forms the playbook lists in section 4, never a change of logic or of a default.
+Cap for this round: 17 (the instruction allows 20); generation 2 would then have used at most 28 of 60. Every run
+goes into the log, including runs that fail.
+
+Logged per run: DEV Sharpe, PSR(0), total return, maxDD, direction changes, avg gross, avg net, costs, funding paid
+(sign kept: negative = received), rebalances, liquidated, the per-year rows, the number of symbols ever in the
+unit, the lookback; for a D-ACF the ratio R; for a stale copy or a twin its Sharpe against the default's. Stage 2
+appends the run log (columns: # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross |
+avg net | costs | funding paid | total return | years + (of printed) | note), any amendments, the screen outcome per
+hypothesis and the recommendation AFTER the last line of this version, so that this version stays an unchanged
+prefix of the file.
+
+## Selection rule (round 3)
+
+- A hypothesis is eligible only if it passes every screen item that applies to it: S1 to S10 for H8 and H9, S1 to
+  S9 for H10.
+- At most one of H8 and H9 (one mechanism, two measurements): only the FIRST of them is screened to the end, and
+  only it can be recommended.
+- At most TWO programs are recommended: none; one of H8 and H9; H10; or one of H8 and H9 together with H10. If H8
+  and H10 are both recommended, the coordinator should know that both read the same daily premium snapshots, so
+  their books may be correlated (H10 is orthogonal to the coins' 14-day returns and H8 is not); H9 and H10 read
+  different inputs.
+- Each recommendation reads "eligible, subject to the KP-017 measurement": by the coordinator's ruling of 2026-11-24,
+  a counted submission of a program reading funding8h, funding_mean, mark_close or index_close (all three here) also
+  needs the coordinator's KP-017 measurement of how G6 behaves for funding-driven books. That measurement is not the
+  researcher's to make. The coordinator's source read (playbook section 5) and the declared defaults, unchanged,
+  apply as always.
+- None eligible means none recommended; that is a result and is recorded as one.
+- DEV Sharpe is a liveness check, not a ranking beyond these rules. The DEV-only diagnostics (gen002_diag_*) are
+  never submitted.
+
+## Notes for the coordinator (round 3, written with the plan)
+
+- Rulings asked for: the stale copies (S7) and the price-neutral twins (S10) are DEV-only measurements of a new
+  kind, alongside the D-ACF. If either is not allowed, its item is removed by an amendment written before run 1, the
+  claim it would have measured stays unmeasured on DEV, and the planned runs fall by 2 (stale copies) or 1 (twin).
+- For the source read (playbook section 5): (close - index_close) / index_close is the SIGNAL input of H8 and H10
+  (ranked; in H10 also regressed across coins on the return), not a constant, threshold or scale; it multiplies
+  nothing and is compared with nothing. H9's size is a plain per-name size (section H9). H10's beta, and the twins'
+  beta, are cross-sectional regression slopes recomputed at every row, as in round 1's H4.
+- The parse check's OK lines include the constant probe (omr.lang.parse_file runs it). The activity floor and the
+  self-checks remain for the sandbox.
+- What I found ambiguous, or what stopped an idea I would have liked to test:
+  (a) The language cannot average an hourly expression into a daily or weekly bar (KP-019), so the premium can be
+      read only as bin-close snapshots or as an hourly rolling mean that re-ranks every hour. A daily mean premium,
+      the measurement I wanted for H8 and H10, is out of reach; so is a "next settlement" signal from the hourly
+      premium (hourly, and too costly anyway).
+  (b) funding8h normalises the rate to 8 hours, but a funding_mean window counts settlements, so the same n spans
+      half the hours on a 4-hour coin (VAL). A funding window in hours would need a time-based function.
+  (c) G2 cannot be read on DEV: the sandbox prints only the net funding, so S8 is a proxy. Printing the gross
+      funding paid and received separately would make it exact (a possible addition to KP-018).
+  (d) The sandbox does not print how many names a book holds, so coverage lost to data holes (a name drops out for
+      as long as its window holds a hole) is invisible on DEV while the unit keeps 10 or more names.
+  (e) D-ACF overstates the gate's statistic by about a third for rank weights even with no lasting per-name part,
+      and more for a level-based book such as H10 (S6). The instruction allows reusing or tightening the earlier
+      screens, so S6 stays at 0.40; the gate's own statistic on DEV (KP-018) would settle it.
+  (f) Ideas stopped: open interest and long/short ratios, the natural crowding measures, are not research data
+      (STATE.md); a funding-versus-return residual on SETTLED funding was dropped because the clamp makes many coins
+      tie, and the residual of a tied coin is minus beta times its return, which would turn that book into a momentum
+      or reversal book in calm periods (H10 uses the premium for that reason); a plain funding-level carry was not
+      registered because it holds the same coins month after month (the speed limit, and no timing credit for a
+      lasting tilt), and it is the calibration's own no-skill family.
+  (g) Whether index_close bars are complete enough for a 42-day median of daily snapshots is a property of the data
+      that this session may not look at; the only DEV sign of a problem would be the unit falling below 10 names.
+
+Pre-registration (version 3): 2026-11-24T00:37:53Z; no round-3 sandbox run has been made.

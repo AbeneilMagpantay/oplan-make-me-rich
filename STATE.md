@@ -209,9 +209,11 @@ Generation 2, rounds 1 and 2 (2026-11-23 and 24, unit top30): both closed withou
 (see "Where things stand"; lessons 16 to 26). Seven pre-registered ideas built from prices, trade counts
 and taker flow failed their DEV screens; no trial was spent. The KP-016 counts of the real run were put to
 the human on 2026-11-23.
-Now: the measurement for KP-017 (the timing gate on funding-driven books), on DEV-period worlds. It decides
-whether funding and the perp-index basis, the inputs not yet open in unit top30, can be used in a round 3.
-49 sandbox runs and all 5 counted submissions of generation 2 are left.
+Now: generation 2, round 3 (PLAN version 3, a fresh researcher session): hypotheses built on funding and on
+the perp-index basis, the inputs not yet used in unit top30. By the coordinator's ruling of 2026-11-24 they
+may be pre-registered and screened on DEV; a counted submission of such a program waits for the KP-017
+measurement (the timing gate on funding-driven books, on DEV-period worlds), which the coordinator runs only
+if a candidate passes its DEV screen. 49 sandbox runs and all 5 counted submissions of generation 2 are left.
 
 ## Open decisions for the human
 

@@ -1,0 +1,23 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, S7).
+# w is H10's weight row exactly as in strategies/gen002_unrewarded_premium.omr at its defaults (a DAILY
+# series, so lag counts daily rows). The signal holds w as it was k = 30 days earlier (the shortest G6 lag,
+# before its random phase), on the names in play now whose weight was known on every day since, re-centred to
+# net zero and not rescaled: one stale copy of H10, as G6 builds them. Its DEV Sharpe is compared with H10's.
+name = "gen002_diag_stale_unrewarded_premium"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H10's own weights from 30 days earlier, held now (a stale copy as G6 builds them), to check on DEV that H10's claim is a timing claim, i.e. that the stale copy earns much less than H10 itself."
+
+n = param(14, 11, 17)
+k = param(30, 24, 36)
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+p = median(bd, n)
+r = logret(daily(close), n)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+w = cs_scale(cs_demean(-cs_rank(e)))
+signal = cs_demean(lag(w, k))

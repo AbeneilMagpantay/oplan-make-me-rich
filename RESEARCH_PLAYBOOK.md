@@ -106,10 +106,12 @@ before writing a top30 program. What decides whether a top30 idea can pass at al
 - Memory: the evaluator refuses a top30 run, uncounted, when the machine is short of free memory (about
   1.5 GiB for a small program).
 - Not yet (KERNEL_PROPOSALS KP-017, from the recount of the seal): no program driven by funding
-  (`funding8h`, `funding_mean`) is submitted for a counted trial in unit top30 until the coordinator lifts
-  this. In one kind of no-skill world the timing gate passed a losing funding-carry book far too often;
-  until that is measured, a funding-driven pass could not be trusted. Exploring such programs in the
-  sandbox is fine.
+  (`funding8h`, `funding_mean`) or by the perp-index basis (`mark_close`, `index_close`) is submitted for a
+  counted trial in unit top30 until the coordinator has run the KP-017 measurement and lifted this. In one
+  kind of no-skill world the timing gate passed a losing funding-carry book far too often; until that is
+  measured, such a pass could not be trusted. Such programs may be pre-registered and screened on DEV
+  (ruling of 2026-11-24, generation 2 round 3); a plan then recommends them "subject to the KP-017
+  measurement". Keep them cheap to trade: the finding concerns books dominated by their costs.
 
 ## 5. Submit: at most 5 counted submissions per generation (enforced by the evaluator)
 

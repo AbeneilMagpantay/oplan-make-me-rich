@@ -1,0 +1,20 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, S7).
+# w is H9's weight row exactly as in strategies/gen002_funding_shock.omr at its defaults (an hourly-grid
+# series: funding_mean changes at each settlement and is held in between, so lag counts hours). The signal
+# holds w as it was k = 720 hours (30 days, the shortest G6 lag before its random phase) earlier, on the names
+# in play now whose weight was known on every hour since, re-centred to net zero and not rescaled: one stale
+# copy of H9, as G6 builds them. Its DEV Sharpe is compared with H9's.
+name = "gen002_diag_stale_funding_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H9's own weights from 30 days earlier, held now (a stale copy as G6 builds them), to check on DEV that H9's claim is a timing claim, i.e. that the stale copy earns much less than H9 itself."
+
+a = param(42, 33, 51)
+b = param(126, 100, 152)
+size = param(0.1, 0.08, 0.12)
+k = param(720, 576, 864)
+
+shock = funding_mean(a) - funding_mean(b)
+w = size * cs_demean(-cs_rank(shock))
+signal = cs_demean(lag(w, k))

@@ -1,0 +1,24 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, D-ACF).
+# w is H10's weight row exactly as in strategies/gen002_unrewarded_premium.omr at its defaults (a DAILY
+# series, so lag counts daily rows). The signal c * w(t) * w(t - k), k = 26 days (one G6 lag step is 25.9
+# days), makes the sandbox's avg net / avg gross equal to sum w(t) w(t-k) / sum |w(t)| |w(t-k)|, an upper
+# bound of the correlation that G6's speed limit reads.
+name = "gen002_diag_acf_unrewarded_premium"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: measures on DEV how strongly H10's weights are correlated with its own weights about one G6 lag step (26 days) earlier, to check G6's speed limit (0.5) before any counted run. Its returns mean nothing."
+
+n = param(14, 11, 17)
+k = param(26, 20, 32)
+c = param(20, 10, 30)
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+p = median(bd, n)
+r = logret(daily(close), n)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+w = cs_scale(cs_demean(-cs_rank(e)))
+signal = c * w * lag(w, k)

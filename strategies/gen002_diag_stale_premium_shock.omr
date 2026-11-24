@@ -1,0 +1,19 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 3, S7).
+# w is H8's weight row exactly as in strategies/gen002_premium_shock.omr at its defaults (a DAILY series, so
+# lag counts daily rows). The signal holds w as it was k = 30 days earlier (the shortest G6 lag, before its
+# random phase), on the names in play now whose weight was known on every day since, re-centred to net zero
+# and not rescaled: one stale copy of H8, as G6 builds them. Its DEV Sharpe is compared with H8's.
+name = "gen002_diag_stale_premium_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H8's own weights from 30 days earlier, held now (a stale copy as G6 builds them), to check on DEV that H8's claim is a timing claim, i.e. that the stale copy earns much less than H8 itself."
+
+a = param(14, 11, 17)
+b = param(42, 33, 51)
+k = param(30, 24, 36)
+
+bd = (daily(close) - daily(index_close)) / daily(index_close)
+shock = median(bd, a) - median(bd, b)
+w = cs_scale(cs_demean(-cs_rank(shock)))
+signal = cs_demean(lag(w, k))
