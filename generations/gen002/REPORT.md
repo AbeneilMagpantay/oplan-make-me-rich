@@ -1,4 +1,4 @@
-# Generation 2 - REPORT (rounds 1, 2 and 3: PLAN versions 1, 2 and 3, one part each)
+# Generation 2 - REPORT (rounds 1 to 4: PLAN versions 1 to 4, one part each)
 
 Each round's part was written by that round's researcher session and saved to this file by the coordinator
 (the sessions could not create it), with nothing changed but headings and line endings.
@@ -251,3 +251,96 @@ Every run printed the benchmark at DEV Sharpe 0.619, maxDD 0.847. No counted sub
   rows.
 - `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
 - LESSONS.md entries 27 to 29, as proposed by the researcher and reviewed by the coordinator.
+
+# Round 4 (PLAN version 4)
+
+## What was run
+- Same kernel (semantic 5ea66b0fb79ca267..., G6 0.10 in both units), unit top30. A fresh researcher session wrote
+  PLAN version 4, appended to generations/gen002/PLAN.md with versions 1 to 3 unchanged. It held two hypotheses,
+  one per mechanism of round 3, as cheaper-to-trade forms written AFTER round 3's DEV result, two candidate
+  programs and six DEV-only diagnostics (two stale copies, two price-neutral twins, two D-ACF), all written BEFORE
+  any round-4 sandbox run. The coordinator committed and pushed them unchanged as 350a246.
+- Coordinator's rulings, recorded in PLAN.md before run 1: no new ruling was asked for (the stale copies, twins
+  and D-ACF stay allowed as DEV-only measurements); the source read of H11 and H12 found nothing to change, and
+  H11's `size` is the per-name size accepted in round 3; the researcher's synthetic turnover model (no market
+  data) and its reading of omr/windows.py are accepted; a recommendation reads "eligible, subject to the KP-017
+  measurement", and that measurement will include the note on books that are anti-correlated with their own
+  weights one lag step back; the notes on lookback for DEV-only diagnostics and on sampling a derived series go
+  to the human with KP-018 and KP-019.
+- The design answer to LESSONS 28: average the cross-sectional RANK over days, after the cross-section, instead
+  of smoothing the input. The averaged rank moves at most 2/m of its range per row, and rank swaps that reverse
+  inside the average are never traded. Synthetic panels run through the engine's rule estimated about half of
+  round 3's costs. A first draft was replaced before any run by the longest average the 90-day lookback leaves
+  once the stale copy has its room.
+- The two hypotheses. Both are dollar neutral and contrarian on crowded leverage. Both read KP-017 inputs.
+  - H11 gen002_averaged_funding_shock: round 3's H8/H9 mechanism, measured on settled funding. The signal is the
+    10-day time mean of funding8h minus its 28-day mean, in hours so that 4-hour and 8-hour coins get the same
+    windows. The cross-sectional rank is averaged over 16 days and held with H9's per-name size.
+  - H12 gen002_averaged_unrewarded_shift: round 3's H10 mechanism. The perp premium at every 4-hour close, 10-day
+    median minus the coin's own 28-day median, is taken net of a cross-sectional fit on the 10-day return. The
+    residual's rank is averaged over 16 days. The coin's own norm removes lasting per-coin premiums, which earn no
+    timing credit and would push the speed-limit diagnostic over its limit.
+- The screen kept every item of version 3 at least as strict, and fixed every threshold in advance: S8 tightened
+  (the DEV return must stay positive with the net funding removed AND the costs paid twice); S9 tightened (costs
+  at most 0.25, and at most 0.29 x avg gross); S10 extended to H12; S5 kept at 2 of 3 years (the parents'
+  per-year rows were known, so a stricter item would have been chosen knowing whom it stops).
+- 8 sandbox runs of the 12 planned (cap 15). No stage-1 rejection, kernel fault or refusal. Each run took 118 to
+  145 s, and the kernel's memory estimate fitted before each.
+
+## Result
+| program | DEV Sharpe | total | costs | costs / gross | funding paid | dir. changes | avg gross | positive years (2020, 2021, 2022H1) |
+|---|---|---|---|---|---|---|---|---|
+| H11 averaged_funding_shock (a=240, b=672, m=384, size=0.1) | 1.492 | 0.875 | 0.2182 | 0.285 | -0.1555 (received) | 1896 | 0.765 | 3 of 3 |
+| H11 corners 0.8 / 1.2 | 1.286 / 1.805 | 0.596 / 1.271 | 0.1851 / 0.2511 | 0.283 / 0.310 | -0.0996 / -0.2076 | 2305 / 1607 | 0.654 / 0.811 | 3 of 3 / 2 of 3 |
+| H11 stale copy (30 days) | 0.032 | -0.029 | 0.1186 | 0.172 | -0.0082 | 1646 | 0.689 | 1 of 3 |
+| H11 twin (26-day return removed) | 1.466 | 0.813 | 0.2068 | 0.277 | -0.1234 | 1904 | 0.746 | 2 of 3 |
+| H11 D-ACF | R = -0.192 / 0.539 = -0.356 | | | | | | | |
+| H12 averaged_unrewarded_shift (a=60, b=168, m=96) | 0.731 | 0.392 | 0.2163 | 0.254 | -0.1025 (received) | 1981 | 0.850 | 2 of 3 (2020 -0.036) |
+| H12 0.8 corner | 0.249 | 0.079 | 0.2088 | 0.244 | -0.0761 | 2559 | 0.854 | 2 of 3 (2020 -0.160) |
+
+Every run printed the benchmark at DEV Sharpe 0.619, maxDD 0.847. There was no counted submission, and M is
+unchanged at 5.
+
+## Against each pre-registered DEV falsifier
+- H11 passed every item S1 to S10: S9 (costs 0.2182, under 0.25 and under 0.29 x 0.765 = 0.2219); S8 (0.501); S3
+  (both corners positive and covering their costs twice); S7 (stale copy 0.032, under 0.746); S10 (twin 1.466, at
+  least 0.746); S6 (R = -0.356). Not falsified on DEV; eligible, subject to the KP-017 measurement.
+- H12: the default met S1, S2, S4, S5, S8 and S9. The 0.8 corner did not cover its costs twice: T - C = -0.130
+  (S3). Falsified on DEV. Its 1.2 corner and its diagnostics were not run.
+
+## Reading
+- Averaging the rank did what the engine's arithmetic said it would. Both books cost about half of their round-3
+  parents per unit of gross: H11 0.285 against H9's 0.521, H12 0.254 against H10's 0.519. Both landed inside the
+  estimates fixed in advance and under the ceiling, but close to it.
+- On DEV, H11 kept its price P&L: about 0.94 of equity before costs and funding, against about 0.90 for H9. It
+  received less funding (0.156, 18% of its return). It stayed positive with the funding removed and the costs
+  paid twice.
+- Removing the averaged 26-day return-aligned part (the twin) changed almost nothing. H11 was anti-correlated with
+  its own weights one G6 lag step back, as designed.
+- H12, measured against the coin's own norm and net of the return, kept too little edge next to costs of about
+  0.21, and its 0.8 corner nearly lost.
+- Costs did not fall further with a longer average (the 1.2 corner cost more per unit of gross). A stale copy of
+  the same weight path, which holds only names known throughout the last 30 days, cost far less. This suggests
+  that names entering, leaving or dropping out of play make up a sizeable share of an averaged book's costs. It
+  was not measured.
+
+## What must NOT be concluded
+- H11's DEV numbers are not evidence. It was written after round 3's DEV result for the same signal, so the sign
+  and rough size of its DEV Sharpe were expected. The screen rested on readings not taken before: costs, corners,
+  stale copy, twin and D-ACF. Passing them makes it eligible, not proven.
+- The stale-copy pass is weak by the plan's own stated limit: for a book anti-correlated with itself 26 to 30 days
+  back, the 30-day copy is partly the opposite book.
+- H11's costs sit just under the ceiling at the default and above it at the 1.2 corner. G5's jitter and G4's
+  doubled costs in VAL will test that margin.
+- No VAL bar was read. Eligibility does not lift KP-017: a counted run waits for the coordinator's measurement,
+  which will include books like this one.
+- DEV is now spent for these forms too. One default per hypothesis was run, plus H11's corners and diagnostics; no
+  parameter value is implied. Choosing ideas is still open to hindsight (KP-010).
+
+## After the round
+- Ledger: M = 5 (generation 2: 0 of 5 counted), N 4.86, rho 0.035, Tier 1: 0, pool 0 of 5.
+- Sandbox runs used in generation 2: 22 of 60 (rounds 1 to 4: 4, 7, 3 and 8). ledger/sandbox_log.jsonl now has
+  40 rows.
+- `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
+- Recommendation: H11 eligible, subject to the KP-017 measurement; H12 not.
+- LESSONS.md entries 30 to 33, as proposed by the researcher and reviewed by the coordinator.

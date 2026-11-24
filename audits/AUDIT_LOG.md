@@ -1285,3 +1285,59 @@ round 3 also the coordinator's own read of the core modules.
   commit that holds this entry; kp015-build stays as the record of the build. The KP-016 counts
   go to the owner with this result. Generation 2 works in unit top30, where KP-016 changes no
   threshold; RESEARCH_PLAYBOOK.md gets its section on the unit.
+
+## KP-017 measurement - 2026-11-24 - design and reading rule, fixed before the first world
+
+- Why now. Generation 2, round 4, has a candidate that passed the DEV screen fixed in advance:
+  gen002_averaged_funding_shock (H11; generations/gen002/REPORT.md, round 4). It reads funding8h,
+  and by the ruling of 2026-11-23 and 24 no program reading funding or the perp-index basis is
+  submitted for a counted trial in unit top30 before the timing gate G6 has been measured for
+  such books (finding S1 of the seal recount: under null B the carry calibration family passed
+  G6 alone in 53 of 166 pairs at 0.10; KERNEL_PROPOSALS KP-017). This entry fixes what is
+  measured and how it is read, before any world is built.
+- Worlds. The kernel's own top30 null builders (null A and null B of omr/ucalibrate.py) on a
+  source that holds DEV-period rows only, as in the pilot of round 7 (its days after DEV end are
+  DEV days), so that no price row after 2022-06-30 is read. The same world seeds serve every
+  book. N worlds per null by a rule, not a choice: the time of one evaluation is measured on two
+  worlds outside the sample; N = 40 if the whole plan then fits in ten machine hours with one
+  worker, else 32, else 24 (the minimum).
+- Books, each at its declared defaults, without draws: B1 the candidate
+  (strategies/gen002_averaged_funding_shock.omr); B2 a price-only book of similar speed
+  (strategies/gen002_diag_plain_momentum.omr); B3 the family the finding was made on
+  (omr/programs/ucal_xs_carry.omr), on 12 worlds per null, as the reference.
+- Settings: trading costs ON (the kernel's 12.5 bps per side) and OFF (zero, by a patch of the
+  cost constant inside the measuring process; no kernel file is edited). Funding as each null
+  world gives it.
+- Read per book, null, world and setting: the p value of the kernel's own top30 G6 (the paired
+  lag test on 20 lags, the function the evaluator calls), the book's Sharpe over the world's VAL
+  part, its costs, its memory statistic, and per lag whether the stale book did at least as
+  well as the actual one; for B1 and B3 also the volatility of the two books per lag. Counts and
+  ratios only.
+- The reading rule. Pooled over both nulls, n = the worlds evaluated for a book and setting, k =
+  those with p <= 0.10.
+  R1 (costs ON): k of B1 is at most the largest value K with P(Binomial(n, 2/21) >= K) >= 0.025
+  (for n = 48: 9; for n = 80: 13). The candidate's form is not passed by G6 alone more often
+  than the test's nominal level allows.
+  R2 (costs OFF): among the worlds in which the book's VAL-part Sharpe is positive, the share
+  with p <= 0.10 of B1 does not exceed that of B2 by more than two standard errors of the
+  difference of the two shares. A funding book that does well by luck is not passed more often
+  than a price book that does well by luck. With fewer than 15 such worlds for either book R2
+  cannot be read and counts as not met.
+  Decision: if R1 and R2 are both met, the restriction is lifted FOR THIS PROGRAM and it is
+  submitted for one counted trial at its declared defaults. If either is not met, it is not
+  submitted, the restriction stays, and KP-017 goes to the owner as a proposal to change the
+  statistic of G6.
+  Information, not conditions: B3's k with costs ON and OFF (the finding says about a third ON;
+  if it is also above the R1 bound with costs OFF, costs are not the cause and that is reported
+  with KP-017); for B1, how often the first two stale copies do at least as well as the book,
+  against the other eighteen (the plan's note on books anti-correlated with their own weights
+  one lag step back: D-ACF R -0.356 on DEV).
+- What the measurement cannot show, stated before it is run. It reads G6 in worlds without
+  skill. It cannot show that a pass in VAL is skill: for a book that passes the other gates by
+  luck G6 gives only limited protection in every unit (LESSONS 14), and M counts the trial. With
+  n = 48 it detects an excess as large as the carry family's (about 32%) almost surely and one
+  of 20% only about half the time. Passing it lifts a restriction; it certifies nothing.
+- Who and how. A new auditor session builds and runs it, read-only on the project, in its own
+  scratch folder; the long job runs detached at below-normal priority with one worker, writes
+  one line per finished evaluation and can be resumed; a reading script prints the tables and
+  the rule's verdict from whatever is finished. The coordinator reads the result and decides.

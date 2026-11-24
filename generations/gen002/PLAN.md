@@ -2079,3 +2079,122 @@ AFTER the last line of this version, so that this version stays an unchanged pre
       (lookback); weekly snapshots of the premium (one hour a week as the measurement).
 
 Pre-registration (version 4): 2026-11-24T09:25:04Z; no round-4 sandbox run has been made.
+
+## Notes for the coordinator (round 4): coordinator's rulings, received 2026-11-24 before round 4's run 1
+
+Received after version 4 was committed and pushed unchanged as 350a246 (PLAN.md 180,574 bytes, sha256
+3e57dcd538f2150c...; the first 136,056 bytes, versions 1 to 3 with round 3's appended parts, verified unchanged)
+and before round 4's run 1; recorded here, 2026-11-24 about 09:30 UTC, before any round-4 sandbox run. Everything
+from here on is APPENDED to version 4: the 180,574 bytes committed as 350a246 stay an unchanged prefix, so the run
+log, the screen outcome, the DEV observations and the recommendation follow below.
+(1) No new ruling was asked for. The stale copies, the price-neutral twins and the D-ACF stay allowed as DEV-only
+measurements; their runs count toward the cap and they are never submitted. (2) The coordinator has read the
+source of H11 and H12 (playbook section 5): nothing to change; H11's `size` is the per-name size accepted in round
+3. (3) The synthetic turnover model (no market data) and the reading of omr/windows.py (code) are accepted as the
+plan states them. (4) A recommendation reads "eligible, subject to the KP-017 measurement"; the coordinator runs
+that measurement only if a candidate is eligible, and it will include note (c) on books that are anti-correlated
+with their own weights one lag step back. (5) Notes (a) and (b) (lookback for DEV-only diagnostics; sampling a
+derived series) go to the human with KP-018 and KP-019; they are not to be worked around.
+Run conditions given with the rulings: one run at a time, full stage 1 (no --quick), the kernel's memory estimate
+checked before every run (wait up to 20 minutes for "fits now True", else stop), each output saved as ASCII with LF
+to the scratch folder; a kernel_fault or a refusal the plan does not cover stops the round; a stage-1 rejection by
+the activity floor or a self-check is handled only as the plan says (reserve of 3 runs, recorded amendments).
+
+## Sandbox run log (round 4), filled in during stage 2
+
+(Appended below version 4 and the rulings above, so that the file committed as 350a246 stays an unchanged prefix.
+Every run is listed; run numbers follow the order table of version 4, and numbers not listed were not due under
+its conditions. C/G = costs / avg gross, the second clause of S9.)
+
+| # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross | avg net | costs | C/G | funding paid | total return | years + (of printed) | note |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H11 gen002_averaged_funding_shock | (default a=240, b=672, m=384, size=0.1) | 1.492 | 1896 | 0.765 | 0.000 | 0.2182 | 0.285 | -0.1555 (received) | 0.875 | 3 of 3 (2020 0.105 SR 0.899; 2021 0.653 SR 2.340; 2022 0.027 SR 0.389) | PSR(0) 0.991, maxDD 0.145, rebalances 1103, liquidated False, 75 symbols, lookback 1283 h, 125 s. T - abs(F) - C = 0.875 - 0.1555 - 0.2182 = 0.501. Passes S1, S2, S4, S5, S8, S9: corners due |
+| 2 | H12 gen002_averaged_unrewarded_shift | (default a=60, b=168, m=96) | 0.731 | 1981 | 0.850 | 0.000 | 0.2163 | 0.254 | -0.1025 (received) | 0.392 | 2 of 3 (2020 -0.036 SR -0.197; 2021 0.362 SR 1.340; 2022 0.061 SR 0.615) | PSR(0) 0.878, maxDD 0.180, rebalances 1349, liquidated False, 75 symbols, lookback 1277 h, 126 s. T - abs(F) - C = 0.392 - 0.1025 - 0.2163 = 0.073. Passes S1, S2, S4, S5, S8, S9: corners due |
+| 3 | H11 0.8 corner | a=192, b=538, m=307, size=0.08 | 1.286 | 2305 | 0.654 | 0.000 | 0.1851 | 0.283 | -0.0996 (received) | 0.596 | 3 of 3 (2020 0.010 SR 0.149; 2021 0.501 SR 2.200; 2022 0.053 SR 0.726) | PSR(0) 0.979, maxDD 0.151, rebalances 1063, liquidated False, 121 s. S3: S > 0 and T - C = 0.596 - 0.1851 = 0.411 > 0, pass; run 4 due |
+| 4 | H11 1.2 corner | a=288, b=806, m=461, size=0.12 | 1.805 | 1607 | 0.811 | 0.000 | 0.2511 | 0.310 | -0.2076 (received) | 1.271 | 2 of 3 (2020 0.241 SR 1.837; 2021 0.882 SR 2.697; 2022 -0.027 SR -0.213) | PSR(0) 0.998, maxDD 0.123, rebalances 1094, liquidated False, 145 s. S3: S > 0 and T - C = 1.271 - 0.2511 = 1.020 > 0, pass. Its costs exceed 0.25 and 0.29 x G; S9 is read at the default only |
+| 5 | H12 0.8 corner | a=48, b=134, m=77 | 0.249 | 2559 | 0.854 | 0.000 | 0.2088 | 0.244 | -0.0761 (received) | 0.079 | 2 of 3 (2020 -0.160 SR -1.148; 2021 0.188 SR 0.780; 2022 0.082 SR 0.811) | PSR(0) 0.653, maxDD 0.290, rebalances 1574, liquidated False, 134 s. S3 FAILS: T - C = 0.079 - 0.2088 = -0.130. H12 DROPPED; run 6 (1.2 corner) and runs 10 to 12 (its diagnostics) not made |
+| 7 | H11 stale copy gen002_diag_stale_averaged_funding_shock | (default k=720) | 0.032 | 1646 | 0.689 | -0.000 | 0.1186 | 0.172 | -0.0082 (received) | -0.029 | 1 of 3 (2020 -0.093 SR -0.805; 2021 -0.017 SR 0.035; 2022 0.089 SR 0.864) | PSR(0) 0.520, maxDD 0.327, rebalances 1116, liquidated False, lookback 2147 h, 130 s. S7: 0.032 < 0.5 x 1.492 = 0.746, pass |
+| 8 | H11 twin gen002_diag_twin_averaged_funding_shock | (default q=156) | 1.466 | 1904 | 0.746 | 0.000 | 0.2068 | 0.277 | -0.1234 (received) | 0.813 | 2 of 3 (2020 0.037 SR 0.388; 2021 0.771 SR 2.664; 2022 -0.014 SR -0.105) | PSR(0) 0.990, maxDD 0.166, rebalances 1088, liquidated False, lookback 1283 h, 131 s. S10: 1.466 >= 0.5 x 1.492 = 0.746, pass |
+| 9 | H11 D-ACF gen002_diag_acf_averaged_funding_shock | (default k=621, c=20) | -0.710 | 2137 | 0.539 | -0.192 | 0.0891 | - | -0.0784 | -0.560 | (its returns mean nothing) | R = avg net / avg gross = -0.192 / 0.539 = -0.356; S6 (R <= 0.40) pass. PSR(0) 0.136, rebalances 1755, liquidated False, lookback 2029 h, 118 s |
+
+Total sandbox runs made in round 4: 8 (of the 12 planned and the cap of 15); none from the reserve; no stage-1
+rejection, no kernel fault, no refusal. Every run: full stage 1 (25 truncation cuts), exit 0, nothing on stderr,
+118 to 145 s (round 3: 70 to 101 s, as the plan expected), one at a time, each started only after the one before
+had ended. Before every run the kernel's memory estimate printed "fits now True" (estimates 0.85 to 0.93 GiB;
+wanted free 1.28 to 1.39 GiB; free 1.77 to 2.93 GiB). The benchmark line printed by every run (equal-weight long
+of the in-play members): DEV Sharpe 0.619, maxDD 0.847, as in rounds 1 to 3. ledger/sandbox_log.jsonl now has 40
+rows (32 + 8); `omr.ledger verify` OK, all six chains; `omr.kernel_lock verify` OK, sealed. Generation 2 has used
+22 of 60 sandbox runs.
+
+## Amendments (round 4), stage 2
+
+(none: no program text, param, default, screen item or run condition was changed)
+
+## Screen outcome per hypothesis (round 4; stage 2, DEV, read from the run log above)
+
+| H | S1 (PASS; X >= 30; G >= 0.5; L False) | S2 (S >= 0.6, registered sign) | S3 (both corners: S > 0 and T - C > 0) | S4 (T - C > 0) | S5 (years + >= 2 of 3) | S6 (D-ACF R <= 0.40) | S7 (stale < 0.5 S) | S8 (T - abs(F) - C > 0) | S9 (C <= 0.25 and C <= 0.29 G) | S10 (twin >= 0.5 S) | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| H11 gen002_averaged_funding_shock | pass (PASS; 1896; 0.765; False) | pass (1.492) | pass (0.8: 1.286 and 0.411; 1.2: 1.805 and 1.020) | pass (0.875 - 0.2182 = 0.657) | pass (3 of 3) | pass (-0.192 / 0.539 = -0.356) | pass (0.032 < 0.746) | pass (0.875 - 0.1555 - 0.2182 = 0.501) | pass (0.2182 <= 0.25; 0.2182 <= 0.29 x 0.765 = 0.2219) | pass (1.466 >= 0.746) | ELIGIBLE |
+| H12 gen002_averaged_unrewarded_shift | pass (PASS; 1981; 0.850; False) | pass (0.731) | FAIL (0.8 corner: S 0.249 > 0, but T - C = 0.079 - 0.2088 = -0.130; 1.2 corner not run) | pass (0.392 - 0.2163 = 0.176) | pass (2 of 3: 2021, 2022) | not run | not run | pass (0.392 - 0.1025 - 0.2163 = 0.073) | pass (0.2163 <= 0.25; 0.2163 <= 0.29 x 0.850 = 0.2465) | not run | DROPPED |
+
+Against each pre-registered DEV falsifier:
+- H11: not falsified on DEV. It passed every item S1 to S10 at the numbers above. Its DEV Sharpe (1.492) is not
+  evidence by the plan's own rule (written after round 3's DEV result). The readings the screen rested on were
+  taken for the first time: costs 0.2182 (under both clauses of S9, the second by 0.0037), the corners, the
+  doubled costs with the funding removed (0.501), the stale copy (0.032), the twin (1.466) and the D-ACF (-0.356).
+- H12: falsified on DEV by S3. Its default met S1, S2, S4, S5, S8 and S9 (DEV Sharpe 0.731, costs 0.2163), but its
+  0.8 corner did not cover its costs twice (T - C = -0.130). By the run order its 1.2 corner and its diagnostics
+  were not run, so its stale copy, twin and speed-limit readings were not taken.
+
+## DEV observations (round 4; NOT hypotheses, never to be submitted from this plan)
+
+- Averaging the cross-sectional rank roughly halved the costs, as the plan estimated from the engine's rule: H11
+  0.2182 of equity over DEV (round 3's H9: 0.4447), 0.285 per unit of avg gross against 0.521; H12 0.2163 (H10:
+  0.4497), 0.254 per unit of gross against 0.519. Both land inside the plan's estimates (H11 0.17 to 0.26, H12
+  0.18 to 0.24) and both under the ceiling, but close to it: H11's second S9 clause held by 0.0037. Rebalances:
+  H11 1103 (H9: 1975); H12 1349 (H10: 1090), more but smaller trades with 4-hour updates.
+- The costs did not fall further with a longer average. H11's 1.2 corner (16 -> 19 days of averaging, size 0.12)
+  cost 0.310 per unit of gross, more than the default's 0.285 and the 0.8 corner's 0.283, and 0.2511 in all,
+  above the ceiling. And H11's stale copy, which holds the SAME weight path 30 days later, cost only 0.172 per
+  unit of gross: it holds only names whose weight was known on every hour of the last 30 days, so it leaves out
+  names that entered recently or had a hole. Suggestive only: a sizeable part of the averaged book's costs (on
+  this reading roughly 0.1 of its 0.285 per unit of gross) may come from names entering, leaving or dropping out
+  of play, which no averaging of the rank can remove. Not measured.
+- H11 traded with the signs the plan described: anti-correlated with its own weights one G6 lag step back (D-ACF
+  R = -0.356; the synthetic worlds read -0.30 to -0.48). Its stale copy at 30 days earned about nothing (Sharpe
+  0.032) and collected almost no funding (0.008 against the book's 0.156), but the plan's stated limit applies: a
+  copy that is partly the opposite book is weak evidence of timing. The twin (the rank made orthogonal to each
+  coin's 26-day return before averaging) kept almost all of the Sharpe (1.466 against 1.492), so on DEV the book
+  did not rest on a linear exposure to the coins' three-to-four-week moves (the confound named in versions 3 and
+  4); the twin, like the 1.2 corner, lost a little in 2022H1.
+- H11 received 0.156 of equity in funding (round 3's H9: 0.282), 18% of its total return, and stayed positive with
+  that funding removed and the costs paid a second time (0.501). On a rough additive split its price P&L before
+  costs and funding was about 0.94 of equity over DEV (round 3's H9: about 0.90): averaging over 16 days did not
+  cost the price edge on DEV. Per year H11 was positive in all three, 2022H1 included (0.027; H9 lost -0.123), but
+  its 1.2 corner and its twin lost a little in 2022H1. DEV only, one period, a rule written after round 3's DEV
+  result: none of this is evidence for the hypothesis.
+- H12 was weak and fragile: DEV Sharpe 0.731 at its default (round 3's H10, the level form: 0.980), 2020 negative
+  (-0.036), and 0.249 at its 0.8 corner (2020 -0.160), which did not cover its costs twice. Measuring the premium
+  against the coin's own norm (to keep the D-ACF honest) and averaging the residual's rank left too little edge
+  next to costs of about 0.21. Whether the level form carried an edge that the norm removed, or the shorter
+  windows of the corner simply measured noise, is not known; DEV is now spent for this form too.
+- WEAK: one DEV period, one default per hypothesis, its two corners and three diagnostics for H11, one researcher
+  session; nothing here is a parameter recommendation.
+
+## Recommendation (round 4)
+
+H11 gen002_averaged_funding_shock: ELIGIBLE, SUBJECT TO THE KP-017 MEASUREMENT. By the pre-registered selection
+rule it passed every screen item S1 to S10. It reads funding8h, so by the coordinator's ruling of 2026-11-24 a
+counted submission also needs the coordinator's KP-017 measurement of how G6 behaves for funding-driven books
+(which, by ruling (4) above, will include note (c): H11 is a book anti-correlated with its own weights one lag
+step back, R = -0.356 on DEV). The coordinator's source read (done, ruling (2)) and the declared defaults
+(a = 240, b = 672, m = 384, size = 0.1), unchanged, apply. What the coordinator should weigh, stated plainly: its
+DEV Sharpe is not evidence (written after round 3's DEV result); its S7 pass is weak by the plan's own limit; its
+costs sit just under the ceiling at the default (0.2182; C/G 0.285 against 0.29) and above it at the 1.2 corner
+(0.2511), so G5's jitter and G4's doubled costs will test that margin in VAL; and the count M rises by one for
+every later trial if it is submitted.
+
+H12 gen002_averaged_unrewarded_shift: NOT recommended (failed S3).
+
+At most one program is recommended this round. The DEV-only diagnostics (gen002_diag_*) are never to be
+submitted.

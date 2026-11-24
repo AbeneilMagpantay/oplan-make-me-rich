@@ -111,6 +111,33 @@ on synthetic worlds. No lesson recommends a parameter value.
     have flattered them was taken. PLAN.md version 3. Certain as an account of this round; not
     evidence about markets.
 
+## From generation 2, round 4 (same kernel and unit; generations/gen002/REPORT.md, round 4)
+
+30. In unit top30 on DEV, averaging the cross-sectional rank of round 3's funding-shock signal over 16
+    days roughly halved its costs (0.218 against 0.445 of equity over DEV; 0.285 against 0.521 per unit
+    of gross; windows of 10 and 28 days of funding8h), inside the estimate fixed beforehand from the
+    engine's rule. The book then passed every item of a screen fixed in advance: a cost ceiling with a
+    per-gross clause, the costs paid twice with the funding removed, both G5 corners, a price-neutral
+    twin (1.466 against 1.492) and the speed-limit diagnostic (R -0.356). PLAN.md version 4, runs 1, 3,
+    4 and 7 to 9; no trial id. WEAK: DEV only, one researcher session. The rule was written after round
+    3's DEV result, so its DEV Sharpe (1.492) is not evidence, and its stale-copy pass is weak for a
+    book anti-correlated with itself one lag step back. Eligible only subject to the KP-017 measurement.
+31. Measuring the perp premium against the coin's own 28-day norm, net of a cross-sectional fit on the
+    10-day return, with the residual's rank averaged over 16 days, cost about as little (0.216 of equity
+    over DEV) but left too little edge: DEV Sharpe 0.731 at the default and 0.249 at the 0.8 corner,
+    which did not cover its costs twice. PLAN.md version 4, runs 2 and 5; no trial id. WEAK: DEV only,
+    one default and one corner.
+32. Averaging the rank cut costs per unit of gross by about half but not further in the settings read: a
+    longer average (H11's 1.2 corner) cost more per unit of gross (0.310 against 0.285), and a stale
+    copy of the same weight path, which holds only names known on every hour of the last 30 days, cost
+    0.172. Part of an averaged rank book's costs probably comes from names entering, leaving or dropping
+    out of play, which no averaging removes. Suggestive only, not measured. PLAN.md version 4, runs 1, 4
+    and 7. WEAK as a number; a design yardstick next to 19, 24 and 28.
+33. Process: a round whose candidates were engineered against a known cost failure, and screened only on
+    readings nobody had taken, spent 8 sandbox runs of 12 planned and no counted trial, and produced the
+    first candidate of generation 2 that is eligible by its DEV screen. Certain as an account of this
+    round; not evidence about markets.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)

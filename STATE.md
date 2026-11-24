@@ -1,4 +1,4 @@
-# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 rounds 1 to 3 closed without a submission)
+# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 has its first candidate, waiting for the KP-017 measurement)
 
 ## Where things stand
 
@@ -37,6 +37,15 @@
   estimated (costs 0.45 to 0.51 of equity over DEV) and failed the cost ceiling fixed in advance (0.25),
   so their timing, price-neutral and speed-limit readings were not taken. 3 sandbox runs (14 of 60 used),
   no counted submission, M unchanged.
+- Generation 2, round 4 (same report, fourth part; PLAN version 4 committed as 350a246 BEFORE any round-4
+  sandbox run, by a fresh researcher session): cheaper-to-trade forms of round 3's two mechanisms, said to
+  be written after round 3's DEV result, so that their DEV Sharpe is not evidence. Averaging the
+  cross-sectional rank over 16 days halved the costs. gen002_averaged_funding_shock (H11) passed every item
+  of the screen fixed in advance (costs 0.218 of equity over DEV under the ceiling of 0.25 and its
+  per-gross clause; positive with the funding removed and the costs paid twice; both corners; a stale copy
+  at 0.03 against the book's 1.49; a price-neutral twin at 1.47; speed-limit diagnostic -0.36):
+  ELIGIBLE, SUBJECT TO THE KP-017 MEASUREMENT. gen002_averaged_unrewarded_shift (H12) failed at its first
+  corner. 8 sandbox runs (22 of 60 used), no counted submission yet, M unchanged.
 - Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 so far), N = 4.86,
   Tier 1: 0, pool 0 of 5, one uncounted stage-1 rejection; all chains verify.
 - Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
@@ -218,12 +227,16 @@ trade counts, taker flow): nothing with the registered sign and enough size. Rou
 premium over the index, opened for DEV screening by the coordinator's ruling of 2026-11-24): the registered
 sign in all three, stopped by their trading costs. The KP-016 counts of the real run were put to the human on
 2026-11-23.
-Now: generation 2, round 4 (PLAN version 4, a fresh researcher session): cheaper-to-trade forms of round 3's
-mechanisms, registered as written AFTER round 3's DEV result, so that their DEV Sharpe is not evidence and
-their screen rests on readings not yet taken (costs under the same ceiling, corners, a stale copy, a
-price-neutral twin, the speed limit). A counted submission of a program reading funding or the basis still
-waits for the KP-017 measurement, which the coordinator runs only if a candidate passes its DEV screen.
-46 sandbox runs and all 5 counted submissions of generation 2 are left.
+Round 4 (2026-11-24): the first candidate of generation 2, gen002_averaged_funding_shock, eligible by its DEV
+screen and subject to the KP-017 measurement (see "Where things stand"; lessons 30 to 33).
+Now: the KP-017 measurement. Its design and its reading rule were fixed in audits/AUDIT_LOG.md (entry "KP-017
+measurement", 2026-11-24) before the first world: the candidate, a price-only book of similar speed and the
+carry calibration family in the kernel's null worlds built from DEV-period rows only, with trading costs on and
+off. If the candidate's form is not passed by G6 alone more often than the test's level allows (R1) and, when
+it does well by luck, not more often than the price book (R2), the restriction is lifted for this program
+and the coordinator runs ONE counted evaluation of it at its declared defaults (the first counted trial of
+generation 2 and of unit top30; M becomes 6). If not, it is not submitted and KP-017 goes to the human as a
+proposal. 38 sandbox runs and all 5 counted submissions of generation 2 are left.
 
 ## Open decisions for the human
 
