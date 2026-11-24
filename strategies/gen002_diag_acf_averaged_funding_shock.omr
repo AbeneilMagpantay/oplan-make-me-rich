@@ -1,0 +1,22 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 4, D-ACF).
+# w is H11's weight row exactly as in strategies/gen002_averaged_funding_shock.omr at its defaults (an
+# hourly-grid series, so lag counts hours). The signal c * w(t) * w(t - k), k = 621 hours (one G6 lag step,
+# about 25.9 days), makes the sandbox's avg net / avg gross equal to sum w(t) w(t-k) / sum |w(t)| |w(t-k)|, an
+# upper bound of the correlation that G6's speed limit reads (no per-name mean is removed).
+name = "gen002_diag_acf_averaged_funding_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: measures on DEV how strongly H11's weights are correlated with its own weights one G6 lag step (about 26 days) earlier, to check G6's speed limit (0.5) before any counted run. Its returns mean nothing."
+
+a = param(240, 192, 288)
+b = param(672, 537, 807)
+m = param(384, 307, 461)
+size = param(0.1, 0.08, 0.12)
+k = param(621, 496, 746)
+c = param(20, 10, 30)
+
+shock = sma(funding8h, a) - sma(funding8h, b)
+s = sma(cs_rank(shock), m)
+w = size * cs_demean(-s)
+signal = c * w * lag(w, k)

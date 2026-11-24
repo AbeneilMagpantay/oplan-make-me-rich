@@ -1,0 +1,27 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 4, S7).
+# w is H12's weight row exactly as in strategies/gen002_averaged_unrewarded_shift.omr at its defaults (a
+# 4-HOUR series, so lag counts 4-hour rows). The signal holds w as it was k = 180 rows (30 days, the shortest G6
+# lag before its random phase) earlier, on the names in play now whose weight was known on every row since,
+# re-centred to net zero and not rescaled: one stale copy of H12, as G6 builds them. Its DEV Sharpe is compared
+# with H12's.
+name = "gen002_diag_stale_averaged_unrewarded_shift"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H12's own weights from 30 days earlier, held now (a stale copy as G6 builds them), to check on DEV that H12's claim is a timing claim, i.e. that the stale copy earns much less than H12 itself."
+
+a = param(60, 48, 72)
+b = param(168, 134, 202)
+m = param(96, 76, 116)
+k = param(180, 144, 216)
+
+bd = (h4(close) - h4(index_close)) / h4(index_close)
+p = median(bd, a) - median(bd, b)
+r = logret(h4(close), a)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+s = sma(cs_rank(e), m)
+w = cs_scale(cs_demean(-s))
+signal = cs_demean(lag(w, k))

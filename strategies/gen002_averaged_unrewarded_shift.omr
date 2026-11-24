@@ -1,0 +1,31 @@
+# Generation 2, round 4, H12 (generations/gen002/PLAN.md, version 4). Averaged unrewarded premium shift in unit
+# top30. Written AFTER round 3's DEV result (H10 gen002_unrewarded_premium had the registered sign but failed the
+# cost ceiling). Mechanism: round 3's H10 (leverage that the price has not rewarded unwinds). bd = the perp's
+# premium over its spot index, (close - index_close) / index_close, at every 4-hour close (six snapshots a day,
+# the basis as LANGUAGE.md section 5 defines it; the SIGNAL input, ranked and regressed, not a constant,
+# threshold or scale). p = the median of the last a snapshots minus the median of the last b (10 against 28
+# days): the premium measured against the coin's OWN norm, so a lasting per-coin premium (index make-up, borrow
+# scarcity, a standing hedging clientele: not crowding) drops out. Each 4-hour row the cross-section of p is
+# regressed on the cross-section of the coin's 10-day log return (both demeaned); e = the part of the premium
+# shift that the coin's own move does not explain. Its cross-sectional rank is averaged over the last m rows
+# (16 days), so the target moves by at most 2/m of the rank range per row. Short the largest e, long the
+# smallest; dollar neutral, gross 1.
+name = "gen002_averaged_unrewarded_shift"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Averaged unrewarded premium shift: a perp premium that rose above the coin's own 28-day norm by more than its 10-day return explains marks leverage the price has not rewarded; it unwinds within weeks. Short the largest residual shifts, long the smallest, with the rank averaged over 16 days; 4-hour snapshots, dollar neutral. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs or funding stress negative, no G6 timing, or next30 disagrees."
+
+a = param(60, 48, 72)           # 4-hour snapshots in the recent premium median and the return window (10 days)
+b = param(168, 134, 202)        # 4-hour snapshots in the coin's own premium norm (28 days)
+m = param(96, 76, 116)          # 4-hour rows over which the cross-sectional rank is averaged (16 days)
+
+bd = (h4(close) - h4(index_close)) / h4(index_close)
+p = median(bd, a) - median(bd, b)
+r = logret(h4(close), a)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+s = sma(cs_rank(e), m)
+signal = cs_scale(cs_demean(-s))

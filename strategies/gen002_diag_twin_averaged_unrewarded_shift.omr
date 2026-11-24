@@ -1,0 +1,30 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen002/PLAN.md, version 4, S10).
+# u is the cross-sectional rank of H12's residual e exactly as in strategies/gen002_averaged_unrewarded_shift.omr
+# at its defaults (e is orthogonal to the coin's 10-day return on each row, but its 16-day average is not
+# orthogonal to anything). At each 4-hour row u is regressed across coins on the coin's q-row log return (q = 156
+# rows = 26 days: the span of H12's 10-day measurement plus its 16-day rank average), and the residual is
+# averaged over the same m rows and held with H12's sign, scaled to gross 1. Its DEV Sharpe shows whether H12's
+# DEV result needs a part that moves with the coin's own price over that span.
+name = "gen002_diag_twin_averaged_unrewarded_shift"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H12 with the rank made orthogonal to each coin's own 26-day return across coins before averaging, to check on DEV that H12's result does not come from the price move of the averaging span (DEV rewarded continuation of recent moves)."
+
+a = param(60, 48, 72)
+b = param(168, 134, 202)
+m = param(96, 76, 116)
+q = param(156, 124, 188)
+
+bd = (h4(close) - h4(index_close)) / h4(index_close)
+p = median(bd, a) - median(bd, b)
+r = logret(h4(close), a)
+x = cs_demean(r)
+y = cs_demean(p)
+beta = cs_mean(x * y) / cs_mean(x * x)
+e = y - beta * x
+u = cs_rank(e)
+xq = cs_demean(logret(h4(close), q))
+bq = cs_mean(xq * u) / cs_mean(xq * xq)
+s = sma(u - bq * xq, m)
+signal = cs_scale(cs_demean(-s))

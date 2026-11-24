@@ -1,0 +1,25 @@
+# Generation 2, round 4, H11 (generations/gen002/PLAN.md, version 4). Averaged funding shock in unit top30.
+# Written AFTER round 3's DEV result (H9 gen002_funding_shock had the registered sign but failed the cost
+# ceiling). Mechanism: round 3's H8/H9 (a change in crowded leverage unwinds), measured on settled funding as
+# H9 measured it. shock = the time mean of the coin's 8-hour-equivalent funding rate (funding8h, the latest
+# settled rate, held between settlements) over the last a hours minus its mean over the last b hours (10
+# against 28 days, in hours so that 4-hour and 8-hour coins get the same windows); a lasting funding level
+# drops out. What is new is where the averaging sits: the cross-sectional RANK of the shock is averaged over
+# the last m hours (16 days), so the target moves by at most 2/m of the rank range per hour whatever the input
+# does, and rank swaps among closely bunched values that reverse within the average cancel inside it instead
+# of being traded twice. A name's weight is size times its centred averaged rank (about size at most), as in
+# H9, because clamped funding ties at the default rate; the kernel scales the book down above gross 1.
+name = "gen002_averaged_funding_shock"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Averaged funding shock: a coin's 10-day mean funding rising above its own 28-day norm marks leveraged longs crowding in; the crowding unwinds within weeks while the short side collects funding. Short the largest shocks, long the smallest, rank averaged over 16 days so the book trades the lasting ranking, not its reshuffles. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs or funding stress negative, no G6 timing, or next30 disagrees."
+
+a = param(240, 192, 288)        # hours in the recent funding mean (10 days)
+b = param(672, 537, 807)        # hours in the coin's own norm (28 days)
+m = param(384, 307, 461)        # hours over which the cross-sectional rank is averaged (16 days)
+size = param(0.1, 0.08, 0.12)   # weight per unit of centred averaged rank
+
+shock = sma(funding8h, a) - sma(funding8h, b)
+s = sma(cs_rank(shock), m)
+signal = size * cs_demean(-s)
