@@ -497,7 +497,10 @@ rates, status.
 - Proposed change: `omr.sandbox`, for a unit top30 program, also prints (a) the speed-limit statistic computed
   as G6 computes it, on DEV rows, for one to three lag steps, with the 0.5 limit shown, and (b) the DEV Sharpe
   of the same program on unit next30. Both use DEV data only, are uncounted and are logged like every other
-  sandbox metric. No threshold, gate or trial rule changes.
+  sandbox metric. No threshold, gate or trial rule changes. Added by round 3's researcher (2026-11-24): (c)
+  the gross funding paid and the gross funding received, separately (G2 stresses the two differently and the
+  sandbox prints only their net, so a DEV reading of G2 is a proxy), and (d) the average number of names the
+  book holds (names lost to data holes are invisible while ten or more remain).
 - Cost: omr/sandbox.py is a semantic file, so a re-key and both calibrations again (about 13 machine hours),
   although no gate changes: worth it only together with another semantic change.
 - Expected effect: no change in any pass rate; fewer counted trials wasted on books that fail the speed limit
@@ -526,4 +529,8 @@ rates, status.
 - Expected effect: no direct change in pass rates; it widens the ideas whose holding period fits the unit's
   certified speed (5 to 20 days). Risk: more ways to write a near-constant (a weekly mean of hour, say); the
   probe and the coordinator's source read already cover calendar averages.
+- Related requests of round 3's researcher (2026-11-24): the perp premium over the index can be read only as
+  bin-close snapshots or as an hourly rolling mean, so a daily mean premium is out of reach without (a); and
+  `funding_mean(n)` counts settlements, so the same n spans half the hours on a coin with 4-hour funding: a
+  funding window measured in hours would need a time-based function.
 - Status: open (needs the human's approval; to be batched with the next semantic re-key).

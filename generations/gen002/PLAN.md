@@ -1480,3 +1480,103 @@ prefix of the file.
       that this session may not look at; the only DEV sign of a problem would be the unit falling below 10 names.
 
 Pre-registration (version 3): 2026-11-24T00:37:53Z; no round-3 sandbox run has been made.
+
+## Notes for the coordinator (round 3): coordinator's rulings, received 2026-11-24 before round 3's run 1
+
+Received after version 3 was committed and pushed unchanged as afb835b (PLAN.md 126,151 bytes, sha256
+132f6f4b404381e0...; the first 80,097 bytes, versions 1 and 2, verified unchanged) and before round 3's run 1;
+recorded here, 2026-11-24 about 08:40 UTC, before any round-3 sandbox run. Everything from here on is APPENDED to
+version 3: the 126,151 bytes committed as afb835b stay an unchanged prefix, so the run log, the screen outcome, the
+DEV observations and the recommendation follow below.
+(1) The stale copies (S7) and the price-neutral twins (S10) are ALLOWED as DEV-only measurements, like the D-ACF.
+Their runs count toward the cap, they are never submitted, and both items stay as written; each is reported as a DEV
+reading, not as a proof. (2) The coordinator has read the source of H8, H9 and H10 (playbook section 5): nothing to
+change; H9's `size` is accepted as a declared per-name size. (3) The researcher's reading of the funding parts of
+omr/datasets.py and omr/interp.py and of a few constants is accepted (code, not data), as the plan states it. (4) A
+recommendation reads "eligible, subject to the KP-017 measurement"; the coordinator runs that measurement only if a
+candidate is eligible. (5) Notes (b), (c) and (d) (a funding window in hours; the sandbox printing gross funding paid
+and received, and the number of names held) will be filed with KP-018 and KP-019 for the human; they are not to be
+worked around.
+Run conditions given with the rulings: one run at a time, full stage 1, the kernel's memory estimate checked before
+every run (wait up to 20 minutes for "fits now True", else stop), each output saved as ASCII to the scratch folder;
+a kernel_fault or a refusal the plan does not cover stops the round.
+
+## Sandbox run log (round 3), filled in during stage 2
+
+(Appended below version 3 and the rulings above, so that the file committed as afb835b stays an unchanged prefix.
+Every run is listed; run numbers follow the order table of version 3, and numbers not listed were not due under its
+conditions.)
+
+| # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross | avg net | costs | funding paid | total return | years + (of printed) | note |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H8 gen002_premium_shock | (default a=14, b=42) | 0.823 | 4723 | 0.867 | 0.000 | 0.5081 | -0.1434 (received) | 0.475 | 3 of 3 (2020 0.260 SR 1.958; 2021 0.009 SR 0.159; 2022 0.160 SR 1.161) | PSR(0) 0.912, maxDD 0.332, rebalances 1085, liquidated False, 75 symbols, lookback 1253 h, 100.8 s. Fails S4 (0.475 - 0.5081 = -0.033) and S9 (0.5081 > 0.25); H8 DROPPED, runs 4 and 5 not made |
+| 2 | H9 gen002_funding_shock | (default a=42, b=126, size=0.1) | 1.197 | 3803 | 0.853 | 0.000 | 0.4447 | -0.2821 (received) | 0.734 | 2 of 3 (2020 0.193 SR 1.467; 2021 0.657 SR 2.403; 2022 -0.123 SR -0.829) | PSR(0) 0.956, maxDD 0.249, rebalances 1975, liquidated False, 75 symbols, lookback 1216 h, 70.0 s. Passes S1, S2, S4 (0.289), S5, S8 (0.452); fails S9 (0.4447 > 0.25); H9 DROPPED, runs 6 and 7 not made |
+| 3 | H10 gen002_unrewarded_premium | (default n=14) | 0.980 | 4068 | 0.867 | 0.000 | 0.4497 | -0.2975 (received) | 0.564 | 3 of 3 (2020 0.157 SR 1.101; 2021 0.313 SR 1.216; 2022 0.029 SR 0.383) | PSR(0) 0.941, maxDD 0.246, rebalances 1090, liquidated False, 75 symbols, lookback 455 h, 81.3 s. Passes S1, S2, S4 (0.114), S5, S8 (0.267); fails S9 (0.4497 > 0.25); H10 DROPPED, runs 8 and 9 not made |
+
+No default passed S1, S2, S4, S5, S8 and S9 together, so by the order table no corner (runs 4 to 9), no stale copy,
+no twin and no D-ACF (runs 10 to 14) was due; none was run. Total sandbox runs made in round 3: 3 (of the 14 planned
+and the cap of 17); none from the reserve; no stage-1 rejection, no kernel fault, no refusal. Every run: full stage 1
+(25 truncation cuts), exit 0, nothing on stderr, 70.0 to 100.8 s, one at a time. Before every run the kernel's memory
+estimate printed "fits now True" (estimates 0.91, 0.82 and 0.93 GiB; wanted free 1.36, 1.23 and 1.39 GiB; free 1.99,
+2.26 and 1.88 GiB). The benchmark line printed by every run (equal-weight long of the in-play members): DEV Sharpe
+0.619, maxDD 0.847, as in rounds 1 and 2. ledger/sandbox_log.jsonl now has 32 rows (29 + 3); `omr.ledger verify` OK,
+all six chains; `omr.kernel_lock verify` OK, sealed.
+
+## Amendments (round 3), stage 2
+
+(none: no program text, param, default, screen item or run condition was changed)
+
+## Screen outcome per hypothesis (round 3; stage 2, DEV, read from the run log above)
+
+| H | S1 (PASS; X >= 30; G >= 0.5; L False) | S2 (S >= 0.6, registered sign) | S3 (corners) | S4 (T - C > 0) | S5 (years +) | S6 (D-ACF R <= 0.40) | S7 (stale < 0.5 S) | S8 (T - abs(F) > 0) | S9 (C <= 0.25) | S10 (twin >= 0.5 S) | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| H8 gen002_premium_shock | pass (PASS; 4723; 0.867; False) | pass (0.823) | not run | FAIL (0.475 - 0.5081 = -0.033) | pass (3 of 3) | not run | not run | pass (0.475 - 0.1434 = 0.332) | FAIL (0.5081) | not run | DROPPED |
+| H9 gen002_funding_shock | pass (PASS; 3803; 0.853; False) | pass (1.197) | not run | pass (0.734 - 0.4447 = 0.289) | pass (2 of 3: 2020, 2021) | not run | not run | pass (0.734 - 0.2821 = 0.452) | FAIL (0.4447) | not run | DROPPED |
+| H10 gen002_unrewarded_premium | pass (PASS; 4068; 0.867; False) | pass (0.980) | not run | pass (0.564 - 0.4497 = 0.114) | pass (3 of 3) | not run | not run | pass (0.564 - 0.2975 = 0.267) | FAIL (0.4497) | n/a | DROPPED |
+
+Against each pre-registered DEV falsifier:
+- H8: falsified on DEV by its screen. The sign was the registered one (DEV Sharpe 0.823), but the book paid 0.508 of
+  equity in costs over DEV, more than its total return of 0.475 (S4), and far above the ceiling of 0.25 (S9).
+- H9: falsified on DEV by its screen. It met S1, S2, S4, S5 and S8 at its default (DEV Sharpe 1.197, 2022H1
+  negative), and failed the cost ceiling S9 (0.445 > 0.25).
+- H10: falsified on DEV by its screen. It met S1, S2, S4, S5 and S8 at its default (DEV Sharpe 0.980, positive in
+  all three years), and failed the cost ceiling S9 (0.450 > 0.25).
+- Not measured for any of them: the G5 corners (S3), the stale copies (S7), the price-neutral twins (S10) and the
+  speed-limit diagnostics (S6). Whether these books' DEV returns were timing returns, leverage information or DEV's
+  continuation of recent moves was therefore not read.
+
+## DEV observations (round 3; NOT hypotheses, never to be submitted from this plan)
+
+- All three defaults had the registered (contrarian) sign and DEV Sharpe 0.82 to 1.20, and all three were net
+  RECEIVERS of funding: 0.143 (H8), 0.282 (H9) and 0.298 (H10) of equity over DEV, about 0.06 to 0.12 a year, which
+  is 30 to 53% of their total returns. With all of that net funding taken out (S8) each stayed positive (0.332, 0.452,
+  0.267). A rough additive split (compounding ignored) puts their price P&L before costs and funding at about 0.84,
+  0.90 and 0.72 of equity over DEV. These are DEV readings at one default each. The readings that would have told a
+  timing or leverage edge from DEV's known continuation (S7, S10) were not due, and the disclosures of version 3
+  named that confound (on DEV recent losers carried higher funding); nothing here is evidence for the hypotheses.
+- Costs were two to five times the plan's estimates: 0.508, 0.445 and 0.450 of equity over DEV (912 days), about
+  0.18 to 0.20 a year, against estimates of 0.10 to 0.25, 0.08 to 0.20 and 0.15 to 0.30 over DEV. That is above every
+  weekly book of rounds 1 and 2 (0.137 to 0.231) and above round 2's residual-momentum books (0.31 to 0.38). H8 and
+  H10 change their targets once a day, yet rebalanced 1,085 and 1,090 times in 912 days; H9, whose funding means move
+  by 1/42 of a step at each settlement, rebalanced 1,975 times. Direction changes were 3,803 to 4,723, against 1,635
+  to 2,849 for the books of rounds 1 and 2. The cause is NOT measured. Candidates: rank weights move whenever two
+  closely bunched values cross, so an input that moves slowly can still re-rank often (medians of daily snapshots
+  whose cross-sectional spread is small; many coins bunched near the default funding rate); H10's residual also moves
+  with a 14-day return that changes every day. The plan's arguments that a median is sticky and that 1/42 steps are
+  smooth did not translate into low turnover.
+- Per year: H9 lost in 2022H1 (-0.123, Sharpe -0.83); H8 was flat in 2021 (0.009); H10 was positive in all three
+  years. H9's size cap did not shrink the book much (avg gross 0.853, against 0.867 for the two cs_scale books), so
+  ties at the default funding were not dominant on DEV.
+- DEV is now partly spent for these inputs: the author has seen that contrarian funding and premium books had
+  positive DEV Sharpe before costs and that their costs, not their sign, stopped them. A later plan that registers a
+  slower or cheaper version of H8, H9 or H10 must say it was written after this result; its DEV numbers would then not
+  be evidence, and only its counted VAL run, after the KP-017 measurement, could test it.
+- WEAK: one DEV period, one default each, one researcher session; nothing here is a parameter recommendation.
+
+## Recommendation (round 3)
+
+NONE. By the pre-registered selection rule a hypothesis is eligible only if it passes every screen item that applies
+to it. Each default failed the cost ceiling S9 (costs 0.508, 0.445 and 0.450 of equity over DEV against 0.25), and H8
+also failed S4; by the run order a hypothesis whose default fails S9 is dropped with nothing else run for it. No
+program from version 3 is recommended for a counted submission, so the KP-017 measurement is not needed for this
+round. The DEV-only diagnostics (gen002_diag_*) are never to be submitted.

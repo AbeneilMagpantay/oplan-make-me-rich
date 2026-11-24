@@ -1,4 +1,4 @@
-# Generation 2 - REPORT (round 1: PLAN version 1; round 2: PLAN version 2, at the end)
+# Generation 2 - REPORT (rounds 1, 2 and 3: PLAN versions 1, 2 and 3, one part each)
 
 Each round's part was written by that round's researcher session and saved to this file by the coordinator
 (the sessions could not create it), with nothing changed but headings and line endings.
@@ -177,3 +177,77 @@ No counted submission. M is unchanged at 5.
 - Sandbox runs used in generation 2: 11 of 60 (ledger/sandbox_log.jsonl now 29 rows).
 - `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
 - LESSONS.md entries 21 to 25, as proposed by the researcher and reviewed by the coordinator.
+
+# Round 3 (PLAN version 3)
+
+## What was run
+- Same kernel (semantic 5ea66b0fb79ca267..., G6 0.10 in both units), unit top30. A fresh researcher session wrote
+  PLAN version 3, appended to generations/gen002/PLAN.md with versions 1 and 2 unchanged. It held three
+  hypotheses on the inputs opened in this round (funding and the perp-index basis), three candidate programs and
+  eight DEV-only diagnostics (three stale copies, two price-neutral twins, three D-ACF), all written BEFORE any
+  round-3 sandbox run. The coordinator committed and pushed them unchanged as afb835b.
+- Coordinator's rulings, recorded in PLAN.md before run 1: the stale copies (S7) and the price-neutral twins (S10)
+  are allowed as DEV-only measurements; the source read of H8 to H10 found nothing to change, and H9's `size` is
+  accepted as a declared per-name size; the researcher's reading of funding code is accepted; a recommendation
+  reads "eligible, subject to the KP-017 measurement"; the notes on a funding window in hours, gross funding in
+  the sandbox and the names held are filed with KP-018 and KP-019.
+- The three hypotheses. All are dollar neutral and all bet against crowded leverage. All read funding_mean or
+  index_close, so a counted run would also need the KP-017 measurement.
+  - H8 gen002_premium_shock: short the coins whose perp premium over the spot index rose above their own norm,
+    long those whose premium fell below it. The premium is a daily-close snapshot; the signal is the 14-day median
+    minus the 42-day median.
+  - H9 gen002_funding_shock: the same idea on settled funding: the 14-day mean minus the 42-day mean. Rank weights
+    are capped at 0.1 per name because clamped funding ties at the default rate.
+  - H10 gen002_unrewarded_premium: short the premium that a cross-sectional fit on the coin's 14-day return does
+    not explain. It is orthogonal to that return by construction.
+- The screen kept S1 to S6 (S1 and S3 tightened) and added four items: S7, a stale copy at 30 days; S8, a
+  funding-stress proxy (the DEV return must stay positive with all net funding removed); S9, a cost ceiling (DEV
+  costs at most 0.25); S10, a price-neutral twin, for H8 and H9 only.
+- 3 sandbox runs of the 14 planned (cap 17). No stage-1 rejection, kernel fault or refusal. Each run took 70 to
+  101 s; the kernel's memory estimate fitted before each.
+
+## Result
+| program | DEV Sharpe | total | costs | funding paid | dir. changes | avg gross | positive years (2020, 2021, 2022H1) |
+|---|---|---|---|---|---|---|---|
+| H8 premium_shock (a=14, b=42) | 0.823 | 0.475 | 0.5081 | -0.1434 (received) | 4723 | 0.867 | 3 of 3 |
+| H9 funding_shock (a=42, b=126, size=0.1) | 1.197 | 0.734 | 0.4447 | -0.2821 (received) | 3803 | 0.853 | 2 of 3 (2022H1 -0.123) |
+| H10 unrewarded_premium (n=14) | 0.980 | 0.564 | 0.4497 | -0.2975 (received) | 4068 | 0.867 | 3 of 3 |
+
+Every run printed the benchmark at DEV Sharpe 0.619, maxDD 0.847. No counted submission. M is unchanged at 5.
+
+## Against each pre-registered DEV falsifier
+- H8: the sign was the registered one (0.823). It failed S4 (0.475 - 0.508 = -0.033) and S9 (costs 0.508 > 0.25).
+  Falsified on DEV.
+- H9: it met S1, S2, S4 (0.289), S5 and S8 (0.452). It failed S9 (0.445). Falsified on DEV.
+- H10: it met S1, S2, S4 (0.114), S5 and S8 (0.267). It failed S9 (0.450). Falsified on DEV.
+- By the run order a default that fails S9 ends the hypothesis, so the G5 corners (S3), the stale copies (S7), the
+  twins (S10) and the speed-limit diagnostics (S6) were not run for any of them.
+
+## Reading
+- For the first time in generation 2 every hypothesis of a round had the registered sign on DEV. All three
+  contrarian books earned a positive DEV Sharpe (0.82 to 1.20) and received funding: 0.14 to 0.30 of equity, 30 to
+  53% of their total return. Each stayed positive with that funding removed.
+- Their costs stopped them: 0.45 to 0.51 of equity over DEV, about 0.18 to 0.20 a year. That is two to five times
+  the plan's estimates and above every book of rounds 1 and 2. H8 and H10 change targets once a day but rebalanced
+  about 1,090 times in 912 days; H9's 8-hourly funding means rebalanced 1,975 times. The cause is not measured.
+  One candidate is that rank weights swap whenever closely bunched values cross, so a slowly moving input still
+  re-ranks often; another is that H10's residual moves with a 14-day return that changes daily.
+
+## What must NOT be concluded
+- These DEV numbers are not evidence of a timing edge or of leverage information. S7 and S10 were never taken, and
+  the plan had named the confound: on DEV recent losers carried higher funding (H6 received funding; H1 and H7
+  paid it), so books short high funding can ride DEV's continuation of recent moves.
+- DEV is now partly spent for contrarian funding and premium rules. A slower or cheaper version registered later
+  would be written after this result. Its DEV numbers would not be evidence; only its counted VAL run, after the
+  KP-017 measurement, could test it.
+- Lowering the cost ceiling after the fact would be tuning the screen to a known result. It was fixed in advance
+  for KP-017's reason: the G6 finding concerns books dominated by their costs.
+- No VAL bar was read. One default per hypothesis was run, and no parameter value is implied. Choosing ideas is
+  still open to hindsight (KP-010).
+
+## After the round
+- Ledger: M = 5 (generation 2: 0 of 5 counted), N 4.86, rho 0.035, Tier 1: 0, pool 0 of 5.
+- Sandbox runs used in generation 2: 14 of 60 (rounds 1 to 3: 4, 7 and 3); ledger/sandbox_log.jsonl now has 32
+  rows.
+- `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
+- LESSONS.md entries 27 to 29, as proposed by the researcher and reviewed by the coordinator.

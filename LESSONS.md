@@ -87,6 +87,30 @@ on synthetic worlds. No lesson recommends a parameter value.
     speed. The inputs not yet open in this unit are funding and the perp-index basis (KP-017).
     Coordinator's summary of the two run logs; WEAK as evidence about markets.
 
+## From generation 2, round 3 (same kernel and unit; generations/gen002/REPORT.md, round 3)
+
+27. In unit top30 on DEV, three contrarian books on funding and on the perp premium over the index had
+    the registered sign (DEV Sharpe 0.823, 1.197 and 0.980): short the coins whose premium, or whose
+    funding, rose above their own six-week norm, and short the premium that a coin's 14-day return
+    does not explain. They received 0.14 to 0.30 of equity in funding and stayed positive with all of
+    it removed. But each cost 0.45 to 0.51 of equity over DEV and failed the cost ceiling fixed in
+    advance, so their timing, price-neutrality and speed-limit readings were never taken. PLAN.md
+    version 3 run log, runs 1 to 3; no trial id. WEAK: DEV only, one default each, one researcher
+    session; not evidence of a timing edge (on DEV recent losers carried higher funding, so DEV's
+    continuation of recent moves is a named confound). DEV is now partly spent for these inputs: a
+    later plan that registers a slower or cheaper version must say it was written after this result,
+    and only its counted VAL run, after the KP-017 measurement, can test it.
+28. Rank books whose targets change once a day (medians of daily premium snapshots) or at each funding
+    settlement (14-day funding means) paid about 0.18 to 0.20 of equity a year at 12.5 bps per side,
+    two to five times the plan's estimates and more than any weekly book: a slowly moving input did
+    not make a slowly moving rank. Suggestive only; the cause (for example rank swaps among closely
+    bunched values, with the engine trading every name once any one is 0.01 off) was not measured.
+    PLAN.md version 3, runs 1 to 3. WEAK as a number; a design yardstick next to 19 and 24.
+29. Process: a cost ceiling registered before any run stopped three DEV-positive books at their
+    defaults, in 3 sandbox runs of 14 planned and with no counted trial, before any reading that could
+    have flattered them was taken. PLAN.md version 3. Certain as an account of this round; not
+    evidence about markets.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)
