@@ -1,7 +1,9 @@
-# Generation 2 - REPORT (round 1: PLAN version 1)
+# Generation 2 - REPORT (round 1: PLAN version 1; round 2: PLAN version 2, at the end)
 
-Written by the researcher session of round 1; saved to this file by the coordinator (the session could not
-create it), with nothing changed but the file's line endings.
+Each round's part was written by that round's researcher session and saved to this file by the coordinator
+(the sessions could not create it), with nothing changed but headings and line endings.
+
+# Round 1 (PLAN version 1)
 
 ## Sources
 - generations/gen002/PLAN.md (as committed fd19943, sha256 38d5d4a6...; with the stage-2 run log, screen
@@ -109,3 +111,69 @@ now 22 rows). `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger
   jittered); in unit top30 the 2020 bucket of G7 is short (members need 90 days of seasoning), so G7 is in
   effect 4 of 5 buckets for a top30 program. Filed with KP-017's text items.
 - LESSONS.md entries 16 to 20, as proposed by the researcher and reviewed by the coordinator.
+
+# Round 2 (PLAN version 2)
+
+## What was run
+- Same kernel (semantic 5ea66b0fb79ca267..., G6 0.10 in both units), unit top30. A fresh researcher session wrote
+  PLAN version 2, appended to generations/gen002/PLAN.md with version 1 unchanged. It held three new hypotheses,
+  three candidate programs and three DEV-only controls, written BEFORE any round-2 sandbox run. The coordinator
+  committed and pushed them unchanged as b64b229.
+- Coordinator's rulings, recorded in PLAN.md before run 1: H7's speed-limit reading by H6's diagnostic is
+  accepted as a proxy; a book that pays or receives funding without reading it is not funding-driven; mark and
+  index prices stay out of this generation in every form; the choice of neighbours for the two-param programs is
+  accepted; the source read of H5 to H7 found nothing to change.
+- The three hypotheses, all dollar neutral and residual to a market move, none reading funding, mark or index
+  prices:
+  - H5 gen002_resid_skew: short the coins whose daily returns, net of beta to the unit's mean, were most
+    right-skewed over 21 days, long the most left-skewed (lottery demand).
+  - H6 gen002_resid_momentum: the 4-week return net of the BTC-beta part, over own volatility, continues; ranked
+    weekly. A continuation rule written after round 1's DEV result, so its DEV Sharpe was not evidence and its
+    screen was stricter: each neighbour had to reach 0.6 and cover its costs twice, all three DEV years had to be
+    positive, and it had to beat a plain-momentum control and pass the speed-limit diagnostic.
+  - H7 gen002_prior_month_reversal: the same residual over the month before last (weeks 8 to 4 back) reverses.
+- 7 sandbox runs of the 16 planned (cap 19). No stage-1 rejection, kernel fault or refusal; each run took 74 to
+  104 s.
+
+## Result
+| program | DEV Sharpe | total | costs | dir. changes | avg gross | positive years (2020, 2021, 2022H1) |
+|---|---|---|---|---|---|---|
+| H5 resid_skew (n=21) | -1.906 | -0.730 | 0.1404 | 2645 | 0.823 | 0 of 3 |
+| H7 prior_month_reversal (m=4, n=30) | 0.381 | 0.164 | 0.1772 | 1894 | 0.866 | 2 of 3 |
+| H6 resid_momentum (m=4, n=30) | 0.945 | 0.643 | 0.3299 | 1871 | 0.865 | 2 of 3 (2022H1 SR -2.221) |
+| H6 neighbours m=3 / m=5 / n=24 / n=36 | 0.955 / 0.923 / 1.039 / 1.069 | 0.697 / 0.627 / 0.728 / 0.775 | 0.380 / 0.313 / 0.368 / 0.332 | 1836 to 2082 | 0.865 to 0.866 | 2 of 3 each (2022H1 negative) |
+
+Every run printed the benchmark (equal-weight long of the in-play members) at DEV Sharpe 0.619, maxDD 0.847.
+No counted submission. M is unchanged at 5.
+
+## Against each pre-registered DEV falsifier
+- H5: the screen needed a DEV Sharpe of at least 0.6 with the registered sign. It got -1.906, negative in all
+  three DEV years, and failed S4 as well. Falsified on DEV.
+- H7: same screen. The sign was right, but 0.381 is below the liveness bar and the return did not cover a second
+  payment of costs. Falsified on DEV.
+- H6: stopped by its strict pre-registered S5. All five settings lost in 2022H1. Its default's DEV Sharpe was not
+  evidence by rule. The control (S7) and the speed-limit diagnostic (S6) were not due, so neither was measured.
+
+## Reading
+- In the top30 cross-section of 2020 to mid-2022, recent residual up-jumps went with outperformance and recent
+  crash days with underperformance: the lottery sign failed. This is the third bet against a recent move to lose
+  on DEV, after round 1's H1 and H4. WEAK: one DEV period, one default.
+- Reversal of the month-before-last residual had the registered sign but too little size to survive costs.
+- The multi-week residual books cost far more than estimated: H6 about 0.125 to 0.15 a year, H7 about 0.07,
+  against 0.03 to 0.06 estimated. The cause is not measured. The candidates are the daily-updated beta
+  multiplying a large m-week BTC return, and the drift of a continuation book's holdings.
+
+## What must NOT be concluded
+- H6's DEV numbers are not evidence for residual momentum: it was written after round 1's DEV result. Its failure
+  says only that it did not meet a strict screen fixed in advance.
+- DEV is now spent as a screen for a mirror of H5 (continuation of jumps), as it already was for the mirrors of
+  H1 and H4.
+- No VAL bar was read. Three DEV results say nothing about VAL. One default per hypothesis was screened, plus H6's
+  neighbours; no parameter value is implied or recommended.
+- Choosing ideas is still open to hindsight (KP-010). The plan named what could bias each one.
+
+## After the round
+- Ledger: M = 5 (generation 2: 0 of 5 counted), N 4.86, rho 0.035, Tier 1: 0, pool 0 of 5.
+- Sandbox runs used in generation 2: 11 of 60 (ledger/sandbox_log.jsonl now 29 rows).
+- `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
+- LESSONS.md entries 21 to 25, as proposed by the researcher and reviewed by the coordinator.

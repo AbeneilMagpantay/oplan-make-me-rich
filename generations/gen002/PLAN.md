@@ -882,3 +882,86 @@ rebalances, the per-year rows, the number of symbols ever in the unit, the lookb
   with the other at its default.
 
 Pre-registration (version 2): 2026-11-23T23:46:18Z; no round-2 sandbox run has been made.
+
+## Notes for the coordinator (round 2): coordinator's rulings, 2026-11-23 UTC (2026-11-24 +08:00)
+
+Received after version 2 was committed and pushed unchanged as b64b229 (PLAN.md sha256 0b97cf86e3fadb5a...;
+version 1's first 35,535 bytes verified unchanged) and before round 2's run 1; recorded here before any round-2
+sandbox run. Everything from here on is APPENDED to version 2: the 71,114 bytes committed as b64b229 stay an
+unchanged prefix, so the empty run-log table and the "(none)" under "Amendments (round 2)" above are the
+pre-registered headers, and the run log, the amendments (if any) and the outcome follow below.
+(1) H7's speed-limit reading by H6's diagnostic (gen002_diag_acf_resid_momentum) is ACCEPTED as a proxy; it is
+reported as a proxy, and the speed limit stays a named risk of H7. (2) A program that does not read funding is not
+"funding-driven" merely because its book pays or receives funding: allowed. (3) Mark and index prices (mark_close,
+index_close) stay out of this generation in every form. (4) The choice of neighbours for the two-param programs
+(each param's two G5 ends, the other at its default) is accepted as registered. (5) The coordinator has read the
+source of H5, H6 and H7 (playbook section 5): nothing to change.
+
+## Sandbox run log (round 2), filled in during stage 2
+
+(Appended here, below the pre-registered empty table, so that the file committed as b64b229 stays an unchanged
+prefix. Every run is listed; run numbers follow the order table of version 2, and numbers not listed were not due
+under its conditions.)
+
+| # | program | params (non-default only) | DEV Sharpe | DEV dir. changes | avg gross | avg net | costs | total return | years + (of printed) | note |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H5 gen002_resid_skew | (default n=21) | -1.906 | 2645 | 0.823 | 0.000 | 0.1404 | -0.730 | 0 of 3 (2020 -0.376 SR -2.528; 2021 -0.481 SR -2.133; 2022 -0.168 SR -0.989) | PSR(0) 0.000, maxDD 0.745, rebalances 1152, funding paid 0.0057, 75 symbols, lookback 1271 h, 78.7 s. Fails S2 (wrong sign), S4 (-0.730 - 0.1404 < 0) and S5; H5 DROPPED, runs 2, 3 and 15 not made |
+| 4 | H7 gen002_prior_month_reversal | (default m=4, n=30) | 0.381 | 1894 | 0.866 | 0.000 | 0.1772 | 0.164 | 2 of 3 (2020 -0.099 SR -0.647; 2021 0.044 SR 0.292; 2022 0.238 SR 2.172) | PSR(0) 0.727, maxDD 0.201, rebalances 838, funding paid 0.0117, 75 symbols, lookback 2015 h, 73.6 s. Fails S2 (0.381 < 0.6) and S4 (0.164 - 0.1772 = -0.013); H7 DROPPED, runs 5 to 8 not made |
+| 9 | H6 gen002_resid_momentum | (default m=4, n=30) | 0.945 | 1871 | 0.865 | 0.000 | 0.3299 | 0.643 | 2 of 3 (2020 0.682 SR 3.217; 2021 0.281 SR 0.976; 2022 -0.237 SR -2.221) | PSR(0) 0.930, maxDD 0.324, rebalances 885, funding paid -0.0764 (received), 75 symbols, lookback 1175 h, 80.7 s. Passes S1, S2 (a necessary condition only, not evidence) and S4 (0.643 - 0.3299 = 0.313); FAILS H6's S5 (all three years needed). Runs 10 to 13 due by the order table (its conditions are S1, S2, S4) |
+| 10 | H6 gen002_resid_momentum | m=3 | 0.955 | 2013 | 0.866 | 0.000 | 0.3799 | 0.697 | 2 of 3 (2020 0.703 SR 3.204; 2021 0.306 SR 1.014; 2022 -0.237 SR -1.839) | PSR(0) 0.932, maxDD 0.358, rebalances 896, funding paid -0.0743, 75 symbols, 83.7 s. H6's S3 item met (>= 0.6; 0.697 - 0.3799 = 0.317 > 0) |
+| 11 | H6 gen002_resid_momentum | m=5 | 0.923 | 1895 | 0.865 | 0.000 | 0.3131 | 0.627 | 2 of 3 (2020 0.603 SR 2.920; 2021 0.393 SR 1.235; 2022 -0.271 SR -2.699) | PSR(0) 0.927, maxDD 0.328, rebalances 870, funding paid -0.0935, 75 symbols, 104.3 s. Met (0.627 - 0.3131 = 0.314) |
+| 12 | H6 gen002_resid_momentum | n=24 | 1.039 | 2082 | 0.866 | 0.001 | 0.3675 | 0.728 | 2 of 3 (2020 0.695 SR 3.214; 2021 0.392 SR 1.285; 2022 -0.268 SR -2.517) | PSR(0) 0.947, maxDD 0.345, rebalances 915, funding paid -0.0789, 75 symbols, 93.0 s. Met (0.728 - 0.3675 = 0.361) |
+| 13 | H6 gen002_resid_momentum | n=36 | 1.069 | 1836 | 0.865 | 0.000 | 0.3320 | 0.775 | 2 of 3 (2020 0.708 SR 3.293; 2021 0.341 SR 1.126; 2022 -0.225 SR -2.045) | PSR(0) 0.952, maxDD 0.307, rebalances 856, funding paid -0.0745, 75 symbols, 86.8 s. Met (0.775 - 0.3320 = 0.443). Run 14 (control) not due: H6 did not pass S1 to S5. Run 16 (D-ACF of H6, H7's proxy) not due: H6 did not pass S1 to S5 and S7, and H7 did not pass S1 to S5 |
+
+Total sandbox runs made in round 2: 7 (of the 16 planned and the cap of 19); none from the reserve; no stage-1
+rejection, no kernel fault, no refusal. Every run: full stage 1 (25 truncation cuts), exit 0, nothing on stderr,
+73.6 to 104.3 s. Before every run the kernel's memory estimate printed "fits now True" (estimate 0.79 GiB, wanted
+free 1.18 GiB, free 1.46 to 3.02 GiB). The benchmark line printed by every run (equal-weight long of the in-play
+members): DEV Sharpe 0.619, maxDD 0.847, as in round 1. ledger/sandbox_log.jsonl now has 29 rows (22 + 7).
+
+## Amendments (round 2), stage 2
+
+(none: no program text, param, default, screen item or run condition was changed)
+
+## Screen outcome per hypothesis (round 2; stage 2, DEV, read from the run log above)
+
+| H | S1 (dir. changes >= 30; avg gross >= 0.5) | S2 (DEV Sharpe >= 0.6, registered sign) | S3 (neighbours) | S4 (total - costs > 0) | S5 (years +) | S6 (D-ACF R <= 0.40) | S7 (H6 > control) | verdict |
+|---|---|---|---|---|---|---|---|---|
+| H5 gen002_resid_skew | pass (2645; 0.823) | FAIL (-1.906, wrong sign) | not run | FAIL (-0.730 - 0.1404 = -0.870) | FAIL (0 of 3) | not run | n/a | DROPPED |
+| H7 gen002_prior_month_reversal | pass (1894; 0.866) | FAIL (0.381) | not run | FAIL (0.164 - 0.1772 = -0.013) | pass (2 of 3: 2021, 2022) | not run (proxy not due) | n/a | DROPPED |
+| H6 gen002_resid_momentum | pass (1871; 0.865) | pass as a necessary condition only (0.945; not evidence) | pass, H6's strict form: m=3 0.955 (0.317), m=5 0.923 (0.314), n=24 1.039 (0.361), n=36 1.069 (0.443) | pass (0.643 - 0.3299 = 0.313) | FAIL, H6's strict form (2 of 3; 2022 -0.237, SR -2.221) | not run (not due) | not run (control not due) | NOT ELIGIBLE |
+
+Against each pre-registered DEV falsifier:
+- H5: falsified on DEV. The rank against residual skewness lost in all three DEV years (DEV Sharpe -1.906): coins
+  with right-skewed residual days outperformed and left-skewed coins underperformed on DEV.
+- H7: falsified on DEV. The sign was the registered one, but the size (0.381) was below the liveness bar and the
+  return did not cover a second payment of costs.
+- H6: not eligible. It met S1, S2 (as a necessary condition), its strict S3 at all four neighbours and S4, and
+  failed its strict S5: the default lost in 2022H1 (-0.237, Sharpe -2.221), as did every neighbour. Because S1 to
+  S5 were not all passed, its control (S7) and its speed-limit diagnostic (S6) were not due, so whether the BTC-beta
+  residual adds anything over plain momentum, and how close H6 is to the speed limit, were not measured.
+
+## DEV observations (round 2; NOT hypotheses, never to be submitted from this plan)
+
+- H5's loss was large and in every DEV year. On DEV, a coin's recent residual up-jumps went with outperformance and
+  its crash days with underperformance: the lottery sign failed, as did round 1's two bets against the week's move
+  (LESSONS 16 and 17). The plan forbids flipping a sign; no mirror was run. A mirror of H5 would be a continuation
+  rule and would fall under the provisions of LESSONS 16 and 17, with DEV already spent for it.
+- H6's DEV numbers were close to one another over the five settings (Sharpe 0.92 to 1.07; total minus costs 0.31 to
+  0.44) and all five lost in 2022H1 (Sharpe -1.8 to -2.7). These numbers are not evidence (H6 was written after round
+  1's DEV result), and nothing here changes its default or makes it eligible.
+- Costs were far above the plan's estimates for the two weekly-formation books: H6 paid 0.31 to 0.38 of equity over
+  DEV (about 0.125 to 0.15 a year) and H7 0.177 (about 0.07 a year), against 0.03 to 0.06 a year estimated; H5 paid
+  0.140 (about 0.056 a year, inside its estimate). Possible causes, NOT measured: the BTC term of an m-week residual
+  (beta x BTC's m-week return) is large, so the daily update of beta moves the residuals and the ranks every day;
+  and a continuation book's holdings drift away from their targets as its winners keep moving, which the engine
+  trades back. H6 also received funding over DEV (0.074 to 0.094 of equity).
+- All three books held positions over most of DEV (avg gross 0.82 to 0.87; 75 symbols ever in the unit); H7's
+  9 weekly bins did not flatten it for long on DEV.
+- WEAK: one DEV period, one researcher session; nothing here is a parameter recommendation.
+
+## Recommendation (round 2)
+
+NONE. By the pre-registered selection rule a hypothesis is eligible only if it passes every screen item that
+applies to it: H5 failed S2, S4 and S5; H7 failed S2 and S4; H6 failed its strict S5. No program from version 2 is
+recommended for a counted submission. The DEV-only controls (gen002_diag_*) are never to be submitted.

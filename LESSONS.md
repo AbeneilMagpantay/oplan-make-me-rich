@@ -58,6 +58,35 @@ on synthetic worlds. No lesson recommends a parameter value.
     planned and no counted trial, with no room for tuning. PLAN.md exploration plan and run log. Certain
     as an account of this round; not evidence about markets.
 
+## From generation 2, round 2 (same kernel and unit; generations/gen002/REPORT.md, round 2)
+
+21. In unit top30 on DEV, a daily cross-sectional rank against the realised skewness of residual daily
+    returns (short right-skewed, long left-skewed) lost (DEV Sharpe -1.906, negative in all three DEV
+    years): recent residual up-jumps went with outperformance. PLAN.md version 2 run log, run 1; no
+    trial id. WEAK: DEV only, one default, one researcher session. A mirror would be a continuation
+    rule, with DEV already spent for it (as in 16 and 17).
+22. Reversal of the beta-residual return of the month before last (weeks 8 to 4 back) had the
+    registered sign on DEV but too little size (DEV Sharpe 0.381) to cover its costs twice. PLAN.md
+    version 2, run 4; no trial id. WEAK: DEV only, one default.
+23. A residual 4-week momentum rule written after round 1's DEV result showed DEV Sharpe 0.92 to 1.07
+    at its default and all four G5 neighbours, but lost in 2022H1 in all five settings, and so failed
+    the stricter per-year item registered for a mirror. Its DEV numbers are not evidence for the rule,
+    and a screen it failed is not reopened by registering it again. PLAN.md version 2, runs 9 to 13; no
+    trial id. WEAK.
+24. Residualising a multi-week return with a daily-updated beta made weekly-formation books cost about
+    0.07 to 0.15 of equity a year at 12.5 bps per side, two to five times the estimate from consecutive
+    weekly rankings: the turnover of an hourly-grid signal is set by its fastest-moving part. PLAN.md
+    version 2, runs 4 and 9 to 13. WEAK as a number; useful as a design yardstick.
+25. Process: a mirror screened only on readings nobody had seen, with stricter items fixed in advance,
+    was stopped by one of those items rather than judged on its known DEV Sharpe; round 2 spent 7
+    sandbox runs of 16 planned and no counted trial. PLAN.md version 2. Certain as an account of this
+    round; not evidence about markets.
+26. Across both rounds, seven pre-registered market-neutral top30 ideas built from prices, trade
+    counts and taker flow failed their DEV screens; every bet against a recent move lost and the only
+    DEV-positive book was continuation, which is the calibration's own momentum shape at a slower
+    speed. The inputs not yet open in this unit are funding and the perp-index basis (KP-017).
+    Coordinator's summary of the two run logs; WEAK as evidence about markets.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)

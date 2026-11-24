@@ -1,4 +1,4 @@
-# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 round 1 closed without a submission)
+# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 rounds 1 and 2 closed without a submission)
 
 ## Where things stand
 
@@ -23,7 +23,13 @@
   committed as fd19943 BEFORE any sandbox run. All four failed the DEV screen fixed in advance at their
   defaults (DEV Sharpe -1.57, 0.17, -0.21 and -1.25), so no neighbour, control or diagnostic run was due:
   4 sandbox runs of 60, no counted submission, M unchanged. In the ledger generation 2 is still open
-  (0 of 5 counted), so a further round is PLAN version 2 in the same file.
+  (0 of 5 counted), so a further round is a further PLAN version in the same file.
+- Generation 2, round 2 (same report, second part; PLAN version 2 committed as b64b229 BEFORE any round-2
+  sandbox run, by a fresh researcher session): three hypotheses. Residual skewness lost on DEV (Sharpe
+  -1.91); reversal of the month before last was too weak (0.38); 4-week residual momentum, a continuation
+  rule written after round 1's DEV result and screened more strictly for that reason, reached 0.92 to 1.07
+  at five settings but lost in 2022H1 in all of them and so failed the per-year item registered for it.
+  7 sandbox runs (11 of 60 used), no counted submission, M unchanged.
 - Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 so far), N = 4.86,
   Tier 1: 0, pool 0 of 5, one uncounted stage-1 rejection; all chains verify.
 - Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
@@ -199,12 +205,13 @@ calibration family far above its nominal level under null B (53 of 166 pairs at 
 passes the other gates, so the seal does not depend on it, and the conjectured cause needs a book that
 loses money. A measurement on DEV-period worlds is ordered; until it is read, no funding-driven program is
 submitted for a counted trial in unit top30.
-Generation 2, round 1 (2026-11-23, unit top30): closed without a counted submission (see "Where things
-stand"; lessons 16 to 20). The KP-016 counts of the real run were put to the human on 2026-11-23.
-Now: generation 2, round 2: a fresh researcher session writes PLAN version 2 (new hypotheses, appended to
-generations/gen002/PLAN.md), which is committed before its first sandbox run; 56 sandbox runs and all 5
-counted submissions of the generation are left. Still to do when the machine is free: the measurement for
-KP-017 (the timing gate on funding-driven books).
+Generation 2, rounds 1 and 2 (2026-11-23 and 24, unit top30): both closed without a counted submission
+(see "Where things stand"; lessons 16 to 26). Seven pre-registered ideas built from prices, trade counts
+and taker flow failed their DEV screens; no trial was spent. The KP-016 counts of the real run were put to
+the human on 2026-11-23.
+Now: the measurement for KP-017 (the timing gate on funding-driven books), on DEV-period worlds. It decides
+whether funding and the perp-index basis, the inputs not yet open in unit top30, can be used in a round 3.
+49 sandbox runs and all 5 counted submissions of generation 2 are left.
 
 ## Open decisions for the human
 
