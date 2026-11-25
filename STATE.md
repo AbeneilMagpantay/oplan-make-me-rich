@@ -257,8 +257,13 @@ with no blocker (audits/AUDIT_LOG.md, round 8, the build); one fix pass followed
 passed. An older fault came to light and was mended in the batch: the kernel's core-identity test had failed
 on main since generation 2's first programs (it read every file in strategies/). Filed on the way: KP-020 (a
 calibration family that is cheap to trade, unit top30), KP-021 (the node limit can be exceeded by one) and
-KP-022 (a sandbox run that faults before its row leaves no row); all open. Next: the re-key, three sandbox
-identity runs on real DEV data, the supervised calibrations. The
+KP-022 (a sandbox run that faults before its row leaves no row); all open. On 2026-11-26 the kernel was
+re-keyed on the branch (semantic 7d923e7e2375986d, text b74122f3f9821056, NOT sealed; row 11 of
+ledger/kernel_history.jsonl), and three logged sandbox runs repeated on real DEV data gave identical numbers
+(rows 40 to 42 of ledger/sandbox_log.jsonl: the coordinator's verification runs, generation 2 stays at 22 of
+60). The supervised calibrations follow that commit (_build/kp019_lock_run/status.txt): the core unit first,
+then top30, every row compared with the sealed artifacts; about 13 machine hours with three workers, longer
+when memory is short. While they run no kernel file may change, and `main` keeps the sealed KP-015 kernel. The
 rule for the rounds after it stands: no rule that was shaped on a DEV result is submitted for a counted trial
 without a reason beyond its DEV numbers.
 

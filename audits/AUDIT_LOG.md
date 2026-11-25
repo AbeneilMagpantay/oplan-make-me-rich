@@ -1610,3 +1610,32 @@ round 3 also the coordinator's own read of the core modules.
   its checkpoints and at the end; a mismatch stops it); a resumed top30 run; the supervisor on real data.
 - Next: the re-key (approval by delegation of 2026-11-25, this batch only), the sandbox identity runs, the
   supervised calibrations, the reading before the seal.
+
+## Round 8 (batch re-key of KP-016, KP-018 and KP-019) - 2026-11-26 - the re-key and the first runs on real DEV data
+
+- Re-key (coordinator, at commit 45427bf, working tree clean): semantic
+  7d923e7e2375986dc12df4e54c20049bf214d90b49544be64d0665e24e6c3194 (40 files), text
+  b74122f3f9821056bbb5217ece9526d7068207d61f5941f47f5118c16fcd5209 (39 files), combined
+  d09812fdec752a17c0bab0933b9084c16d2d8bc727f1374020e6204e31dcfb07; not sealed. Row 11 of
+  ledger/kernel_history.jsonl holds the reason and the approval by delegation (this batch only). The lock
+  verifies and all chains verify. Until the seal no counted evaluation can run.
+- Identity on real DEV data (the coordinator's check, before any calibration): three logged sandbox runs
+  repeated under the re-keyed kernel, rows 40 to 42 of ledger/sandbox_log.jsonl: gen002_averaged_funding_shock
+  at its defaults against row 32, gen002_resid_reversal against row 18 (run with --g6-lags) and
+  gen001_tsmom_long_flat against row 0 (unit core, logged two kernels ago). Each is identical to its logged row
+  in the canonical form, the DEV Sharpe (every digit), the rebalances and the DEV direction changes. Run times:
+  183 s, 129 s and 14 s; the top30 runs include the new readings.
+- The new readings on real DEV data, first sight (DEV rows only, as logged). gen002_averaged_funding_shock: G6's
+  speed-limit statistic at one to three lag steps -0.27, -0.09, 0.04 (limit 0.5); DEV Sharpe on next30 0.637;
+  funding paid 0.388 and received 0.544 of equity (their difference is the engine's net total, -0.1555); DEV
+  Sharpe 0.735 under G2's funding stress and 1.165 under G4's doubled costs, against 1.492 plain; 26.1 names
+  held of 28.0 in play. gen002_resid_reversal: the opt-in paired comparison gives p 0.182 (1 of 10 stale copies
+  at least as good as the book; lags of 30 to 262 days over the last 365 days of DEV), printed as a DEV reading
+  that is not the gate. Nothing in the output or the log lies after DEV end.
+- These three rows are the coordinator's verification runs, not research runs: generation 2 stays at 22 of 60
+  sandbox runs. Both top30 programs are out of the research (one had its counted trial, the other was dropped
+  at its DEV screen); their readings stay in the log for whoever reads it.
+- Next, after this commit: the supervised run (_build/kp019_lock_run, git-ignored; status.txt): the core
+  calibration, every core row compared with ledger/calibration_5ea66b0fb79ca267.json, and only on a match the
+  top30 calibration, compared at its checkpoints and at the end with ledger/ucalibration_5ea66b0fb79ca267.json.
+  It seals nothing. While it runs no kernel file changes.

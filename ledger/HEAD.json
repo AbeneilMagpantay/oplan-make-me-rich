@@ -4,12 +4,12 @@
   "rows": 4
  },
  "kernel_history.jsonl": {
-  "head": "60cd043007f302e3ad86a6e3eb15317eb600b82b2b0c180b0da91bdc0e097115",
-  "rows": 10
+  "head": "b8f495510986545c860cc4620a8916af7bb78a79273346f86ad1eebd234644e8",
+  "rows": 11
  },
  "sandbox_log.jsonl": {
-  "head": "be945e997e604a566d9153e97c056cf9f9e884b16dc6a00c94e57ba60f454c37",
-  "rows": 40
+  "head": "fdcc228ee698cb4e30065df66fa294dfe8942dee51c967d798b4b79117a9166c",
+  "rows": 43
  },
  "stage1_log.jsonl": {
   "head": "82ed669d66c817d0c47011e1115fa7c22632242d08ec50e541c49de7b34fa060",
