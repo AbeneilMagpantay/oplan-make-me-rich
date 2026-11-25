@@ -1,7 +1,10 @@
 """KP-018 (the sandbox's DEV readings for unit top30) and the KP-017 rider (g6_lag_detail): the universe engine's
 gross funding totals, the refactored G6 code (g6_memory, the paired lag loop, next30_score) equal to the code it
 replaced, the DEV readings, the per-lag detail (it reproduces p; never in a trial), and the sandbox end to end on
-synthetic disk data (DEV rows only, the log row before any print). Synthetic data only."""
+synthetic disk data (DEV rows only, the log row before any print; a fault in the readings: a kernel_fault row, no
+metric). Synthetic data only."""
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -273,6 +276,119 @@ def test_the_per_lag_detail_reproduces_p_and_never_enters_a_trial(tmp_path, tmp_
     assert det["actual"]["sharpe"] == seen["res"]["detail"]["permutation"]["actual_val_sharpe_restarted"]
 
 
+def tie_seed(step, n):
+    """A lag-generator seed whose first lag k0 = 720 + phase is a period for which no other lag of G6 (paired, k0 +
+    step j) and no lag of the speed limit (step j) falls within 24 hours of a multiple of k0."""
+    def fine(k0):
+        return all(24 <= (j * step) % k0 <= k0 - 24 for j in range(1, n))
+    return next(s for s in range(1000) if fine(720 + int(np.random.default_rng(s).integers(0, step))))
+
+
+def periodic_book(fp, k0, L_, g0, val_s, val_e):
+    """A book with period k0 hours (one random weight per name and 24-hour block of the period) on the names in play
+    on every row G6 reads (from g0 - L // 2 - k0 to VAL end) with a usable bar on every VAL execution row; 0 on
+    every other name and row. Returns (W, names, ok, inplay)."""
+    inplay = fp.inplay()
+    av = fp.eng_rows("av", val_s, val_e)
+    back = g0 - L_ // 2 - k0
+    z = inplay[back:val_e].all(axis=0) & av.all(axis=0)
+    cols = np.nonzero(z)[0]
+    vals = np.random.default_rng(11).uniform(-1.0, 1.0, (k0 // 24 + 1, len(cols))) / (2 * max(len(cols), 1))
+    rows = np.arange(back, val_e + 1)
+    W = np.zeros(inplay.shape)
+    W[np.ix_(rows, cols)] = vals[((rows - back) % k0) // 24]
+    return W, z, inplay[g0:val_e] & av, inplay
+
+
+def test_the_tie_flags_of_the_detail_are_g6s_own_ties_with_a_real_tie(ud_full, val_handle):
+    """KP-017 rider: g6_lag_detail's tie flags are g6_books_tie of each lag's pair (a mutant writing every flag False
+    must fail). The book is periodic with the period of the first lag on names always in play, so that lag's pair
+    is a REAL tie (S_k == A_k on every cell), the other lags are not, and the speed limit is not reached."""
+    prog = top30(PROG)
+    q = L.default_params(prog)
+    fp = UP.Blocked(ud_full, "top30", fields=UP.program_fields(prog))
+    n = 6
+    val_s, val_e = fp.pos(C.VAL_START), fp.pos(C.VAL_END)
+    L_, g0 = val_e - val_s + 1, val_s - 1
+    step = UP.g6_step(L_, n)
+    seed = tie_seed(step, n)
+    k0 = 720 + int(np.random.default_rng(seed).integers(0, step))
+    W, z, ok, inplay = periodic_book(fp, k0, L_, g0, val_s, val_e)
+    assert z.sum() >= C.UNIVERSE_MIN_CS
+    res = UP.ugates(W, fp, np.random.default_rng(seed), PL.Opts(u_lags=n), 0.1, prog, q, [], None, 1)
+    assert res["status"] == "evaluated" and not res["gates"]["G6"]["memory_over_limit"]
+    det = res["g6_lag_detail"]
+    assert det["lags"][0] == k0 and len(det["lags"]) == n
+    own = [UP.g6_books_tie(*UP.g6_books(W, inplay, ok, g0, k)) for k in det["lags"]]
+    assert det["tie"] == own and own[0] is True and not all(own)
+    assert {k: det["s"][k][0] for k in UP.BOOK_STATS} == {k: det["a"][k][0] for k in UP.BOOK_STATS}   # copied
+    assert res["gates"]["G6"]["value"] == UP.g6_paired_p(det["a"]["sharpe"], det["s"]["sharpe"], det["tie"])
+
+
+def test_a_book_over_the_speed_limit_has_a_short_detail_that_survives_the_ledger(ud_full, val_handle):
+    """KP-017 rider: a book that never changes on its names is over the speed limit: the detail holds lags, actual and
+    speed_limit_exceeded only, p is 1.0; ucalibrate.g6_fields copies it; it survives the canonical JSON."""
+    from omr import ucalibrate as UC
+    prog = top30(PROG)
+    fp = UP.Blocked(ud_full, "top30", fields=UP.program_fields(prog))
+    W = np.where(fp.inplay(), 1.0 / 30, 0.0)
+    res = UP.ugates(W, fp, np.random.default_rng(3), PL.Opts(), 0.1, prog, L.default_params(prog), [], None, 1)
+    assert res["status"] == "evaluated" and res["gates"]["G6"]["memory_over_limit"]
+    assert res["gates"]["G6"]["value"] == 1.0
+    det = res["g6_lag_detail"]
+    assert set(det) == {"lags", "actual", "speed_limit_exceeded"} and det["speed_limit_exceeded"] is True
+    assert len(det["lags"]) == C.UNIVERSE_G6_LAGS and set(det["actual"]) == set(UP.BOOK_STATS)
+    row = UC.g6_fields(res, {"status": "evaluated"})
+    assert row["g6_lag_detail"] == det and row["g6_memory_over_limit"] is True
+    back = json.loads(ledger.canonical(row))
+    assert back["g6_lag_detail"] == ledger.clean(det) and back["g6_lag_detail"]["speed_limit_exceeded"] is True
+    assert not ({"a", "s", "tie"} & set(back["g6_lag_detail"]))
+
+
+def liquidated_lag_detail(fp, W, inplay, n=20, hours=24 * 60):
+    """A G6 lag detail built by the lag loop's own code (g6_book_runner, g6_paired_runs, _by_stat) on the last `hours`
+    DEV rows with n lags 733 + 101 j, where every third engine run is a liquidated book (its targets x 50: gross
+    about 50, liquidated at once). Returns (detail, p, a_sh, s_sh, the unwrapped run_book, plain)."""
+    e = fp.pos(C.DEV_END)
+    s = e - hours + 1
+    g0 = s - 1
+    ok = inplay[g0:e] & fp.eng_rows("av", s, e)
+    base = UP.g6_book_runner(fp, ok, s, e)
+    calls = []
+
+    def run_book(tgt):
+        calls.append(1)
+        return base(tgt * 50.0) if len(calls) % 3 == 0 else base(tgt)
+    plain = np.where(ok, W[g0:e], 0.0)
+    actual = base(plain)
+    offs = 733 + 101 * np.arange(n)
+    no_reuse = np.full_like(plain, np.nan)             # equal to no A_k: every A book runs too (both sides liquidate)
+    a_sh, s_sh, ties, a_st, s_st = UP.g6_paired_runs(W, inplay, ok, g0, offs, no_reuse, actual, run_book)
+    det = {"lags": [int(k) for k in offs], "actual": actual[1], "tie": [bool(x) for x in ties],
+           "a": UP._by_stat(a_st), "s": UP._by_stat(s_st)}
+    return det, UP.g6_paired_p(a_sh, s_sh, ties), a_sh, s_sh, base, plain
+
+
+def test_a_liquidated_lag_book_keeps_its_minus_inf_through_the_detail(dev_book):
+    """KP-017 rider: a liquidated lag book is (-inf, statistics None) from g6_book_runner; _by_stat keeps it; the
+    canonical JSON writes the Sharpe as "-inf"; g6_paired_p on the cleaned Sharpes gives the same p."""
+    prog, q, fp, W, kn, inplay = dev_book
+    det, p, a_sh, s_sh, base, plain = liquidated_lag_detail(fp, W, inplay)
+    sh, st = base(plain * 50.0)
+    assert sh == float("-inf") and st == {"sharpe": float("-inf"), "sd": None, "mean": None, "mean_gross": None,
+                                          "costs": None, "funding": None, "rebalances": None}
+    for side, arr in (("a", a_sh), ("s", s_sh)):
+        assert det[side]["sharpe"] == list(arr) and np.isneginf(arr).any() and np.isfinite(arr).any()
+        for j in np.nonzero(np.isneginf(arr))[0]:
+            assert all(det[side][k][j] is None for k in UP.BOOK_STATS if k != "sharpe")
+    back = json.loads(ledger.canonical(det))
+    for side, arr in (("a", a_sh), ("s", s_sh)):
+        assert back[side]["sharpe"] == ["-inf" if np.isneginf(x) else float(x) for x in arr]
+    a2 = [float(x) if isinstance(x, str) else x for x in back["a"]["sharpe"]]
+    s2 = [float(x) if isinstance(x, str) else x for x in back["s"]["sharpe"]]
+    assert UP.g6_paired_p(a2, s2, back["tie"]) == p and 1 / 21 <= p <= 1.0
+
+
 def test_book_stats_and_daily_cost_shares():
     op, cl, av, dn, up, fr, tgt = _arrays(3)
     idx = pd.date_range("2021-01-01", periods=len(op), freq="h", tz="UTC")
@@ -360,3 +476,38 @@ def test_a_default_run_has_no_paired_reading(env):
     sandbox.main([str(f), "--quick"])
     assert "g6_paired_dev" not in ledger.read_rows(P.SANDBOX_LOG)[0]
     assert not any("paired lag reading" in line for line in printed)
+
+
+@pytest.mark.parametrize("target,exc,fault", [
+    ("next30_score", PL.KernelFault("panel symbols without stored tables " + "x" * 300),
+     "top30_readings: KernelFault: " + ("panel symbols without stored tables " + "x" * 300)[:200]),
+    ("dev_speed_limit", ValueError("a message with a value 0.123456 that must not be logged"),
+     "top30_readings: ValueError")])
+def test_a_fault_in_the_readings_logs_a_kernel_fault_row_and_no_metric(env, monkeypatch, capsys, target, exc, fault):
+    """U8 for the KP-018 readings: an exception in them writes the row first (status kernel_fault), prints the header
+    and one fault line, the traceback to stderr, exit code 2; no metric is logged or printed."""
+    f, printed, appended_at, _ = env
+
+    def boom(*a, **k):
+        raise exc
+    monkeypatch.setattr(UP, target, boom)
+    with pytest.raises(SystemExit) as ei:
+        sandbox.main([str(f), "--quick", "--g6-lags"])
+    assert ei.value.code == 2
+    rows = ledger.read_rows(P.SANDBOX_LOG)
+    assert len(rows) == 1 and appended_at == [0] and ledger.verify_chain(P.SANDBOX_LOG) == []
+    r = rows[0]
+    assert r["status"] == "kernel_fault" and r["fault"] == fault
+    assert len(r["fault"]) <= len("top30_readings: KernelFault: ") + 200
+    for k in ("dev_sharpe", "rebalances", "direction_changes_dev", "g6_memory_dev", "g6_memory_dev_max",
+              "next30_dev_sharpe", "funding_paid_gross", "funding_received_gross", "g2_dev_sharpe", "g4_dev_sharpe",
+              "names_held_avg", "g6_paired_dev"):
+        assert k not in r, k
+    name = type(exc).__name__
+    assert len(printed) == 4 and printed[0].startswith("SANDBOX (DEV only") and printed[1].startswith("program x_sbx")
+    assert printed[3] == f"KERNEL FAULT in the top30 readings ({name}): report it; no metric is printed"
+    out = capsys.readouterr()
+    text = "\n".join(printed) + "\n" + out.out
+    for word in ("Sharpe", "stage 1:", "speed limit", "next30", "funding", "names held", "paired", "0.123456"):
+        assert word not in text, word
+    assert "Traceback" in out.err and name in out.err

@@ -405,6 +405,37 @@ def test_t8_blocks_equal_the_whole_panel_and_stage1_passes(ud_dev, name):
     assert s1.get("fault") is None and s1["block_overlap_cells"] > 0
 
 
+TOP30_G5 = {
+    "weekly_mix": "n = param(3, 2, 4)\nsignal = cs_scale(cs_demean(cs_rank(sma(tf_mean(ret(close, 1), weekly), n)) + "
+                  "0.5 * tf_last(cs_rank(ret(close, 1)), weekly)))\n",
+    "daily_nested": "k = param(6, 4, 8)\nsignal = cs_scale(cs_demean(tf_last(tf_mean(cs_demean(ret(close, k)), h6), daily) + "
+                    "2 * tf_mean(funding8h, daily)))\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(TOP30_G5))
+def test_t8_g5_variants_on_the_block_path_equal_the_whole_panel(ud_dev, name):
+    """G5's jittered variants (params and literals, as ugates builds them) of tf programs on the top30 BLOCK path
+    equal the whole panel bit for bit, and the jitter is real (a variant's weights differ from the default's)."""
+    prog = parse(TOP30_G5[name], unit="top30", probe_=False)
+    q = L.default_params(prog)
+    f = UP.program_fields(prog)
+    whole = UP.Blocked(ud_dev, "top30", months=None, fields=f)
+    blocks = UP.Blocked(ud_dev, "top30", fields=f)
+    variants = PL.jitter_params(prog, q, np.random.default_rng(7), 3)
+    assert prog.n_literals == 1 and len(variants) == 3 and all(len(lv) == 1 for _, lv in variants)
+    W0 = whole.unit(prog, q)[0]
+    differs = False
+    for qv, lv in variants:
+        a = whole.unit(prog, qv, literals=lv)
+        b = blocks.unit(prog, qv, literals=lv)                                  # raises on a block_overlap
+        assert a[2].any()
+        for x, y in zip(a, b):
+            assert np.array_equal(x, y, equal_nan=True)
+        differs |= not np.array_equal(a[0], W0, equal_nan=True)
+    assert differs
+
+
 def test_t8_block_overlap_fires_when_a_tf_lookback_is_understated(ud_dev, monkeypatch):
     real = L.lookback_hours
     monkeypatch.setattr(L, "lookback_hours", lambda prog: max(1, real(prog) - 400))

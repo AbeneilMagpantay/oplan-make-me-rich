@@ -5,7 +5,9 @@ nothing after 2022-06-30 23:00 is visible. The program is parsed and interpreted
 (nothing is executed). By default stage 1 runs exactly as in the evaluator (truncation self-check
 and activity_dev); --quick checks only the DEV end. Not a trial. Each run appends one line to
 ledger/sandbox_log.jsonl BEFORE it prints any metric (a kernel-fault exit writes its line too, status
-kernel_fault). A program of unit top30 (KP-015) runs on the DEV universe panel
+kernel_fault: a stage-1 self-check fault, or any exception in the KP-018 top30 readings, fault "top30_readings:
+<type>" with the message of a pipeline.KernelFault only; that exit logs and prints no metric, exit code 2).
+A program of unit top30 (KP-015) runs on the DEV universe panel
 (omr.upipeline; membership from DEV bars only) with the universe engine; its benchmark is the
 equal-weight long of the in-play members. KP-018: a top30 program also gets readings on DEV rows only, each by
 the gate's own code (logged with the row, printed after it): G6's speed-limit statistic at one to three lag steps
@@ -24,6 +26,7 @@ import argparse
 import datetime as dt
 import secrets
 import sys
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -116,10 +119,20 @@ def main(argv=None):
     rd, extra = None, {}
     if prog.unit != "core":
         n_unit = len(fp.symbols)
-        rd = top30_readings(fp, s1, inplay, run, s, e, a.g6_lags)
-        del fp, mk                                     # KP-018 (b): next30 only after the top30 panel is released
-        rd["next30"] = upipeline.next30_score(prog, params, ud, end=C.DEV_END, keep=True)
-        extra = readings_log(rd)
+        try:
+            rd = top30_readings(fp, s1, inplay, run, s, e, a.g6_lags)
+            del fp, mk                                 # KP-018 (b): next30 only after the top30 panel is released
+            rd["next30"] = upipeline.next30_score(prog, params, ud, end=C.DEV_END, keep=True)
+            extra = readings_log(rd)
+        except Exception as ex:                        # U8: a fault in the readings writes its row too, metric-free
+            name = type(ex).__name__
+            fault = f"top30_readings: {name}" + (f": {str(ex)[:200]}" if isinstance(ex, pipeline.KernelFault) else "")
+            ledger.append(P.SANDBOX_LOG, dict(row, status="kernel_fault", fault=fault))
+            for line in header:
+                print(line)
+            print(f"KERNEL FAULT in the top30 readings ({name}): report it; no metric is printed")
+            traceback.print_exc(file=sys.stderr)
+            sys.exit(2)
     # U8: the log row is appended BEFORE any metric is printed
     ledger.append(P.SANDBOX_LOG, dict(row, status="ok", dev_sharpe=sm["sharpe"], rebalances=run.n_rebalances,
                                       direction_changes_dev=s1["direction_changes_dev"], **extra))

@@ -252,9 +252,15 @@ build on branch kp019-build, tests, independent audit and the coordinator's own 
 calibrations (about 13 machine hours, unattended), pre-seal reading, seal, selftest, recount, merge. Expected:
 every stored row identical to the sealed artifacts; thresholds top30 0.10 and core 0.05. Until the seal no
 research round runs and nothing is submitted; the human can strike any item until the re-key. Stage reached
-(2026-11-25): the design passed the coordinator's gate (audits/AUDIT_LOG.md, round 8) and the build is ordered
-on branch kp019-build; one limit of the unit top30 calibration was restated and filed as KP-020. The rule for the rounds after it stands: no rule that was shaped on a
-DEV result is submitted for a counted trial without a reason beyond its DEV numbers.
+(2026-11-26): the build on branch kp019-build passed the independent audit and the coordinator's own review
+with no blocker (audits/AUDIT_LOG.md, round 8, the build); one fix pass followed; the full suite gives 1228
+passed. An older fault came to light and was mended in the batch: the kernel's core-identity test had failed
+on main since generation 2's first programs (it read every file in strategies/). Filed on the way: KP-020 (a
+calibration family that is cheap to trade, unit top30), KP-021 (the node limit can be exceeded by one) and
+KP-022 (a sandbox run that faults before its row leaves no row); all open. Next: the re-key, three sandbox
+identity runs on real DEV data, the supervised calibrations. The
+rule for the rounds after it stands: no rule that was shaped on a DEV result is submitted for a counted trial
+without a reason beyond its DEV numbers.
 
 ## Open decisions for the human
 

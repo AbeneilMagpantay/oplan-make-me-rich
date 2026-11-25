@@ -1473,3 +1473,140 @@ round 3 also the coordinator's own read of the core modules.
   run reproduces the same artifact.
 - Next: the build on branch kp019-build by the same builder; then an independent audit and the coordinator's
   own review of the new functions' causality and locality and of the seal's count.
+
+## Round 8 (batch re-key of KP-016, KP-018 and KP-019) - 2026-11-26 - the build, the independent audit and the coordinator's review
+
+- Build: by the builder of the design, on branch kp019-build (snapshot 6ef529a; the lock does not verify on the
+  branch until the re-key). Semantic files: omr/lang.py and omr/interp.py (tf_last, tf_mean), omr/engine.py (two
+  running totals of the top30 engine: funding paid and funding received), omr/upipeline.py (G6's statistics as
+  functions the sandbox can call, g6_lag_detail, the DEV readings), omr/pipeline.py (tier_at's lattice check,
+  dev_sharpe_of), omr/calibrate.py (protocol 7) and omr/ucalibrate.py (protocol 10), omr/constants.py
+  (DEV_POSITIVE_MIN = 100), omr/sandbox.py (the readings, --g6-lags), omr/selftest.py and the new program
+  omr/programs/kernel_kitchen_sink_tf.omr. Text: LANGUAGE.md sections 3, 6, 7 and 10; CONSTITUTION.md sections
+  8, 9, 12 and 13; four new test files; three test files follow the new signatures and versions.
+- Builder's proof: a golden capture taken from a hash-checked copy of main's kernel before the first edit. After
+  the build every existing output is identical: the parse records of all programs, the interpreter's output on
+  the probe panels, the engines, stage 1 and stage 2 on synthetic data, the rows of small dry-run calibrations.
+  The only differences are the ruled ones: g6_lag_detail (it reproduces perm_p in every case), the dry runs'
+  verdicts (they now stop on DEV_POSITIVE_MIN) and the protocol versions. Full suite of the build: 1219 passed,
+  2 failed (40 minutes).
+- The 2 failures were older than the build. tests/test_core_identity.py, the kernel's proof that the core unit
+  is bit-identical to the reference kernel b12df97, copied every file in strategies/ to that reference, which
+  cannot read the unit header line of the 34 strategies of generation 2. The test has therefore failed on main
+  since generation 2's first programs were committed, and no full suite ran between the build of the sealed
+  kernel (305e2c6, 962 passed) and this build. Coordinator's mend, as an item of the batch: core_programs() keeps
+  the 11 strategies of generations 0 and 1 (the set the test covered when it was written, bd6920b) and the three
+  kernel programs. With it the test passes on the build: the core unit is bit-identical to b12df97 on a
+  synthetic world (stages 1 and 2) and on the real DEV frames (stage 1). Lesson recorded (LESSONS.md): a kernel
+  test must not read the genome folder by a pattern.
+- Independent audit: a fresh auditor with its own scripts, its own program generators and its own reference copy
+  of 469c1cd (git archive); mutation tests on a scratch copy; no project file touched; no real-data run but the
+  DEV-only tests. Verdict: the build may go to the re-key; no blocker. What it ran:
+  A. The two functions against its own pure-Python statement of the ruled rules: 18,492 checks (all 8
+     timeframes, both functions, hourly and coarser inputs, unaligned starts, holes, an in-play panel with
+     entrants, leavers, a gap hour and an unknown stretch, cs_* inside and outside), 0 failures. 320 random core
+     programs and 90 random top30 programs under: the data cut at t, every row after t poisoned, start cuts,
+     one-row changes, and the block path at 6 and at 1 month against the whole panel; 0 failures.
+  B. 60 parser attacks behave as ruled; the probe outcomes of the design gate hold through the real parser; the
+     canonical forms, node counts, lookbacks and literals of the existing programs are unchanged; the collector
+     of used fields never takes the timeframe name for a field.
+  C. The sandbox on two synthetic disk folders that are equal up to DEV end and poisoned in every later row
+     (klines, mark, index, funding, all symbols): 0 differing logged fields and the same printed text, for the
+     default readings, for --g6-lags and for a core program; the row is appended before the first print and the
+     chain verifies.
+  D. Its own recount of both sealed artifacts from the raw rows agrees with the built kernel's decide_both:
+     core 0.05 (DEV-positive pairs 1,144 and 1,130; Tier-1 passes at 0.025 / 0.05 / 0.10: 10 / 26 / 44 and
+     6 / 18 / 35, so 0.10 fails against 34.3 and 33.9 allowed; power at 0.05: 0.84, 0.83, 0.905, 0.81); top30
+     0.10 (165 and 225; 0 / 0 / 0 and 0 / 0 / 1); in both artifacts 0 faults, 0 stage-1 failures, 0 p values
+     off their lattice. The null advisory never kills a threshold wrongly (12,005 cases, exhaustive, with the
+     DEV-positive floor active). Missing, malformed and NaN counts fail closed. kernel_lock (unchanged) refuses
+     the old artifacts on the protocol version alone.
+  E. Old against new on synthetic data: 0 bit differences in parse records, interpreter output (core frames;
+     top30 whole panel and blocks, with jittered literals), engines (numba and pure Python), run_targets, stage
+     1 and stage 2 of both units, and the null and oracle task functions of both calibrations. The new totals:
+     paid minus received equals the net total within 3.5e-16, both are non-negative, the multipliers apply, and
+     they carry across blocks bit for bit.
+  F. g6_lag_detail reproduces p in every result it produced and never reaches a trial row; book_stats survives a
+     run with no rebalance, of one row, of one day, ending at a 00:00 bar, and a liquidated one.
+  G. 12 of 13 mutants are killed by the new tests (among them: bins visible an hour early, a shifted mean
+     window, an understated lookback, the sign of the received total, the pooled rate over evaluated pairs, the
+     floor not applied, the lattice check removed, a sandbox load past DEV end). No assertion of a changed
+     existing test was weakened. The mend of test_core_identity covers the set of bd6920b.
+  I. compare_artifacts.py on copies of the sealed artifacts: a faithful new artifact matches in both units; 13
+     injected defects, one of a single ulp, do not.
+- The auditor's findings and the rulings:
+  1. (minor) A failing sandbox reading lost the run's log row, against U8 (shown by making next30_score raise;
+     no real input found). Ruled and built in fix pass 1: any exception in the readings appends the row with
+     status kernel_fault before anything is printed, prints no metric and exits 2.
+  2. (minor) LANGUAGE.md said that sma(funding8h, n) equals (8 / n) times the funding a unit position paid over
+     the last n hours; that holds on windows of whole settlement intervals only (also the coordinator's finding
+     in its own read). Reworded in fix pass 1.
+  3. (minor, run script, not kernel) supervise.ps1 could start the core calibration a second time when an
+     earlier run finished while it waited, and fell back to stopping remembered process ids when the process
+     table could not be read. Both mended in fix pass 1.
+  4. (note) The node limit can be exceeded by one: the timeframe name of tf_last / tf_mean is counted after the
+     last test of MAX_NODES, as the name inside btc() and the field of a timeframe function always were. Not
+     changed (the batch keeps the new functions consistent with btc(field), and the old sites are outside its
+     approval); filed as KP-021.
+  5. (note) Text scope: the new paragraph of LANGUAGE.md section 3 also said that sma(0.5 * hour, n) passes the
+     probe, which is KP-014's ground and not approved. The clause is removed, and CONSTITUTION section 12 names
+     the scaled calendar average as a form of tf_mean only (fix pass 1).
+  6. (note) In the verdict, and so in kernel.lock after the seal, the key null_pass_rate now holds the rule's
+     rate (over DEV-positive evaluated pairs); the rate over evaluated pairs is null_pass_rate_evaluated. It
+     stays so; whoever reads a lock must read the verdict's "denominator" with it.
+  7. (note) No test checked the tie flags of g6_lag_detail (the one surviving mutant). Tests added in fix pass 1,
+     with tests of the detail of a book over the speed limit and of a liquidated lag book, which the audit had
+     verified by reading only.
+- Coordinator's own review, by reading the diff against 469c1cd, of the parts where a mistake corrupts every
+  result. (a) omr/interp.py: tf_last and tf_mean are one call branch, to_tf(to_h1(x), agg, tf); the mean is a
+  new branch of to_tf placed before the sum branch, a sequential sum of the bin's hours from 0.0 divided by the
+  hours; bins, completeness, knownness (every hour of the bin known) and visibility (to_h1: from the bin's last
+  hourly bar) are the existing code, unchanged; an incomplete bin's rows are clamped and dropped. (b) omr/lang.py:
+  the second argument must be a bare timeframe name, x a dimensionless numeric series, hourly for tf_mean; the
+  result has timeframe tf; lookback 2h - 2 + lookback(x), where lookback(x) is already relative to an hourly row.
+  (c) omr/engine.py: the two totals are two added statements in the funding loop; the lines that accumulate pay,
+  equity and funding_paid are unchanged; the totals never enter the equity arithmetic. (d) omr/upipeline.py: the
+  speed limit and the paired lag loop are the old statements moved into functions, in the same order of engine
+  runs and with the same single draw of the lag generator; g6_lag_detail is built from the runs G6 already makes
+  and returned outside the gates. (e) the seal: the numerator (Tier-1 passes among submitted pairs) is a subset
+  of the new denominator (evaluated with G3 true), since Tier 1 requires G3; a missing or empty denominator
+  fails; the floor and the fault share fail closed; the family bound is unchanged. (f) tier_at: the check runs
+  only on evaluated rows, with the checking kernel's own count. (g) omr/sandbox.py: one load, upto dev_end; the
+  next30 reading uses the same loaded data with end = DEV end; the readings are logged with the row before any
+  print. Checked beyond the audit: the Sharpe of a liquidated lag book (-inf) passes through ledger.canonical
+  into the partial file and the artifact as the string "-inf", and compare_artifacts.py reads it back as -inf
+  with the kernel's margin (1e-9) and tie rule.
+- Correction to this round's design entry (above): "the stale copies are lagged copies of the book's own weights
+  (lags j x 621 hours ...)" is wrong for the paired comparison. Its lags are 720 + phase + 621 j hours
+  (j = 0 .. 19, one random phase below 621); j x 621 hours are the lags of the speed limit. The conclusion
+  stands: 621 = 25 x 24 + 21, so the lag's hour of day moves by 21 hours from copy to copy in both.
+- Fix pass 1 (the same builder; the rulings above and nothing else): omr/sandbox.py (the fault path of the
+  readings, with two tests); LANGUAGE.md (the funding window in hours, checked against the kernel on synthetic
+  coins with 8-hour, 4-hour and changing settlement intervals: the equality holds on every window of whole
+  settlement intervals and on no other; the clause on sma(0.5 * hour, n) removed); CONSTITUTION.md section 12
+  (one phrase); tests/test_kp018.py (the tie flags against g6_books_tie on a book with one real tie; the detail
+  of a book over the speed limit; liquidated lag books, whose -inf Sharpe becomes the string "-inf" in the
+  canonical row and gives the same p there); tests/test_kp019.py (G5 variants of tf programs on the top30 block
+  path equal to the whole panel); supervise.ps1 and its README. Full suite after the pass: 1228 passed, 0 failed
+  (45 min 39 s).
+- Delta audit of fix pass 1 (the same auditor): the build with the pass may go to the re-key; notes only. It
+  injected a fault at 7 points of the readings path (each reading, next30, the log fields, the G2 and G4 runs, a
+  MemoryError): each gives exit 2 and exactly one kernel_fault row, appended before the 4 printed lines, with no
+  metric; at 6ef529a the same faults left no row. Normal runs are identical to 6ef529a in rows, printed lines,
+  order and exit code (10 runs); the comparison on data poisoned after DEV end shows 0 differences. The funding
+  sentence holds through the kernel on 5 synthetic coins (8-hour, 4-hour, changing and 1-hour intervals, n from
+  1 to 40): 0 inequalities on 3,547 windows of whole intervals. 8 of 8 new mutants die, the tie-flag mutant
+  among them. The two mends of supervise.ps1 are as ruled (by reading). In the kernel sets only the five files
+  of the pass differ from 6ef529a. Its notes: (i) a fault BEFORE the readings (in the base DEV run, the benchmark
+  or the summary, or a stage-1 kernel fault raised as an exception) still ends a sandbox run without a row, as
+  at 469c1cd: outside this batch, filed as KP-022; (ii) the traceback on stderr carries the exception's message
+  (DEV data only; as ruled); (iii) two other tests read strategies/ by a pattern: tests/test_structure.py (an
+  ASCII check of every strategy and of four record files; a *.py file in strategies/ fails it) and
+  tests/test_blocks.py (it evaluates every parseable strategy: slower with every generation, but it can fail
+  only on a real fault). Neither has the fault of the core-identity test.
+- Not verified before the re-key, settled after it: the run time of the new sandbox readings on real DEV data
+  and the identity of three logged sandbox runs (the coordinator, before the calibrations); the rows of the real
+  calibrations (the supervised run compares every row with the sealed artifacts: the core unit first, top30 at
+  its checkpoints and at the end; a mismatch stops it); a resumed top30 run; the supervisor on real data.
+- Next: the re-key (approval by delegation of 2026-11-25, this batch only), the sandbox identity runs, the
+  supervised calibrations, the reading before the seal.

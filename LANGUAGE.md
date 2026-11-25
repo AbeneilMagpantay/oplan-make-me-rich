@@ -91,7 +91,7 @@ Calendar fields over a bin (KP-019): `tf_mean(hour, daily)` and `tf_mean(hour, w
 exactly 0 (the decision time of a bin's last bar is 00:00, a Monday for weekly) and accepted, as a zero
 carries nothing; `tf_last` and `tf_mean` of hour or weekday over shorter bins are clocks of the current
 hour and weekday. A calendar average scaled by a literal (`tf_mean(0.5 * hour, daily)`) moves with its
-jittered literal and passes, as `sma(0.5 * hour, n)` at n = 24 does, and near-constants such as
+jittered literal and passes, and near-constants such as
 `tf_mean(hour + funding8h, daily)` pass: both are left to the source read.
 
 ## 4. Types and units
@@ -168,7 +168,7 @@ hours.
 | rsi(x, n) | FINITE, centred: (G - L) / (G + L) over the last m = 10n changes (rows t-m .. t), G and L the sums of gains and losses with weight (1 - 1/n)^k for the change k rows back; NaN when G + L = 0. Equal to (RSI - 50) / 50 for Wilder's smoothing truncated at m changes | dimensionless |
 | atr(h, l, c, n) | FINITE: the same weights over the last m = 10n true ranges max(h - l, abs(h - prev c), abs(l - prev c)) (rows t-m .. t), normalised; three inputs of identical unit and timeframe | of h |
 | realised_vol(x, n) | std (ddof 1, two-pass) of the last n log ratios log(x_t / x_t-1) (rows t-n .. t) x sqrt(periods per year of x's timeframe: 8760 hourly ... 365 daily, 365/7 weekly) | dimensionless |
-| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known only when those n settlements all fall inside the last 8n hours (bounded in time like every other function; KP-015 S1). A funding window measured in HOURS is sma(funding8h, n) on hourly rows: (8 / n) times the funding a unit position paid over the last n hours, whatever the coin's settlement interval | dimensionless |
+| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known only when those n settlements all fall inside the last 8n hours (bounded in time like every other function; KP-015 S1). A funding window measured in HOURS is sma(funding8h, n) on hourly rows: the mean over the last n hourly rows of the 8h rate in force at each row (a settlement's rate x 8 / its interval in hours, held until the next settlement), whatever the coin's settlement interval. It equals (8 / n) times the funding a unit position paid at the settlements whose bars are among those n rows only where the n rows are whole settlement intervals: the first row is a settlement's bar, the row after the last is the next settlement's bar, and each settlement in the window is followed by the next after exactly its own interval in hours (n = 8 on an 8-hour coin with a settlement in the window's last hour gives (r_new + 7 r_old) / 8 against r_new paid) | dimensionless |
 | hold(enter_long, exit_long, enter_short, exit_short, h) | WINDOWED: the state in {-1, 0, +1} reached by running the transition rules FROM FLAT over rows t-h+1 .. t, recomputed for every t (no phase anchored anywhere). From flat: enter_long and not enter_short -> +1; enter_short and not enter_long -> -1. Long: enter_short -> -1, else exit_long -> 0. Short: enter_long -> +1, else exit_short -> 0. Known only where all four inputs are known on all h rows. It equals the unbounded state machine whenever a position re-synchronises within h bars | dimensionless |
 | abs, sign | elementwise; sign is dimensionless | of x / none |
 | sqrt, log, exp, tanh | elementwise on a dimensionless input; invalid -> NaN | dimensionless |

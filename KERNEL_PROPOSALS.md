@@ -617,3 +617,30 @@ rates, status.
   to the pool before the coordinator has run the per-program measurement in null worlds and put both to the
   human.
 - Status: open (needs the human's approval; a candidate for the next semantic re-key after the batch).
+
+## 2026-11-26 (coordinator, audit of the batch re-key) KP-021 The node limit can be exceeded by one
+
+- Source: the independent audit of the batch build (audits/AUDIT_LOG.md, round 8, the build), finding 4.
+- Problem: LANGUAGE.md limits a program to MAX_NODES = 120 expression nodes. The checker tests the limit when it
+  enters a node. The field name inside btc(field), the field of a timeframe function and, since KP-019, the
+  timeframe name of tf_last / tf_mean are counted afterwards without a test, so a program whose last counted
+  node is such a name is accepted with 121 nodes.
+- Proposed change: either test the limit after those three increments (semantic: a program with exactly 121
+  nodes would be refused; none is known in strategies/ or omr/programs/, to be confirmed at the build), or say
+  in LANGUAGE.md that such a name may be the 121st node (text only).
+- Expected effect: none on any existing result.
+- Status: open (needs the human's approval). Not in the batch re-key of 2026-11-25: its approval names its
+  items, and the batch keeps the new functions consistent with btc(field).
+
+## 2026-11-26 (coordinator, delta audit of the batch re-key) KP-022 A sandbox run that faults before its row leaves no row
+
+- Source: the delta audit of fix pass 1 (audits/AUDIT_LOG.md, round 8, the build), a note.
+- Problem: U8 wants every sandbox run to leave its row before anything is printed. The batch re-key closed this
+  for the new top30 readings. Before them it is still open, as it was at 469c1cd: an exception in the base DEV
+  run, in the benchmark run or in the summary, and a stage-1 kernel fault that is raised as an exception rather
+  than returned as a code, end the run with a traceback and no row. No metric is printed on that path, so
+  nothing leaks; the count of runs is one short.
+- Proposed change: omr/sandbox.py appends a kernel_fault row on any exception after the program is parsed
+  (semantic).
+- Expected effect: none on any result.
+- Status: open (needs the human's approval; a candidate for the next semantic re-key).

@@ -448,8 +448,8 @@ Live risk limits the loop can never change:
   `ledger verify` does not itself compare with the remote (KP-009).
 - The constant probe catches EXACT constants built without literals (`x / x`, `hour / hour`,
   `rank(x, 1)`, `sign(close * 2)`, `tf_mean(hour, daily)`). It does not catch NEAR-constants (`mark_close / close`,
-  `sma(hour, 25)`, `tf_mean(hour + funding8h, daily)`, sums of such ratios used as a scale), calendar averages
-  scaled by a literal (`tf_mean(0.5 * hour, daily)`) or thresholds hidden by multiplying both sides
+  `sma(hour, 25)`, `tf_mean(hour + funding8h, daily)`, sums of such ratios used as a scale), a tf_mean of a
+  calendar field scaled by a literal (`tf_mean(0.5 * hour, daily)`) or thresholds hidden by multiplying both sides
   of a comparison by the same series; these are deliberate, visible in the text, and left to the
   coordinator's source read before every counted submission (KP-010).
 - In top30 a program whose weights change slowly cannot reach Tier 1: G6's speed limit (section 13)

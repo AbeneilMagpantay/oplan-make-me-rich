@@ -183,3 +183,11 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     the no-skill worlds that keep the real funding sizes (53 of 166 at 0.10, about 16 expected).
     Not yet measured for a book that passes the other gates; until it is, no funding-driven program
     is submitted in unit top30 (KERNEL_PROPOSALS KP-017). INSTRUMENT, open.
+
+## About the kernel's own tests (batch re-key of 2026-11-25; audits/AUDIT_LOG.md, round 8, the build)
+
+36. The kernel's core-identity test handed every file in strategies/ to a frozen reference kernel, so it
+    failed from the day generation 2's first programs (a unit the reference cannot read) were committed, and
+    nobody saw it for the life of that kernel: the full suite ran at the kernel's build and not again before
+    the next kernel change. A kernel test that reads the genome folder by a pattern must hold for every program
+    the language accepts, and the full suite runs when a generation closes as well as at every build. PROCESS.
