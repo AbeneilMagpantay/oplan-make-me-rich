@@ -242,12 +242,18 @@ recount in those worlds, so KP-017 itself stays open (KERNEL_PROPOSALS).
 The counted trial (2026-11-25): gen002_averaged_funding_shock failed in VAL (Sharpe -0.249 against 1.499 on
 DEV; six gates failed; lessons 34 and 35). Generation 2 stands at 1 of 5 counted submissions and 22 of 60
 sandbox runs; 12 pre-registered hypotheses in four rounds, one counted trial, no Tier 1.
-Now: nothing is running. What the coordinator puts to the human before more rounds: the researchers of every
-round were held back by the same two things, that a slowly moving idea cannot be traded slowly (a derived
-series cannot be sampled or averaged over a timeframe, KP-019) and that the sandbox does not show the readings
-that decide a trial (KP-018); both are kernel changes for one re-key with both calibrations again, and KP-016
-could ride on the same re-key. Until the human decides, further rounds run on the kernel as it is, and no
-rule that was shaped on a DEV result is submitted for a counted trial without a reason beyond its DEV numbers.
+Now: the kernel is being changed. Asked on 2026-11-25 to choose between one re-key for the researchers' two
+requests (KP-018 and KP-019, with KP-016 riding on it) and more rounds on the kernel as it is, the human
+replied "decide whats the best". The coordinator decided for the re-key and recorded it as an approval by
+delegation for this batch only (KERNEL_PROPOSALS.md, entry of 2026-11-25). In the batch: KP-019, KP-018,
+KP-016 and, of KP-017, the storage of per-lag details in the top30 calibration and the small code items; not
+in it: the text items of KP-017 and KP-014. Order: design (no kernel file changed), the coordinator's gate,
+build on branch kp019-build, tests, independent audit and the coordinator's own review, re-key, both
+calibrations (about 13 machine hours, unattended), pre-seal reading, seal, selftest, recount, merge. Expected:
+every stored row identical to the sealed artifacts; thresholds top30 0.10 and core 0.05. Until the seal no
+research round runs and nothing is submitted; the human can strike any item until the re-key. Stage reached
+(2026-11-25): the design is ordered. The rule for the rounds after it stands: no rule that was shaped on a
+DEV result is submitted for a counted trial without a reason beyond its DEV numbers.
 
 ## Open decisions for the human
 
@@ -267,8 +273,8 @@ rule that was shaped on a DEV result is submitted for a counted trial without a 
    again).
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
-5. KP-016 (open; the counts of the real run were put to the human on 2026-11-23, with the coordinator's
-   recommendation: not now, and together with KP-017 if that one leads to a re-key): count the null pass
+5. KP-016 (approved by delegation on 2026-11-25 as part of the batch re-key, see "Now"; its counts were put
+   to the human on 2026-11-23, then with the recommendation not to re-key for it alone): count the null pass
    rate over DEV-positive submissions only. Fix pass 7 built a weaker safeguard into KP-015 (R-L, no family above 6%). On the
    sealed rows of 2026-11-23, over the evaluated pairs with a positive DEV Sharpe: top30 has no Tier-1
    pass among 165 under null A and 1 among 225 (0.44%) under null B at 0.10, so top30 would keep 0.10;
@@ -281,8 +287,10 @@ rule that was shaped on a DEV result is submitted for a counted trial without a 
    dominated by costs (see "Open from the recount" above); a measurement is ordered, and a change of the
    G6 statistic is proposed only if it shows an effect on books that can pass the other gates. Also small
    alignments of text and code, each waiting for the next re-key of its kind. Every change needs the
-   human's approval.
-7. KP-018 and KP-019 (open; requests of generation 2's researcher): the sandbox to print the speed-limit
+   human's approval. Riding on the batch re-key of 2026-11-25 (see "Now"): the storage of per-lag details in
+   the top30 calibration and the code items; the text items wait.
+7. KP-018 and KP-019 (approved by delegation on 2026-11-25, in the batch re-key, see "Now"; requests of
+   generation 2's researcher): the sandbox to print the speed-limit
    statistic of G6 and a next30 reading on DEV; a way to aggregate or sample a dimensionless expression
    over a timeframe, so that signals built from hourly data can be re-ranked weekly. Both are semantic
-   changes (a re-key and both calibrations), so they wait for the next semantic re-key.
+   changes (a re-key and both calibrations), so they go into that one re-key.

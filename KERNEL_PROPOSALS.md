@@ -452,8 +452,9 @@ rates, status.
   would keep 0.10); core would get 0.05, with power at true Sharpe 1.5 of 0.84, 0.83, 0.905 and 0.81. The
   cost as measured: both calibrations again take about 13 machine hours with three workers (top30 11.8
   hours, core 0.7), after a build, an audit and a re-key.
-- Status: open (needs the human's approval; to be decided before generation 2 opens, because a later
-  semantic re-key would leave the ids of its trials with the earlier kernel).
+- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the
+  batch re-key with KP-018 and KP-019. The one counted trial of generation 2 (7eadbeeaf2adc98d) keeps the id
+  of the earlier kernel.
 
 ## 2026-11-23 (coordinator, seal recount) KP-017 Findings of the independent recount of the KP-015 seal
 
@@ -491,7 +492,9 @@ rates, status.
   (rows of the validation period, the best of 20 draws) and can only be examined inside a calibration: a later
   calibration could store the per-lag details of the carry family. No change of the G6 statistic is proposed.
   For every other program reading funding or the basis the restriction of RESEARCH_PLAYBOOK section 4b stays.
-- Status: open (S1 not explained; no change proposed now; every change needs the human's approval).
+- Status: open (S1 not explained; no change of the G6 statistic proposed; every change needs the human's
+  approval). Riding on the batch re-key of 2026-11-25 (see the entry of that date at the end of this file): the
+  storage of per-lag details in the top30 calibration and the code items above; the text items wait.
 
 ## 2026-11-23 (researcher, generation 2 round 1) KP-018 Sandbox readings of G6's speed limit and of next30 for unit top30
 
@@ -515,7 +518,8 @@ rates, status.
   although no gate changes: worth it only together with another semantic change.
 - Expected effect: no change in any pass rate; fewer counted trials wasted on books that fail the speed limit
   by construction or that work only in the top 30; diagnostic programs are no longer needed.
-- Status: open (needs the human's approval; to be batched with the next semantic re-key).
+- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the batch
+  re-key; design, build and audit pending.
 
 ## 2026-11-23 (researcher, generation 2 round 1) KP-019 Aggregate or sample a dimensionless expression over a timeframe
 
@@ -543,4 +547,44 @@ rates, status.
   bin-close snapshots or as an hourly rolling mean, so a daily mean premium is out of reach without (a); and
   `funding_mean(n)` counts settlements, so the same n spans half the hours on a coin with 4-hour funding: a
   funding window measured in hours would need a time-based function.
-- Status: open (needs the human's approval; to be batched with the next semantic re-key).
+- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the batch
+  re-key; design, build and audit pending.
+
+## 2026-11-25 (coordinator) Decision by delegation: one semantic re-key for KP-016, KP-018 and KP-019
+
+- The question, put to the human on 2026-11-25 after the counted trial 7eadbeeaf2adc98d: either one re-key
+  that carries the two requests of generation 2's researchers (KP-018 and KP-019), on which KP-016 could ride
+  at no extra machine time, or more rounds on the kernel as it is. The coordinator recommended the re-key.
+  The human's answer, in his words: "decide whats the best". The coordinator decides for him and records it as
+  that: an approval by delegation for this batch only, as with KP-015. It is not a standing delegation; every
+  later kernel change needs the human's approval again, and he may strike any item below until the re-key.
+- Decision: build the batch now, before any further round. Reasons: (1) all four rounds of generation 2 were
+  shaped by the same two obstacles (LESSONS 16 to 33; generations/gen002/REPORT.md), the next round would be
+  shaped by them again, a round costs about one usage window and a counted trial raises M for ever; (2) a
+  semantic re-key costs about 13 machine hours whatever its size, so what needs one goes into this one;
+  (3) KP-016 makes the bound stricter in the unit where the count has no pass to spare, costs little power
+  there (0.81 to 0.905 at true Sharpe 1.5 on the stored rows) and changes no past result (no trial is Tier 1).
+- In the batch. KP-019: a way to sample or aggregate a DIMENSIONLESS expression over one of the existing
+  timeframes (complete bins only, anchored and visible as the existing timeframe functions), in the smallest
+  form that serves the requests on record. KP-018: the sandbox prints, for unit top30 and on DEV rows only,
+  G6's speed-limit statistic, the DEV reading on next30, gross funding paid and received, and the average
+  number of names held. KP-016: the pooled 3% bound is counted over the pairs with a positive DEV Sharpe. Of
+  KP-017: the top30 calibration stores the per-lag details of G6 (the only way to examine S1), and the items
+  listed there under "Code, at the next semantic re-key", each only where the design shows that it changes
+  no outcome on the stored rows.
+- Not in the batch: the text items of KP-017 and KP-014 (a text-only re-key keeps the seal and the trial ids
+  and can be made at any time with the human's approval); KP-002, KP-004, KP-005, KP-010; any change of the
+  G6 statistic, of costs, of a gate or of a threshold other than by KP-016's rule; any new calibration family.
+- Expected, written before the build: every row of the existing calibration programs comes out identical to
+  the sealed artifacts (ledger/calibration_5ea66b0fb79ca267.json, ledger/ucalibration_5ea66b0fb79ca267.json);
+  thresholds top30 0.10 (0 of 165 and 1 of 225 at 0.10) and core 0.05 (26 of 1144 and 18 of 1130 at 0.05;
+  44 of 1144 and 35 of 1130 at 0.10). A deviation is a finding to explain before the seal, not a number to
+  accept.
+- Known limit, stated now: the calibration families hold no sampled book. In unit top30 the null pass counts
+  leave a wide margin under the bound (0 of 547 and 1 of 542 at 0.10), and G6 compares a book with lagged
+  copies of its own weights, which a calendar-anchored refresh does not favour by construction; the design
+  and the audit are to test both statements.
+- Order: design (no kernel file changed) - the coordinator's gate - build on branch kp019-build - tests -
+  independent audit, and the coordinator's own review of the parts in which a mistake corrupts every result
+  (the new function's causality and locality, the seal's count) - re-key - both calibrations, unattended -
+  pre-seal reading - seal - selftest - recount - merge. Until the seal: no research round, no counted trial.
