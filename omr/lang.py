@@ -52,18 +52,21 @@ def _btc_unit(unit: tuple) -> tuple:
     return tuple(sorted((b + "_btc", e) for b, e in unit))
 BTC_FIELDS = tuple(f for f in FIELDS if f not in ("hour", "weekday"))
 TIMEFRAMES = {"h2": 2, "h3": 3, "h4": 4, "h6": 6, "h8": 8, "h12": 12, "daily": 24, "weekly": 168}
+# KP-019: tf_last(x, tf) / tf_mean(x, tf) sample or average a DIMENSIONLESS series over the bins of a timeframe
+# (tf a bare timeframe name); the bins, their knownness and their visibility are those of the timeframe functions
+TF_AGG = {"tf_last": "last", "tf_mean": "mean"}
 ROLLING = ("sma", "ema", "std", "rmin", "rmax", "rsum", "median", "zscore", "rank")
 LAGS = ("lag", "delta", "ret", "logret")
 ELEMENTWISE = ("abs", "sign", "sqrt", "log", "exp", "tanh")
 CROSS = ("cs_mean", "cs_demean", "cs_rank", "cs_scale")
-FUNCTIONS = (set(ROLLING) | set(LAGS) | set(ELEMENTWISE) | set(CROSS) | set(TIMEFRAMES)
+FUNCTIONS = (set(ROLLING) | set(LAGS) | set(ELEMENTWISE) | set(CROSS) | set(TIMEFRAMES) | set(TF_AGG)
              | {"corr", "rsi", "atr", "realised_vol", "funding_mean", "clip", "min2", "max2", "where", "hold", "btc"})
 WINDOW_FUNCS = {**{f: 1 for f in ROLLING}, **{f: 1 for f in LAGS}, "rsi": 1, "realised_vol": 1, "corr": 2,
                 "atr": 3, "funding_mean": 0, "hold": 4}          # function -> index of its window argument
 # rows of memory per unit of the window argument (the window limits apply to n x this)
 WINDOW_MEMORY = {"ema": C.EMA_MEMORY, "rsi": C.RSI_MEMORY, "atr": C.ATR_MEMORY}
 ARITY = {**{f: 2 for f in ROLLING}, **{f: 2 for f in LAGS}, **{f: 1 for f in ELEMENTWISE},
-         **{f: 1 for f in CROSS}, **{f: 1 for f in TIMEFRAMES},
+         **{f: 1 for f in CROSS}, **{f: 1 for f in TIMEFRAMES}, **{f: 2 for f in TF_AGG},
          "corr": 3, "rsi": 2, "atr": 4, "realised_vol": 2, "funding_mean": 1, "clip": 3, "min2": 2, "max2": 2,
          "where": 3, "hold": 5, "btc": 1}
 MAX_INLINED_NODES = 4000      # the canonical (fully inlined) tree; guards against exponential reuse
@@ -459,6 +462,20 @@ class _Checker:
             if FIELDS[fld][1] is None:
                 raise LangError("timeframe_arg", a, f"{fld} cannot be aggregated to a timeframe")
             return Ty("num", t.unit, fn)
+        if fn in TF_AGG:
+            # KP-019: the second argument is a bare timeframe name, never an expression (expr() would call it a
+            # bare function); x is a dimensionless numeric series, hourly for tf_mean
+            x, tfa = args
+            if not (isinstance(tfa, ast.Name) and tfa.id in TIMEFRAMES):
+                raise LangError("timeframe_name", tfa, f"{fn}(x, tf): tf is one of {' '.join(TIMEFRAMES)}")
+            t = self.expr(x, depth + 1)
+            self.series(t, x)
+            self.dimless(t, x)
+            if fn == "tf_mean" and t.tf != "h1":
+                raise LangError("timeframe_input", x, "tf_mean averages an hourly series; the mean of a coarser "
+                                "series' own bars over a bin is tf_last(sma(x, n), tf)")
+            self.nodes += 1                                  # the timeframe name, as btc(field) counts its field
+            return Ty("num", (), tfa.id)
         if fn == "funding_mean":
             self.window(args[0], "h1", fn)
             return Ty("num", (), "h1")
@@ -647,7 +664,8 @@ def lookback_hours(prog: Program) -> int:
     hour / weekday 1; btc(f) the
     same as the leaf f (the BTCUSDT frame has the same knownness rules). A timeframe of h hours over a leaf of
     l hours: 2h - 2 + l (its bin, the wait for the next bin's close, and the leaf's own reach before the bin);
-    a window over a timeframe series counts each extra row as that timeframe's hours; funding_mean(n) is
+    tf_last / tf_mean (KP-019) of h hours over an input of lookback l (relative to an hourly row): the same
+    2h - 2 + l; a window over a timeframe series counts each extra row as that timeframe's hours; funding_mean(n) is
     known only when its last n settlements lie inside the last 8n hours."""
     defs = dict(prog.defs)
     memo = {}
@@ -690,6 +708,9 @@ def lookback_hours(prog: Program) -> int:
             a = node.args
             if fn == "btc":
                 return leaf_hours(a[0].id), 1
+            if fn in TF_AGG:                                # KP-019: the leaf rule with x's own lookback as the leaf
+                h = TIMEFRAMES[a[1].id]
+                return 2 * h - 2 + lb(a[0])[0], h
             if fn in TIMEFRAMES:
                 h = TIMEFRAMES[fn]
                 arg = a[0]

@@ -5,9 +5,9 @@ real DEV+VAL bars under a logged `selftest` handle and scores ONLY the kernel's 
 into a temporary ledger that is deleted afterwards. No metric leaves this module: run() returns
 "OK" or the name and location of the first failed assertion, nothing else.
 
-1. Interpreter smoke: the five baseline programs and the kitchen-sink program (every field,
-   timeframe and function) on real DEV+VAL frames. Shape, alignment, finiteness and bounds only;
-   nothing is scored.
+1. Interpreter smoke: the five baseline programs and the two kitchen-sink programs (every field,
+   timeframe and function; kernel_kitchen_sink_tf: tf_last and tf_mean, KP-019) on real DEV+VAL frames.
+   Shape, alignment, finiteness and bounds only; nothing is scored.
 2. Pipeline smoke: kernel_noise_single, kernel_noise_portfolio and kernel_noise_top30 (unit top30,
    KP-015) through the complete evaluate path (generation rules, stage 1, pending row, stage 2, result
    files, final row) on a temporary ledger. Asserts: status evaluated; every metric and gate input
@@ -38,7 +38,7 @@ from omr import paths as P
 from omr import pipeline
 
 SMOKE_PROGRAMS = ("gen000_sma_cross_ls", "gen000_donchian_ls", "gen000_rsi_meanrev_ls", "gen000_voltarget_trend_ls",
-                  "gen000_funding_carry", "kernel_kitchen_sink")
+                  "gen000_funding_carry", "kernel_kitchen_sink", "kernel_kitchen_sink_tf")
 NOISE_PROGRAMS = ("kernel_noise_single", "kernel_noise_portfolio", "kernel_noise_top30")
 HOUR_NS = 3_600_000_000_000
 

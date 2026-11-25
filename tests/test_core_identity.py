@@ -4,7 +4,10 @@ The reference is tests/ref_kernel_b12df97.zip (`git archive b12df97 omr`), extra
 run in its own process by tests/ref_core_runner.py; the working kernel runs the same script. Compared
 exactly: every existing core program's weights and raw signal (stage 1 and the full DEV+VAL grid), and
 its stage-2 metrics, gate values, info and daily returns on a synthetic world; and, on the REAL DEV
-frames, the stage-1 weights and raw signal of every program in strategies/ and the kernel's core programs.
+frames, the stage-1 weights and raw signal of the strategies of generations 0 and 1 and the kernel's core
+programs. Strategies written since the universe unit (generation 2 on) carry a `unit` header line that the
+reference kernel cannot read, so they are not part of this comparison (batch re-key of 2026-11-25: before
+it, core_programs() copied every file in strategies/ and the reference run stopped at the first of them).
 """
 import json
 import shutil
@@ -24,13 +27,16 @@ RUNNER = ROOT / "tests" / "ref_core_runner.py"
 LATE = ["2020-09-14 00:00", "2020-02-10 00:00", "2020-01-06 00:00", "2020-01-31 00:00", "2020-07-10 00:00",
         "2020-01-09 00:00", "2020-01-17 00:00", "2020-09-23 00:00"]
 EXT = ("SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "LTCUSDT", "LINKUSDT", "AVAXUSDT")
+REF_GENERATIONS = ("gen000_", "gen001_")     # the strategies written in the reference kernel's language
+REF_STRATEGIES = 11                          # their number; they are closed generations and never change
 
 
 def core_programs(dest: Path) -> list:
     dest.mkdir(parents=True, exist_ok=True)
-    files = sorted((ROOT / "strategies").glob("*.omr")) + [ROOT / "omr" / "programs" / f"{s}.omr" for s in
-                                                          ("kernel_kitchen_sink", "kernel_noise_single",
-                                                           "kernel_noise_portfolio")]
+    strategies = [f for f in sorted((ROOT / "strategies").glob("*.omr")) if f.name.startswith(REF_GENERATIONS)]
+    assert len(strategies) == REF_STRATEGIES, [f.name for f in strategies]
+    files = strategies + [ROOT / "omr" / "programs" / f"{s}.omr" for s in
+                          ("kernel_kitchen_sink", "kernel_noise_single", "kernel_noise_portfolio")]
     for f in files:
         shutil.copyfile(f, dest / f.name)
     return [f.stem for f in files]

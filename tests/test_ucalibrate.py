@@ -20,6 +20,7 @@ from omr import universe as U
 from omr import upipeline as UP
 
 H = U.HOUR_NS
+NP = 999                                   # hand-built rows: round p values, the lattice k / 1000
 G0 = pd.Timestamp(C.UNIVERSE_START, tz="UTC") - pd.Timedelta(days=UC.KEEP_BEFORE_DAYS)
 
 
@@ -238,9 +239,9 @@ def test_one_null_world_runs_the_protocol_on_production_blocks(world_src, val_ha
     assert ev and all(isinstance(r["g6_memory"], float) and r["g6_lag_step"] > 0 and
                       r["g6_memory_over_limit"] == (not r["g6_memory"] <= C.UNIVERSE_G6_MEMORY_MAX) for r in ev)
     assert all(r["perm_p"] == 1.0 for r in ev if r["g6_memory_over_limit"])
-    assert all(CB.tier_at(r, 0.1) in (True, False) for r in ev)             # tier_at still reads the rows
+    assert all(CB.tier_at(r, 0.1, UC.OPTS.u_lags) in (True, False) for r in ev)   # tier_at still reads the rows
     assert seen and all(m == C.UNIVERSE_BLOCK_MONTHS for m in seen)                # the production block path
-    summ = CB.null_summary(rows, list(UC.FAMILIES))
+    summ = CB.null_summary(rows, list(UC.FAMILIES), n_perm=UC.OPTS.u_lags)
     assert summ["n_pairs"] == 3 and summ["n_submitted"] == len(sub)
 
 
@@ -512,6 +513,7 @@ def test_f6_oracle_phases_run_first_and_a_hopeless_power_is_announced(monkeypatc
     null worlds; with power 0 at the largest threshold one prominent ADVISORY line is logged before the null
     phases, with full power none."""
     calls = []
+    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, u_lags=NP))   # round p values
 
     def fake_run_tasks(pool, partial, kind, arglist, log, label, on_progress=None):
         calls.append(kind)
@@ -544,7 +546,8 @@ def test_f6_the_artifact_does_not_depend_on_the_phase_order(tiny_run, tmp_path, 
         for null in ("A", "B"):
             res = UC.run_tasks(pool, partial, "null", [[null, UC.SEEDS[null] + i] for i in range(worlds)], log, null)
             rows = sorted((r for rr in res for r in rr), key=lambda r: (r["world_seed"], r["family"]))
-            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams, worlds)}   # R-R: designed pairs
+            nulls[null] = {"rows": rows, "summary": CB.null_summary(rows, fams, worlds,       # R-R: designed pairs
+                                                                   n_perm=UC.OPTS.u_lags)}
         _, oracle = real(pool, partial, fams, worlds, oracle_worlds, log)     # null tasks are reused from partial
         return nulls, oracle
     monkeypatch.setattr(UC, "calibrate_run", nulls_first)
@@ -839,12 +842,13 @@ def test_r_m_t4_null_b_day_products_flipped_and_unflipped_full_and_partial(world
 
 def test_r_r_a_version_8_partial_file_is_refused(tmp_path):
     """Was the fix pass 10 protocol test (versions 5 to 7 refused, protocol 8); fix pass 11 raises the protocol to 9
-    (R-R). The header names the universe lag count and the speed limit instead of perm_n and carries the options."""
+    (R-R), the batch of KP-016 / KP-017 to 10. The header names the universe lag count and the speed limit instead of
+    perm_n and carries the options."""
     h8 = UC.run_header({"semantic": "s" * 64}, "r" * 64, list(UC.FAMILIES), 2, 2, True)
-    assert h8["protocol_version"] == UC.PROTOCOL_VERSION == 9
+    assert h8["protocol_version"] == UC.PROTOCOL_VERSION == 10
     assert h8["g6_lags"] == C.UNIVERSE_G6_LAGS and h8["g6_memory_max"] == C.UNIVERSE_G6_MEMORY_MAX and "perm_n" not in h8
     assert h8["opts"]["u_lags"] == UC.OPTS.u_lags
-    for old in (5, 6, 7, 8):
+    for old in (5, 6, 7, 8, 9):
         p = tmp_path / f"v{old}.partial.jsonl"
         UC.Partial(p, dict(h8, protocol_version=old), log=lambda *a: None)
         with pytest.raises(UC.PartialMismatch):
@@ -857,7 +861,7 @@ def test_7b_3_the_advisory_names_a_power_or_level_that_is_not_a_number(monkeypat
              "rho": 0.1, "gates": dict(gates)} for s in UC.USPEEDS for i in range(10)]
 
     def adv(edit):
-        oracle = {n: {"summary": UC.oracle_summary(rows)} for n in ("A", "B")}
+        oracle = {n: {"summary": UC.oracle_summary(rows, n_perm=NP)} for n in ("A", "B")}
         edit(oracle)
         return UC.oracle_advisory(oracle)
 
@@ -901,34 +905,37 @@ def _oracle8(slow_a_perm_p=0.001):
         rows = [{"speed": s, "level": 1.5, "world_seed": i, "status": "evaluated", "val_sharpe": 1.5, "rho": 0.1,
                  "perm_p": slow_a_perm_p if (n == "A" and s == "slow") else 0.001, "gates": dict(_GATES8)}
                 for s in UC.USPEEDS for i in range(10)]
-        out[n] = {"summary": UC.oracle_summary(rows)}
+        out[n] = {"summary": UC.oracle_summary(rows, n_perm=NP)}
     return out
 
 
 def test_fp8_4_the_null_advisory_reads_the_counts_so_far():
     fams, W = list(UC.FAMILIES), 100                     # caps: pooled 0.03 x 300 = 9 passes, a family 0.06 x 100 = 6
     mom = "ucal_xs_momentum"
-    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 6}), "B": []}, W, fams, _oracle8())
+    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 6}), "B": []}, W, fams, _oracle8(), NP)
     assert stop == [] and len(lines) == 2 and "50 of 100 worlds" in lines[0]                 # nothing dead: silent
-    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 7}), "B": []}, W, fams, _oracle8())
+    lines, stop = UC.null_advisory({"A": _nrows("A", 50, {mom: [0.01] * 7}), "B": []}, W, fams, _oracle8(), NP)
     assert len(stop) == 1 and stop[0].startswith("every G6 threshold is already dead") and "DEAD" in lines[0]
     lines, stop = UC.null_advisory({"A": [], "B": _nrows("B", 40, {f: [0.01] * 4 for f in fams[:2]} |
-                                                         {fams[2]: [0.01, 0.01]})}, W, fams, _oracle8())
+                                                         {fams[2]: [0.01, 0.01]})}, W, fams, _oracle8(), NP)
     assert stop and stop[0].startswith("every G6 threshold is already dead")                # pooled 10 > 9
     slow_low = _oracle8(slow_a_perm_p=0.04)              # null A slow: power 0 at 0.025, 1 at 0.05 and 0.10
-    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.04] * 7}), "B": []}, W, fams, slow_low)
+    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.04] * 7}), "B": []}, W, fams, slow_low, NP)
     assert stop == ["largest threshold not dead 0.025: null A slow: power at 0.025 below 0.5"]
-    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.08] * 7}), "B": []}, W, fams, slow_low)
+    lines, stop = UC.null_advisory({"A": _nrows("A", 30, {mom: [0.08] * 7}), "B": []}, W, fams, slow_low, NP)
     assert stop == []                                    # only 0.10 dead; power at 0.05 is fine: silent
     bad = _nrows("A", 2)
     bad[1]["gates"] = {}
     with pytest.raises(ValueError):
-        UC.null_advisory({"A": bad, "B": []}, W, fams, _oracle8())
+        UC.null_advisory({"A": bad, "B": []}, W, fams, _oracle8(), NP)
 
 
 def _fake_null_run(monkeypatch, rows_for, malformed_first=False):
     """calibrate_run with fabricated tasks: power rows at full power; every null task fills the partial's
     done mapping and calls on_progress (once with a malformed row in it when malformed_first)."""
+    monkeypatch.setattr(UC, "OPTS", PL.Opts(include_g8=False, keep_detail=False, u_lags=NP))   # round p values
+    monkeypatch.setattr(C, "DEV_POSITIVE_MIN", 1)        # 20 worlds x 3 families: the advisory's mechanics, not KP-016
+
     class Part:
         done = {}
 
@@ -982,11 +989,11 @@ def test_fp8_4_the_pooled_bound_alone_makes_a_threshold_dead():
     NULL_PASS_MAX x worlds x families (10 > 9)."""
     fams, W = list(UC.FAMILIES), 100
     split = {fams[0]: [0.08] * 4, fams[1]: [0.08] * 4, fams[2]: [0.08] * 2}       # pass at 0.10 only
-    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8())
+    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8(), NP)
     assert "at 0.1: 10 (cap 9), per family " in lines[0] and lines[0].count("DEAD (pooled)") == 1
     assert "at 0.05: 0 (cap 9)" in lines[0] and stop == []                       # 0.05 still open, power fine
     split = {f: [0.01] * len(v) for f, v in split.items()}                         # pass at every threshold
-    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8())
+    lines, stop = UC.null_advisory({"A": _nrows("A", 40, split), "B": []}, W, fams, _oracle8(), NP)
     assert lines[0].count("DEAD (pooled)") == 3 and stop and stop[0].startswith("every G6 threshold is already dead")
 
 
@@ -1263,7 +1270,7 @@ def test_r_r_t8_the_null_advisory_boundaries():
     by = lambda rows, f: [r for r in rows if r["family"] == f]                      # noqa: E731
 
     def dead(rows):
-        return UC._null_dead({"A": rows, "B": []}, W, fams)[1]
+        return UC._null_dead({"A": rows, "B": []}, W, fams, NP)[1]
     rows = _nrows("A", 100)
     _ended(by(rows, fams[0])[:50], "liquidated")                            # a family at 50 of 100 still reachable
     assert dead(rows) == set()
@@ -1307,6 +1314,7 @@ def test_r_r_t8_the_null_advisory_never_calls_a_threshold_dead_that_the_complete
     monkeypatch.setattr(C, "NULL_PASS_MAX", 0.34)                           # bounds a 3-world null can meet
     monkeypatch.setattr(C, "FAMILY_PASS_MAX", 0.5)
     monkeypatch.setattr(C, "NULL_FAULT_MAX", 0.34)
+    monkeypatch.setattr(C, "DEV_POSITIVE_MIN", 1)                           # KP-016 floor
     fam, W = "f", 3
     outcomes = ("pass", "fail", "liquidated", "not_submitted", "fault")
 
@@ -1320,13 +1328,14 @@ def test_r_r_t8_the_null_advisory_never_calls_a_threshold_dead_that_the_complete
     oracle = _oracle8()
 
     def qualifies(final):
-        nulls = {"A": {"summary": CB.null_summary(final, [fam], W)}, "B": {"summary": CB.null_summary(good_b, [fam], W)}}
+        nulls = {"A": {"summary": CB.null_summary(final, [fam], W, n_perm=NP)},
+                 "B": {"summary": CB.null_summary(good_b, [fam], W, n_perm=NP)}}
         return set(CB.decide(nulls, oracle)["qualifying"])
     seen_dead = 0
     for full in itertools.product(outcomes, repeat=W):
         for j in range(W + 1):
             prefix = [row(i, full[i]) for i in range(j)]
-            dead = UC._null_dead({"A": prefix, "B": []}, W, [fam])[1]
+            dead = UC._null_dead({"A": prefix, "B": []}, W, [fam], NP)[1]
             if not dead:
                 continue
             seen_dead += 1
@@ -1379,7 +1388,7 @@ def test_r_q_universe_tq1_to_tq4(monkeypatch):
     row, draws, calls = _rq_universe(monkeypatch, [float("-inf")] * n)                   # TQ1
     assert row["submitted"] is False and row["status"] == "not_submitted" and calls == []
     assert row["stage1"] == {"passed": n, "dev_liquidated": n}
-    s = CB.null_summary([row], ["ucal_xs_momentum"])                                      # TQ4
+    s = CB.null_summary([row], ["ucal_xs_momentum"], n_perm=C.UNIVERSE_G6_LAGS)            # TQ4
     assert s["n_not_submitted"] == 1 and s["n_submitted"] == 0 and s["n_submitted_fault"] == 0
     row, draws, calls = _rq_universe(monkeypatch, [float("-inf"), 0.5] + [0.1] * (n - 2))   # TQ2
     assert row["submitted"] and row["params"] == draws[1] and calls == ["stage1", "stage2"]

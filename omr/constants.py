@@ -88,7 +88,10 @@ MAX_PARAMS = 6
 
 # ---------------------------------------------------------------- calibration rule (applied by the seal)
 G6_GRID = (0.025, 0.05, 0.10)
-NULL_PASS_MAX = 0.03          # per EVALUATED pair, under BOTH nulls (fix pass 11, R-R; was per submitted pair)
+NULL_PASS_MAX = 0.03          # per DEV-POSITIVE EVALUATED pair (G3 true; KP-016), under BOTH nulls (fix pass 11, R-R:
+                              # per evaluated pair; before that per submitted pair)
+DEV_POSITIVE_MIN = 100        # KP-016: a null with fewer DEV-positive evaluated pairs fails every threshold (at 100 the
+                              # 3% bound admits three passes, so no single world decides the threshold)
 FAMILY_PASS_MAX = 0.06        # per family, per its own EVALUATED pairs, under BOTH nulls (R-L; R-R)
 FAMILY_EVALUATED_MIN = 0.50   # R-R: every family's evaluated / designed pairs, under each null
 NULL_EVALUATED_MIN = 0.75     # R-R: the null's evaluated / designed pairs

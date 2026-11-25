@@ -11,6 +11,10 @@ from omr import lang as L
 from omr import pipeline
 from conftest import synth_world
 
+# The hand-built rows of this file use round p values (0.01, 0.04, 0.08, 0.5, 0.001): their lattice is k / 1000
+# (tier_at checks the lattice, KP-017 item 4; tests/test_kp016.py tests the units' own lattices).
+NP = 999
+
 
 def _fake_source(nd=3, seed=0):
     rng = np.random.default_rng(seed)
@@ -91,7 +95,7 @@ def test_null_summary_counts_submitted_pairs_only():
             dict(sub, family="a", world_seed=2, perm_p=0.5, stage1={"passed": 20}),
             dict(sub, family="a", world_seed=3, status="liquidated", stage1={"passed": 20}),
             {"family": "a", "world_seed": 4, "submitted": False, "status": "not_submitted", "stage1": {"activity_dev": 20}}]
-    s = K.null_summary(rows, ["a"])
+    s = K.null_summary(rows, ["a"], n_perm=NP)
     assert s["n_pairs"] == 4 and s["n_submitted"] == 3 and s["n_not_submitted"] == 1
     b = s["by_threshold"]["0.025"]
     assert b["tier1"] == 1 and b["pass_rate"] == 1 / 2 and b["pass_rate_all_pairs"] == 1 / 4     # R-R: / evaluated
@@ -179,9 +183,9 @@ def _designed(rows, fams):
 
 
 def _decide(rows_a, rows_b, fams, designed=None):
-    nulls = {n: {"summary": K.null_summary(rows, fams, designed or _designed(rows, fams))}
+    nulls = {n: {"summary": K.null_summary(rows, fams, designed or _designed(rows, fams), n_perm=NP)}
              for n, rows in (("A", rows_a), ("B", rows_b))}
-    oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
+    oracle = {n: {"summary": K.oracle_summary(_oracle_rows(), n_perm=NP)} for n in ("A", "B")}
     return K.decide(nulls, oracle), nulls
 
 
@@ -240,33 +244,41 @@ def test_r_l_c_a_family_without_a_submitted_pair_is_no_longer_skipped():
                 v["threshold_failures"][str(t)]
 
 
-def test_r_l_d_the_dev_positive_rate_is_information_only():
+def test_r_l_d_kp016_the_pooled_bound_reads_the_dev_positive_rate():
+    """Was "the DEV-positive rate is information only" (R-L); KP-016: the pooled bound reads the rate over the
+    DEV-positive evaluated pairs, and the rate over all evaluated pairs is information."""
     rows = _null_rows({f: 40 for f in FIVE}, {"a": [0.08, 0.04]})
     for r in rows[100:150]:
         r["gates"]["G3"] = False                                                       # DEV-negative: 50 pairs
     rows[160]["status"] = "liquidated"                                                 # G3 True but not evaluated
-    s = K.null_summary(rows, FIVE)
+    s = K.null_summary(rows, FIVE, n_perm=NP)
     assert s["n_dev_positive"] == 200 - 50 - 1
     assert s["by_threshold"]["0.1"]["pass_rate_dev_positive"] == 2 / 149
     assert s["by_threshold"]["0.05"]["pass_rate_dev_positive"] == 1 / 149
     v, nulls = _decide(rows, rows, FIVE)
-    assert v["null_pass_rate_dev_positive"]["A"]["0.1"] == 2 / 149 and v["chosen_threshold"] == 0.1
-    for fake in (0.99, None, 0.0):                                                     # whatever it says, same choice
+    assert v["null_pass_rate_dev_positive"]["A"]["0.1"] == 2 / 149 == v["null_pass_rate"]["A"]["0.1"]
+    assert v["chosen_threshold"] == 0.1
+    for fake in (0.99, None, float("nan")):                                            # the rule reads it now
         for n in ("A", "B"):
-            for t in C.G6_GRID:
-                nulls[n]["summary"]["by_threshold"][str(t)]["pass_rate_dev_positive"] = fake
-        oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
-        w = K.decide(nulls, oracle)
-        assert (w["chosen_threshold"], w["qualifying"], w["STOP"]) == (v["chosen_threshold"], v["qualifying"], v["STOP"])
-    assert K.null_summary([], FIVE)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
-    assert K.PROTOCOL_VERSION == 6                                                # fix pass 11 (R-R); 5, 4 before
+            nulls[n]["summary"]["by_threshold"]["0.1"]["pass_rate_dev_positive"] = fake
+        oracle = {n: {"summary": K.oracle_summary(_oracle_rows(), n_perm=NP)} for n in ("A", "B")}
+        assert K.decide(nulls, oracle)["chosen_threshold"] == 0.05
+    for n in ("A", "B"):
+        for t in C.G6_GRID:
+            nulls[n]["summary"]["by_threshold"][str(t)]["pass_rate_dev_positive"] = 0.0
+            nulls[n]["summary"]["by_threshold"][str(t)]["pass_rate"] = 0.99                # information only
+    oracle = {n: {"summary": K.oracle_summary(_oracle_rows(), n_perm=NP)} for n in ("A", "B")}
+    w = K.decide(nulls, oracle)
+    assert w["chosen_threshold"] == 0.1 and w["null_pass_rate_evaluated"]["A"]["0.1"] == 0.99
+    assert K.null_summary([], FIVE, n_perm=NP)["by_threshold"]["0.1"]["pass_rate_dev_positive"] is None
+    assert K.PROTOCOL_VERSION == 7                                                # KP-016; 6 (R-R), 5, 4 before
 
 
 # ---------------------------------------------------------------- fix pass 7b: fail-closed bounds, numpy gate values
 
 
 def _redecide(nulls):
-    return K.decide(nulls, {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")})
+    return K.decide(nulls, {n: {"summary": K.oracle_summary(_oracle_rows(), n_perm=NP)} for n in ("A", "B")})
 
 
 def test_7b_1_a_rate_that_is_not_a_number_never_qualifies():
@@ -274,15 +286,15 @@ def test_7b_1_a_rate_that_is_not_a_number_never_qualifies():
     base, nulls = _decide(_null_rows(n_sub, {"a": [0.08]}), _null_rows(n_sub), FIVE)
     assert base["chosen_threshold"] == 0.1 and base["qualifying"] == [0.025, 0.05, 0.1]
     bt = {n: nulls[n]["summary"]["by_threshold"] for n in ("A", "B")}
-    keep = bt["A"]["0.1"]["pass_rate"]
-    bt["A"]["0.1"]["pass_rate"] = float("nan")                                  # pooled NaN, one threshold, null A
+    keep = bt["A"]["0.1"]["pass_rate_dev_positive"]
+    bt["A"]["0.1"]["pass_rate_dev_positive"] = float("nan")                                  # pooled NaN, one threshold, null A
     v = _redecide(nulls)
     assert v["qualifying"] == [0.025, 0.05] and v["chosen_threshold"] == 0.05 and not v["STOP"]
     assert v["threshold_failures"]["0.1"] == ["null A: pooled nan is not a finite rate"]
-    bt["A"]["0.1"]["pass_rate"] = float("inf")                                  # +inf: like any rate above the bound
+    bt["A"]["0.1"]["pass_rate_dev_positive"] = float("inf")                                  # +inf: like any rate above the bound
     v = _redecide(nulls)
     assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null A: pooled inf is not a finite rate"]
-    bt["A"]["0.1"]["pass_rate"] = keep
+    bt["A"]["0.1"]["pass_rate_dev_positive"] = keep
     bt["B"]["0.1"]["family_pass_rate"]["c"] = float("nan")                      # family NaN, one threshold, null B
     v = _redecide(nulls)
     assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null B: family c nan is not a finite rate"]
@@ -291,13 +303,13 @@ def test_7b_1_a_rate_that_is_not_a_number_never_qualifies():
     assert v["chosen_threshold"] == 0.05 and v["threshold_failures"]["0.1"] == ["null B: family c inf is not a finite rate"]
     bt["B"]["0.1"]["family_pass_rate"]["c"] = 0.0
     for t in C.G6_GRID:                                                          # NaN at every threshold: STOP
-        bt["A"][str(t)]["pass_rate"] = float("nan")
+        bt["A"][str(t)]["pass_rate_dev_positive"] = float("nan")
     v = _redecide(nulls)
     assert v["STOP"] and v["chosen_threshold"] is None and v["qualifying"] == []
     for t in C.G6_GRID:
         assert f"{t}: null A: pooled nan is not a finite rate" in v["reason"]
     for t in C.G6_GRID:                                                          # family NaN at every threshold: STOP
-        bt["A"][str(t)]["pass_rate"] = 0.0
+        bt["A"][str(t)]["pass_rate_dev_positive"] = 0.0
         bt["A"][str(t)]["family_pass_rate"]["e"] = float("nan")
     v = _redecide(nulls)
     assert v["STOP"] and v["chosen_threshold"] is None
@@ -325,9 +337,9 @@ def test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form():
     rows.append({"family": "c", "world_seed": 999, "submitted": False, "status": "not_submitted",
                  "stage1": {"activity_dev": 20}})
     want = sum(1 for i in range(100) if i % 7 not in (3, 5, 6) and i != 8)
-    mem = K.null_summary(rows, FIVE)
+    mem = K.null_summary(rows, FIVE, n_perm=NP)
     assert type(rows[0]["gates"]["G3"]) is np.bool_ and mem["n_dev_positive"] == want
-    stored = K.null_summary(json.loads(json.dumps(ledger.clean(rows))), FIVE)
+    stored = K.null_summary(json.loads(json.dumps(ledger.clean(rows))), FIVE, n_perm=NP)
     assert stored["n_dev_positive"] == mem["n_dev_positive"]
     for t in C.G6_GRID:
         for k in ("family_pass_rate", "pass_rate_dev_positive", "pass_rate", "tier1"):
@@ -336,9 +348,10 @@ def test_7b_2_a_numpy_g3_counts_and_the_new_fields_survive_the_stored_form():
     one = {"family": "a", "world_seed": 0, "submitted": True, "status": "evaluated", "perm_p": 0.5, "params": {},
            "val_sharpe": 0.1, "stage1": {}}
     for g3, n in ((np.bool_(True), 1), (True, 1), (np.bool_(False), 0), (False, 0)):
-        assert K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=g3))], ["a"])["n_dev_positive"] == n
+        assert K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=g3))], ["a"],
+                              n_perm=NP)["n_dev_positive"] == n
     with pytest.raises(ValueError):                                              # FP8-2: an evaluated row needs G3
-        K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=None))], ["a"])
+        K.null_summary([dict(one, gates=dict(_row("a", 0, 0.5)["gates"], G3=None))], ["a"], n_perm=NP)
 
 
 def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):
@@ -346,7 +359,7 @@ def test_7b_3_a_power_or_achieved_mean_that_is_not_a_number_stops(monkeypatch):
     _, nulls = _decide(_null_rows(n_sub), _null_rows(n_sub), FIVE)
 
     def run(edit):
-        oracle = {n: {"summary": K.oracle_summary(_oracle_rows())} for n in ("A", "B")}
+        oracle = {n: {"summary": K.oracle_summary(_oracle_rows(), n_perm=NP)} for n in ("A", "B")}
         edit(oracle)
         return K.decide(nulls, oracle)
 
@@ -412,8 +425,9 @@ def test_r_r_t1_the_rate_is_over_evaluated_pairs():
     b = s["by_threshold"]["0.1"]
     assert b["pass_rate_submitted"] == 5 / 200 <= C.NULL_PASS_MAX                 # inside 3% over submitted pairs
     assert b["pass_rate"] == 5 / 160 > C.NULL_PASS_MAX                            # outside over evaluated pairs
+    assert b["pass_rate_dev_positive"] == 5 / 160                                 # every one DEV-positive here
     assert b["family_pass_rate"]["a"] == 1 / 32
-    assert v["chosen_threshold"] == 0.05 and v["denominator"] == "evaluated pairs"
+    assert v["chosen_threshold"] == 0.05 and v["denominator"].startswith("DEV-positive evaluated pairs")
     assert v["threshold_failures"]["0.1"] == ["null A: pooled 0.0312 > NULL_PASS_MAX"]
     assert v["null_pass_rate_submitted"]["A"]["0.1"] == 5 / 200
 
@@ -577,7 +591,7 @@ def test_r_q_tq2_tq3_the_best_finite_draw_is_submitted(monkeypatch):
 def test_r_q_tq4_a_pair_without_a_candidate_is_not_submitted_in_the_summary(monkeypatch):
     row, _, _ = _rq_core(monkeypatch, [float("-inf")] * K.N_DRAWS)
     ok = _row("gen000_sma_cross_ls", 7, 0.5)
-    s = K.null_summary([row, ok], ["gen000_sma_cross_ls"])
+    s = K.null_summary([row, ok], ["gen000_sma_cross_ls"], n_perm=NP)
     assert s["n_not_submitted"] == 1 and s["n_submitted"] == 1 and s["n_submitted_fault"] == 0
     assert s["n_submitted_liquidated"] == 0 and s["n_evaluated"] == 1
     assert s["stage1_draws"]["dev_liquidated"] == K.N_DRAWS

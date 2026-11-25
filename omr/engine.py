@@ -155,6 +155,8 @@ class Run:
     funding_paid: float
     liq_idx: int
     pre: np.ndarray
+    funding_paid_gross: float = float("nan")         # KP-018 (c): universe block runs only (run_targets)
+    funding_received_gross: float = float("nan")
 
     @property
     def liquidated(self) -> bool:
@@ -214,9 +216,12 @@ def run(index, op, dn, up, fr, tgt, **kw) -> Run:
 # Targets of unavailable symbols are forced to 0; prices of unavailable bars are never read.
 
 def _ucore_impl(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mult, liq_frac, h0, eq0, dead0, t0,
-                fp0):
+                fp0, pg0, rg0):
     """Rows t0..T-1 are run; row t0-1 (when t0 = 1) only supplies the previous open and close of positions
-    h0 carried in (S4: a continuation block). Returns the run outputs for rows t0.. and the final state."""
+    h0 carried in (S4: a continuation block). Returns the run outputs for rows t0.. and the final state.
+    KP-018 (c): two separate running totals, the funding paid (payments, after pay_mult) and the funding
+    received (receipts as a positive number, after recv_mult), carried in from pg0 and rg0; they never enter
+    the equity arithmetic (funding_paid stays their net, accumulated as before)."""
     T, K = op.shape
     equity = np.zeros(T)
     pre = np.zeros(T)
@@ -229,6 +234,8 @@ def _ucore_impl(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mul
     h = h0.copy()
     eq = eq0
     funding_paid = fp0
+    paid_gross = pg0
+    received_gross = rg0
     liq_idx = -1
     dead = dead0
     for t in range(t0, T):
@@ -260,8 +267,10 @@ def _ucore_impl(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mul
             p = h[i] * fr[t, i]
             if p > 0.0:
                 pay += p * pay_mult
+                paid_gross += p * pay_mult
             elif p < 0.0:
                 pay += p * recv_mult
+                received_gross -= p * recv_mult
         eq -= pay
         funding_paid += pay
         if eq <= 0.0:
@@ -316,7 +325,7 @@ def _ucore_impl(op, cl, av, dn, up, fr, tgt, cost_rate, band, pay_mult, recv_mul
         gross[t] = g / eq
         net[t] = n / eq
     return (equity, gross, net, ev_idx[:n_ev], ev_turn[:n_ev], ev_cost[:n_ev], funding_paid, liq_idx, pre, h, eq,
-            dead)
+            dead, paid_gross, received_gross)
 
 
 if HAVE_NUMBA:
@@ -334,10 +343,11 @@ def run_arrays_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, ba
 
 def run_block_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, band=C.REBALANCE_BAND,
                 pay_mult=1.0, recv_mult=1.0, liq_frac=C.LIQUIDATION_FRAC, h0=None, eq0=1.0, dead0=False, t0=0, fp0=0.0,
-                fast=True):
+                fast=True, pg0=0.0, rg0=0.0):
     """run_arrays_u from a state: positions h0 (signed notional per column) and equity eq0 carried in,
     rows t0.. run (t0 = 1: row 0 is the previous row of a continuation). Returns the raw tuple plus
-    (h, equity, dead) at the end."""
+    (h, equity, dead) at the end, then (KP-018 (c)) the gross funding paid and received, carried in from pg0
+    and rg0 (items 12 and 13; the first 12 items are unchanged)."""
     av = np.ascontiguousarray(np.asarray(av, dtype=np.bool_))
     op, cl, dn, up, fr, tgt = (_as2d(x) for x in (op, cl, dn, up, fr, tgt))
     if not (op.shape == cl.shape == av.shape == dn.shape == up.shape == fr.shape == tgt.shape):
@@ -356,7 +366,7 @@ def run_block_u(op, cl, av, dn, up, fr, tgt, cost_rate=C.UNIVERSE_COST_RATE, ban
     h0 = np.zeros(op.shape[1]) if h0 is None else np.ascontiguousarray(np.asarray(h0, dtype=np.float64))
     fn = _ucore_fast if fast else _ucore_impl
     return fn(op, cl, av, dn, up, fr, tgt, float(cost_rate), float(band), float(pay_mult), float(recv_mult),
-              float(liq_frac), h0, float(eq0), bool(dead0), int(t0), float(fp0))
+              float(liq_frac), h0, float(eq0), bool(dead0), int(t0), float(fp0), float(pg0), float(rg0))
 
 
 def run_u(index, op, cl, av, dn, up, fr, tgt, **kw) -> Run:
@@ -449,6 +459,25 @@ def daily_returns(pre: np.ndarray, post: np.ndarray, index: pd.DatetimeIndex) ->
     r = np.where(np.isfinite(r), r, -1.0)
     days = idx[pts].normalize()
     return pd.Series(r, index=days, name="ret")
+
+
+def daily_cost_shares(pre: np.ndarray, ev_idx: np.ndarray, ev_cost: np.ndarray, index: pd.DatetimeIndex) -> np.ndarray:
+    """KP-017 rider (G6 per-lag detail): for each daily interval of daily_returns (the same boundaries, the same
+    fold of a run that ends at a 00:00 bar), the costs of the rebalance events inside it divided by the
+    interval's starting equity (1.0 for the first interval); NaN where that equity is not positive. Adding it to
+    the day's return gives the day's return before costs."""
+    idx = pd.DatetimeIndex(index)
+    pts = day_points(idx)
+    vals = np.asarray(pre, dtype=np.float64)[pts].copy()
+    vals[0] = 1.0
+    if pts[-1] == len(idx) - 1 and len(pts) > 1:
+        pts, vals = pts[:-1], vals[:-1]
+    day = np.searchsorted(pts, np.asarray(ev_idx, dtype=np.int64), side="right") - 1
+    cost = np.zeros(len(pts))
+    for d, c in zip(day.tolist(), np.asarray(ev_cost, dtype=np.float64).tolist()):     # sequential, event order
+        cost[d] += c
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(vals > 0, cost / np.where(vals > 0, vals, 1.0), np.nan)
 
 
 def daily_complete_mask(index: pd.DatetimeIndex) -> np.ndarray:

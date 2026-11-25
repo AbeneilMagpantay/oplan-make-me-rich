@@ -86,6 +86,14 @@ and thresholds hidden by multiplying both sides of a comparison by the same seri
 deliberate and visible in the text; they are left to the coordinator's source read before any
 counted submission (KERNEL_PROPOSALS KP-010).
 
+Calendar fields over a bin (KP-019): `tf_mean(hour, daily)` and `tf_mean(hour, weekly)` (11.5) and
+`tf_mean(weekday, weekly)` (3) are rejected; `tf_last(hour, daily)` and `tf_last(weekday, weekly)` are
+exactly 0 (the decision time of a bin's last bar is 00:00, a Monday for weekly) and accepted, as a zero
+carries nothing; `tf_last` and `tf_mean` of hour or weekday over shorter bins are clocks of the current
+hour and weekday. A calendar average scaled by a literal (`tf_mean(0.5 * hour, daily)`) moves with its
+jittered literal and passes, as `sma(0.5 * hour, n)` at n = 24 does, and near-constants such as
+`tf_mean(hour + funding8h, daily)` pass: both are left to the source read.
+
 ## 4. Types and units
 
 Every value is a BOOL series, a NUMERIC series (with a unit and a timeframe) or a SCALAR (params,
@@ -134,9 +142,22 @@ complete and every hour in it is known. A coarse value is visible from the hourl
 bin closed (daily: the 23:00 bar). Series of different timeframes meet on the hourly grid, each by
 its last completed bar (value and known).
 
+`tf_last(x, tf)` and `tf_mean(x, tf)` (KP-019) sample or average a DIMENSIONLESS numeric series x over
+the bins of the timeframe named by tf, a bare name (h2 h3 h4 h6 h8 h12 daily weekly), with the bins,
+knownness and visibility of the timeframe functions. x is read on the hourly grid (a series of another
+timeframe holds its last visible bar). A bin is known only if it is complete and x is known on every
+hour of it. tf_last is x at the bin's last hour; tf_mean is the plain sequential sum of x over the bin's
+hours (oldest first) divided by their number, equal to sma(x, hours) at the bin's last hour. tf_mean
+needs an hourly x (the mean of a coarser series' own bars over a bin is tf_last(sma(x, n), tf)); tf_last
+takes any timeframe. The result is a series of timeframe tf: rolling functions on it count bins
+(`sma(tf_last(x, daily), n)` averages n daily samples), and it is visible from the hourly bar in which
+its bin closes. Nothing of it is jittered. There is no tf_sum: a sum is the mean times the number of
+hours.
+
 | function | definition (rows of the window) | result unit |
 |---|---|---|
 | btc(field) | that field of BTCUSDT on the same hourly index (not hour/weekday); known where the BTC row exists | BTC base |
+| tf_last(x, tf), tf_mean(x, tf) | x (dimensionless; hourly for tf_mean) at the last hour of each complete bin of tf / its mean over the bin's hours; known only if x is known on every hour of the bin (see Timeframes) | dimensionless, of timeframe tf |
 | sma, std, rmin, rmax, rsum, median (x, n) | mean, std (ddof 1), min, max, sum, median of the last n values | of x |
 | zscore(x, n) | (x - mean) / std over the last n values; NaN where the std is 0 | dimensionless |
 | rank(x, n) | share of the last n values (current included) that are <= the current value, in (0, 1] | dimensionless |
@@ -147,7 +168,7 @@ its last completed bar (value and known).
 | rsi(x, n) | FINITE, centred: (G - L) / (G + L) over the last m = 10n changes (rows t-m .. t), G and L the sums of gains and losses with weight (1 - 1/n)^k for the change k rows back; NaN when G + L = 0. Equal to (RSI - 50) / 50 for Wilder's smoothing truncated at m changes | dimensionless |
 | atr(h, l, c, n) | FINITE: the same weights over the last m = 10n true ranges max(h - l, abs(h - prev c), abs(l - prev c)) (rows t-m .. t), normalised; three inputs of identical unit and timeframe | of h |
 | realised_vol(x, n) | std (ddof 1, two-pass) of the last n log ratios log(x_t / x_t-1) (rows t-n .. t) x sqrt(periods per year of x's timeframe: 8760 hourly ... 365 daily, 365/7 weekly) | dimensionless |
-| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known only when those n settlements all fall inside the last 8n hours (bounded in time like every other function; KP-015 S1) | dimensionless |
+| funding_mean(n) | mean of the last n funding settlements (each as an 8h rate), held until the next; known only when those n settlements all fall inside the last 8n hours (bounded in time like every other function; KP-015 S1). A funding window measured in HOURS is sma(funding8h, n) on hourly rows: (8 / n) times the funding a unit position paid over the last n hours, whatever the coin's settlement interval | dimensionless |
 | hold(enter_long, exit_long, enter_short, exit_short, h) | WINDOWED: the state in {-1, 0, +1} reached by running the transition rules FROM FLAT over rows t-h+1 .. t, recomputed for every t (no phase anchored anywhere). From flat: enter_long and not enter_short -> +1; enter_short and not enter_long -> -1. Long: enter_short -> -1, else exit_long -> 0. Short: enter_long -> +1, else exit_short -> 0. Known only where all four inputs are known on all h rows. It equals the unbounded state machine whenever a position re-synchronises within h bars | dimensionless |
 | abs, sign | elementwise; sign is dimensionless | of x / none |
 | sqrt, log, exp, tanh | elementwise on a dimensionless input; invalid -> NaN | dimensionless |
@@ -163,7 +184,8 @@ its last completed bar (value and known).
    condition. NaN values are facts about known data.
 2. **Knownness** is about history and is kept apart from values. An elementwise result is known only
    where every input is known; a windowed result only where its input is known on every row of its
-   window; a timeframe bar only if complete with every hour known; where() only where its condition
+   window; a timeframe bar only if complete with every hour known (a tf_last / tf_mean bin: x known on
+   every hour of the bin); where() only where its condition
    and both branches are known; hold() only where its four inputs are known on all h rows; cs_* only
    where every symbol is known. A row that is not known has NO definite value anywhere: comparisons,
    and/or/not, where and hold cannot turn it into True, False or a number. A program cannot observe
@@ -287,7 +309,14 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   otherwise it is unknown for everyone. A symbol whose
   window holds a hole simply drops out of the cross-section until its window is clean. The final signal of a
   symbol not in play is unknown (weight 0). A `cs_*` over a
-  timeframe series uses the in-play symbols of the hour at which each of its bars becomes visible. The
+  timeframe series uses the in-play symbols of the hour at which each of its bars becomes visible. A `cs_*`
+  INSIDE tf_last / tf_mean (KP-019; `tf_last(cs_rank(x), weekly)`, say) runs on every hour with that hour's
+  in-play set, and the bin needs it known on every hour: a symbol that enters the unit in the middle of a bin
+  (or leaves it, or drops out of play for an hour) is unknown for that bin, and an entrant stays unknown until
+  it has one complete bin in play, i.e. until the first bin it is in play for on every hour closes. A `cs_*`
+  placed OUTSIDE (`cs_rank(tf_last(x, weekly))`) uses the in-play set of the hour at which the bin becomes
+  visible: an entrant's bin, built from its bars before it entered, is known when x is, and the entrant is
+  ranked from the first bin that becomes visible while it is in play. The
   portfolio weight rule (clip to [-1, 1], scale down when gross exceeds 1) applies across the unit (gross
   summed sequentially in symbol-name order).
 - LOOKBACK (D3, `lookback_exceeds_seasoning`): the program's total lookback, the longest chain of
@@ -296,7 +325,8 @@ language gives NaN (flat). Neither occurred on the synthetic or real DEV data te
   weekday 1, mark_close and index_close 7 (their 6-hour staleness), funding8h 17 (its 16-hour
   freshness), btc(f) the same as f;
   a timeframe of h hours over a leaf of l hours 2h - 2 + l (its bin, the wait for the next bin's close and
-  the leaf's own reach); rows of a timeframe series count as that many hours; funding_mean(n) 8n hours),
+  the leaf's own reach); tf_last / tf_mean of h hours over an input of lookback l the same 2h - 2 + l (KP-019);
+  rows of a timeframe series count as that many hours; funding_mean(n) 8n hours),
   must not exceed 90 days (2,160 hours). It is a true upper bound of a value's memory: from a frame's
   first row + lookback - 1 on, a value equals the whole run's (tests/test_blocks.py). Every program's
   lookback is recorded in its trial row (`lookback_hours`), in both units.

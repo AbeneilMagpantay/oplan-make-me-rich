@@ -235,6 +235,14 @@ def val_sharpe_of(run: E.Run) -> float:
     return S.sharpe(split_daily(run.daily_returns())[1])
 
 
+def dev_sharpe_of(run: E.Run) -> float:
+    """KP-018 (the sandbox's DEV readings of G2 and G4): the DEV Sharpe of a run, read as val_sharpe_of reads the
+    VAL part of a stressed run (-inf when liquidated)."""
+    if run.liquidated:
+        return float("-inf")
+    return S.sharpe(split_daily(run.daily_returns())[0])
+
+
 def jitter_params(prog: L.Program, base: dict, rng, n: int) -> list:
     """n G5 variants, each (params, literal values). Every param x U(0.8, 1.2) (ints rounded and,
     if rounding leaves the value unchanged, moved by 1 with a random sign; clipped to the declared
@@ -491,16 +499,24 @@ def _is_bool(v) -> bool:
     return isinstance(v, (bool, np.bool_))
 
 
-def tier_at(row: dict, p_max: float) -> bool:
+PERM_LATTICE_TOL = 1e-9                        # KP-017 item 4: |p x (n + 1) - k| allowed for an integer k
+
+
+def tier_at(row: dict, p_max: float, n_perm: int) -> bool:
     """Tier 1 re-read at G6 threshold p_max from a stored calibration row (the one implementation; omr.calibrate
     refers to it). A row whose status is not "evaluated" is not Tier 1. An evaluated row must be well formed,
     otherwise ValueError (fix pass 8, FP8-2): "gates" a mapping holding every gate of TIER_GATES but G6 with a
     boolean (Python or numpy); G6 and G8 may be None or absent (G6 is re-read from perm_p and its stored value is
     ignored; G8 is not run in calibration); a G8 or any other gate that is present and not None must be a boolean
-    and counts; perm_p a finite number in [0, 1] (not a bool). Why it raises instead of reading the row as "not
-    passing": that reading is the LOOSE direction for a null row (it lowers the null pass rate) and the strict one
-    for an oracle row (it lowers the power), so no silent reading is safe in both; the unit verdict turns the
-    ValueError into the "malformed" STOP."""
+    and counts; perm_p a finite number in [0, 1] (not a bool) ON ITS LATTICE (KP-017 item 4): G6's p is
+    (1 + m) / (n_perm + 1) for an integer m in 0 .. n_perm, so p x (n_perm + 1) must lie within PERM_LATTICE_TOL of
+    an integer k with 1 <= k <= n_perm + 1; n_perm is the checking kernel's own count for the row's unit (core:
+    PERM_N = 200 shifts; top30: UNIVERSE_G6_LAGS = 20 lags), never read from the row. Why it raises instead of
+    reading the row as "not passing": that reading is the LOOSE direction for a null row (it lowers the null pass
+    rate) and the strict one for an oracle row (it lowers the power), so no silent reading is safe in both; the
+    unit verdict turns the ValueError into the "malformed" STOP."""
+    if isinstance(n_perm, (bool, np.bool_)) or not isinstance(n_perm, (int, np.integer)) or n_perm < 1:
+        raise ValueError(f"tier_at: n_perm {n_perm!r} is not a positive integer")
     if row.get("status") != "evaluated":
         return False
     who = f"world_seed {row.get('world_seed')!r}, " + (f"family {row.get('family')!r}" if "family" in row
@@ -528,4 +544,8 @@ def tier_at(row: dict, p_max: float) -> bool:
     if isinstance(p, (bool, np.bool_)) or not isinstance(p, (int, float, np.integer, np.floating)) or \
             not math.isfinite(float(p)) or not (0.0 <= float(p) <= 1.0):
         raise ValueError(f"evaluated calibration row ({who}): perm_p is not a finite number in [0, 1] ({p!r})")
+    m = float(p) * (int(n_perm) + 1)
+    k = round(m)
+    if not (abs(m - k) <= PERM_LATTICE_TOL and 1 <= k <= int(n_perm) + 1):
+        raise ValueError(f"evaluated calibration row ({who}): perm_p {p!r} is not on its lattice k / {int(n_perm) + 1}")
     return ok and float(p) <= p_max + 1e-12

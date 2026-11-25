@@ -245,7 +245,7 @@ G9 (at most 6 params) is retired as a gate: the parser enforces it. Information 
 (constant long 1/K per core symbol through the same engine) VAL Sharpe and max drawdown, beta,
 annualised alpha and PSR(0) of the beta-hedged residual.
 
-## 8. Calibration (protocol v4) and the seal
+## 8. Calibration (core protocol v7, unit top30 protocol v10) and the seal
 
 The G6 threshold is not a constant. The sequence is fixed: lock the kernel (re-key) ->
 `python -m omr.calibrate` on the LOCKED kernel (it refuses otherwise; the artifact records
@@ -276,41 +276,56 @@ read under a logged calibration handle; nothing enters the trial ledger:
   self-checks) and is SUBMITTED to stage 2; none -> nothing submitted. A draw liquidated on DEV (or
   whose DEV Sharpe is otherwise not a finite number) is never a candidate and so never submitted
   (fix pass 10, R-Q; both units); a pair without a candidate is not submitted. Null pass rate
-  = Tier-1 passes / EVALUATED pairs (fix pass 11, R-R). Every gate value and G6 p is stored (G8 not run: no extended
-  universe; G8 can only veto, so the rates are upper bounds).
+  = Tier-1 passes / DEV-POSITIVE EVALUATED pairs (evaluated with G3, a positive DEV Sharpe, true; KP-016: a
+  researcher does not spend a counted trial on a program with a negative DEV Sharpe, which fails G3 with
+  certainty). Every gate value and G6 p is stored (G8 not run: no extended universe; G8 can only veto, so the
+  rates are upper bounds). In the top30 calibration every evaluated row also stores, per lag, the statistics of
+  the books G6 ran (g6_lag_detail, KP-017; information, no symbol, date or price).
 - Noisy-oracle power: per asset sign(rho z_future + sqrt(1 - rho^2) eps), re-decided every k days
   (fast k = 1, slow k = 20), weight = signal / K, injected after the interpreter into the gates
   (G5 passes, no params). On 200 fresh worlds per null and speed, rho is tuned per speed and level so the
   ACHIEVED mean VAL Sharpe over those worlds is within 0.1 of the nominal 1.0 / 1.5 (reported).
-- Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3.0%
-  under BOTH nulls and at which no single family's null pass rate (its Tier-1 passes / its own
-  EVALUATED pairs; a family without an evaluated pair fails) exceeds 6% (FAMILY_PASS_MAX, fix
-  pass 7, R-L) under either null; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds
+- Rule: the G6 threshold is the LARGEST of 0.025 / 0.05 / 0.10 whose null pass rate (over the
+  DEV-positive evaluated pairs, KP-016) is <= 3.0% under BOTH nulls and at which no single family's null
+  pass rate (its Tier-1 passes / its own EVALUATED pairs; a family without an evaluated pair fails) exceeds
+  6% (FAMILY_PASS_MAX, fix pass 7, R-L) under either null; a null with fewer than 100 DEV-positive evaluated
+  pairs (DEV_POSITIVE_MIN, KP-016) fails every threshold, because at 100 the 3% bound admits three passes
+  while over a small denominator a single world would decide the threshold, and a refusal is the honest
+  answer there; then oracle power at true Sharpe 1.5 must be >= 50% for both speeds
   under both nulls, with every oracle level within 0.1 of nominal. If none qualifies or the power rule
   fails, nothing is sealed, generation 0 cannot run, and the human decides; the verdict names, for each
   threshold, the bound (pooled, or the family by name) and the null that failed. Since KP-015 the rule
   is applied to EACH unit on its own rows and the seal holds one threshold per unit (section 13).
   Why a family bound: the pooled rate is diluted by families that cannot pass in a null world (in the
-  top30 null worlds reversal and carry never pass, so 3% over all evaluated pairs would allow the one
-  family that can pass 9%). Why 0.06: the conventional 5% level plus a sampling allowance; with 200
-  worlds a family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is
+  top30 null worlds of fix pass 7 reversal and carry never passed, so 3% over all evaluated pairs would have
+  allowed the one family that could pass 9%; the DEV-positive denominator of KP-016 removes the pairs that
+  fail G3, not the DEV-positive pairs of a family that never passes the other gates). The family bound stays
+  over a family's evaluated pairs: over its DEV-positive pairs it would be ill-conditioned (in the sealed
+  top30 rows the carry family has 14 under null A). Why 0.06: the conventional 5% level plus a sampling
+  allowance; with 200 worlds a family with a true rate of 4.5% is accepted in about 88% of runs per null, one with 9% is
   refused in about 91%. The family bound can only lower a threshold. What it permits: a family that
   passes every other gate in null worlds may reach Tier 1 in up to 6% of its own evaluated pairs, above
   the pooled 3%. The artifact also stores, per
-  threshold, the family rates and the pass rate over the submitted pairs that pass G3 (DEV-positive,
-  KP-016); the rule does not read the latter.
+  threshold, the pooled rates over all evaluated and over all submitted pairs and the family rates over
+  DEV-positive pairs (information; the rule does not read them).
   Fix pass 11 (R-R, which replaces the cap of fix pass 10's R-P): (a) the pooled and the family rates
-  are Tier-1 passes over EVALUATED pairs (a submitted pair that ends liquidated or in a fault leaves the
+  are Tier-1 passes over EVALUATED pairs (since KP-016 the pooled rate over the DEV-positive ones among
+  them; a submitted pair that ends liquidated or in a fault leaves the
   denominator, as a pair never submitted does), and a rate without an evaluated pair fails, so no family
   is skipped. (b) Evidence floors: under each null every family must end with at least 50%
   (FAMILY_EVALUATED_MIN) of its designed pairs evaluated, and the null as a whole with at least 75%
   (NULL_EVALUATED_MIN); designed pairs are the worlds ordered for the null, never the rows present.
-  (c) At most 3% (NULL_FAULT_MAX) of the submitted pairs may end neither evaluated nor liquidated (a
-  kernel fault or anything unknown). A null that misses (b) or (c) fails every threshold; every bound
+  (c) At most 3% (NULL_FAULT_MAX) of the candidate pairs may end in a fault: a submitted pair that ends
+  neither evaluated nor liquidated (a kernel fault or anything unknown), or a pair whose chosen draw fails
+  stage 1 (KP-017 item 3: the screen and stage 1 apply the same activity rule to the same weights, so such a
+  failure is a self-check fault); the share is counted over the submitted pairs plus those chosen draws. A
+  null that misses (b), (c) or the DEV-positive floor fails every threshold; every bound
   holds only when its counts are proper and the share is inside it, and the verdict records the floors,
   every share and the faults. (d) The stored rows must be exactly the protocol's design: one null row
   per seed and family and one oracle row per seed, speed and level, with the module's seeds; a missing,
-  double or foreign row stops the unit. (e) The seal refuses a calibration whose protocol header is not
+  double or foreign row stops the unit. Every evaluated row's p must lie on its lattice, k / 201 in the core
+  unit and k / 21 in top30 (KP-017 item 4); a row off its lattice stops the unit as malformed. (e) The seal
+  refuses a calibration whose protocol header is not
   the one the locked kernel itself writes for a real run of the protocol's size (core 300 null worlds and
   200 oracle worlds per null; top30 200 and 100), compared key by key: the sizes, the seeds, the levels and
   speeds, the draws, the rho grid, the options object and every other field that fixes the run, because a
@@ -350,8 +365,9 @@ log alone proves nothing about who produced an artifact.
   n_positive and largest_share). The daily returns file exists for the DSR and is read by the kernel
   only; the researcher reads trial rows and `status`, never `ledger/returns` or `ledger/trials/`.
 - Selftest, `python -m omr.selftest`: THE SINGLE EXCEPTION to "any scored run on VAL bars is a
-  counted trial". Under a logged `selftest` handle it (1) runs the five baselines and a kitchen-sink
-  program using every field, timeframe and function on real DEV+VAL frames, checking shape,
+  counted trial". Under a logged `selftest` handle it (1) runs the five baselines and two kitchen-sink
+  programs using every field, timeframe and function (the second, kernel_kitchen_sink_tf, tf_last and
+  tf_mean) on real DEV+VAL frames, checking shape,
   alignment, finiteness and bounds only (nothing scored); (2) runs two kernel NOISE programs
   (`omr/programs/kernel_noise_*.omr`) through the complete evaluate path into a temporary ledger
   that is deleted afterwards, asserting finite metrics and gate inputs, every G8 unit scored, p in
@@ -431,8 +447,9 @@ Live risk limits the loop can never change:
 - Between the coordinator's pushes the ledger's hash chain is anchored only inside the folder, and
   `ledger verify` does not itself compare with the remote (KP-009).
 - The constant probe catches EXACT constants built without literals (`x / x`, `hour / hour`,
-  `rank(x, 1)`, `sign(close * 2)`). It does not catch NEAR-constants (`mark_close / close`,
-  `sma(hour, 25)`, sums of such ratios used as a scale) or thresholds hidden by multiplying both sides
+  `rank(x, 1)`, `sign(close * 2)`, `tf_mean(hour, daily)`). It does not catch NEAR-constants (`mark_close / close`,
+  `sma(hour, 25)`, `tf_mean(hour + funding8h, daily)`, sums of such ratios used as a scale), calendar averages
+  scaled by a literal (`tf_mean(0.5 * hour, daily)`) or thresholds hidden by multiplying both sides
   of a comparison by the same series; these are deliberate, visible in the text, and left to the
   coordinator's source read before every counted submission (KP-010).
 - In top30 a program whose weights change slowly cannot reach Tier 1: G6's speed limit (section 13)
@@ -596,10 +613,10 @@ Live risk limits the loop can never change:
   fix pass 11: also when a family or the null can no longer reach its evidence floor or the faults exceed
   their bound).
 - The seal, fix pass 6 (R-H): the G6 threshold is decided PER UNIT, each unit by the section-8 rule on its
-  OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate is <= 3% under both of that
-  unit's nulls and at which no family of that unit passes more than 6% of its own evaluated pairs under
-  either of them (fix pass 7, R-L; in top30 only the momentum family can pass in a null world, so this
-  is the bound that binds there), then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
+  OWN stored rows: the largest of 0.025 / 0.05 / 0.10 whose null pass rate (over that unit's DEV-positive
+  evaluated pairs, KP-016) is <= 3% under both of that unit's nulls and at which no family of that unit
+  passes more than 6% of its own evaluated pairs under either of them (fix pass 7, R-L), every null of that
+  unit with at least DEV_POSITIVE_MIN DEV-positive evaluated pairs, then oracle power at true Sharpe 1.5 >= 50% for both speeds under both of its nulls at
   that unit's threshold, every oracle level present within its bound. The two units use different G6
   constructions and have different null distributions, so one unit's rows never move the other's
   threshold. Both units seal or neither (a STOP names the unit). kernel.lock holds {"core": x, "top30":

@@ -32,7 +32,10 @@ stage2_u   DEV+VAL, counted, needs a ValHandle: DEV rows equal to stage 1 (by sy
            UNIVERSE_G6_LAGS equally spaced lags (R-N, fix pass 9: g6_lags) with the speed limit (g6_memory:
            a book whose weights stay correlated above UNIVERSE_G6_MEMORY_MAX with its own weights a lag step
            or more earlier gets p = 1 without any lag run); G8 = the same program on unit next30 has a
-           positive Sharpe over its DEV+VAL span.
+           positive Sharpe over its DEV+VAL span. The result also carries g6_lag_detail (KP-017 rider: the
+           statistics of every book G6 ran, per lag; the top30 calibration stores it in its rows, a trial
+           never does).
+The sandbox's DEV readings (KP-018) are at the end: dev_speed_limit, dev_names_held, dev_paired_lags.
 """
 from __future__ import annotations
 
@@ -610,6 +613,7 @@ class Blocked:
         equity, pre, gross, net = np.zeros(n), np.zeros(n), np.zeros(n), np.zeros(n)
         ev_i, ev_t, ev_c = [], [], []
         h, eq, dead, fpaid, liq, first = {}, 1.0, False, 0.0, -1, True
+        pgross, rgross = 0.0, 0.0                     # KP-018 (c): gross funding paid / received, carried like fpaid
         for bp in self.blocks:
             lo, hi = max(bp.b, s), min(bp.e - 1, e)
             if lo > hi:
@@ -634,7 +638,7 @@ class Blocked:
             h0 = np.array([h.get(x, 0.0) for x in syms])
             out = E.run_block_u(arrs["open"], arrs["close"], arrs["av"], arrs["liq_dn"], arrs["liq_up"],
                                 arrs["funding_rate"], tg, cost_rate=cost_rate, pay_mult=pay, recv_mult=recv,
-                                h0=h0, eq0=eq, dead0=dead, t0=1 if warm else 0, fp0=fpaid)
+                                h0=h0, eq0=eq, dead0=dead, t0=1 if warm else 0, fp0=fpaid, pg0=pgross, rg0=rgross)
             t0 = 1 if warm else 0
             seg = slice(lo - s, hi - s + 1)
             equity[seg], gross[seg], net[seg], pre[seg] = out[0][t0:], out[1][t0:], out[2][t0:], out[8][t0:]
@@ -642,6 +646,7 @@ class Blocked:
             ev_t.append(out[4])
             ev_c.append(out[5])
             fpaid = out[6]
+            pgross, rgross = out[12], out[13]
             if out[7] >= 0 and liq < 0:
                 liq = int(out[7]) - t0 + (lo - s)
             h = {x: v for x, v in zip(syms, out[9]) if v != 0.0}
@@ -649,7 +654,7 @@ class Blocked:
             first = False
         cat = (lambda xs, dt: np.concatenate(xs).astype(dt) if xs else np.zeros(0, dtype=dt))
         return E.Run(self.grid[s:e + 1], equity, gross, net, cat(ev_i, np.int64), cat(ev_t, np.float64),
-                     cat(ev_c, np.float64), float(fpaid), int(liq), pre)
+                     cat(ev_c, np.float64), float(fpaid), int(liq), pre, float(pgross), float(rgross))
 
     def inplay(self, start=None, upto=None) -> np.ndarray:
         """The in-play mask (membership, usable bar, fresh funding) on rows start..upto, global columns."""
@@ -768,13 +773,16 @@ def dev_rows_equal(s1: dict, fp, raw, kn) -> bool:
     return all(s in fp.symbols or not s1["known"][:, col1[s]].any() for s in s1["symbols"])
 
 
-def next30_score(prog: L.Program, params: dict, ud: UData, months=C.UNIVERSE_BLOCK_MONTHS_G8) -> dict:
-    """G8: the program on unit next30, DEV start to VAL end; positive Sharpe passes."""
-    bu = Blocked(ud, "next30", months=months, fields=program_fields(prog), keep=False)    # blocks not kept
+def next30_score(prog: L.Program, params: dict, ud: UData, months=C.UNIVERSE_BLOCK_MONTHS_G8, end=C.VAL_END,
+                 keep=False) -> dict:
+    """G8: the program on unit next30, DEV start to `end` (VAL end; the sandbox's DEV reading, KP-018 (b): DEV end);
+    positive Sharpe passes. keep=False: the blocks are built when used and dropped (stage 2); keep=True: built once
+    and kept (the same blocks, so the same result)."""
+    bu = Blocked(ud, "next30", months=months, fields=program_fields(prog), keep=keep)
     if not bu.symbols:
         return {"code": "no_unit", "sharpe": None}
     W, _, _ = bu.unit(prog, params, raw_rows=0)
-    run = bu.run(W, bu.pos(C.DEV_START), bu.pos(C.VAL_END))
+    run = bu.run(W, bu.pos(C.DEV_START), bu.pos(end))
     fp = bu
     if run.liquidated:
         return {"code": "liquidated", "sharpe": None}
@@ -847,13 +855,50 @@ def g6_lags(L_: int, g0: int, rng, n: int) -> tuple:
     [lo, hi). KernelFault when VAL is too short (hi < lo or step < 1) or the grid holds fewer than L // 2 rows
     before g0 (every source row must exist)."""
     lo, hi = C.PERM_MIN_OFFSET_DAYS * 24, L_ // 2
-    step = (hi - lo) // n if n > 0 else 0
+    step = g6_step(L_, n)
     if hi < lo or step < 1:
         raise PL.KernelFault("VAL too short for the lag test")
     if g0 - hi < 0:
         raise PL.KernelFault("not enough history before VAL for the lag test")
     phase = int(rng.integers(0, step))
     return lo + phase + step * np.arange(n, dtype=np.int64), int(step)
+
+
+def g6_step(L_: int, n: int) -> int:
+    """R-N (a): the step of g6_lags for L VAL rows and n lags, (L // 2 - PERM_MIN_OFFSET_DAYS * 24) // n (0 when
+    n < 1); also the step of the sandbox's DEV readings (KP-018), from the VAL length (621 hours)."""
+    lo, hi = C.PERM_MIN_OFFSET_DAYS * 24, L_ // 2
+    return (hi - lo) // n if n > 0 else 0
+
+
+def _memory_r(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, k: int) -> float:
+    """The speed-limit correlation r of one lag k (g6_memory); 1.0 when undefined."""
+    L_ = len(ok)
+    Wa = W[g0:g0 + L_]
+    if g0 - k < 0:
+        raise PL.KernelFault("lag reaches before the grid")
+    Ws = W[g0 - k:g0 - k + L_]
+    mask = ok & P_[g0 - k:g0 - k + L_]
+    cnt = mask.sum(axis=0)
+    cols = cnt >= 2
+    den = np.where(cnt > 0, cnt, 1)
+    ma = _seq_colsum(np.where(mask, Wa, 0.0)) / den
+    ms = _seq_colsum(np.where(mask, Ws, 0.0)) / den
+    a = np.where(mask, Wa - ma, 0.0)
+    s = np.where(mask, Ws - ms, 0.0)
+    num = _seq_sum(_seq_colsum(a * s)[cols])
+    saa = _seq_sum(_seq_colsum(a * a)[cols])
+    sss = _seq_sum(_seq_colsum(s * s)[cols])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        r = num / float(np.sqrt(saa * sss)) if saa > 0.0 and sss > 0.0 else float("nan")
+    if not np.isfinite(r):
+        r = 1.0
+    return r
+
+
+def g6_memory_by_lag(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, step: int, n: int) -> list:
+    """r_j of g6_memory for j = 1 .. n - 1 (k = j * step), in that order (KP-018 (a) prints them on DEV rows)."""
+    return [_memory_r(W, P_, ok, g0, j * step) for j in range(1, n)]
 
 
 def g6_memory(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, step: int, n: int) -> float:
@@ -866,30 +911,9 @@ def g6_memory(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, step: int,
     is removed because a constant part of a book (always long some names) is common to every lagged copy and
     does not make the copies depend on each other. Every sum is sequential: down the rows of each name
     (cumsum along the rows), then across the names in column order (cumsum), so the value is the same bit for
-    bit whatever the platform's pairwise summation does."""
-    L_ = len(ok)
-    Wa = W[g0:g0 + L_]
+    bit whatever the platform's pairwise summation does. (r_j: _memory_r, in the order of g6_memory_by_lag.)"""
     best = None
-    for j in range(1, n):
-        k = j * step
-        if g0 - k < 0:
-            raise PL.KernelFault("lag reaches before the grid")
-        Ws = W[g0 - k:g0 - k + L_]
-        mask = ok & P_[g0 - k:g0 - k + L_]
-        cnt = mask.sum(axis=0)
-        cols = cnt >= 2
-        den = np.where(cnt > 0, cnt, 1)
-        ma = _seq_colsum(np.where(mask, Wa, 0.0)) / den
-        ms = _seq_colsum(np.where(mask, Ws, 0.0)) / den
-        a = np.where(mask, Wa - ma, 0.0)
-        s = np.where(mask, Ws - ms, 0.0)
-        num = _seq_sum(_seq_colsum(a * s)[cols])
-        saa = _seq_sum(_seq_colsum(a * a)[cols])
-        sss = _seq_sum(_seq_colsum(s * s)[cols])
-        with np.errstate(divide="ignore", invalid="ignore"):
-            r = num / float(np.sqrt(saa * sss)) if saa > 0.0 and sss > 0.0 else float("nan")
-        if not np.isfinite(r):
-            r = 1.0
+    for r in g6_memory_by_lag(W, P_, ok, g0, step, n):
         best = r if best is None else max(best, r)
     return 0.0 if best is None else float(best)
 
@@ -939,6 +963,66 @@ def g6_paired_p(actual_sharpes, shifted_sharpes, ties=None) -> float:
     with np.errstate(invalid="ignore"):
         ge = t | (s >= a - C.G6_PAIRED_SHARPE_MARGIN)       # -inf (liquidated) on both sides counts as >=
     return (1 + int(np.sum(ge))) / (len(s) + 1)
+
+
+BOOK_STATS = ("sharpe", "sd", "mean", "mean_gross", "costs", "funding", "rebalances")
+
+
+def book_stats(run: E.Run, daily, sharpe: float) -> dict:
+    """KP-017 rider: what the G6 per-lag detail records of one engine run of a book (statistics of the run only;
+    no date, symbol or price): sharpe = the statistic G6 compares (-inf when liquidated); sd, mean = the daily
+    returns' standard deviation (ddof 1) and mean; mean_gross = the mean of the daily returns with each day's
+    costs added back (engine.daily_cost_shares); costs = the costs paid; funding = the net funding paid;
+    rebalances = the number of rebalance events. A liquidated run records only its sharpe."""
+    if daily is None:
+        return {"sharpe": sharpe, "sd": None, "mean": None, "mean_gross": None, "costs": None, "funding": None,
+                "rebalances": None}
+    d = np.asarray(daily, dtype=np.float64)
+    share = E.daily_cost_shares(run.pre, run.ev_idx, run.ev_cost, run.index)
+    return {"sharpe": sharpe, "sd": float(np.std(d, ddof=1)) if len(d) > 1 else None,
+            "mean": float(np.mean(d)) if len(d) else None, "mean_gross": float(np.mean(d + share)) if len(d) else None,
+            "costs": _seq_sum(np.asarray(run.ev_cost, dtype=np.float64)), "funding": float(run.funding_paid),
+            "rebalances": int(len(run.ev_idx))}
+
+
+def g6_book_runner(fp, ok: np.ndarray, s: int, e: int, stats: bool = True):
+    """run_book(tgt) -> (sharpe, stats or None): one G6 book (targets outside ok are 0) through the universe engine
+    restarted at row s, rows s..e; the Sharpe of its daily returns, -inf when liquidated (the comparison of R-C)."""
+    def run_book(tgt):
+        run = fp.run_targets(np.where(ok, tgt, 0.0), s, e)
+        if run.liquidated:
+            sh = float("-inf")
+            return sh, (book_stats(run, None, sh) if stats else None)
+        d = run.daily_returns().to_numpy()
+        sh = S.sharpe(d)
+        return sh, (book_stats(run, d, sh) if stats else None)
+    return run_book
+
+
+def g6_paired_runs(W: np.ndarray, P_: np.ndarray, ok: np.ndarray, g0: int, offs, plain: np.ndarray, actual: tuple,
+                   run_book) -> tuple:
+    """R-C, the lag loop of G6 (ugates; the sandbox's DEV reading, KP-018): for each lag k of offs the paired books
+    (g6_books); the actual book's run is reused when A_k equals `plain` (actual = run_book(plain)); a tie (R-B (1))
+    copies A's result to S without a second run. Returns (a_sh, s_sh, ties, a_stats, s_stats)."""
+    n = len(offs)
+    a_sh, s_sh = np.zeros(n), np.zeros(n)
+    ties = np.zeros(n, dtype=bool)
+    a_st, s_st = [], []
+    for j, k in enumerate(offs):
+        A_k, S_k = g6_books(W, P_, ok, g0, int(k))
+        ra = actual if np.array_equal(A_k, plain) else run_book(A_k)
+        a_sh[j] = ra[0]
+        ties[j] = g6_books_tie(A_k, S_k)               # R-B (1): no second engine run for a tie
+        rs = ra if ties[j] else run_book(S_k)
+        s_sh[j] = rs[0]
+        a_st.append(ra[1])
+        s_st.append(rs[1])
+        del A_k, S_k
+    return a_sh, s_sh, ties, a_st, s_st
+
+
+def _by_stat(rows: list) -> dict:
+    return {k: [r[k] for r in rows] for k in BOOK_STATS}
 
 
 def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_params) -> dict:
@@ -992,32 +1076,24 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
     inplay = fp.inplay()
     D_ = inplay[g0:val_e]
     ok = D_ & fp.eng_rows("av", val_s, val_e)
-
-    def vrun(tgt):
-        run = fp.run_targets(np.where(ok, tgt, 0.0), val_s, val_e)
-        if run.liquidated:
-            return float("-inf")
-        return S.sharpe(run.daily_returns().to_numpy())
+    vrun = g6_book_runner(fp, ok, val_s, val_e)           # (sharpe, KP-017 per-lag statistics)
 
     plain = np.where(ok, W[g0:val_e], 0.0)
-    actual = vrun(plain)                                  # the unmasked actual (kept in the detail)
+    actual_run = vrun(plain)
+    actual = actual_run[0]                                # the unmasked actual (kept in the detail)
     # R-N (fix pass 9): opts.u_lags equally spaced lags (one random phase) and the speed limit, BEFORE any lag run
     offs, step = g6_lags(L_, g0, rng_perm, opts.u_lags)
     memory = g6_memory(W, inplay, ok, g0, step, len(offs))
     over = not (memory <= C.UNIVERSE_G6_MEMORY_MAX)       # positive form: a NaN is over the limit
+    lag_detail = {"lags": [int(k) for k in offs], "actual": actual_run[1]}   # KP-017 rider: never in a trial row
     if over:                                              # too slow to test for timing: p = 1, no lag book
         a_sh, s_sh, ties = np.zeros(0), np.zeros(0), np.zeros(0, dtype=bool)
         p = 1.0
+        lag_detail["speed_limit_exceeded"] = True
     else:
-        a_sh, s_sh = np.zeros(len(offs)), np.zeros(len(offs))
-        ties = np.zeros(len(offs), dtype=bool)
-        for j, k in enumerate(offs):
-            A_k, S_k = g6_books(W, inplay, ok, g0, int(k))
-            a_sh[j] = actual if np.array_equal(A_k, plain) else vrun(A_k)
-            ties[j] = g6_books_tie(A_k, S_k)               # R-B (1): no second engine run for a tie
-            s_sh[j] = a_sh[j] if ties[j] else vrun(S_k)
-            del A_k, S_k
+        a_sh, s_sh, ties, a_st, s_st = g6_paired_runs(W, inplay, ok, g0, offs, plain, actual_run, vrun)
         p = g6_paired_p(a_sh, s_sh, ties)
+        lag_detail.update(tie=[bool(x) for x in ties], a=_by_stat(a_st), s=_by_stat(s_st))
     shifted = s_sh
     g["G6"] = {"pass": (bool(p <= p_max + 1e-12) if p_max is not None else None), "value": p, "threshold": p_max,
                "lags": int(len(offs)), "lag_step": int(step), "memory": float(memory),
@@ -1045,7 +1121,8 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
             "benchmark_val_max_drawdown": S.max_drawdown(bval), "benchmark_dev_sharpe": S.sharpe(bdev)}
     info.update({f"vs_benchmark_{kk}": v for kk, v in S.beta_alpha(val.to_numpy(), bval.reindex(val.index).to_numpy()).items()})
     res = {"status": "evaluated", "metrics": m, "gates": g, "tier": "tier1" if tier1 else "none", "info": info,
-           "daily_returns": daily, "n_params": n_params}
+           "daily_returns": daily, "n_params": n_params,
+           "g6_lag_detail": lag_detail}       # KP-017 rider: read by ucalibrate.g6_fields only (evaluate ignores it)
     if opts.keep_detail:
         fin = shifted[np.isfinite(shifted)]
         afin = a_sh[np.isfinite(a_sh)]
@@ -1060,6 +1137,86 @@ def ugates(W, fp, rng_perm, opts: PL.Opts, p_max, prog, params, variants, g8, n_
                          "per_year": PL.dev_only_years(S.per_year(daily)), "buckets": PL.dev_only_buckets(buckets),
                          "next30": g8, "stress": {"funding_stress_val_sharpe": fs_sh, "cost2x_val_sharpe": cs_sh}}
     return res
+
+
+# ---------------------------------------------------------------- the sandbox's DEV readings (KP-018)
+
+DEV_MEMORY_STEPS = 3                    # (a): G6's speed-limit statistic at 1 .. 3 of G6's lag steps
+DEV_PAIRED_HOURS = 365 * 24             # --g6-lags: decision rows of the last 365 days of DEV
+DEV_PAIRED_LAGS = 10                    # --g6-lags: lags 30 days + j x G6's step, j = 0 .. 9, no random phase
+
+
+def val_rows() -> int:
+    """The number of VAL rows (hourly bars VAL_START .. VAL_END), from which G6 takes its lag step."""
+    return int((T(C.VAL_END) - T(C.VAL_START)) // pd.Timedelta(hours=1)) + 1
+
+
+def _first_known_row(kn: np.ndarray):
+    rows = np.nonzero(np.asarray(kn, dtype=bool).any(axis=1))[0]
+    return int(rows[0]) if len(rows) else None
+
+
+def dev_speed_limit(fp, W: np.ndarray, kn: np.ndarray, inplay: np.ndarray, steps: int = DEV_MEMORY_STEPS) -> dict:
+    """KP-018 (a), DEV rows only: G6's speed-limit statistic by G6's own code (g6_memory_by_lag, G6's step from the
+    VAL length) for j = 1 .. steps. Decision rows g0 .. DEV end - 1, executed at g0 + 1 .. DEV end (ok = in play at
+    the decision row and a usable bar at the execution row, as G6); g0 = the later of the row before DEV start and
+    the first row with a known signal + steps x step, so every lagged row lies in the program's known span (VAL
+    never holds the program's global warm-up). fp: the DEV Blocked panel; W, kn: the stage-1 weights and known
+    channel on fp's grid; inplay: fp.inplay()."""
+    dev_s, dev_e = fp.pos(C.DEV_START), len(fp.ns) - 1
+    step = g6_step(val_rows(), C.UNIVERSE_G6_LAGS)
+    first = _first_known_row(kn)
+    out = {"ok": False, "step": int(step), "steps": int(steps), "limit": C.UNIVERSE_G6_MEMORY_MAX}
+    if first is None:
+        return dict(out, reason="the signal is never known on DEV")
+    g0 = max(dev_s - 1, first + steps * step)
+    if g0 >= dev_e:
+        return dict(out, reason=f"not enough DEV history (the signal is first known at {fp.grid[first]})")
+    ok = inplay[g0:dev_e] & _av_rows(fp, g0 + 1, dev_e)
+    r = g6_memory_by_lag(W, inplay, ok, g0, step, steps + 1)
+    mx = max(r)
+    return dict(out, ok=True, r=[float(x) for x in r], max=float(mx), over=bool(not (mx <= C.UNIVERSE_G6_MEMORY_MAX)),
+                start=fp.grid[g0], end=fp.grid[dev_e - 1])
+
+
+def _av_rows(fp, r0: int, r1: int) -> np.ndarray:
+    """The usable-bar flags (the engine's av) on rows r0..r1 of a Blocked panel."""
+    return fp.eng_rows("av", r0, r1)
+
+
+def dev_names_held(W: np.ndarray, inplay: np.ndarray, dev_s: int, dev_e: int) -> dict:
+    """KP-018 (d), DEV decision rows (dev_s - 1 .. dev_e - 1) on which at least one name is in play: the average
+    number of names with a target weight other than 0, and the average number of names in play."""
+    P_, Wr = inplay[dev_s - 1:dev_e], W[dev_s - 1:dev_e]
+    live = P_.any(axis=1)
+    if not live.any():
+        return {"held": None, "inplay": None, "rows": 0}
+    return {"held": float(np.mean((Wr[live] != 0.0).sum(axis=1))), "inplay": float(np.mean(P_[live].sum(axis=1))),
+            "rows": int(live.sum())}
+
+
+def dev_paired_lags(fp, W: np.ndarray, kn: np.ndarray, inplay: np.ndarray, hours: int = DEV_PAIRED_HOURS,
+                    n_lags: int = DEV_PAIRED_LAGS) -> dict:
+    """The opt-in DEV reading of G6's paired lag comparison (sandbox --g6-lags; a DEV reading, NOT the gate): the
+    last `hours` decision rows of DEV, lags 30 days + j x G6's step (j = 0 .. n_lags - 1, no random phase), the
+    books, runs, ties and p of G6 itself (g6_books, g6_book_runner, g6_paired_runs, g6_paired_p). Refused when a
+    lagged row would lie before the program's first known row."""
+    dev_e = len(fp.ns) - 1
+    step = g6_step(val_rows(), C.UNIVERSE_G6_LAGS)
+    offs = C.PERM_MIN_OFFSET_DAYS * 24 + step * np.arange(n_lags, dtype=np.int64)
+    g0 = dev_e - hours
+    first = _first_known_row(kn)
+    out = {"ok": False, "lags": int(n_lags), "lag_min": int(offs[0]), "lag_max": int(offs[-1])}
+    if first is None or g0 - int(offs[-1]) < first:
+        return dict(out, reason="not enough DEV history for the lagged rows")
+    ok = inplay[g0:dev_e] & _av_rows(fp, g0 + 1, dev_e)
+    run_book = g6_book_runner(fp, ok, g0 + 1, dev_e, stats=False)
+    plain = np.where(ok, W[g0:dev_e], 0.0)
+    a_sh, s_sh, ties, _, _ = g6_paired_runs(W, inplay, ok, g0, offs, plain, run_book(plain), run_book)
+    p = g6_paired_p(a_sh, s_sh, ties)
+    return dict(out, ok=True, p=float(p), at_least_as_good=int(round(p * (n_lags + 1))) - 1,
+                book_median=float(np.median(a_sh)), stale_median=float(np.median(s_sh)), start=fp.grid[g0],
+                end=fp.grid[dev_e - 1])
 
 
 # ---------------------------------------------------------------- loading (disk)

@@ -1,0 +1,16 @@
+# Kernel selftest program (never a trial, never a calibration family): exercises tf_last and tf_mean (KP-019) at
+# every timeframe, over hourly, coarser and nested inputs, with btc, funding8h, index_close and hold; no edge.
+name = "kernel_kitchen_sink_tf"
+family = "other"
+kind = "portfolio"
+hypothesis = "Selftest only: exercises tf_last and tf_mean over hourly, coarser and nested inputs; it has no edge."
+
+n = param(4, 2, 8)
+
+r = ret(close, 1)
+a = tf_mean(r, h2) + tf_mean(r * r, h3) - tf_last(r, h4)
+b = tf_mean(funding8h, h6) - tf_last(ret(btc(close), 1), h8)
+c = tf_last(tf_mean((close - index_close) / index_close, h12), daily)
+d = tf_last(sma(ret(daily(close), 1), n), weekly)
+e = sma(tf_mean(hold(r > 0, r < 0, r < 0, r > 0, n), daily), n)
+signal = cs_scale(cs_rank(a + b) + cs_demean(c + d + e))

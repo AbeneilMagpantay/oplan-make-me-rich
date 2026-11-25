@@ -18,6 +18,16 @@ from omr import ledger as LG
 ROOT = Path(__file__).resolve().parent.parent
 
 
+@pytest.fixture(autouse=True)
+def _hand_built_artifacts(monkeypatch):
+    """The hand-built artifacts of this file use round p values (0.01, 0.07, 0.5, 0.9, 0.001) and small worlds. For
+    the seal's mechanics tested here the unit lattices read p on k / 1000 (KP-017 item 4) and the DEV-positive floor
+    is 1 (KP-016); tests/test_kp016.py tests both with the kernel's own values."""
+    monkeypatch.setattr(C, "PERM_N", 999)
+    monkeypatch.setattr(C, "UNIVERSE_G6_LAGS", 999)
+    monkeypatch.setattr(C, "DEV_POSITIVE_MIN", 1)
+
+
 def test_chain_detects_tampered_deleted_and_truncated_rows(tmp_path):
     p = tmp_path / "t.jsonl"
     for i in range(4):
@@ -361,8 +371,9 @@ def test_d3_decide_both_reads_the_levels_present_in_each_unit(tmp_path):
     v = UC.decide_both(core, ua)
     assert v["chosen_threshold"] == {"core": 0.10, "top30": 0.10} and not v["STOP"]
     assert v["per_unit"]["top30"]["oracle_level_outside_bound"] == []
-    assert set(UC.oracle_summary(ua["oracle"]["A"]["rows"])) == {"fast|1.5", "slow|1.5"}
-    assert UC.oracle_summary(core["oracle"]["A"]["rows"]) == K.oracle_summary(core["oracle"]["A"]["rows"])
+    assert set(UC.oracle_summary(ua["oracle"]["A"]["rows"], n_perm=C.PERM_N)) == {"fast|1.5", "slow|1.5"}
+    assert UC.oracle_summary(core["oracle"]["A"]["rows"], n_perm=C.PERM_N) == \
+        K.oracle_summary(core["oracle"]["A"]["rows"], n_perm=C.PERM_N)
 
 
 # ---------------------------------------------------------------- fix pass 6: R-H per-unit thresholds, F2
@@ -510,8 +521,8 @@ def test_r_l_e_a_summary_without_family_rates_stops_the_unit_as_malformed(monkey
     core, top = _two_units()
     orig = K.null_summary
 
-    def no_family(rows, fams, designed=None):                          # R-R: null_summary takes the designed pairs
-        s = orig(rows, fams, designed)
+    def no_family(rows, fams, designed=None, *, n_perm):               # R-R: the designed pairs; KP-017: n_perm
+        s = orig(rows, fams, designed, n_perm=n_perm)
         if "ucal_xs_momentum" in fams:                                  # the top30 unit only
             for b in s["by_threshold"].values():
                 del b["family_pass_rate"]
@@ -578,7 +589,7 @@ def test_fp8_2_a_malformed_evaluated_row_is_the_malformed_stop(kind, how):
     assert v["STOP"] and v["reason"].startswith("top30: top30 artifact malformed: ValueError: ")
     assert f"world_seed {ws}" in v["reason"] and v["chosen_threshold"]["core"] == 0.10
     with pytest.raises(ValueError):
-        K.tier_at(rows[3], 0.1)
+        K.tier_at(rows[3], 0.1, C.PERM_N)
 
 
 def test_fp8_2_numpy_booleans_and_numpy_floats_are_read_like_python_ones():
@@ -618,14 +629,14 @@ def test_fp8_2_rows_of_the_real_shape_read_exactly_as_before():
     n_true = 0
     for r in rows:
         for t in C.G6_GRID:
-            assert K.tier_at(r, t) == _tier_at_58ba59e(r, t)
-            n_true += int(K.tier_at(r, t))
+            assert K.tier_at(r, t, C.PERM_N) == _tier_at_58ba59e(r, t)
+            n_true += int(K.tier_at(r, t, C.PERM_N))
     assert n_true > 50
     from omr import pipeline
     assert K.tier_at is pipeline.tier_at                                                # one implementation
     bad = dict(rows[0], gates=dict(rows[0]["gates"], G8="yes"))
     with pytest.raises(ValueError):
-        K.tier_at(bad, 0.1)
+        K.tier_at(bad, 0.1, C.PERM_N)
 
 
 @pytest.mark.parametrize("case", ["gates_null", "row_is_a_number", "no_family"])

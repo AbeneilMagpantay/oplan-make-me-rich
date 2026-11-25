@@ -12,7 +12,8 @@ window's history exists is the known channel, which a program cannot observe:
   hour and weekday always);
 - an elementwise result is known only where every input is known; a windowed result only where its
   input is known on every row of the window; a timeframe bar only if its bin is complete and every
-  hour in it is known; where() only where the condition and BOTH branches are known; hold() only
+  hour in it is known (a tf_last / tf_mean bin, KP-019: every hour of its input, read on the hourly grid,
+  known); where() only where the condition and BOTH branches are known; hold() only
   where its four inputs are known on all h rows; cs_* only where every symbol is known in that row;
 - the final weight is 0 where the signal is not known (or its value is NaN).
 UNIVERSE PANELS (unit top30 / next30, omr.upipeline): the input is a Panel of per-field arrays with an
@@ -216,6 +217,14 @@ class Context:
             out = np.maximum.reduceat(a, starts, axis=0)
         elif how == "min":
             out = np.minimum.reduceat(a, starts, axis=0)
+        elif how == "mean":
+            # KP-019 tf_mean: a plain sequential sum from 0.0, oldest hour first, divided by the bin's hours (equal
+            # bit for bit to sma(x, hrs) at the bin's last hour); an incomplete bin's value is dropped below
+            out = np.zeros((len(starts), k))
+            last = len(t) - 1
+            for j in range(hrs):
+                out = out + a[np.minimum(starts + j, last)]
+            out = out / hrs
         else:
             out = np.add.reduceat(a, starts, axis=0)
         kn = np.minimum.reduceat(s.kn.astype(np.int8), starts, axis=0) == 1     # every hour of the bin known
@@ -332,6 +341,10 @@ class Context:
             else:
                 fld, base = arg.id, self.field(arg.id)
             return self.to_tf(base, L.FIELDS[fld][1], fn)
+        if fn in L.TF_AGG:
+            # KP-019: x read on the hourly grid (a coarser series holds its last visible bar), then the timeframe's
+            # complete bins: known only if every hour of the bin is known, visible from the bin's last hourly bar
+            return self.to_tf(self.to_h1(self.ev(a[0])), L.TF_AGG[fn], a[1].id)
         if fn == "funding_mean":
             return self.funding_mean(self.window(a[0]))
         if fn == "ema":
