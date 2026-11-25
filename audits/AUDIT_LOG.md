@@ -1398,3 +1398,78 @@ round 3 also the coordinator's own read of the core modules.
   outside git (they carry local paths) in `_build/kp017_measurement/`, with their README;
   sha256 of kp017_eval.py 5ca7d3d65ca79f34..., kp017_run.py 238aafe5bbcfbadc..., kp017_read.py
   e2076debf5899c1d..., kp017_srcD.py 0ed0942a62831710..., plan.json 80abc0edd3da0bc5....
+
+## Round 8 (batch re-key of KP-016, KP-018 and KP-019) - 2026-11-25 - the design and the coordinator's gate
+
+- Decision and scope: KERNEL_PROPOSALS.md, entry of 2026-11-25 (approval by delegation, this batch only).
+- Design: by a fresh builder, design only. It changed no project file, made no git write, ran no kernel entry
+  point and no pytest (some tests read data/); it ran its own scripts on the probe's synthetic panels and
+  recounted the two sealed artifacts. The design text stays outside git; what was ruled is written here.
+- KP-019, ruled. Two functions, tf_last(x, tf) and tf_mean(x, tf): tf is a bare timeframe name (h2 to
+  weekly), x a DIMENSIONLESS numeric series; tf_mean takes an hourly x only, tf_last any timeframe. Both reuse
+  the existing timeframe machinery unchanged: complete bins anchored at 00:00 UTC (weekly at Monday), a bin
+  known only if every hour in it is known, visible from the bin's last hourly bar. The result lives on tf, so
+  rolling functions count bins. Lookback 2h - 2 + L(x), the leaf rule. A cs_* inside x uses each hour's
+  in-play set, a cs_* outside the set of the hour at which the bin becomes visible. Nothing of it is jittered.
+  No tf_sum (a sum is the mean times a constant). No function for a funding window in hours: sma(funding8h, n)
+  on hourly rows already is one (LANGUAGE.md gets the sentence). The timeframe functions for fields are not
+  extended (the aggregation would depend on the argument, and the code path of every existing program would
+  be edited).
+- Constant probe, unchanged: it rejects tf_mean(hour, daily), tf_mean(hour, weekly) and tf_mean(weekday,
+  weekly) (non-zero constants); tf_last(hour, daily) and tf_last(weekday, weekly) are exactly 0 (the decision
+  time of a bin's last bar) and carry nothing; a calendar average scaled by a literal passes as
+  sma(0.5 * hour, 24) passes today and stays with the coordinator's source read (RESEARCH_PLAYBOOK section 5
+  will name the new forms). The design emulated the functions on the probe panel; the build must show the
+  same through the real parser.
+- G6 and a calendar anchor (design, A.7): the stale copies are lagged copies of the book's own weights
+  (lags j x 621 hours, so the lag's hour of day moves by 21 hours per step), every weight vector pays one
+  settlement at every settlement hour whatever hour it starts, costs are the same at every hour and the mask
+  is common to both books; the speed limit of a step-function book is a blend of two neighbouring bin lags.
+  No bias for or against the actual book was found.
+- KP-018, ruled. For unit top30, on DEV rows only (the sandbox's existing load up to dev_end): (a) G6's
+  speed-limit statistic by G6's own function, one to three lag steps; (b) the DEV Sharpe on next30 by G8's own
+  function, on by default, run after the top30 panel is released; (c) gross funding paid and received from two
+  new running totals of the top30 engine (existing outputs bit-identical), and the DEV Sharpe under G2's
+  funding stress and under G4's doubled costs, by the gates' own functions; (d) the average number of names
+  held next to the average number in play; and, opt-in by --g6-lags, G6's paired comparison on the last 365
+  days of DEV with 10 stale copies, labelled as a DEV reading that is not the gate. Of generation 2's
+  diagnostic programs the acf ones become unnecessary, the stale ones with the opt-in reading; twins and plain
+  controls stay a researcher's tool.
+- KP-016, ruled. The pooled 3% bound counts Tier-1 passes over the evaluated pairs with a positive DEV Sharpe
+  (G3 true), per unit and per null. DEV_POSITIVE_MIN = 100 such pairs per null: below it the null fails every
+  threshold and there is no seal. The family bound R-L stays over a family's evaluated pairs (over
+  DEV-positive pairs it would be ill-conditioned: top30 carry has 14 of them under null A); the family rates
+  over DEV-positive pairs are stored as information. Recounted by the builder from the two sealed artifacts
+  with its own script: top30 0.10 (0 of 165 and 1 of 225), core 0.05 (26 of 1144 and 18 of 1130; at 0.10 44
+  and 35 against 34 and 33 allowed); core power at 0.05: 0.840, 0.830, 0.905, 0.810. As the decision entry
+  expected.
+- Riders of KP-017, ruled. (i) g6_lag_detail on every evaluated top30 calibration row, null and oracle: the
+  20 lags and tie flags and, for the plain actual book, each masked actual book and each stale copy, Sharpe,
+  volatility, mean net and mean gross return, costs, funding and rebalances, all from engine runs G6 already
+  makes; no symbol, date or price; never in a trial row. The top30 artifact grows from 1.9 MB to about 15 MB.
+  (ii) Item 1 (the level of an oracle cell over evaluated books, its power over all) stays in the code and
+  goes to the text pass: no oracle book of the stored rows is unevaluated. Items 2 (a docstring), 3 (a chosen
+  draw that fails stage 1 counts as a fault; no such row is stored) and 4 (tier_at checks that p lies on its
+  lattice; 0 of 6,087 stored p values are off it) are built.
+- Proof before the long runs, ruled. Golden hashes taken from main's files before the first edit and compared
+  after the build: the canonical forms of all 57 programs, the interpreter's output on the probe panels,
+  engine outputs, stage 1 and stage 2 on synthetic data, the rows of small synthetic dry-run calibrations. No
+  calibration pilot (the expected rows are known exactly). The core calibration runs first (about 45 minutes;
+  all 4,600 rows must equal the sealed rows), top30 only after that, with comparisons at its first
+  checkpoints; a mismatch stops the run.
+- Tests. Coordinator's check of the builder's caution: the tests that read data/ load up to dev_end only
+  (tests/test_baselines.py, tests/test_pipeline.py, tests/test_core_identity.py), and the builder of KP-015
+  ran the full suite (962 passed at 305e2c6). Ruled: the builder runs the full suite after confirming that
+  every real-data load under tests/ is DEV-only and that no test writes ledger/.
+- The record corrected: the decision entry's "known limit" was worded wrongly (the families do refresh at a
+  daily anchor; the small null counts of unit top30 come from costs, not from G6). Corrected the same day;
+  KP-020 filed with the evidence at hand (the coordinator's count of audits/kp017/results.jsonl: with costs
+  off 1 of 128 Tier-1-like at 0.10, with costs on 0 of 128) and with an interim rule (RESEARCH_PLAYBOOK
+  section 4b: no top30 Tier-1 result into the pool before a per-program measurement in null worlds).
+- Tooling: tools/git_gate.ps1 gives the top30 artifact (ledger/ucalibration_*.json) the 25 MB limit it already
+  gave ledger/calibration_*.json; its pattern had named only the core artifact.
+- Not verified by the design, to be settled in the build or by the coordinator after the re-key: the run time
+  of (b) and of --g6-lags on real data; the probe outcomes through the real parser; that a resumed real top30
+  run reproduces the same artifact.
+- Next: the build on branch kp019-build by the same builder; then an independent audit and the coordinator's
+  own review of the new functions' causality and locality and of the seal's count.

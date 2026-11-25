@@ -580,11 +580,40 @@ rates, status.
   thresholds top30 0.10 (0 of 165 and 1 of 225 at 0.10) and core 0.05 (26 of 1144 and 18 of 1130 at 0.05;
   44 of 1144 and 35 of 1130 at 0.10). A deviation is a finding to explain before the seal, not a number to
   accept.
-- Known limit, stated now: the calibration families hold no sampled book. In unit top30 the null pass counts
-  leave a wide margin under the bound (0 of 547 and 1 of 542 at 0.10), and G6 compares a book with lagged
-  copies of its own weights, which a calendar-anchored refresh does not favour by construction; the design
-  and the audit are to test both statements.
+- Known limit (corrected 2026-11-25 after the design; the first wording, committed as 480d016, said that the
+  calibration families hold no sampled book and called the margin wide). The top30 families do refresh at a
+  calendar anchor: momentum and reversal change their weights only at the 23:00 bar, carry at the settlement
+  bars. What no family has is a weekly anchor, and that gap is not new with KP-019 (weekly books can already
+  be written from weekly fields). The small null pass counts of unit top30 come from the families' costs, not
+  from G6, so the bound is not measured for a book that is cheap to trade: see KP-020 for the evidence at hand
+  (under 3% in a small sample) and for the interim rule. G6 itself is not favoured by a calendar anchor (the
+  design: lagged copies of the book's own weights, the same settlements and costs at every hour). No new
+  calibration family in this batch.
 - Order: design (no kernel file changed) - the coordinator's gate - build on branch kp019-build - tests -
   independent audit, and the coordinator's own review of the parts in which a mistake corrupts every result
   (the new function's causality and locality, the seal's count) - re-key - both calibrations, unattended -
   pre-seal reading - seal - selftest - recount - merge. Until the seal: no research round, no counted trial.
+
+## 2026-11-25 (coordinator, design of the batch re-key) KP-020 A calibration family that is cheap to trade, for unit top30
+
+- Problem: the pooled bound of unit top30 is measured on three families that lose money to their costs in the
+  null worlds (they refresh daily), so their small null pass counts say little about a book that is cheap to
+  trade, the kind KP-019 makes easier to write. G6 does not protect against luck (KP-017 measurement: the two
+  luckiest worlds of the candidate both passed G6). Found by the builder of the batch re-key, who showed that
+  the decision entry's first "known limit" was worded wrongly.
+- Evidence at hand (audits/kp017/results.jsonl: null worlds built from DEV-period rows, two programs with a
+  turnover of about 50 a year, 64 worlds each; counted by the coordinator): with costs switched off, which is
+  the limit of a cheap book, 15 of 128 evaluations pass G1, 4 pass every gate but G6, and 1 is Tier-1-like at
+  0.10 (1 of 58 with a positive DEV Sharpe); with costs on, 5 pass G1 and none passes the other gates. So the
+  rate lies under 3% in this sample, whose upper 95% bounds are about 4% (of all) and 10% (of DEV-positive).
+- Proposed change: add to the top30 calibration one or two families with a weekly anchor (momentum and
+  reversal on weekly bars, say), 200 worlds per null each, counted in the pooled bound and in the family
+  bound; oracle cells for them only if the power of a weekly book is wanted. It needs a pilot first (R-R
+  refuses a seal when a family keeps under half of its designed pairs).
+- Cost: a semantic change (omr/programs, omr/ucalibrate.py, CONSTITUTION section 8), a pilot, a re-key and
+  both calibrations again, with about a fifth more top30 calibration time per family. Possible effect: a lower
+  top30 threshold (at 0.05 the slowest oracle cell has a power of 0.48).
+- Interim, in force from 2026-11-25 (RESEARCH_PLAYBOOK section 4b): no Tier-1 result of unit top30 is admitted
+  to the pool before the coordinator has run the per-program measurement in null worlds and put both to the
+  human.
+- Status: open (needs the human's approval; a candidate for the next semantic re-key after the batch).

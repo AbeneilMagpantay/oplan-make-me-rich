@@ -118,6 +118,10 @@ before writing a top30 program. What decides whether a top30 idea can pass at al
 - What generation 2 taught about screens (LESSONS 34 and 35): a DEV screen reads DEV only. A rule reshaped
   after a DEV result has DEV numbers that are not evidence; say so in the plan, and say what, beyond those
   numbers, makes it worth a counted trial.
+- Before the pool (coordinator's rule of 2026-11-25; KERNEL_PROPOSALS KP-020): a Tier-1 result in unit top30
+  is not admitted to the pool before the coordinator has run the per-program measurement in null worlds (the
+  design of the KP-017 measurement, audits/AUDIT_LOG.md) and put both results to the human. The unit's 3%
+  bound is measured on families that are expensive to trade, and G6 tests timing, not luck.
 
 ## 5. Submit: at most 5 counted submissions per generation (enforced by the evaluator)
 

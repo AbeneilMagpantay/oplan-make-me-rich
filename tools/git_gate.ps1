@@ -55,7 +55,7 @@ if ($bad.Count -gt 0) { Write-Output 'ABORT: data files are staged:'; $bad; exit
 # Calibration artifacts hold one record per simulated pair and may reach a few MB; everything else stays small.
 $big = @($paths | Where-Object {
         $len = (Get-Item -LiteralPath (Join-Path $proj ($_ -replace '/', '\'))).Length
-        if ($_ -match '^ledger/calibration_[0-9a-f]+.*\.json$') { $len -gt 25MB } else { $len -gt 5MB }
+        if ($_ -match '^ledger/u?calibration_[0-9a-f]+.*\.json$') { $len -gt 25MB } else { $len -gt 5MB }
     })
 if ($big.Count -gt 0) { Write-Output 'ABORT: a staged file is larger than its limit (5 MB; 25 MB for calibration artifacts):'; $big; exit 9 }
 
