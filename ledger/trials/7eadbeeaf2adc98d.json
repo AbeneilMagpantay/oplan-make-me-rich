@@ -1,0 +1,189 @@
+{
+ "buckets": [
+  {
+   "bucket": "2020",
+   "n_days": 366,
+   "return": 0.10532462547631538
+  },
+  {
+   "bucket": "2021",
+   "n_days": 365,
+   "return": 0.6525034254297861
+  },
+  {
+   "bucket": "2022",
+   "n_days": 365
+  },
+  {
+   "bucket": "2023",
+   "n_days": 365
+  },
+  {
+   "bucket": "2024",
+   "n_days": 366
+  },
+  {
+   "bucket": "2025H1",
+   "n_days": 181
+  }
+ ],
+ "dsr": {
+  "M": 6,
+  "N": 5.896878622346854,
+  "V": 0.0009892764982837087,
+  "dsr": 0.038149515653811625,
+  "rho": 0.0206242755306292,
+  "sr0_daily": 0.040579186383801306
+ },
+ "gates": {
+  "G1": {
+   "pass": false,
+   "value": 0.33311717568266325
+  },
+  "G10": {
+   "pass": true,
+   "value": 2792
+  },
+  "G2": {
+   "pass": false,
+   "value": -0.6971297256032433
+  },
+  "G3": {
+   "pass": true,
+   "value": 1.4994394490951952
+  },
+  "G4": {
+   "pass": false,
+   "value": -0.6594023081778828
+  },
+  "G5": {
+   "g5_vacuous": false,
+   "pass": false,
+   "value": {
+    "frac_positive": 0.0,
+    "median": -0.18071653855787,
+    "n": 12
+   }
+  },
+  "G6": {
+   "lag_step": 621,
+   "lags": 20,
+   "memory": 0.0788036799911883,
+   "memory_max": 0.5,
+   "memory_over_limit": false,
+   "pass": false,
+   "threshold": 0.1,
+   "value": 0.5714285714285714
+  },
+  "G7": {
+   "pass": false,
+   "value": {
+    "largest_share": 0.7352612616897507,
+    "n_positive": 4
+   }
+  },
+  "G8": {
+   "pass": true,
+   "value": {
+    "code": null,
+    "next30_sharpe": 0.4781221469275323
+   }
+  }
+ },
+ "info": {
+  "benchmark": "equal-weight long of the in-play top30 members",
+  "benchmark_dev_sharpe": 0.6341752116492912,
+  "benchmark_val_max_drawdown": 0.7294722879520597,
+  "benchmark_val_sharpe": 0.27926388719649536,
+  "vs_benchmark_alpha_ann": -0.041879972217101206,
+  "vs_benchmark_beta": 0.00736644193849478,
+  "vs_benchmark_resid_psr0": 0.32702667762861504,
+  "vs_benchmark_resid_sharpe": -0.25901007861334724
+ },
+ "metrics": {
+  "avg_gross_exposure": 0.8541266781071424,
+  "avg_net_exposure": 0.00016665975741178042,
+  "costs_total": 0.5311841188361185,
+  "deploy_scale": 0.49498768872784427,
+  "dev": {
+   "cagr": 0.28771840985753516,
+   "calmar": 1.9910952728687286,
+   "kurtosis": 5.787387659488455,
+   "max_drawdown": 0.14450258296429808,
+   "n_days": 912,
+   "psr0": 0.9913244207567099,
+   "sharpe": 1.4994394490951952,
+   "skew": 0.20410502749301948,
+   "total_return": 0.8810564203952529
+  },
+  "dev_val_max_drawdown": 0.40405045328302025,
+  "direction_changes_dev": 1896,
+  "direction_changes_val": 2792,
+  "funding_paid_total": -0.2219688495800062,
+  "n_daily": 2008,
+  "rebalances": 2532,
+  "turnover_per_year": 50.280305103673314,
+  "unit_known_frac_dev_val": 0.9317936586985391,
+  "unit_symbols": 134,
+  "val": {
+   "cagr": -0.05200542199400826,
+   "calmar": -0.1358679539000156,
+   "kurtosis": 5.492860135870138,
+   "max_drawdown": 0.3827644451927107,
+   "n_days": 1096,
+   "psr0": 0.33311717568266325,
+   "sharpe": -0.24931031684209412,
+   "skew": 0.1617836836452122,
+   "total_return": -0.1481678747059545
+  },
+  "val_sharpe_daily": -0.013049498398369793
+ },
+ "next30": {
+  "code": null,
+  "sharpe": 0.4781221469275323,
+  "symbols": 215
+ },
+ "per_year": [
+  {
+   "max_drawdown": 0.11646190895739927,
+   "n_days": 366,
+   "return": 0.10532462547631538,
+   "sharpe": 0.8988510672185152,
+   "year": 2020
+  },
+  {
+   "max_drawdown": 0.10360569393216124,
+   "n_days": 365,
+   "return": 0.6525034254297861,
+   "sharpe": 2.339900226951223,
+   "year": 2021
+  }
+ ],
+ "permutation": {
+  "actual_common_mean": -0.6261583266458253,
+  "actual_val_sharpe_restarted": -0.25139746555716785,
+  "lag_max": 12881,
+  "lag_min": 1082,
+  "lag_step": 621,
+  "lagged": true,
+  "memory": 0.0788036799911883,
+  "memory_max": 0.5,
+  "memory_over_limit": false,
+  "n": 20,
+  "p": 0.5714285714285714,
+  "paired": true,
+  "shifted_mean": -0.48190247667801334,
+  "shifted_p95": 0.3683751258347413,
+  "ties": 0
+ },
+ "seed": "3867842993188019459",
+ "stage1": {
+  "direction_changes_dev": 1896,
+  "truncation_cuts": 25
+ },
+ "stress": {
+  "cost2x_val_sharpe": -0.6594023081778828,
+  "funding_stress_val_sharpe": -0.6971297256032433
+ },
+ "trial_id": "7eadbeeaf2adc98d"
+}

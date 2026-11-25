@@ -481,7 +481,17 @@ rates, status.
   (omr/calibrate.py oracle_summary and its top30 counterpart); the docstring of omr/calibrate.py that still
   says "submitted pairs" for the family rate; a chosen draw that fails stage 1 is stored as not submitted and
   can never count against the 3% fault bound; tier_at does not check that p lies on its lattice.
-- Status: open. The measurement of S1 is ordered as audit work; every change needs the human's approval.
+- Measured 2026-11-25 (audits/AUDIT_LOG.md, "KP-017 measurement"; audits/kp017/). In the kernel's null worlds
+  built from DEV-period rows only, 32 worlds per null: G6 alone passed the generation-2 candidate
+  (gen002_averaged_funding_shock) in 5 of 64 worlds with costs on (bound 11) and, with costs off, in 3 of the 32
+  worlds in which it did well by luck, against 4 of 33 for a price-only book. The restriction was lifted for that
+  one program (its counted trial then failed on its merits: 7eadbeeaf2adc98d). The carry family at its default
+  did NOT show S1 in those worlds (0 of 16 evaluated worlds with costs on, 0 of 16 with costs off), although its
+  actual book was 1.16 times as volatile as its stale copies. So S1 belongs to the calibration's own worlds
+  (rows of the validation period, the best of 20 draws) and can only be examined inside a calibration: a later
+  calibration could store the per-lag details of the carry family. No change of the G6 statistic is proposed.
+  For every other program reading funding or the basis the restriction of RESEARCH_PLAYBOOK section 4b stays.
+- Status: open (S1 not explained; no change proposed now; every change needs the human's approval).
 
 ## 2026-11-23 (researcher, generation 2 round 1) KP-018 Sandbox readings of G6's speed limit and of next30 for unit top30
 

@@ -111,7 +111,13 @@ before writing a top30 program. What decides whether a top30 idea can pass at al
   kind of no-skill world the timing gate passed a losing funding-carry book far too often; until that is
   measured, such a pass could not be trusted. Such programs may be pre-registered and screened on DEV
   (ruling of 2026-11-24, generation 2 round 3); a plan then recommends them "subject to the KP-017
-  measurement". Keep them cheap to trade: the finding concerns books dominated by their costs.
+  measurement". Keep them cheap to trade: the finding concerns books dominated by their costs. The
+  measurement is made per program (audits/AUDIT_LOG.md, 2026-11-24 and 25): it was run for
+  gen002_averaged_funding_shock, which was then scored and failed on its merits; it lifts nothing for any
+  other program.
+- What generation 2 taught about screens (LESSONS 34 and 35): a DEV screen reads DEV only. A rule reshaped
+  after a DEV result has DEV numbers that are not evidence; say so in the plan, and say what, beyond those
+  numbers, makes it worth a counted trial.
 
 ## 5. Submit: at most 5 counted submissions per generation (enforced by the evaluator)
 

@@ -1,4 +1,4 @@
-# STATE (2026-11-24: generations 0 and 1 complete; the KP-015 kernel is sealed; generation 2 has its first candidate, waiting for the KP-017 measurement)
+# STATE (2026-11-25: generations 0 to 2 have counted trials, six in all, none Tier 1; the KP-015 kernel is sealed)
 
 ## Where things stand
 
@@ -45,8 +45,13 @@
   per-gross clause; positive with the funding removed and the costs paid twice; both corners; a stale copy
   at 0.03 against the book's 1.49; a price-neutral twin at 1.47; speed-limit diagnostic -0.36):
   ELIGIBLE, SUBJECT TO THE KP-017 MEASUREMENT. gen002_averaged_unrewarded_shift (H12) failed at its first
-  corner. 8 sandbox runs (22 of 60 used), no counted submission yet, M unchanged.
-- Ledger: M = 5 counted trials (generation 0: 4, generation 1: 1, generation 2: 0 so far), N = 4.86,
+  corner. 8 sandbox runs (22 of 60 used).
+- Generation 2, the counted trial (same report, last part; 2026-11-25). The KP-017 measurement met both
+  conditions fixed in advance (audits/AUDIT_LOG.md), the restriction was lifted for this one program, and
+  the decision was committed as 6c20689 before scoring. gen002_averaged_funding_shock (7eadbeeaf2adc98d):
+  DEV Sharpe 1.499, VAL Sharpe -0.249, PSR(0) 0.333; fails G1, G2, G4, G5, G6 (p 0.571) and G7; passes G3,
+  G8 and G10. Not Tier 1. Before costs it earned about nothing in VAL.
+- Ledger: M = 6 counted trials (generation 0: 4, generation 1: 1, generation 2: 1 of 5), N = 5.90,
   Tier 1: 0, pool 0 of 5, one uncounted stage-1 rejection; all chains verify.
 - Benchmark over VAL, for reference: long BTC and ETH half each, Sharpe 0.921.
 - Data: the counted trials above were scored on research_hash
@@ -228,15 +233,21 @@ premium over the index, opened for DEV screening by the coordinator's ruling of 
 sign in all three, stopped by their trading costs. The KP-016 counts of the real run were put to the human on
 2026-11-23.
 Round 4 (2026-11-24): the first candidate of generation 2, gen002_averaged_funding_shock, eligible by its DEV
-screen and subject to the KP-017 measurement (see "Where things stand"; lessons 30 to 33).
-Now: the KP-017 measurement. Its design and its reading rule were fixed in audits/AUDIT_LOG.md (entry "KP-017
-measurement", 2026-11-24) before the first world: the candidate, a price-only book of similar speed and the
-carry calibration family in the kernel's null worlds built from DEV-period rows only, with trading costs on and
-off. If the candidate's form is not passed by G6 alone more often than the test's level allows (R1) and, when
-it does well by luck, not more often than the price book (R2), the restriction is lifted for this program
-and the coordinator runs ONE counted evaluation of it at its declared defaults (the first counted trial of
-generation 2 and of unit top30; M becomes 6). If not, it is not submitted and KP-017 goes to the human as a
-proposal. 38 sandbox runs and all 5 counted submissions of generation 2 are left.
+screen and subject to the KP-017 measurement (lessons 30 to 33).
+The KP-017 measurement (2026-11-25; audits/AUDIT_LOG.md, audits/kp017/): both conditions fixed in advance were
+met in the kernel's null worlds built from DEV-period rows (G6 alone passed the candidate in 5 of 64 no-skill
+worlds, bound 11; when it did well by luck, in 3 of 32 against 4 of 33 for a price-only book), and the
+restriction was lifted for that one program. The carry calibration family did not show the finding of the seal
+recount in those worlds, so KP-017 itself stays open (KERNEL_PROPOSALS).
+The counted trial (2026-11-25): gen002_averaged_funding_shock failed in VAL (Sharpe -0.249 against 1.499 on
+DEV; six gates failed; lessons 34 and 35). Generation 2 stands at 1 of 5 counted submissions and 22 of 60
+sandbox runs; 12 pre-registered hypotheses in four rounds, one counted trial, no Tier 1.
+Now: nothing is running. What the coordinator puts to the human before more rounds: the researchers of every
+round were held back by the same two things, that a slowly moving idea cannot be traded slowly (a derived
+series cannot be sampled or averaged over a timeframe, KP-019) and that the sandbox does not show the readings
+that decide a trial (KP-018); both are kernel changes for one re-key with both calibrations again, and KP-016
+could ride on the same re-key. Until the human decides, further rounds run on the kernel as it is, and no
+rule that was shaped on a DEV result is submitted for a counted trial without a reason beyond its DEV numbers.
 
 ## Open decisions for the human
 

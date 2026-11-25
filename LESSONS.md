@@ -138,6 +138,20 @@ on synthetic worlds. No lesson recommends a parameter value.
     first candidate of generation 2 that is eligible by its DEV screen. Certain as an account of this
     round; not evidence about markets.
 
+## From generation 2, the counted trial (generations/gen002/REPORT.md, last part)
+
+34. A contrarian funding-shock rule in unit top30 (the rank of a 10-day against a 28-day funding mean,
+    averaged over 16 days) that had passed a DEV screen of ten items fixed in advance (DEV Sharpe 1.499)
+    had a VAL Sharpe of -0.249 and failed G1, G2, G4, G5, G6 and G7; before costs it earned about
+    nothing in VAL. Trial 7eadbeeaf2adc98d. WEAK about markets: one trial, one period, and a rule
+    shaped on DEV after two rounds of DEV results. It is the first counted trial in unit top30.
+35. A DEV screen, however many items it has (costs, corners, a stale copy, a price-neutral twin, the
+    speed limit), reads DEV only: it measured how well the rule of lesson 34 fitted DEV and nothing
+    about VAL. Each round that reshapes a rule after a DEV result makes its DEV numbers worth less;
+    after rounds 3 and 4 they were worth nothing as evidence, as the plans said, and the counted trial
+    confirmed it. Trial 7eadbeeaf2adc98d and the four PLAN versions. Certain as an account of
+    generation 2; a caution, not a rule about markets.
+
 ## About the instrument (calibration ledger/calibration_7446278556aadd8f.json)
 
 6. A program with no edge, selected as the best of 20 DEV draws, passes Tier 1 in about 2.3% (null B)

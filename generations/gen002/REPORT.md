@@ -344,3 +344,70 @@ unchanged at 5.
 - `omr.kernel_lock`: OK, sealed (core 0.10, top30 0.10). `omr.ledger verify`: OK, all six chains.
 - Recommendation: H11 eligible, subject to the KP-017 measurement; H12 not.
 - LESSONS.md entries 30 to 33, as proposed by the researcher and reviewed by the coordinator.
+
+# The counted trial of generation 2 (written by the coordinator, 2026-11-25)
+
+Sources: ledger/trials.jsonl (the trial row), `python -m omr.status`, the coordinator's evaluate output,
+generations/gen002/PLAN.md, audits/AUDIT_LOG.md (the KP-017 measurement). No returns file and no trial detail file
+was read.
+
+## What was run
+- The KP-017 measurement, fixed before its first world, was read on 2026-11-25: in 64 no-skill worlds built from
+  DEV-period rows G6 alone passed the candidate in 5 (bound 11), and with costs off, among worlds in which it did
+  well by luck, in 3 of 32 against 4 of 33 for a price-only book. Both conditions met, so the restriction of
+  RESEARCH_PLAYBOOK section 4b was lifted for this one program. Its limit: the carry calibration family did not
+  show the finding of the seal recount in those worlds.
+- The decision was appended to PLAN.md and committed and pushed as 6c20689 BEFORE scoring. The coordinator then
+  scored strategies/gen002_averaged_funding_shock.omr once, at its declared defaults, on the sealed kernel
+  (semantic 5ea66b0fb79ca267..., G6 0.10 in unit top30). No other program of generation 2 was submitted.
+
+## Result
+| program | trial | status | DEV SR | VAL SR | PSR(0) | DSR (M then) |
+|---|---|---|---|---|---|---|
+| averaged_funding_shock (H11) | 7eadbeeaf2adc98d | evaluated, tier none | 1.499 | -0.249 | 0.333 | 0.038 (6) |
+
+| gate | value | result |
+|---|---|---|
+| G1 VAL PSR(0) >= 0.90 | 0.333 | FAIL |
+| G2 funding stress > 0 | -0.697 | FAIL |
+| G3 DEV SR > 0 | 1.499 | pass |
+| G4 2x costs > 0 | -0.659 | FAIL |
+| G5 jitter median; share > 0 | -0.181; 0.00 | FAIL |
+| G6 p <= 0.10 | 0.571 | FAIL |
+| G7 positive of 6; largest share | 4; 0.735 | FAIL |
+| G8 next30 Sharpe > 0 | 0.478 | pass |
+| G10 VAL direction changes >= 12 | 2792 | pass |
+
+Direction changes DEV 1896, VAL 2792; rebalances 2532. deploy_scale 0.495. VAL max drawdown 0.383 (DEV and VAL
+together 0.404). Benchmark (information, not a gate): equal-weight long of the in-play members, VAL Sharpe 0.279,
+max drawdown 0.729. Tier 1: none. Pool 0 of 5. No liquidation, no kernel fault.
+
+## Against the pre-registered falsifier
+"Falsified if G1, G2, G4, G6 (or the speed limit), G8 or any other Tier-1 gate fails." G1, G2, G4, G5, G6 and G7
+fail. Falsified.
+
+## Reading
+- A DEV Sharpe of 1.5 became a VAL Sharpe of -0.25. With the costs paid twice it is -0.66, so each further unit
+  of costs takes about 0.4 from it and before costs the book earned about nothing in VAL (near +0.16). Under the
+  funding stress it is -0.70: what little it had came from the funding it received.
+- G6: p 0.57, so more than half of its stale copies did at least as well as the book. No timing was measured.
+- G5: every one of the 12 jittered variants was negative, so the failure is not an accident of the defaults.
+- The rule had passed a DEV screen of ten items fixed in advance (costs, costs paid twice with the funding
+  removed, both corners, a stale copy, a price-neutral twin, the speed limit). Every one of those readings was a
+  reading of DEV. The screen measured how well the rule fitted DEV; it could not measure more.
+
+## What must NOT be concluded
+- One counted trial on one VAL period. It does not show that funding carries no information in the top30
+  cross-section. It shows that this rule did not work in VAL.
+- Which of two reasons applies cannot be told from one trial: the rule was shaped on DEV after rounds 3 and 4
+  (said so in the plan), which makes a fit to DEV the likeliest reason; a change in how funding behaved after
+  DEV (named in the plan's disclosures: many coins at the default rate, 4-hour settlements, compressed funding)
+  is the other.
+- The instrument passes a true Sharpe-1.5 book only 68 to 82% of the time (LESSONS 12), but a VAL Sharpe of -0.25
+  with six gates failed is not a near miss.
+- KP-017 is not answered by this trial: G6 failed the book here, which says nothing about how G6 treats
+  funding-driven books in no-skill worlds.
+
+## After the trial
+M = 6 (generation 0: 4, generation 1: 1, generation 2: 1 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool 0 of 5;
+sandbox runs used in generation 2: 22 of 60; all chains verified; the lock verifies, sealed.
