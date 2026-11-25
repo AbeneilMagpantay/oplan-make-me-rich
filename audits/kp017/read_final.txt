@@ -1,0 +1,49 @@
+KP-017 reading of results.jsonl: 304 lines (0 duplicate keys ignored, 0 unreadable lines)
+plan: N = 32 worlds per null for B1, B2; 12 per null for B3; 304 evaluations; missing 0; lines outside the plan 0
+
+TABLE 1: per book, null and cost setting
+  B1 A ON        rows  32  n  32  k(p<=0.10)   1  k(p<=0.05)   1  VAL Sharpe mean  -0.47 share>0  0.22  costs mean  0.310  over-limit 0  memory mean 0.057
+  B1 B ON        rows  32  n  32  k(p<=0.10)   4  k(p<=0.05)   1  VAL Sharpe mean   0.01 share>0  0.44  costs mean  0.316  over-limit 0  memory mean 0.045
+  B1 A OFF       rows  32  n  32  k(p<=0.10)   1  k(p<=0.05)   1  VAL Sharpe mean  -0.19 share>0  0.34  costs mean  0.000  over-limit 0  memory mean 0.057
+  B1 B OFF       rows  32  n  32  k(p<=0.10)   3  k(p<=0.05)   1  VAL Sharpe mean   0.27 share>0  0.66  costs mean  0.000  over-limit 0  memory mean 0.045
+  B2 A ON        rows  32  n  32  k(p<=0.10)   4  k(p<=0.05)   3  VAL Sharpe mean  -0.10 share>0  0.47  costs mean  0.282  over-limit 0  memory mean 0.050
+  B2 B ON        rows  32  n  32  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -0.30 share>0  0.31  costs mean  0.254  over-limit 0  memory mean 0.048
+  B2 A OFF       rows  32  n  32  k(p<=0.10)   4  k(p<=0.05)   3  VAL Sharpe mean   0.08 share>0  0.56  costs mean  0.000  over-limit 0  memory mean 0.050
+  B2 B OFF       rows  32  n  32  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -0.11 share>0  0.47  costs mean  0.000  over-limit 0  memory mean 0.048
+  B3 A ON        rows  12  n   8  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -2.51 share>0  0.00  costs mean  0.895  over-limit 0  memory mean 0.024  not evaluated {'liquidated': 4}
+  B3 B ON        rows  12  n   8  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -2.33 share>0  0.00  costs mean  0.876  over-limit 0  memory mean 0.026  not evaluated {'liquidated': 4}
+  B3 A OFF       rows  12  n   8  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -0.45 share>0  0.12  costs mean  0.000  over-limit 0  memory mean 0.024  not evaluated {'liquidated': 4}
+  B3 B OFF       rows  12  n   8  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -0.49 share>0  0.12  costs mean  0.000  over-limit 0  memory mean 0.026  not evaluated {'liquidated': 4}
+
+TABLE 2: pooled over both nulls
+  B1 ON          rows  64  n  64  k(p<=0.10)   5  k(p<=0.05)   2  VAL Sharpe mean  -0.23 share>0  0.33  costs mean  0.313  over-limit 0  memory mean 0.051  R1-type bound for this n: 11
+  B1 OFF         rows  64  n  64  k(p<=0.10)   4  k(p<=0.05)   2  VAL Sharpe mean   0.04 share>0  0.50  costs mean  0.000  over-limit 0  memory mean 0.051  R1-type bound for this n: 11
+  B2 ON          rows  64  n  64  k(p<=0.10)   4  k(p<=0.05)   3  VAL Sharpe mean  -0.20 share>0  0.39  costs mean  0.268  over-limit 0  memory mean 0.049  R1-type bound for this n: 11
+  B2 OFF         rows  64  n  64  k(p<=0.10)   4  k(p<=0.05)   3  VAL Sharpe mean  -0.02 share>0  0.52  costs mean  0.000  over-limit 0  memory mean 0.049  R1-type bound for this n: 11
+  B3 ON          rows  24  n  16  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -2.42 share>0  0.00  costs mean  0.886  over-limit 0  memory mean 0.025  not evaluated {'liquidated': 8}  R1-type bound for this n: 4
+  B3 OFF         rows  24  n  16  k(p<=0.10)   0  k(p<=0.05)   0  VAL Sharpe mean  -0.47 share>0  0.12  costs mean  0.000  over-limit 0  memory mean 0.025  not evaluated {'liquidated': 8}  R1-type bound for this n: 4
+
+R1 (costs ON, B1 pooled): n 64, k(p<=0.10) 5, bound K 11 (largest K with P(Bin(n, 2/21) >= K) >= 0.025; P(>= K) = 0.0383, P(>= K+1) = 0.0167); share 0.078 vs nominal 0.0952 -> met
+R2 (costs OFF, worlds with VAL Sharpe > 0): B1 3 of 32 (share 0.0938), B2 4 of 33 (share 0.1212); difference -0.0275, SE 0.0767, 2 SE 0.1534 -> met
+
+VERDICT: R1 met and R2 met -> the restriction is lifted FOR THIS PROGRAM; it may be submitted for one counted trial at its declared defaults.
+
+INFORMATION (not conditions)
+  B3 costs ON: n 16, k(p<=0.10) 0 (share 0.000), R1-type bound for n 16: 4 -> not above the bound; k(p<=0.05) 0
+  B3 costs OFF: n 16, k(p<=0.10) 0 (share 0.000), R1-type bound for n 16: 4 -> not above the bound; k(p<=0.05) 0
+  B1 costs ON null A+B: stale copy at least as good as the book: first two lags 60 of 128 (0.469), other eighteen 521 of 1152 (0.452); worlds 64
+  B1 costs ON null A: stale copy at least as good as the book: first two lags 30 of 64 (0.469), other eighteen 305 of 576 (0.530); worlds 32
+  B1 costs ON null B: stale copy at least as good as the book: first two lags 30 of 64 (0.469), other eighteen 216 of 576 (0.375); worlds 32
+  B1 costs OFF null A+B: stale copy at least as good as the book: first two lags 60 of 128 (0.469), other eighteen 528 of 1152 (0.458); worlds 64
+  B1 costs OFF null A: stale copy at least as good as the book: first two lags 30 of 64 (0.469), other eighteen 310 of 576 (0.538); worlds 32
+  B1 costs OFF null B: stale copy at least as good as the book: first two lags 30 of 64 (0.469), other eighteen 218 of 576 (0.378); worlds 32
+  B1 costs ON: volatility ratio actual / stale over 64 worlds, 1280 lag pairs: mean 1.038, median 1.038, share > 1 0.710
+    by lag position 1..20 (mean): 1.060 1.082 1.045 1.029 1.041 1.053 1.024 1.002 1.008 1.028 1.033 1.026 1.026 1.033 1.043 1.058 1.053 1.035 1.029 1.053
+  B1 costs OFF: volatility ratio actual / stale over 64 worlds, 1280 lag pairs: mean 1.038, median 1.038, share > 1 0.711
+    by lag position 1..20 (mean): 1.060 1.082 1.045 1.029 1.041 1.053 1.024 1.002 1.008 1.028 1.033 1.026 1.026 1.033 1.043 1.058 1.053 1.035 1.029 1.053
+  B3 costs ON: volatility ratio actual / stale over 16 worlds, 320 lag pairs: mean 1.157, median 1.153, share > 1 0.872
+    by lag position 1..20 (mean): 1.173 1.133 1.091 1.118 1.129 1.154 1.177 1.099 1.016 1.040 1.078 1.114 1.207 1.192 1.198 1.222 1.237 1.257 1.244 1.251
+  B3 costs OFF: volatility ratio actual / stale over 16 worlds, 320 lag pairs: mean 1.156, median 1.153, share > 1 0.869
+    by lag position 1..20 (mean): 1.173 1.133 1.090 1.117 1.128 1.153 1.177 1.098 1.016 1.040 1.078 1.113 1.207 1.191 1.198 1.221 1.236 1.257 1.243 1.252
+
+self-check of the bound: n 48 -> 9 (design: 9); n 80 -> 13 (design: 13)

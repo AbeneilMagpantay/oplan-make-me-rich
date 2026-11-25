@@ -1341,3 +1341,60 @@ round 3 also the coordinator's own read of the core modules.
   scratch folder; the long job runs detached at below-normal priority with one worker, writes
   one line per finished evaluation and can be resumed; a reading script prints the tables and
   the rule's verdict from whatever is finished. The coordinator reads the result and decides.
+
+## KP-017 measurement - 2026-11-25 - result: R1 and R2 are met; the restriction is lifted for gen002_averaged_funding_shock only
+
+- Built and run by a new auditor session, read-only on the project, by the design fixed in the
+  entry above. Validations before the run: the harness reproduces the kernel bit for bit on six
+  rows of the round-7 pilot for the carry family (four under null B, two under null A: G6 p,
+  VAL Sharpe, memory, lag step, DEV Sharpe, rebalances); the same evaluation twice gives the
+  same line; with costs OFF every one of 57 engine runs of an evaluation pays 0 and the weights
+  equal the costs-ON run (the cost constant and the four function defaults that captured it are
+  patched in the measuring process only, and are back afterwards); no source row after DEV end
+  is read (all 115,953 donor assignments after DEV end fall on DEV days, and replacing every
+  real price and funding rate after DEV end by noise changes none of the 28 source arrays); the
+  project's files and ledger are unchanged.
+- The run. N = 32 worlds per null by the rule (40 would have taken 11.98 machine hours, 32 takes
+  9.73). 304 evaluations (B1 and B2: 64 per setting; B3: 24 per setting), one worker, detached,
+  2026-11-25 00:19 to 10:05, no wait for memory, no exception. World seeds 11000+i and 14000+i.
+- R1 (costs ON, the candidate B1, both nulls pooled): p <= 0.10 in 5 of 64 worlds (7.8%; null A
+  1 of 32, null B 4 of 32; at 0.05: 2 of 64). The bound for n = 64 is 11. MET.
+- R2 (costs OFF, worlds with a positive VAL-part Sharpe): B1 3 of 32 (9.4%), the price book B2 4
+  of 33 (12.1%); difference -0.03 against two standard errors of 0.15. MET.
+- By the rule fixed in advance the restriction is lifted FOR THIS PROGRAM, and it is submitted
+  for one counted trial at its declared defaults (a = 240, b = 672, m = 384, size = 0.1; file
+  sha256 a9fa8d496b64f850..., unchanged since commit 350a246). For every other program reading
+  funding or the basis the restriction stays (RESEARCH_PLAYBOOK section 4b).
+- The coordinator's recount from the results file, with a script of its own: 304 distinct
+  lines; B1 costs ON 5 of 64, costs OFF 4 of 64; B2 4 of 64 in both settings; R1 and R2 as
+  above. It equals the reader's output.
+- What the reference did, stated plainly: B3, the carry family at its default, showed NO excess
+  in these worlds: p <= 0.10 in 0 of 16 evaluated worlds with costs ON and 0 of 16 with costs
+  OFF (8 of its 24 rows per setting were liquidated). The finding of the seal recount (53 of 166
+  under null B) was made on the calibration's own worlds, which are built from the rows of the
+  validation period and with the best of 20 draws; on worlds built from DEV-period rows the
+  family at its default does not show it. So this measurement shows how G6 treats the candidate
+  in no-skill worlds with DEV-like funding; it does NOT show how G6 would treat it in worlds
+  where the finding appears, and no measurement outside the kernel's own calibration can (no
+  program may be evaluated on rows after 2022-06-30 elsewhere). What speaks for the candidate
+  beyond R1 and R2: the suspected mechanism rewards the more volatile of two LOSING books, and
+  the candidate's actual book is only 1.04 times as volatile as its stale copies (B3: 1.16, in
+  87% of its lag pairs), and a book that passes G1 and G4 is not a losing book. That is a
+  reading, not a measurement.
+- Other information. The first two stale copies did at least as well as the candidate in 47% of
+  the cases, the other eighteen in 45% (the plan's note on a book anti-correlated with its own
+  weights one lag step back: no effect is visible). No evaluation was over the speed limit
+  (memory about 0.05). And what LESSONS 14 says about luck shows here too: of the 64 no-skill
+  worlds the candidate had a VAL-part Sharpe of 0.75 or more in 2, and G6 passed it in both (the
+  price book: 3 such worlds, 1 passed). G6 does not protect against luck; the count M does.
+- KP-017 after this: open. New fact for it: the excess does not appear on DEV-period worlds at
+  the family's default, so its cause lies in the validation-period rows or in the draws, and it
+  can only be examined inside a calibration (a later calibration could store the per-lag
+  details of the carry family). No change of the G6 statistic is proposed now.
+- Files. Byte copies: audits/kp017/results.jsonl (one line per evaluation), sha256
+  c481042ff8c2bda7a34281fd1a070450044de77063f60da256e3bdac89a2fd1e, and
+  audits/kp017/read_final.txt (the reader's output), sha256
+  5ec3adc899c6c74c7cddc716740e9601d03482ce3e5c686598819d464fc5e965. The measuring scripts stay
+  outside git (they carry local paths) in `_build/kp017_measurement/`, with their README;
+  sha256 of kp017_eval.py 5ca7d3d65ca79f34..., kp017_run.py 238aafe5bbcfbadc..., kp017_read.py
+  e2076debf5899c1d..., kp017_srcD.py 0ed0942a62831710..., plan.json 80abc0edd3da0bc5....

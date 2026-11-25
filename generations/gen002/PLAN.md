@@ -2198,3 +2198,20 @@ H12 gen002_averaged_unrewarded_shift: NOT recommended (failed S3).
 
 At most one program is recommended this round. The DEV-only diagnostics (gen002_diag_*) are never to be
 submitted.
+
+## Coordinator's decision before the counted run (2026-11-25; appended to version 4, nothing above changed)
+
+The KP-017 measurement, whose design and reading rule were fixed in audits/AUDIT_LOG.md before its first world,
+has been read (audits/AUDIT_LOG.md, "KP-017 measurement - 2026-11-25"; audits/kp017/). In 64 no-skill worlds built
+from DEV-period rows only, G6 alone passed gen002_averaged_funding_shock in 5 (the bound for 64 worlds is 11): R1 is
+met. With costs off, among the worlds in which it did well by luck, G6 passed it in 3 of 32, a price-only book of
+similar speed in 4 of 33: R2 is met. By the rule the restriction of RESEARCH_PLAYBOOK section 4b is lifted for THIS
+program only. The limit of that measurement, recorded with it: the carry calibration family did not show the
+finding of the seal recount in those worlds, so the measurement speaks for worlds with DEV-like funding only.
+
+The coordinator therefore submits ONE program of generation 2 for a counted trial: H11,
+strategies/gen002_averaged_funding_shock.omr, at its declared defaults (a = 240, b = 672, m = 384, size = 0.1), file
+sha256 a9fa8d496b64f85000d9261a9bf465c3df2cfafd752ae538b6b8407f9044a570, unchanged since it was committed as 350a246
+before any round-4 sandbox run. Its pre-registered falsifier stands as written in version 4: falsified if G1, G2,
+G4, G6 (or the speed limit), G8 or any other Tier-1 gate fails. Its DEV numbers are not evidence. No other program
+of generation 2 is submitted now.
