@@ -130,3 +130,144 @@ pool 0 of 5, one uncounted stage-1 rejection (generation 0). Sandbox runs used i
     not evidence about markets.
 - No kernel defect was seen. The sandbox's new readings were printed and logged as documented (the logged values equal
   the printed ones), and every run took under 3 minutes.
+
+# Round 2 (PLAN version 2)
+
+## Sources
+- generations/gen003/PLAN.md: version 2 as committed in afce52a together with the coordinator's round-2 rulings
+  (127,710 bytes, sha256 af92ebcc682af2da...; the researcher's version 2 ended at 124,880 bytes, sha256
+  827ee8a7c01abbf0...), with the stage-2 run log, amendments (none), screen outcome, DEV observations and recommendation
+  appended (139,818 bytes, sha256 5efd3dfa569d66c5...).
+- The three sandbox outputs of the researcher session (DEV only; scratch gen003_r2/run_01 to run_03), rows 46 to 48
+  (0-indexed) of ledger/sandbox_log.jsonl, `python -m omr.status`, `python -m omr.ledger summary` (trial rows),
+  `omr.ledger verify`, `omr.kernel_lock verify`.
+- No returns file, no trial detail file, no calibration file and no data file was read. No VAL number exists for any
+  generation-3 program: none was submitted.
+
+## What was run
+- Unit top30 on the sealed kernel of the batch re-key (semantic 7d923e7e2375986d..., G6 0.05 in core and 0.10 in
+  top30). The coordinator's frame for this round: the one pattern DEV kept showing (continuation of a recent move;
+  LESSONS 16, 17, 21, 23, 26, 39, 43) had never had a counted trial, because every continuation rule had been written
+  after a DEV result; this round could pre-register such rules openly, with the DEV numbers that shaped them, a reason
+  beyond them, weekly construction, a screen fixed in advance on the kernel's readings, and at most two candidates.
+- A fresh researcher session wrote PLAN version 2 with three hypotheses, three candidate programs and three DEV-only
+  controls BEFORE any round-2 sandbox run; each file passed a parse-only check. The coordinator committed and pushed
+  them unchanged as afce52a.
+- Coordinator's rulings, recorded in PLAN.md before run 1: H4 accepted under this round's frame, with its tension with
+  LESSONS 23 recorded (it is the idea of generation 2's H6 in a new construction); H5 and H6 accepted on the same terms;
+  the screen as written; the controls allowed as DEV-only measurements; one set of diagnostics for H4 and H6, H4 first;
+  --g6-lags on runs 1 to 3; KP-017's restriction does not apply, KP-020 does; cap 11 runs (9 planned, 2 in reserve);
+  at most ONE program of the round to get a counted trial without a further decision; a survivor is not thereby
+  submitted.
+- The three hypotheses, all continuation rules written after DEV results, dollar neutral (gross 1), re-decided once a
+  week through tf_mean or tf_last, none reading funding, mark or index prices:
+  - H4 gen003_multiweek_momentum: the coin's residual move of the last 3 weeks (hourly residual to the unit's mean,
+    rolling 14-day beta; G5 at 2 or 4 weeks), in units of its residual volatility, continues (LESSONS 16 and 23).
+  - H5 gen003_jump_continuation: the sign mirror of generation 2's H5, sampled weekly: coins whose last 21 daily
+    residual returns were right-skewed keep outperforming (LESSONS 21; MAX momentum in crypto as outside support).
+  - H6 gen003_week_continuation: round 1's x with the continuation sign: last week's residual move continues
+    (LESSONS 16).
+- The screen, fixed in advance: round 1's items at round 1's thresholds (S1 activity, gross, liquidation, names held;
+  S2 DEV Sharpe >= 0.6; S3 two of three years; S4 G4's DEV reading > 0; S5 G2's DEV reading > 0; S7 speed limit <= 0.40;
+  S8 paired reading A <= 4 and B > 0; S10 both G5 corners positive and positive at doubled costs), S6 tightened (next30
+  DEV Sharpe >= 0.3) and S9 a control comparison (plain continuation for H4 and H6, the drift of the same days for H5).
+  The plan listed which readings were predictable from the parents (S2, S3, partly S6 and S10) and did not count them
+  as support; no item of its own was given to the known 2022H1 weakness of multi-week residual momentum.
+- 3 sandbox runs of the 9 planned (cap 11): the three defaults, each with --g6-lags. Every default failed at least one
+  of S1 to S8, so no control (runs 4 and 7) and no corner (runs 5, 6, 8 and 9) was due. No stage-1 rejection, no kernel
+  fault, no refusal; each run 84.0 to 140.3 s, one at a time, under the coordinator's memory rule.
+
+## Result
+| program | DEV Sharpe | total | costs | C/G | funding paid / received (gross) | G2 DEV | G4 DEV | next30 DEV | speed limit r(1..3) | paired (A of 10; book median B) | names held | years + (2020, 2021, 2022H1) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| H4 multiweek_momentum (n=336, m=3) | 0.541 | 0.305 | 0.2399 | 0.293 | 0.5096 / 0.5701 | -0.015 | 0.314 | -0.100 | -0.054, -0.061, -0.024 | 9; -1.431 | 23.5 of 28.0 | 2 of 3 (SR 2.015, 1.176, -2.716) |
+| H5 jump_continuation (n=21) | 0.705 | 0.406 | 0.2386 | 0.298 | 0.5443 / 0.5347 | 0.105 | 0.447 | -0.820 | -0.107, -0.062, 0.018 | 10; -1.785 | 22.2 of 28.0 | 2 of 3 (SR 2.384, 0.891, -2.289) |
+| H6 week_continuation (n=336) | 0.836 | 0.604 | 0.3754 | 0.451 | 0.5741 / 0.5988 | 0.305 | 0.501 | -0.314 | -0.006, -0.010, 0.022 | 5; -0.757 | 25.1 of 28.0 | 2 of 3 (SR 2.933, 0.401, -0.674) |
+
+Direction changes 1074, 1047 and 1780; avg gross 0.818, 0.801 and 0.833; rebalances 652, 609 and 647; maxDD 0.400, 0.341
+and 0.284; PSR(0) 0.801, 0.869 and 0.911; net funding -0.0604 (received), 0.0096 (paid) and -0.0247 (received); none
+liquidated; 75 symbols ever in the unit; lookback 1243, 1605 and 739 h. Every run printed the benchmark (equal-weight
+long of the in-play members) at DEV Sharpe 0.619, maxDD 0.847.
+
+| hypothesis | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 | S9, S10 | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| H4 | pass | FAIL (0.541) | pass (predictable) | pass (0.314) | FAIL (-0.015) | FAIL (-0.100) | pass (max -0.024) | FAIL (9; -1.431) | not due | dropped |
+| H5 | pass | pass (0.705, predictable) | pass (predictable) | pass (0.447) | pass (0.105) | FAIL (-0.820) | pass (max 0.018) | FAIL (10; -1.785) | not due | dropped |
+| H6 | pass | pass (0.836, predictable) | pass (partly predictable) | pass (0.501) | pass (0.305) | FAIL (-0.314) | pass (max 0.022) | FAIL (5; -0.757) | not due | dropped |
+
+No counted submission in generation 3. M is unchanged at 6. Tier 1: none. Pool 0 of 5.
+
+## Against each pre-registered DEV falsifier
+- H4 ("a negative DEV Sharpe drops it, never flipped"; the screen S1 to S10): the registered sign (0.541) but below the
+  liveness bar of 0.6, negative under the funding stress and on next30, and a failed paired reading (9 of 10 stale
+  copies at least as good; the book's median Sharpe on the common names -1.431 over the last 365 days of DEV).
+  Falsified on DEV.
+- H5 (same screen): the registered sign (0.705), positive under both stresses, but -0.820 on next30 and a failed paired
+  reading (10 of 10; -1.785). Falsified on DEV. Its drift control was never due, so whether its DEV result came from
+  jumps or from drift is not known.
+- H6 (same screen): the registered sign (0.836), positive under both stresses, but -0.314 on next30 and a failed paired
+  reading (5 of 10; -0.757). Falsified on DEV.
+
+## Reading
+- All three continuation books had the registered sign on DEV, and all three earned it early: Sharpe 2.0 to 2.9 in
+  2020, 0.4 to 1.2 in 2021, -0.7 to -2.7 in 2022H1, and each lost on the common names over the last 365 days of DEV.
+  On these weekly constructions, after costs, the DEV continuation of LESSONS 16, 21, 23 and 43 was concentrated in 2020
+  and was gone by the last year of DEV. WEAK: one DEV period, one default each, rules written after DEV results.
+- All three read negative on next30 (-0.100, -0.820, -0.314). The plan had called H6's next30 reading largely
+  predictable as positive, because the one-week residual reversal had read -1.030 there (row 41); it was not: in ranks
+  31 to 60 both signs of the one-week rule lost after costs on DEV.
+- The items nobody had seen dropped all three (S6 and S8 for each; S5 for H4 as well). Two outcomes the plan had called
+  predictable came out otherwise: H4's DEV Sharpe (the parents suggested about 1.0 to 1.4; it read 0.541) and H6's
+  next30 sign.
+- Costs were far above the plan's estimates: 0.240, 0.239 and 0.375 of equity over DEV (C/G 0.29, 0.30 and 0.45),
+  against estimates of 0.09 to 0.23 and against 0.17 to 0.23 for round 1's books on the same weekly bins. The weekly
+  skewness book cost more than generation 2's daily-updated form of the same statistic (0.239 against 0.140). Suggestive
+  cause, not measured: a continuation book holds the movers, which keep moving, and a target held for a week is traded
+  back against their drift, which a daily-updated target partly follows. The books also paid and received more gross
+  funding (1.08 to 1.17 of equity, paid plus received) than any earlier top30 book read by the sandbox, and G2 again cost
+  more Sharpe than G4 (0.53 to 0.60 against 0.23 to 0.34).
+
+## What must NOT be concluded
+- Three DEV failures say nothing about VAL. No VAL bar was read for any of these programs, and none was submitted: the
+  one pattern DEV kept showing has still had no counted trial.
+- These rules were written after DEV results, so their DEV numbers were never evidence for them; their failure says
+  that the DEV pattern was weaker, later in DEV and in next30 than the parents' numbers suggested once it was built
+  weekly and paid its costs, not that continuation is absent in crypto.
+- One default per hypothesis was run; nothing is implied about other values of n, m or the formation window, and none
+  is recommended. The controls and corners were never run, so whether the residual, the scaling or the jump part adds
+  anything on DEV is not known.
+- DEV is now spent for these three forms and their readings (next30, the paired comparison, the per-year rows). A later
+  continuation variant built to get past S6 or S8 would be fitted to readings now seen.
+- The cost observation is a yardstick, not a measured cause.
+- Choosing ideas is still open to hindsight (KP-010); the plan named what could bias each one.
+
+## After the round
+M = 6 (generation 0: 4, generation 1: 1, generation 2: 1, generation 3: 0 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool
+0 of 5, one uncounted stage-1 rejection (generation 0). Sandbox runs used in generation 3: 6 of 60 (rounds 1 and 2: 3
+and 3; ledger/sandbox_log.jsonl now 49 rows, the three new rows status ok, stage1 full, source_sha256 equal to the
+committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.ledger verify`: OK, all six chains.
+
+## For the coordinator's decision
+No hypothesis survived the screen, so there is no candidate to decide on; rulings (10) and (11) do not come into play.
+
+## Requests to the coordinator
+- LESSONS.md entries proposed for review (numbering after 43):
+  - 44. In unit top30 on DEV, three weekly continuation books written after DEV results (3-week residual momentum, jump
+    continuation as the mirror of the skewness rule of LESSONS 21, one-week residual continuation) had the registered
+    sign but DEV Sharpe of only 0.541, 0.705 and 0.836 after costs; each was strongly positive in 2020 (Sharpe 2.0 to
+    2.9) and negative in 2022H1 (-0.7 to -2.7), lost on the common names over the last 365 days of DEV (paired reading,
+    book median -0.76 to -1.79), and read negative on next30 (-0.10, -0.82, -0.31). The DEV continuation of lessons 16,
+    21, 23 and 43 was concentrated early in DEV and did not show in ranks 31 to 60 after costs. Generation 3 PLAN run
+    log, round 2, runs 1 to 3; no trial id. WEAK: DEV only, one default each, rules written after DEV results.
+  - 45. Weekly continuation books cost 0.239 to 0.375 of equity over DEV at 12.5 bps per side (0.29 to 0.45 per unit of
+    gross), above round 1's weekly books on the same bins (0.172 to 0.229) and above the plan's estimates; a weekly
+    sample of the 21-day skewness book cost more than its daily-updated form in generation 2 (0.239 against 0.140); and
+    these books paid and received 0.51 to 0.60 of equity in gross funding each way. Suggestive only: a target held for a
+    week is traded back against the drift of the movers a continuation book holds. Round 2, runs 1 to 3. WEAK as a
+    number; a design yardstick next to lessons 19, 24 and 41.
+  - 46. Process: a screen fixed in advance, whose unseen readings (next30 and the paired comparison) were allowed to drop
+    rules written after DEV results, stopped all three defaults in 3 sandbox runs of 9 planned, with no counted trial;
+    two outcomes the plan had called predictable from the parents did not come out as expected (a DEV Sharpe under the
+    liveness bar; a next30 sign that a mirror's reading had seemed to fix, but a mirror pays its costs again). PROCESS.
+- No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
+  printed ones); every run took under 2.5 minutes.

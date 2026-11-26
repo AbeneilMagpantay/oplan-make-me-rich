@@ -228,3 +228,26 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     of 12 planned, before any placebo or corner run, with no counted trial. Across generations 2 and 3, fifteen
     pre-registered market-neutral top30 ideas have now been screened on DEV: every bet against a recent move
     lost or earned too little, and the only DEV-positive price books continue a recent move. PROCESS.
+
+## From generation 3, round 2 (same kernel and unit; generations/gen003/REPORT.md, round 2)
+
+44. In unit top30 on DEV, three weekly continuation books written after DEV results (3-week residual momentum;
+    jump continuation, the mirror of the skewness rule of lesson 21; one-week residual continuation) had the
+    registered sign but a DEV Sharpe of only 0.541, 0.705 and 0.836 after costs. Each was strongly positive in
+    2020 (Sharpe 2.0 to 2.9) and negative in 2022H1 (-0.7 to -2.7), lost on the common names over the last 365
+    days of DEV (paired reading, book median -0.76 to -1.79), and read negative on next30 (-0.10, -0.82, -0.31).
+    The DEV continuation of lessons 16, 21, 23 and 43 was concentrated early in DEV and did not show in ranks 31
+    to 60 after costs. Generation 3 PLAN run log, round 2, runs 1 to 3; no trial id. WEAK: DEV only, one default
+    each, rules written after DEV results.
+45. Weekly continuation books cost 0.239 to 0.375 of equity over DEV at 12.5 bps per side (0.29 to 0.45 per unit
+    of gross), above round 1's weekly books on the same bins (0.172 to 0.229) and above the plan's estimates; a
+    weekly sample of the 21-day skewness book cost more than its daily-updated form in generation 2 (0.239
+    against 0.140); and these books paid and received 0.51 to 0.60 of equity in gross funding each way.
+    Suggestive only: a target held for a week is traded back against the drift of the movers a continuation
+    book holds. Round 2, runs 1 to 3. WEAK as a number; a design yardstick next to lessons 19, 24 and 41.
+46. Process: a screen fixed in advance, whose unseen readings (next30 and the paired comparison) were allowed to
+    drop rules written after DEV results, stopped all three defaults in 3 sandbox runs of 9 planned, with no
+    counted trial. Two outcomes the plan had called predictable from the parents did not come out as expected
+    (a DEV Sharpe under the liveness bar; a next30 sign that a mirror's reading had seemed to fix, but a mirror
+    pays its costs again). The one pattern DEV had kept showing was put to its own unseen DEV readings before
+    any VAL bar was spent on it, and it did not survive them. PROCESS.

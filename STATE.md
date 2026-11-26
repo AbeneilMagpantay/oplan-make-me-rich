@@ -279,7 +279,18 @@ coin's week was made (its weekend part, its heavy-hour part, its storm-hour part
 residual move and contrarian; the first use of tf_mean. All three were dropped at the DEV screen at their
 defaults (DEV Sharpe -1.348, -0.256 and 0.349; each negative under G2's and G4's DEV readings) in 3 sandbox
 runs of the 14 allowed; no placebo or corner run was due; no counted trial; M unchanged (LESSONS 39 to 43).
-Generation 3 stands at 0 of 5 counted submissions and 3 of 60 sandbox runs. Next: round 2 (PLAN version 2).
+Round 2 (2026-11-26; PLAN version 2, pre-registered and pushed as afce52a before any run): the continuation
+question. Fifteen screened ideas had left one pattern on DEV, the continuation of a recent move, never tested
+out of sample because every such rule was written after a DEV result. The coordinator's frame let the
+researcher register continuation rules openly as descended from DEV, each with its reason beyond the DEV
+numbers, to be dropped only by readings nobody had seen. Three were registered (3-week residual momentum, jump
+continuation, one-week residual continuation) and all three were dropped at their defaults in 3 sandbox runs
+of the 11 allowed: DEV Sharpe 0.541, 0.705 and 0.836, each earned in 2020 and lost in 2022H1, each negative on
+next30 and losing over the last 365 days of DEV in the paired reading; no counted trial; M unchanged (LESSONS
+44 to 46). The pattern did not survive its own unseen DEV readings, and no VAL bar was spent on it.
+Generation 3 stands at 0 of 5 counted submissions and 6 of 60 sandbox runs. Eighteen market-neutral top30
+ideas have now been screened on DEV in generations 2 and 3: one passed its screen and failed its counted
+trial, and none of the other seventeen was eligible.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.

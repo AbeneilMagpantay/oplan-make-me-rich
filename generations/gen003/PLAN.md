@@ -1408,3 +1408,107 @@ none of round 2.
     full (its reason beyond the DEV numbers, what a pass and a failure in VAL would teach), records the decision
     in this file, and tells the human.
 12. Stage 2 starts only after this plan and its programs are on the remote. Its parts are appended below.
+
+## Sandbox run log (round 2), filled in during stage 2
+
+(Appended below version 2 and the coordinator's round-2 rulings, so that the 127,710 bytes committed as afce52a stay an
+unchanged prefix. Every run is listed; run numbers follow version 2's order table, and numbers not listed were not due
+under its conditions. C/G = costs / avg gross. Funding paid / received are the gross flows of the KP-018 block; the net
+printed on the "rebalances" line is in the note, minus = received. Each output is saved as ASCII in the session scratch
+folder, gen003_r2/run_NN_<name>.txt, written by gen003_r2/run_sandbox.py, which only calls `python -m omr.sandbox`.)
+
+| # | program | params (non-default only) | DEV Sharpe | dir. changes | avg gross | names held | costs | C/G | funding paid / received (gross) | G2 DEV | G4 DEV | next30 DEV | r(1), r(2), r(3) | paired (A of 10; B) | years + (of printed) | note |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H4 gen003_multiweek_momentum | (default n=336, m=3), --g6-lags | 0.541 | 1074 | 0.818 | 23.5 of 28.0 | 0.2399 | 0.293 | 0.5096 / 0.5701 | -0.015 | 0.314 | -0.100 (100 symbols) | -0.054, -0.061, -0.024 (max -0.024, under the limit) | 9 of 10 (p 0.909); B -1.431, stale median -0.590 | 2 of 3 (2020 0.412 SR 2.015; 2021 0.375 SR 1.176; 2022 -0.328 SR -2.716) | PSR(0) 0.801, total 0.305, CAGR 0.113, maxDD 0.400, avg net -0.000, funding net -0.0604 (received), rebalances 652, liquidated False, 75 symbols, lookback 1243 h, stage 1 PASS (25 cuts). Speed-limit rows 2020-08-24 14:00 to 2022-06-30 22:00; paired lags 30 to 262 days, decisions 2021-06-30 23:00 to 2022-06-30 22:00. Wall time 140.3 s (22:02:03 to 22:04:23 +08:00); free memory before the run 3,375,284 KB physical, 14,249,056 KB virtual. Fails S2 (0.541 < 0.6), S5, S6 and S8: H4 DROPPED; runs 4 to 6 not due for H4 |
+| 2 | H5 gen003_jump_continuation | (default n=21), --g6-lags | 0.705 | 1047 | 0.801 | 22.2 of 28.0 | 0.2386 | 0.298 | 0.5443 / 0.5347 | 0.105 | 0.447 | -0.820 (100 symbols) | -0.107, -0.062, 0.018 (max 0.018, under the limit) | 10 of 10 (p 1.000); B -1.785, stale median -0.689 | 2 of 3 (2020 0.467 SR 2.384; 2021 0.239 SR 0.891; 2022 -0.226 SR -2.289) | PSR(0) 0.869, total 0.406, CAGR 0.146, maxDD 0.341, avg net 0.000, funding net 0.0096 (paid), rebalances 609, liquidated False, 75 symbols, lookback 1605 h, stage 1 PASS (25 cuts). Speed-limit rows 2020-09-07 14:00 to 2022-06-30 22:00; paired spans as run 1. Wall time 84.0 s (22:04:35 to 22:05:59); free memory before 3,509,304 KB physical, 14,460,360 KB virtual. Fails S6 and S8: H5 DROPPED; runs 7 to 9 not made |
+| 3 | H6 gen003_week_continuation | (default n=336), --g6-lags | 0.836 | 1780 | 0.833 | 25.1 of 28.0 | 0.3754 | 0.451 | 0.5741 / 0.5988 | 0.305 | 0.501 | -0.314 (100 symbols) | -0.006, -0.010, 0.022 (max 0.022, under the limit) | 5 of 10 (p 0.545); B -0.757, stale median -0.588 | 2 of 3 (2020 0.691 SR 2.933; 2021 0.080 SR 0.401; 2022 -0.122 SR -0.674) | PSR(0) 0.911, total 0.604, CAGR 0.208, maxDD 0.284, avg net -0.000, funding net -0.0247 (received), rebalances 647, liquidated False, 75 symbols, lookback 739 h, stage 1 PASS (25 cuts). Speed-limit rows 2020-08-10 14:00 to 2022-06-30 22:00; paired spans as run 1. Wall time 133.8 s (22:06:29 to 22:08:43); free memory before 3,597,288 KB physical, 14,531,536 KB virtual. Fails S6 and S8: H6 DROPPED; the alternative runs 4 to 6 (H6's control and corners) not due |
+
+Total sandbox runs made in round 2: 3 (of the 9 planned and the cap of 11); none from the reserve; no stage-1 rejection,
+no kernel fault, no refusal, nothing on stderr; every run exit 0, full stage 1 (25 truncation cuts), one at a time, each
+started only after the one before had ended and after the memory reading of the coordinator's rule (at least 1,000,000
+KB physical and 4,000,000 KB virtual free; 3.4 to 3.6 million and 14.2 to 14.5 million were free). The benchmark line
+printed by every run (equal-weight long of the in-play members): DEV Sharpe 0.619, maxDD 0.847, as in round 1 of this
+generation and in generation 2. ledger/sandbox_log.jsonl now has 49 rows (46 + 3), rows 46 to 48 (0-indexed), each with
+status ok, stage1 full, its logged readings equal to the printed ones and its source_sha256 equal to the committed
+file's; `omr.ledger verify` OK, all six chains; `omr.kernel_lock verify` OK, sealed (core 0.05, top30 0.1). Generation 3
+has used 6 of 60 sandbox runs.
+
+By the order table: run 4 needed run 1 to pass S1 to S8 (its alternative, H6's control, needed run 3 to pass them), and
+run 7 needed run 2 to pass them. None did, so no control (runs 4 and 7) and no corner (runs 5, 6, 8 and 9) was due.
+
+## Amendments (round 2), stage 2
+
+none: no program text, param, default, screen item or run condition was changed, and the reserve was not used.
+
+## Screen outcome per hypothesis (round 2; stage 2, DEV, read from the run log above)
+
+"pred." = the plan's table called the item's outcome predictable from known numbers (so a pass is not evidence);
+"partly" = partly predictable; "unseen" = no one had seen it.
+
+| H | S1 (PASS; X >= 30; G >= 0.5; L False; H >= 15) | S2 (S >= 0.6, continuation sign) | S3 (years + >= 2 of 3) | S4 (G4 DEV > 0) | S5 (G2 DEV > 0) | S6 (next30 DEV >= 0.3) | S7 (r(1..3) each <= 0.40) | S8 (A <= 4 and B > 0) | S9 (S > control) | S10 (corners) | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| H4 gen003_multiweek_momentum | pass (PASS; 1074; 0.818; False; 23.5), unseen | FAIL (0.541), pred. | pass (2020, 2021; 2022H1 -0.328 as predicted), pred. | pass (0.314), unseen | FAIL (-0.015) | FAIL (-0.100) | pass (-0.054, -0.061, -0.024), unseen | FAIL (A 9; B -1.431) | not run | not run | DROPPED |
+| H5 gen003_jump_continuation | pass (PASS; 1047; 0.801; False; 22.2), unseen | pass (0.705), pred. | pass (2020, 2021; 2022H1 -0.226), pred. | pass (0.447), unseen | pass (0.105), unseen | FAIL (-0.820) | pass (-0.107, -0.062, 0.018), unseen | FAIL (A 10; B -1.785) | not run | not run | DROPPED |
+| H6 gen003_week_continuation | pass (PASS; 1780; 0.833; False; 25.1), unseen | pass (0.836), pred. | pass (2020, 2021; 2022H1 -0.122), partly | pass (0.501), unseen | pass (0.305), unseen | FAIL (-0.314) | pass (-0.006, -0.010, 0.022), unseen | FAIL (A 5; B -0.757) | not run | not run | DROPPED |
+
+By the order table a default that fails any of S1 to S8 ends its hypothesis, so no control (S9) and no corner (S10) was
+run for any of them. Two outcomes the plan's table had called predictable did not come out as the plan expected: H4's S2
+(the parents suggested about 1.0 to 1.4; it read 0.541) and H6's S6 (called largely predictable from row 41 as positive;
+it read -0.314). H5's S3 passed, but with 2 of 3 years where the plan expected 3 of 3.
+
+Against each pre-registered DEV falsifier:
+- H4: falsified on DEV. The 3-week residual continuation book had the registered sign (0.541) but below the liveness
+  bar; it was negative under the funding stress (-0.015) and on next30 (-0.100), and on the last 365 days of DEV it
+  lost on the common names (B -1.431) while 9 of its 10 stale copies did at least as well. 2022H1 lost (Sharpe
+  -2.716), as known in advance for this idea; it was not the item that decided (S3 passed).
+- H5: falsified on DEV. The jump-continuation book had the registered sign (0.705) and stayed positive under both
+  stresses (G2 0.105, G4 0.447), but read -0.820 on next30, and on the last 365 days of DEV it lost on the common names
+  (B -1.785) with all 10 stale copies at least as good. S9 (the drift control) was never due, so whether its DEV result
+  was jumps or drift is not known.
+- H6: falsified on DEV. The one-week residual continuation book had the registered sign (0.836) and stayed positive
+  under both stresses (G2 0.305, G4 0.501), but read -0.314 on next30, and on the last 365 days of DEV it lost on the
+  common names (B -0.757) with 5 of its 10 stale copies at least as good.
+
+## DEV observations (round 2; NOT hypotheses, never to be submitted from this plan)
+
+- All three continuation books had the registered sign on DEV, and all three earned it early: by year their Sharpe was
+  2.0 to 2.9 in 2020, 0.4 to 1.2 in 2021 and -0.7 to -2.7 in 2022H1, and each lost on the common names over the last
+  365 days of DEV (paired reading, B -0.76 to -1.79). On these weekly, cost-bearing constructions the DEV continuation
+  of LESSONS 16, 21, 23 and 43 was concentrated in 2020 and was gone by the last year of DEV. WEAK: one DEV period, one
+  default each, and rules written after DEV results.
+- All three read negative on next30 (-0.100, -0.820, -0.314): ranks 31 to 60 did not continue the moves after costs on
+  DEV. Row 41 had read the one-week residual REVERSAL at -1.030 on next30, so in that unit both signs of the one-week
+  rule lost after costs on DEV; the plan's expectation that H6's next30 was predictable from row 41 was wrong, because a
+  mirror pays the costs again. WEAK.
+- The DEV Sharpes were well below what the parents suggested (H4 0.541 against about 1.0 to 1.4; H5 0.705 against 1.1 to
+  1.6; H6 0.836 against 0.7 to 1.1, inside). A rough additive split (compounding ignored) puts the price P&L before
+  costs and funding at about 0.48 (H4: 0.305 + 0.2399 - 0.0604), 0.65 (H5: 0.406 + 0.2386 + 0.0096) and 0.95 (H6: 0.604
+  + 0.3754 - 0.0247) of equity over DEV, about 2.0, 2.7 and 2.5 times their costs.
+- Costs were far above the plan's estimates: 0.2399 (estimate 0.12 to 0.18), 0.2386 (0.09 to 0.15) and 0.3754 (0.17 to
+  0.23) of equity over DEV, C/G 0.29, 0.30 and 0.45 (estimates 0.15 to 0.22, 0.11 to 0.18, 0.21 to 0.27), with 609 to
+  652 rebalances, as many as round 1's books (573 to 668) but larger trades. The weekly-sampled skewness book cost more
+  than generation 2's daily-updated form of the same statistic (0.2386 against 0.1404, the opposite sign): the plan's
+  argument that a weekly sample cannot cost more (the weekly change of the targets is the sum of their daily changes)
+  bounds the targets' path but not the costs, which include the drift traded back between decisions. Suggestive cause,
+  NOT measured: a continuation book holds the movers, which keep moving and stay volatile, and a target held for a week
+  is traded back against their drift on every rebalance, while a daily-updated target partly follows it. A design
+  yardstick next to LESSONS 19, 24 and 41: weekly continuation books cost 0.29 to 0.45 per unit of gross on DEV.
+- They also paid and received more gross funding, in sum, than any earlier top30 book read by the sandbox: 0.51 to
+  0.60 of equity each way over DEV, 1.08 to 1.17 paid plus received (round 1's books 0.58 to 0.79; row 40 0.93, row 41
+  0.38); net small (H4 received 0.060, H6 0.025, H5 paid 0.010). Not measured why; a book long and short the recent
+  movers holds coins with large funding of either sign. G2 again cost more Sharpe than G4 (0.556, 0.600 and 0.531
+  against 0.227, 0.258 and 0.335; LESSONS 42).
+- The speed-limit readings were near zero (-0.107 to 0.022), as designed. Names held 23.5, 22.2 and 25.1 of 28.0: the
+  longer knownness spans of H4 (about 5 weeks) and H5 (6 to 7 weeks) cost one to three names more than round 1's 21-day
+  span. Direction changes 1074 (H4), 1047 (H5) and 1780 (H6).
+- WEAK throughout: one DEV period, one default each, one researcher session, rules written after DEV results; nothing
+  here is a parameter recommendation, and no corner or control was run.
+
+## Recommendation (round 2)
+
+NONE. By the pre-registered selection rule a hypothesis is eligible only if it passes every screen item S1 to S10. H4
+failed S2, S5, S6 and S8; H5 failed S6 and S8; H6 failed S6 and S8. No program from version 2 is recommended for a
+counted submission, so the coordinator's ruling (10) (at most one counted trial from this round without a further
+decision) and ruling (11) do not come into play; no KP-017 or KP-020 measurement is needed for this round. The DEV-only
+controls (gen003_diag_*) were not run and are never to be submitted. Generation 3 stands at 0 of 5 counted
+submissions and 6 of 60 sandbox runs; M is unchanged at 6.
