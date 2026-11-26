@@ -716,3 +716,52 @@ rates, status.
 - Proposed change: correct the comment; say in the verdict or in CONSTITUTION section 13 that 0.025 is out of
   reach in top30. Both ride on the next re-key of their kind.
 - Status: open (needs the human's approval).
+
+## 2026-11-26 (coordinator) Decision by delegation: the direction after the meta-review
+
+- The question put to the human (2026-11-26, with generations/META_REVIEW_2026-11-26.md): (1) the direction: at
+  most two more cheap rounds on untried timing ideas (A), a pause (B), or a stop (C); (2) what the bot should
+  look for: timing skill only, as the scorer is built, or also steady premia, which it excludes by design; (3)
+  which account size and order type the cost rate should stand for. The coordinator had recommended A, then B.
+- The human's answer, in his words: "decide whats the best". As with KP-015 and the batch re-key, this is
+  recorded as a delegation of THESE decisions, not as a standing one.
+- The decision.
+  1. Direction: no further round of timing ideas is ordered now, and option A is withdrawn by the coordinator
+     who recommended it. Reason: on a second reading, the two ideas named for it (calendar timing on BTC/ETH,
+     crowded leverage as a time series on BTC/ETH) do not pass the entry rule this project adopted the same day
+     (RESEARCH_PLAYBOOK 8b): nobody can name outside evidence of an effect of the size the gates require (a true
+     Sharpe of 1.0 to 1.5 in unit core), and the meta-review itself gives every item of its agenda a low prior.
+     Ordering them would spend two usage windows on rounds the project already expects to fail. The door stays
+     open: a timing idea that passes the entry rule can be registered at any time.
+  2. What the bot should look for: the question is taken up, in the only form that changes nothing yet. The one
+     source of return in this market that is documented outside this project is the funding premium, earned
+     without price risk by holding a coin and being short its perpetual. The scorer excludes it by construction
+     (G6 credits timing only; G2 halves funding income), and the perps-only funding rules tried so far carried
+     price risk and failed. Before any change of the constitution is even proposed, a FEASIBILITY AND DESIGN
+     STUDY is ordered (KP-028, below): what that premium was worth on DEV after realistic costs, what it would
+     take to score it honestly (a spot leg or its proxy, gates that fit a premium, the stresses it must survive),
+     what a build would cost, and what the risks are that no backtest shows. No kernel file changes in the study.
+  3. The cost basis: unchanged. A different rate would not have altered one verdict so far, lowering it could
+     stop the top30 seal, and no account size is known. It is asked again only if a build is proposed.
+- What this decision does NOT cover: any change of the kernel, of a gate or of the objective; any build; any
+  counted trial. The study's result and the coordinator's recommendation go back to the human before anything
+  of that kind, with the plain statement of what the premium can and cannot be expected to earn.
+- Why this and not a stop (C): one bounded study turns the open question into numbers; after it a stop is still
+  possible, and better founded.
+
+## 2026-11-26 (coordinator) KP-028 A premium unit: funding carry without price risk, scored under its own guard (study only)
+
+- Source: the meta-review (section 4, Q4) and the decision above.
+- Problem: the scorer admits timing skill only. The funding premium (long the coin, short its perpetual, the
+  funding received) is the best-documented return in this market and cannot pass by construction. Whether it
+  is worth a unit of its own is not known: its size on DEV after costs, its drawdowns when funding turns, the
+  margin a short perpetual needs through a squeeze, and the form of an honest test are all unmeasured here.
+- Ordered now: a feasibility and design study by a fresh designer (no kernel file changed; DEV rows only, read
+  through the kernel's own loaders; the measurement itself run by the coordinator). It answers: the data (the
+  index price as a proxy of the spot leg, or spot prices as a new data source under CONSTITUTION 3.2); the
+  premium on DEV per coin and for simple static books, after costs; the risks a backtest does not show
+  (the venue itself, funding regimes, the margin of the short leg); which gates carry over, which must be
+  replaced and by what; how VAL would be spent (one counted read of the plain premium, then overlays against
+  it); the size of the build and of its calibration.
+- Status: open, STUDY ONLY. Nothing here is approved for a build. The build, if recommended, needs the human's
+  approval with the study's numbers in front of him.

@@ -219,8 +219,10 @@ What changed in this playbook and why (coordinator, on the independent analyst's
 - The last 12 months of DEV weigh as much as the whole period: an edge that sits in 2020 is not an edge.
 - What a DEV screen is for: killing cheaply. It has not told VAL winners apart (LESSONS 35), so a survivor is
   still only a candidate.
-- The direction of the search after this review is the human's decision (STATE.md, open decisions 9 to 11); no
-  round starts before it.
+- The direction after this review (decided by delegation on 2026-11-26; KERNEL_PROPOSALS.md, entry of that
+  date; STATE.md, decisions 9 to 11): no round of timing ideas is ordered until an idea passes the bar check
+  above, and a feasibility study of a premium unit (KP-028) runs first. A researcher who has a timing idea
+  with outside evidence of an effect of the needed size may still propose it to the coordinator.
 
 ## 9. New data sources
 
