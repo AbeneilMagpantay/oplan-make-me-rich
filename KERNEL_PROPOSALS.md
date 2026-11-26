@@ -770,3 +770,40 @@ rates, status.
   year, and a funded account offers no spot leg to hold against the short perpetual, so the study could not
   lead to anything he can use. The question it would have answered stays open for a larger account. Nothing
   here is approved for a build.
+  CORRECTED 2026-11-27, the same night (the wording above was committed as 76a737e): the coordinator had
+  misread "get funded". The human did not mean a funded trading account; he meant money he might add later,
+  and then said the system is for himself only. He puts his account at 1,000 USD. The stop stands, for one
+  reason only: at 1,000 USD the premium is some tens of dollars a year, and the human directs the search to
+  continue in unit top30 (entry of 2026-11-27 below).
+
+## 2026-11-27 (coordinator) The human's direction: the top30 search continues; the account is about 1,000 USD, his own
+
+- What the human said, in his words (2026-11-27, after the coordinator's plain account of the odds): "we just
+  need to find that golden edge"; "obviously the obvious idea wont work we have to be 1% of all the people we
+  cant be but we are trying"; "we just need to be consistent not losing anything is it okay to not earn than
+  to losing"; "lets still go ahead with the 30 coin i have funds on me 1000 is enough"; "still i want it for my
+  self only".
+- What the coordinator told him first, and stands by: no edge has been found in 28 ideas and 6 counted trials;
+  the independent review judges the top30 search unlikely to succeed as set up; doubling an account in a month
+  is about 2.3% a day and can only be aimed at with leverage that ends the account; the tests will not be
+  loosened to produce a pass.
+- What follows from his direction (it is his to give, and it supersedes point 1 of the delegated decision of
+  2026-11-26):
+  1. Research continues in unit top30. Generation 3, round 3 is ordered.
+  2. The account (open decision 11): about 1,000 USD of his own, market orders assumed. A weekly 30-name book
+     can be placed at that size, and the cost rate of 12.5 bps per side is cautious but reasonable for it. The
+     rate stays; nothing in the kernel changes.
+  3. KP-028 stays stopped (some tens of dollars a year at that size).
+  4. How the rounds change, so that trying costs less and reaches further (RESEARCH_PLAYBOOK 8b, amended
+     2026-11-27): the stop list stands; the bar check stays as arithmetic; outside evidence is stated but its
+     absence no longer bars an idea, because he asks for ideas that are not the obvious ones; a round is a WIDE
+     SCREEN of ten to twelve compactly registered ideas, one default run each against one strict screen fixed in
+     advance, the fuller treatment only for a survivor.
+  5. What does not change: pre-registration on the remote before any run; DEV only until a counted trial; the
+     coordinator's reading and recorded decision before any counted trial; M counts every counted trial; KP-020's
+     per-program measurement before the pool; the forward test before anything goes live; going live is the
+     human's own explicit decision.
+- The price of the wide screen, stated before its first use: more ideas per round means more chances for a
+  no-skill rule to pass the DEV screen. The screen is strict and reads the readings nobody has tuned to, but
+  it cannot tell VAL winners apart (LESSONS 35). The protection is unchanged: one counted trial per survivor at
+  most, counted in M.

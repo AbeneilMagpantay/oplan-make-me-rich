@@ -219,10 +219,28 @@ What changed in this playbook and why (coordinator, on the independent analyst's
 - The last 12 months of DEV weigh as much as the whole period: an edge that sits in 2020 is not an edge.
 - What a DEV screen is for: killing cheaply. It has not told VAL winners apart (LESSONS 35), so a survivor is
   still only a candidate.
-- The direction after this review (decided by delegation on 2026-11-26; KERNEL_PROPOSALS.md, entry of that
-  date; STATE.md, decisions 9 to 11): no round of timing ideas is ordered until an idea passes the bar check
-  above, and a feasibility study of a premium unit (KP-028) runs first. A researcher who has a timing idea
-  with outside evidence of an effect of the needed size may still propose it to the coordinator.
+- The direction after this review. Decided by delegation on 2026-11-26: no round of timing ideas until an idea
+  passes the bar check, and a study of a premium unit (KP-028) first. SUPERSEDED on 2026-11-27 by the human's
+  own direction ("lets still go ahead with the 30 coin"; account about 1,000 USD; KERNEL_PROPOSALS.md, entry
+  of 2026-11-27): the search continues in unit top30, the study is stopped, and the rules above are amended
+  as follows.
+- Amended 2026-11-27. The stop list stands: nothing from a closed class is registered again. The bar check
+  stands as arithmetic: every hypothesis states its cost drag and the Sharpe before costs it needs. Outside
+  evidence is asked for and stated ("none" is an answer), but its absence no longer bars an idea: the human
+  wants ideas that are not the obvious ones, and such ideas have no literature. What bars an idea is the
+  screen.
+- The wide screen (the form of a round from 2026-11-27). One plan registers ten to twelve ideas compactly: for
+  each, the program, the mechanism in a few lines, why it is not one of the classes already closed, its cost
+  drag and bar, what is remembered that could bias it. At most two ideas per mechanism class. ONE screen for
+  all, fixed before any run: stage 1 passes with at least 30 direction changes, average gross at least 0.5,
+  at least 15 names held, not liquidated; DEV Sharpe before costs (DEV Sharpe plus the drop under G4's
+  reading) at least 1.5; G4's and G2's DEV readings positive; next30 DEV Sharpe at least 0.3; the speed-limit
+  statistic at most 0.40 at one to three steps; in the paired reading at most 4 of 10 stale copies at least as
+  good as the book AND the book's median Sharpe over the last 365 days of DEV positive; at least two of the
+  three DEV years positive. One default run per idea, with --g6-lags. Only a survivor gets corners and a
+  control, then the coordinator's reading and decision. A wide screen will let noise through more often than
+  three ideas did: a survivor is a candidate for ONE counted trial, nothing more, and every counted trial
+  raises M.
 
 ## 9. New data sources
 

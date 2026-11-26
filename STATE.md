@@ -302,14 +302,23 @@ of a premium unit is ordered (KP-028: the funding premium earned without price r
 its perpetual, which the scorer excludes by construction): DEV rows only, no kernel file changed, its
 measurement run by the coordinator; (3) the cost basis stays. The study's numbers and the coordinator's
 recommendation go back to the human before any build, any change of a gate or any counted trial.
-2026-11-27, what the human then said, and what followed. Asked for the account size he answered: about 100 USD
-of his own; the hope to double it in a month; the aim to "get funded" (a funded trading account) once an edge
-is found; and "we just need to be consistent not losing anything, it is okay to not earn than to lose". The
-coordinator stopped the premium study before any measurement (KP-028: at 100 USD the premium is a few dollars
-a year, and a funded account has no spot leg), told him plainly that his return targets and his own rule of
-not losing cannot both hold, and that the aim that fits his rule is the funded account: small steady returns
-under a fixed loss limit. What the search should aim at under that aim is being settled with him; nothing runs
-meanwhile, and nothing in the kernel changes.
+2026-11-27, what the human then said, and what followed. Asked for the account size he first answered: about
+100 USD, the hope to double it in a month, the aim to "get funded" once an edge is found, and "we just need to
+be consistent not losing anything, it is okay to not earn than to lose". The coordinator stopped the premium
+study before any measurement (KP-028) and told him plainly that his return targets and his own rule of not
+losing cannot both hold. CORRECTION, the same night: the coordinator had misread "get funded" as a funded
+trading account. The human meant money he might add in the future, and then settled it: "still i want it for
+my self only" (his own use, his own money). He puts his account at 1,000 USD ("1000 is enough") and DIRECTS:
+"lets still go ahead with the 30 coin". What follows from
+his words: (1) the search continues in unit top30, which supersedes point 1 of the delegated decision of
+2026-11-26; (2) decision 11 is answered: about 1,000 USD and market orders, for which the cost rate of 12.5
+bps per side is cautious but reasonable, so it stays; a weekly 30-name book can be placed at that size; (3)
+KP-028 stays stopped: at 1,000 USD the premium is some tens of dollars a year; (4) generation 3, round 3 is
+ordered in a cheaper form, a WIDE SCREEN (RESEARCH_PLAYBOOK 8b as amended on 2026-11-27): ten to twelve
+compactly registered ideas from classes not yet closed, one default run each against one strict screen fixed
+in advance, the fuller treatment only for a survivor. The coordinator's honest reading of the odds is
+unchanged (the meta-review), and it is the human's decision to go on. Nothing goes live before a pass and the
+forward test of CONSTITUTION 11, and going live stays his own explicit decision.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
