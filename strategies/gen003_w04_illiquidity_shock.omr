@@ -1,0 +1,27 @@
+# Generation 3, round 3, W-04 (generations/gen003/PLAN.md, version 3, the wide screen). Illiquidity shock, held
+# orthogonal to the week's move. a = the absolute daily log return; y = (the mean of a over the last k days over its
+# mean over n days) divided by (the mean daily quote volume over k days over its mean over n days): how much more
+# the price moved per unit of trading than usual (an Amihud ratio against the coin's own norm, so the level of a
+# coin's volume cancels). x = the k-day log return in units of the coin's annualised daily volatility. Both sampled
+# at the last hour of each weekly bin (Sunday daily close; traded at the Monday 00:00 open). z = y net of a
+# cross-sectional fit on x on every weekly bin, so the book is neither a reversal nor a continuation book on the
+# week's move. Long the largest z (liquidity withdrawn), short the smallest; rank weights, dollar neutral, gross 1.
+# No funding, mark or index input.
+name = "gen003_w04_illiquidity_shock"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity premium: when liquidity is withdrawn from one coin (its price moves more per dollar traded than usual), market makers demand more, the coin is marked down and then earns a higher return for the risk of holding it, beyond any reversal of its move. Long the largest rise in price impact over the coin's own norm, net of the week's move, short the largest fall, weekly. Falsified if the DEV screen fails, VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(7, 5, 9)             # days in the recent window (1 week)
+n = param(42, 33, 51)          # days in the coin's own norm (6 weeks)
+
+d = daily(close)
+q = daily(quote_volume)
+a = abs(logret(d, 1))
+y = tf_last((sma(a, k) / sma(a, n)) / (sma(q, k) / sma(q, n)), weekly)
+x = tf_last(logret(d, k) / realised_vol(d, n), weekly)
+yd = cs_demean(y)
+xd = cs_demean(x)
+z = yd - cs_mean(xd * yd) / cs_mean(xd * xd) * xd
+signal = cs_scale(cs_demean(cs_rank(z)))

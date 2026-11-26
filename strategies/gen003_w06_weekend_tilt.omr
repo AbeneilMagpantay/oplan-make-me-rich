@@ -1,0 +1,21 @@
+# Generation 3, round 3, W-06 (generations/gen003/PLAN.md, version 3, the wide screen). Weekend tilt of volume.
+# rv = the coin's hourly quote volume over its own trailing w-hour mean. The weekend = decision-time weekday >= d
+# (default 5.0: Saturday and Sunday, i.e. bars opening Friday 23:00 to Sunday 22:00 UTC). s = the share of the week's
+# relative volume traded on the weekend; tilt = s over its mean over the last m weekly bins. Weekly bins as in W-05
+# (visible at the bar that opens Sunday 23:00, traded at the Monday 00:00 open); the weekday only selects which hours
+# of a volume series enter a weekly mean. This reads VOLUME, not the week's move (round 1's H1 ranked the weekend
+# part of the move). Short the largest rise in the weekend share, long the largest fall; rank weights, dollar
+# neutral, gross 1. No funding, mark or index input.
+name = "gen003_w06_weekend_tilt"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Retail clientele: weekend trading is dominated by retail speculators while desks and market makers are thin; a coin whose activity tilts toward the weekend is being carried by a retail crowd that overprices it, and it lags over the following weeks. Short the coins whose weekend share of volume rose most above their own m-week norm, long those where it fell most, weekly. Falsified if the DEV screen fails, VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+d = param(5.0, 4.0, 6.0)       # first decision-time weekday of the weekend (5 = Saturday)
+w = param(168, 134, 202)       # hours in the coin's own volume norm (7 days)
+m = param(4, 3, 5)             # weekly bins in the norm of the share (4 weeks)
+
+rv = quote_volume / sma(quote_volume, w)
+s = tf_mean(where(weekday >= d, rv, 0), weekly) / tf_mean(rv, weekly)
+signal = cs_scale(cs_demean(-cs_rank(s / sma(s, m))))

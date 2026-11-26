@@ -1,0 +1,21 @@
+# Generation 3, round 3, W-03 (generations/gen003/PLAN.md, version 3, the wide screen). Idiosyncratic volatility shock.
+# e = the coin's hourly return net of its rolling hourly beta to the unit's equal-weighted mean return mk (beta =
+# corr x std ratio over the last n hourly rows), as in rounds 1 and 2. v = the weekly bin's mean of e squared (the
+# week's residual variance); shock = v over its mean over the last m weekly bins (this one included). Weekly bins run
+# Monday 00:00 to Sunday 23:00 UTC (bar opens), visible at the bar that opens Sunday 23:00, traded at the Monday 00:00
+# open. Short the largest shocks, long the smallest; rank weights, dollar neutral, gross 1. Unsigned: the direction
+# of the week's move is not read. No funding, mark or index input.
+name = "gen003_w03_vol_shock"
+family = "volatility"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Attention and lottery demand: a sudden rise in a coin's own volatility, beyond its beta to the market, draws attention and leveraged speculative buying that overprices it for weeks, while coins whose own volatility fell are neglected. Short the coins whose weekly residual variance rose most above their own m-week norm, long those where it fell most, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+m = param(4, 3, 5)             # weekly bins in the coin's own variance norm (4 weeks)
+
+r = ret(close, 1)
+mk = cs_mean(r)
+e = r - corr(r, mk, n) * std(r, n) / std(mk, n) * mk
+v = tf_mean(e * e, weekly)
+signal = cs_scale(cs_demean(-cs_rank(v / sma(v, m))))

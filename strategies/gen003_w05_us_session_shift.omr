@@ -1,0 +1,23 @@
+# Generation 3, round 3, W-05 (generations/gen003/PLAN.md, version 3, the wide screen). Session clientele of volume.
+# rv = the coin's hourly quote volume over its own trailing w-hour mean (dimensionless, so coins of any size compare).
+# us = the decision-time hours a .. b (default 15 .. 21: bars opening 14:00 to 20:00 UTC, the US cash session).
+# s = the share of the week's relative volume traded in those hours (a ratio of two weekly means); shift = s over its
+# mean over the last m weekly bins. Weekly bins run Monday 00:00 to Sunday 23:00 UTC (bar opens), visible at the bar
+# that opens Sunday 23:00, traded at the Monday 00:00 open, so the weights change once a week; the hour only selects
+# which hours of a volume series enter a weekly mean. Long the largest rise in the US share, short the largest fall;
+# rank weights, dollar neutral, gross 1. No funding, mark or index input.
+name = "gen003_w05_us_session_shift"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Clientele shift: trading in US hours carries Western and institutional participation; when a coin's activity moves toward those hours, new capital with slow, persistent demand is arriving, and its buying continues over the following weeks. Long the coins whose share of volume in US hours rose most above their own m-week norm, short those where it fell most, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+a = param(15, 12, 18)          # first decision-time hour of the session (bar opening 14:00 UTC)
+b = param(21, 16, 26)          # last decision-time hour of the session (bar opening 20:00 UTC)
+w = param(168, 134, 202)       # hours in the coin's own volume norm (7 days)
+m = param(4, 3, 5)             # weekly bins in the norm of the share (4 weeks)
+
+rv = quote_volume / sma(quote_volume, w)
+us = (hour >= a) and (hour <= b)
+s = tf_mean(where(us, rv, 0), weekly) / tf_mean(rv, weekly)
+signal = cs_scale(cs_demean(cs_rank(s / sma(s, m))))

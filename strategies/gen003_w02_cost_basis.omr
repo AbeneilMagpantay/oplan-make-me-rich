@@ -1,0 +1,18 @@
+# Generation 3, round 3, W-02 (generations/gen003/PLAN.md, version 3, the wide screen). Capital-gains overhang.
+# cost = the volume-weighted average price of the last n days (sum of daily quote volume / sum of daily base volume),
+# a proxy for the average cost basis of the coin's recent buyers; gain = the log distance of the daily close from
+# it, in units of the coin's own annualised daily volatility over n days. Sampled at the last hour of each weekly
+# bin (Sunday daily close; traded at the Monday 00:00 open). Long the largest unrealised gains, short the largest
+# unrealised losses; rank weights, dollar neutral, gross 1. No funding, mark or index input.
+name = "gen003_w02_cost_basis"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Disposition: traders sell coins that sit above their cost basis too early and hold coins below it too long, so a coin trading above the volume-weighted price of recent weeks is held down by profit-taking and drifts up later, and one below it is propped up by reluctant sellers and drifts down. Long the largest gain over the n-day VWAP in volatility units, short the largest loss, weekly. Falsified if the DEV screen fails, VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(28, 22, 34)          # days in the volume-weighted cost basis (4 weeks)
+
+d = daily(close)
+cost = rsum(daily(quote_volume), n) / rsum(daily(volume), n)
+gain = log(d / cost) / realised_vol(d, n)
+signal = cs_scale(cs_demean(cs_rank(tf_last(gain, weekly))))

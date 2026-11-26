@@ -1,0 +1,18 @@
+# Generation 3, round 3, W-09 (generations/gen003/PLAN.md, version 3, the wide screen). Slow quote-volume trend.
+# t = the coin's mean daily quote volume over the last k days over its mean over the last n days (2 weeks against 8
+# weeks), taken at the last hour of each weekly bin (Sunday daily bar; traded at the Monday 00:00 open). Long the
+# largest rise in trading, short the largest fall; rank weights, dollar neutral, gross 1. Slower than, and of the
+# other sign from, generation 2's activity_fade (a one-week trade-count burst, contrarian). No funding, mark or
+# index input.
+name = "gen003_w09_volume_trend"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Attention inflow: capital and attention reach a coin over weeks, not days; a coin whose trading has grown steadily over two weeks against its two-month norm is gaining participants whose demand is not yet spent, while one whose trading is drying up is being abandoned. Long the largest 2-week over 8-week growth in quote volume, short the largest decline, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(14, 11, 17)          # days in the recent quote-volume mean (2 weeks)
+n = param(56, 44, 68)          # days in the coin's own norm (8 weeks)
+
+q = daily(quote_volume)
+t = tf_last(sma(q, k) / sma(q, n), weekly)
+signal = cs_scale(cs_demean(cs_rank(t)))

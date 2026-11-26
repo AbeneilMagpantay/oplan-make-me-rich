@@ -1,0 +1,28 @@
+# Generation 3, round 3, W-11 (generations/gen003/PLAN.md, version 3, the wide screen). Equal-weight combination of
+# three registered books of this round, so that their trades net inside one book: the rank signal of W-01 (anchoring,
+# dd), minus the rank of W-03's shock (residual variance over its m-week norm), plus the rank of W-07 (wick
+# absorption, z), each exactly as in its own file and at the same defaults. cs_rank maps each to [-1, 1]; the sum is
+# re-centred and scaled to gross 1. All three parts are weekly series (visible at the bar that opens Sunday 23:00,
+# traded at the Monday 00:00 open). A name is held only where all three parts are known. No funding, mark or index
+# input.
+name = "gen003_w11_ensemble"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Combination: three weekly signals from different information (distance below the recent high, a shock to own volatility, intrabar absorption), each with its own mechanism, are close to independent; added with fixed equal weights their edges add while their trades partly net, so the book needs less from each part. Long the high combined rank, short the low, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(42, 33, 51)          # W-01: days in the reference window (6 weeks)
+b = param(336, 268, 404)       # W-03: hours in the rolling hourly beta to the unit's mean return (14 days)
+m = param(4, 3, 5)             # W-03: weekly bins in the variance norm (4 weeks)
+j = param(2, 1, 3)             # W-07: weekly bins averaged (2 weeks)
+
+d = daily(close)
+dd = tf_last(log(d / rmax(daily(high), n)) / realised_vol(d, n), weekly)
+r = ret(close, 1)
+mk = cs_mean(r)
+e = r - corr(r, mk, b) * std(r, b) / std(mk, b) * mk
+v = tf_mean(e * e, weekly)
+w = (open + close - high - low) / close
+g = (high - low) / close
+z = sma(tf_mean(w, weekly), j) / sma(tf_mean(g, weekly), j)
+signal = cs_scale(cs_demean(cs_rank(dd) - cs_rank(v / sma(v, m)) + cs_rank(z)))

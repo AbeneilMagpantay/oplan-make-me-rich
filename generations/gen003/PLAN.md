@@ -1512,3 +1512,365 @@ counted submission, so the coordinator's ruling (10) (at most one counted trial 
 decision) and ruling (11) do not come into play; no KP-017 or KP-020 measurement is needed for this round. The DEV-only
 controls (gen003_diag_*) were not run and are never to be submitted. Generation 3 stands at 0 of 5 counted
 submissions and 6 of 60 sandbox runs; M is unchanged at 6.
+
+---
+
+# Generation 3 - PLAN, version 3 (round 3, the wide screen, pre-registered 2026-11-27 before any round-3 sandbox run)
+
+Researcher session for generation 3, round 3, stage 1. Unit top30. A fresh session: everything it knows of the project
+comes from the files below. Date local (+08:00); UTC in the last line. Appended below version 2 and its stage-2 parts;
+the 139,818 bytes before this line (sha256 5efd3dfa569d66c5...) are unchanged.
+
+- Kernel: `omr.status` OK d09812fdec752a17, semantic 7d923e7e2375986d, text b74122f3f9821056, sealed (G6 core 0.05,
+  top30 0.10). Data research_hash 28d9084a8c5c7659, validated, snapshot_end 2026-11-18 10:00 UTC.
+- Ledger: M = 6 (generation 0: 4, 1: 1, 2: 1, 3: 0 of 5), N 5.90, rho 0.021, Tier 1 0, pool 0 of 5, one uncounted
+  stage-1 rejection. Sandbox log 49 rows; generation 3 has used 6 of 60 sandbox runs.
+- Read: RESEARCH_PLAYBOOK.md (all; 3, 4, 4b, 5, 8b with care), generations/META_REVIEW_2026-11-26.md (all),
+  LESSONS.md (46), LANGUAGE.md (all), CONSTITUTION.md 4 to 7 and 13, generations/gen003/REPORT.md (rounds 1 and 2),
+  generations/gen003/PLAN.md (version 1's head and screen, both rounds' rulings, run logs, screen outcomes, DEV
+  observations, recommendations), rows 43 to 48 of ledger/sandbox_log.jsonl, KERNEL_PROPOSALS.md entry of 2026-11-27,
+  STATE.md lines 295 to 327, `omr.status`, `omr.ledger summary`. Kernel code read only for how the tool behaves:
+  omr/lang.py (parse rules, lookback), omr/sandbox.py (what a top30 run prints), omr/upipeline.py (dev_speed_limit,
+  dev_names_held, dev_paired_lags). Shapes: strategies/gen003_*.omr, gen002_averaged_funding_shock, gen002_small_tickets.
+- Not opened: data/, ledger/returns/, ledger/trials/, calibration files, audits/. No project program was run on data:
+  only `omr.status`, `omr.ledger summary` and a parse-only check (scratch gen003_r3/parse_check.py; omr.lang.parse_file).
+- Numbers seen before writing: every DEV number of generation 2 and of generation 3 rounds 1 and 2 (their readings in
+  REPORT.md, the run logs and sandbox rows 43 to 48), the review's tables (rows 40 to 48, the bar), and the VAL rows of
+  the six counted trials. No VAL or DEV number exists for any program below.
+- Files of this version: this text and eleven new programs, strategies/gen003_w01_* to gen003_w11_*. Nothing else.
+
+Three facts from the kernel's code and rules shaped the list (behaviour, not results):
+1. W1 reads "names held" as the mean, over DEV rows with any name in play, of names with a weight other than 0, and
+   "avg gross" over all DEV rows. A book flat more than about 45% of the time fails W1 whatever it earns. So no sparse
+   book is registered; where state matters, it enters the signal and the book stays in the market.
+2. The speed limit's step is 621 h = 3 weeks + 117 h. Over j = 1 to 19 the lag lands within 6 to 15 hours of a whole
+   number of weeks several times (j = 3: +15 h; j = 10: -6 h; j = 13: +9 h). A weight path periodic in hour or weekday
+   is therefore correlated with its own lagged copy: a calendar SCHEDULE fails G6 by construction in top30 (the review's
+   agenda item 1 was for unit core, whose G6 has no such limit). Here calendar fields only select which hours of a
+   volume series feed a weekly bin (W-05, W-06); the weights change once a week.
+3. A cs_* inside a rolling window (the hourly beta to the unit's mean) makes entrants wait for in-play history and drops
+   a name for weeks after one unusable hour. Only W-03 and W-11 keep it; the others use own-norm ratios or btc().
+
+Considered, not registered: market timing of the basket (G6's paired copies keep each row's net, so a net-long book's
+stale copies earn the same drift; only a fast-flipping net gets credit, and each flip trades the whole book; every
+weekly timing input I found was a funding contrarian or a trend form already failed in core); funding-reading ideas
+(each one I could write was a contrarian funding or premium form, or carry level); stress-conditioned reversal (sparse,
+and descended from #25 whose pre-cost DEV Sharpe 0.77 is under the 2.5 rule); a pure weekday or hour schedule (fact 2).
+
+## The screen, fixed now, the same for every idea (W1 to W8)
+
+W1 stage 1 passes with at least 30 direction changes, average gross at least 0.5, at least 15 names held on average, not
+liquidated; W2 DEV Sharpe before costs (the DEV Sharpe plus the drop under G4's reading, i.e. DEV Sharpe + (DEV Sharpe -
+G4 DEV Sharpe)) at least 1.5; W3 G4's DEV reading positive; W4 G2's DEV reading positive; W5 next30 DEV Sharpe at least
+0.3; W6 the speed-limit statistic at most 0.40 at each of one to three steps (a reason line fails); W7 in the paired
+reading at most 4 of 10 stale copies at least as good as the book AND the book's median Sharpe over the last 365 days of
+DEV positive (a refused reading fails); W8 at least two of the three DEV years positive. A wrong sign is a failure; no
+sign is ever flipped; no default is changed after a run.
+
+Numbers are taken as the sandbox prints them (full stage 1, no --quick, with --g6-lags): the stage-1 line, "DEV
+Sharpe", "rebalances ... avg gross ... liquidated", the per-year rows (2020, 2021, 2022; a year is positive when its
+return is above 0), and the KP-018 block (r(1) to r(3), next30, G2 and G4 on DEV, names held, the paired reading A of 10
+and book median B). Every idea's registered sign is the sign of its signal line; a negative DEV Sharpe fails W2.
+
+## The bar, shared arithmetic (playbook 8b)
+
+- Cost drag = the Sharpe that 1x costs take, i.e. the expected G4 drop. Measured for weekly top30 rank books: 0.23 to
+  0.46 (rows 41, 43 to 48). Registered here: 0.40 for a ranking re-drawn every week; 0.30 for one whose decision
+  averages two or more weeks of input or changes only partly week to week; 0.25 for a slow reference-level book (churn
+  and drift remain, about 0.07 a year per unit of gross, review 2.2); 0.35 for the combination.
+- Sharpe needed in VAL before costs: 0.74 + drag for G1's line, 1.5 + drag for decent odds. Drag 0.25: 0.99 / 1.75;
+  0.30: 1.04 / 1.80; 0.35: 1.09 / 1.85; 0.40: 1.14 / 1.90.
+- G2 takes another 0.5 to 0.8 on DEV from any full book (LESSONS 42); W4 asks only that its DEV reading stay positive.
+- W2's 1.5 is a floor, not the bar: with the DEV-to-VAL decay the review estimates (VAL keeps 40 to 60% of DEV), 2.5 to
+  3.5 before costs on DEV would be needed to expect 1.5 in VAL. A pass is a candidate for one counted trial, nothing more.
+
+## Disclosures for every idea
+
+- The author model has read this market's history through DEV, VAL and the vault, and this session every DEV number of
+  generations 2 and 3. No rule names a date, coin, price level or event; every tunable number is a declared param (no
+  file has a jitterable literal). That does not remove hindsight from the CHOICE of ideas (KP-010).
+- Remembered DEV events: 19 May 2021; the Saturday crash of 4 December 2021; January 2022; LUNA's collapse in May 2022
+  (a volatility shock, decoupled, far below its high, on heavy volume); Celsius and Three Arrows in June 2022; the 2021
+  memecoin waves (volume surges, weekend activity, decoupled rallies). Remembered DEV readings: residual continuation
+  strong in 2020 and gone by 2022H1 (#26 to #28); the weekend part of a week's move persisted (#23); residual up-jumps
+  continued (#15, #27); every bet against a recent move lost or earned too little; a contrarian one-week trade-count
+  burst read +0.172 (#12).
+- Remembered VAL: BTC's share rising, altcoins lagging; memecoin waves 2023 to 2024; FTT in November 2022; US spot ETFs
+  from January 2024 concentrating BTC and ETH flow in US hours; weekend shocks (March 2023, 4 to 5 August 2024). I
+  remember no result of any book below, in VAL or anywhere.
+- Eleven ideas against one screen let noise through more often than three did (KERNEL_PROPOSALS, 2026-11-27).
+
+## The ideas
+
+All eleven: kind portfolio, unit top30, rank weights cs_scale(cs_demean(cs_rank(.))) (W-11: a sum of ranks), dollar
+neutral, gross 1, decided once a week (a weekly series visible at the bar that opens Sunday 23:00 UTC, traded at the
+Monday 00:00 open). Lookbacks at every window param's high bound, from the parse check.
+
+### W-01 gen003_w01_high_anchor (class A, reference price)
+- Rule: dd = log(daily close / highest daily high of the last n days) / annualised daily vol over n days, at the
+  Sunday close; long the coins nearest their high, short the farthest.
+- Program: n = param(42, 33, 51); `dd = log(d / rmax(daily(high), n)) / realised_vol(d, n)`;
+  `signal = cs_scale(cs_demean(cs_rank(tf_last(dd, weekly))))`. 17 nodes, lookback 1,605 h.
+- Mechanism: anchoring on the recent high (George and Hwang 2004): traders sell into a known high and hesitate to bid
+  through it, so news that lifts a coin toward it is priced slowly; far below it, loss-averse holders delay selling.
+  Other side: anchored sellers near highs, reluctant sellers far below.
+- Why not one of the 28: none read a price against a reference level; they ranked returns over a window. It is
+  correlated with multi-week continuation (a coin near its high has risen): question 3.
+- Drag 0.25 (slow reference, partial weekly change) -> before costs in VAL 0.99 line / 1.75 odds.
+- Outside evidence: equities, many markets, an effect that does not reverse; crypto: I recall reports of a 52-week or
+  all-time-high proximity effect, unverified, size after 2021 unknown.
+- Bias: LUNA sat far below its high while collapsing (short leg); in 2022H1 near-high coins were the less fallen, so
+  the book carries a defensive tilt in crashes (the vol scaling tempers it). W6 risk: a 6-week reference may hold r(1)
+  near 0.3 to 0.4.
+
+### W-02 gen003_w02_cost_basis (class A, reference price)
+- Rule: cost = the n-day VWAP (sum of daily quote volume / sum of daily base volume); gain = log(close / cost) / annualised
+  daily vol over n days, at the Sunday close; long the largest unrealised gain, short the largest loss.
+- Program: n = param(28, 22, 34); `cost = rsum(daily(quote_volume), n) / rsum(daily(volume), n)`;
+  `gain = log(d / cost) / realised_vol(d, n)`; signal as W-01 on gain. 22 nodes, lookback 1,197 h.
+- Mechanism: the disposition effect (Grinblatt and Han 2005): profit-taking holds down coins above the average cost of
+  recent buyers, reluctance to realise losses props up coins below; the gap closes later. Other side: disposition-prone
+  holders, a large share of crypto's retail.
+- Why not one of the 28: the first program to read price against a volume-weighted price; correlated with W-01 and
+  with continuation (question 3).
+- Drag 0.25 -> 0.99 / 1.75.
+- Outside evidence: equities (Grinblatt and Han 2005; Frazzini 2006); crypto: realised price and MVRV as BTC time-series
+  indicators (practitioner use), nothing cross-sectional that I know.
+- Bias: as W-01. The 4-week window is shorter than W-01's so that the book is not one slow average (W6).
+
+### W-03 gen003_w03_vol_shock (class B, shocks to risk and liquidity)
+- Rule: e = the hourly residual to the unit's mean (14-day hourly beta, as in rounds 1 and 2); v = the week's mean of
+  e squared; shock = v / mean of v over the last m weeks (this one included); short the largest, long the smallest.
+- Program: n = param(336, 268, 404), m = param(4, 3, 5); `v = tf_mean(e * e, weekly)`;
+  `signal = cs_scale(cs_demean(-cs_rank(v / sma(v, m))))`. 30 nodes, lookback 1,411 h.
+- Mechanism: attention and lottery demand: a jump in a coin's own volatility draws retail and leveraged long interest
+  that overprices it for weeks (Barber and Odean; the idiosyncratic-volatility puzzle). Other side: attention buyers.
+- Why not one of the 28: unsigned; it ranks the size of the residual's second moment, not its direction, its skew
+  (#15, #27) or the hours a move was made in (#23 to #25).
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: equities, Ang, Hodrick, Xing and Zhang (2006); crypto: mixed in what I recall (IVOL and MAX results
+  of both signs); nothing after 2021 I can cite.
+- Bias: up-jumps continued on DEV (#15, #27), which works against the short leg when the shock is a pump; LUNA's
+  collapse is a shock in its favour. Names held: entrants wait about six weeks (fact 3).
+
+### W-04 gen003_w04_illiquidity_shock (class B, shocks to risk and liquidity)
+- Rule: y = (mean absolute daily log return over k days / over n days) / (mean daily quote volume over k days / over n
+  days); x = the k-day log return / annualised vol; both at the Sunday close; z = y net of a cross-sectional fit on x
+  on every bin; long the largest z, short the smallest.
+- Program: k = param(7, 5, 9), n = param(42, 33, 51);
+  `y = tf_last((sma(a, k) / sma(a, n)) / (sma(q, k) / sma(q, n)), weekly)`, `z = yd - cs_mean(xd * yd) / cs_mean(xd * xd) * xd`;
+  `signal = cs_scale(cs_demean(cs_rank(z)))`. 48 nodes, lookback 1,605 h.
+- Mechanism: illiquidity is priced (Amihud 2002): when market makers withdraw from one coin, its price moves more per
+  dollar traded, it is marked down, and holders are paid a higher return for the risk. Held orthogonal to the week's
+  move, so the book is not a reversal book. Other side: liquidity demanders forced to trade a thin book.
+- Why not one of the 28: no earlier program reads price impact per unit of volume; orthogonal to the move by
+  construction (round 1's technique, a new input).
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: equities strong (Amihud 2002; Pastor and Stambaugh 2003); crypto: an illiquidity premium reported in
+  the cross-section (recalled, among them Wei 2018), mostly in small coins; size in a top 30 after 2021 unknown.
+- Bias: the impact measure rises with the coin's volatility, so W-04 may be W-03's mirror in part; the screen reads
+  each alone, and selection takes at most one of class B.
+
+### W-05 gen003_w05_us_session_shift (class C, calendar clientele of volume)
+- Rule: rv = hourly quote volume / its own trailing w-hour mean; s = the share of the week's rv in decision-time hours
+  a to b (default 15 to 21: bars opening 14:00 to 20:00 UTC); shift = s / mean of s over the last m weeks; long the
+  largest shift, short the smallest.
+- Program: a = param(15, 12, 18), b = param(21, 16, 26), w = param(168, 134, 202), m = param(4, 3, 5);
+  `s = tf_mean(where(us, rv, 0), weekly) / tf_mean(rv, weekly)`; `signal = cs_scale(cs_demean(cs_rank(s / sma(s, m))))`.
+  28 nodes, lookback 1,208 h.
+- Mechanism: session clientele: US-hour trading carries Western and institutional participants whose buying is spread
+  over weeks; a coin whose activity migrates toward US hours is gaining that buyer. Other side: Asian-hour holders and
+  passive liquidity selling into slow new demand.
+- Why not one of the 28: calendar on VOLUME, not on the move (#23 to #25 were compositions of the move); not an
+  activity level or burst (#12, #13).
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: none on returns; crypto's intraday volume pattern is documented descriptively only.
+- Bias: I remember the ETF-era US-hour flow in BTC and ETH (VAL, 2024). G5 moves the window (a 12 to 18, b 17 to 25);
+  the corners read both ends.
+
+### W-06 gen003_w06_weekend_tilt (class C, calendar clientele of volume)
+- Rule: s = the share of the week's rv (as W-05) at decision-time weekday >= d (default 5.0: bars opening Friday 23:00
+  to Sunday 22:00 UTC); tilt = s / mean over the last m weeks; short the largest tilt, long the smallest.
+- Program: d = param(5.0, 4.0, 6.0), w = param(168, 134, 202), m = param(4, 3, 5);
+  `s = tf_mean(where(weekday >= d, rv, 0), weekly) / tf_mean(rv, weekly)`;
+  `signal = cs_scale(cs_demean(-cs_rank(s / sma(s, m))))`. 24 nodes, lookback 1,208 h.
+- Mechanism: weekends are retail hours (desks and market makers thin); a coin whose trading tilts to the weekend is
+  carried by a retail crowd that overprices it. Other side: retail weekend speculators.
+- Why not one of the 28: the weekend share of VOLUME, not of the move (#23 ranked the weekend part of the residual move).
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: none on returns.
+- Bias: on DEV the weekend part of the MOVE persisted (#23); if weekend volume travels with weekend moves, that pattern
+  works against this sign. I register the sign the mechanism gives. d as a float param as in round 1's ruling 2 (G5
+  draws Sunday only about half the time; corners 4.5 and 5.5).
+
+### W-07 gen003_w07_wick_absorption (class D, intrabar absorption)
+- Rule: per hour, (open + close - high - low) / close = (lower wick - upper wick) / close; z = its mean over the last m
+  weeks / the mean hourly range (high - low) / close over the same weeks; long the largest z, short the smallest.
+- Program: m = param(2, 1, 3); `w = (open + close - high - low) / close`, `g = (high - low) / close`;
+  `z = sma(tf_mean(w, weekly), m) / sma(tf_mean(g, weekly), m)`. 27 nodes, lookback 671 h.
+- Mechanism: a lower wick is aggressive selling absorbed by resting bids within the hour; repeated over weeks it marks
+  a patient large buyer accumulating, whose demand outlasts the week (upper wicks: passive distribution). Other side:
+  takers and stop-runs selling into resting bids.
+- Why not one of the 28: reads where the bar's body sits in its range, independent of the body's direction; no top30
+  program has read high or low.
+- Drag 0.30 (two weeks averaged) -> 1.04 / 1.80.
+- Outside evidence: none academic that I know (chart lore; Lo, Mamaysky and Wang 2000 found modest content in patterns).
+- Bias: nothing specific that I can name, which is no protection.
+
+### W-08 gen003_w08_decoupling (class E, comovement)
+- Rule: c = the correlation of the coin's hourly returns with BTC's over the last k hours minus over the last n hours
+  (1 against 6 weeks), at the week's last hour; short the most decoupled, long the most re-coupled.
+- Program: k = param(168, 134, 202), n = param(1008, 806, 1210);
+  `c = tf_last(corr(r, rb, k) - corr(r, rb, n), weekly)`; `signal = cs_scale(cs_demean(cs_rank(c)))`. 18 nodes,
+  lookback 1,545 h. BTC's own c is about 0 (mid-rank).
+- Mechanism: a coin that stops moving with the market has a story of its own; attention traders bid it beyond value
+  and it gives that back as attention fades (Barber and Odean; Da, Engelberg and Gao). Other side: attention buyers.
+- Why not one of the 28: comovement, unsigned; no earlier program read a correlation.
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: none on returns (the comovement literature, e.g. Barberis, Shleifer and Wurgler 2005, describes it).
+- Bias: LUNA decoupled while collapsing (helps); 2021 memecoins decoupled while rising (hurts).
+
+### W-09 gen003_w09_volume_trend (class F, slow attention flow)
+- Rule: t = the mean daily quote volume over the last k days / over n days (2 against 8 weeks), at the Sunday daily
+  bar; long the largest rise, short the largest fall.
+- Program: k = param(14, 11, 17), n = param(56, 44, 68); `t = tf_last(sma(q, k) / sma(q, n), weekly)`;
+  `signal = cs_scale(cs_demean(cs_rank(t)))`. 13 nodes, lookback 1,989 h.
+- Mechanism: capital and attention reach a coin over weeks; trading that grows against its two-month norm marks
+  participants still arriving (the visibility premium of Gervais, Kaniel and Mingelgrin 2001). Other side: holders and
+  liquidity providers who sell before the inflow is spent.
+- Why not one of the 28: slower formation (2 against 8 weeks) on quote volume with the inflow sign; #12 was a one-week
+  trade-count burst, contrarian. The review lists "quote-volume trend" as not yet read (question 4).
+- Drag 0.30 -> 1.04 / 1.80.
+- Outside evidence: for, GKM 2001 (equities, weekly volume shocks); against, Lee and Swaminathan 2000 (high volume as
+  glamour, lower later returns). Crypto: none I trust.
+- Bias: #12's contrarian sign read +0.172 on DEV, so the weekly mirror of this sign lost a little on DEV; I register
+  the sign the mechanism gives. W6 risk: the 8-week norm.
+
+### W-10 gen003_w10_basis_instability (class G, leverage instability; READS index_close)
+- Rule: p = (close - index_close) / index_close; v = the week's mean absolute hourly change of p / the week's mean
+  absolute hourly return; instability = v / mean over the last m weeks; short the largest, long the smallest.
+- Program: m = param(4, 3, 5);
+  `v = tf_mean(abs(delta(p, 1)), weekly) / tf_mean(abs(ret(close, 1)), weekly)`;
+  `signal = cs_scale(cs_demean(-cs_rank(v / sma(v, m))))`. 24 nodes, lookback 1,014 h.
+- Playbook 4b (KP-017): screened on DEV; recommended only "subject to the per-program measurement".
+- Mechanism: a premium that churns more than the price means leveraged perp traders dominate and arbitrage capital is
+  short; such episodes end in deleveraging that weighs on the price. Other side: leveraged perp speculators.
+- Why not one of the 28: the premium's level and sign are not read (#18, #20, #22 ranked its level or shock,
+  contrarian); this is its noise relative to the price's. Adjacent to a closed class (question 5).
+- Drag 0.40 -> 1.14 / 1.90.
+- Outside evidence: none.
+- Bias: premium and funding contrarian books were positive on DEV (#18 to #21) and #21 failed in VAL; if instability
+  travels with premium spikes, W-10 inherits that DEV pattern.
+
+### W-11 gen003_w11_ensemble (class H, combination whose trades net)
+- Rule: cs_rank(W-01's dd) - cs_rank(W-03's shock) + cs_rank(W-07's z), re-centred and scaled to gross 1; each part
+  exactly as in its own file, at the same defaults.
+- Program: n = param(42, 33, 51), b = param(336, 268, 404), m = param(4, 3, 5), j = param(2, 1, 3);
+  `signal = cs_scale(cs_demean(cs_rank(dd) - cs_rank(v / sma(v, m)) + cs_rank(z)))`. 71 nodes, lookback 1,605 h.
+- Mechanism: none new: three information sets (reference price, own-volatility shock, intrabar absorption), close to
+  independent; k signals of Sharpe S give about S x sqrt(k) while their trades partly net (review agenda item 4).
+- Why not one of the 28: no earlier program combined signals; none of its parts is from a closed class.
+- Drag 0.35 -> 1.09 / 1.85.
+- Outside evidence: the arithmetic only; each part as in its section.
+- Bias: all three parts' biases. It hides no test only because each part is read alone in this round; a pass of W-11
+  with its parts failing would be a pass of the combination only.
+
+## Run order and budget (decided now)
+
+- Runs 1 to 11: the defaults, in the order W-01 to W-11 (the combination last), each
+  `python -m omr.sandbox strategies/gen003_wNN_<idea>.omr --g6-lags`, one at a time under the coordinator's memory rule.
+  Every default runs, whatever the earlier ones read.
+- Then corners, only for ideas that passed W1 to W8, in the selection order below: the 0.8 corner, then the 1.2 corner
+  (`--set`), each needing a positive DEV Sharpe AND a positive G4 DEV reading; stop that idea at its first failure. At
+  most 6 corner runs; if more than three ideas pass W1 to W8, corners for the first three in the selection order.
+- Corners (integers rounded; a param left unchanged by rounding moves by 1; W-06's d as in round 1):
+
+  | idea | 0.8 corner | 1.2 corner |
+  |---|---|---|
+  | W-01 | n=34 | n=50 |
+  | W-02 | n=22 | n=34 |
+  | W-03 | n=269, m=3 | n=403, m=5 |
+  | W-04 | k=6, n=34 | k=8, n=50 |
+  | W-05 | a=12, b=17, w=134, m=3 | a=18, b=25, w=202, m=5 |
+  | W-06 | d=4.5, w=134, m=3 | d=5.5, w=202, m=5 |
+  | W-07 | m=1 | m=3 |
+  | W-08 | k=134, n=806 | k=202, n=1210 |
+  | W-09 | k=11, n=45 | k=17, n=67 |
+  | W-10 | m=3 | m=5 |
+  | W-11 | n=34, b=269, m=3, j=1 | n=50, b=403, m=5, j=3 |
+
+- Reserve: 2 runs, only for an honest restatement after a stage-1 rejection of a default (the restated file is
+  recorded as an amendment before its run). Cap 19 runs (11 + 6 + 2), so generation 3 would have used at most 25 of 60.
+- No placebo or control run is registered (question 8). No counted run is part of this plan.
+
+## Selection rule (fixed now; the DEV Sharpe ranks nothing beyond the screen)
+
+- Eligible: passes W1 to W8 at the default and both corners.
+- Order: (1) A in the paired reading, fewest stale copies at least as good first (the reading built like G6, the gate
+  that has stopped every top30 book so far); (2) the registered cost drag, smallest first (W-01 and W-02 0.25; W-07 and
+  W-09 0.30; W-11 0.35; the rest 0.40); (3) the run order.
+- Take the first eligible idea; then the next eligible idea of another class that shares no component with it (W-11
+  shares components with W-01, W-03 and W-07). At most two. W-10 only "subject to the KP-017 measurement".
+- A recommendation is not a submission: the coordinator reads the program and decides; at most one counted trial
+  without a further decision; any top30 pass is measured per program in null worlds before the pool (KP-020).
+- If nothing is eligible, the recommendation is NONE.
+
+## Questions for the coordinator
+
+1. W1 and sparse books: W1 fails any book flat more than about 45% of DEV rows (fact 1), so the "in the market only in
+   stated states" form cannot pass this screen. Intended? None is registered.
+2. Calendar schedules and the speed limit (fact 2): is the reading right that a weekday or hour schedule fails G6 by
+   construction in top30? It is why calendar enters only as a selector of hours (W-05, W-06).
+3. W-01 and W-02 rank a price against a reference (recent high, recent VWAP). In equities both are distinct from
+   return momentum, but they are correlated with it. Do they count as the closed continuation form?
+4. W-09 is the slower, opposite-sign relative of #12 (crowding by activity) and the review's "quote-volume trend".
+   Closed or open?
+5. W-10 reads index_close and ranks the premium's noise, not its level or shock. Is it a closed "premium contrarian
+   form"? If open, confirmed as screen-only under KP-017?
+6. Calendar thresholds as params (W-05's a and b, W-06's d) with hour and weekday as selectors of a volume series: the
+   same standing as round 1's rulings 1 and 2?
+7. W-11 repeats three of the round's own books in one program. Acceptable as one of the eleven, with the selection rule
+   taking it or its parts but not both?
+8. Playbook 8b gives a survivor "corners and a control"; the order's budget names corners only. If a control is
+   wanted for a survivor, which (a placebo per idea was not registered) and from which budget?
+
+Written 2026-11-27 02:50 +08:00 (2026-11-26 18:50 UTC), before any round-3 sandbox run.
+
+## Coordinator's rulings before round 3's run 1 (2026-11-27; appended by the coordinator, nothing above is changed)
+
+The coordinator read version 3 and the eleven programs (the source read of playbook section 5: no constant,
+threshold or scale built from a calendar field or a same-unit ratio; hour and weekday appear only as selectors
+of hours of a volume series) before any round-3 sandbox run. All eleven parse (lookbacks 671 to 1,989 hours);
+the sandbox log stands at 49 rows, none of round 3.
+
+1. W1 and sparse books: intended for this round. The screen is fixed for eleven books that stay in the market.
+   A book that is in the market only in stated states needs a W1 of its own, fixed in the plan that registers it.
+2. Calendar schedules and the speed limit: the reading is right, and it is as G6 means it. A weight path that
+   repeats with the week is its own stale copy, so a schedule gets no credit in top30. A calendar field may
+   select which hours of a data series feed a bin, as in W-05 and W-06.
+3. W-01 and W-02: open, with a condition fixed now. They are not forms already run, but they move with
+   continuation, whose readings on next30 and over the last 365 days of DEV are known and negative. For either
+   of them W1 to W8 and both corners are not enough: before any recommendation one control is run from this
+   round's budget, strategies/gen003_diag_plain_multiweek.omr with --set m=4 (plain four-week continuation,
+   sampled weekly; registered in round 2 and never run), and the survivor's DEV Sharpe before costs must exceed
+   the control's DEV Sharpe before costs by at least 0.5. Otherwise it is continuation in another form and is
+   not recommended.
+4. W-09: open. It has the opposite sign and a slower window than the activity fade of generation 2, whose small
+   positive DEV reading argues against it rather than for it.
+5. W-10: open as a new form (the premium's noise, not its level or its shock), and screen-only under KP-017: a
+   survivor is not submitted before the per-program measurement, which the coordinator runs.
+6. Calendar thresholds as params (W-05's a and b, W-06's d): accepted, with the standing of round 1's rulings 1
+   and 2. G5 moves the edges of the session and of the weekend, and the programs must stand that.
+7. W-11: accepted as one of the eleven. The selection rule takes it or its parts, never both. If it passes
+   where none of its parts does, that is the arithmetic of a combination and is read as no more.
+8. Controls: none in general for this round, except the one of ruling 3. Before any decision on a counted trial
+   the coordinator may order one further DEV run for the survivor, recorded as an amendment before it runs.
+9. Budget: the cap of 19 runs stands (11 defaults, at most 6 corner runs, 2 in reserve; the control of ruling 3
+   comes out of the 6 or the 2). One run at a time; a run starts when at least 1,000,000 KB of physical memory
+   and 4,000,000 KB of commit headroom are free.
+10. The price of width, to be kept in mind when the outcome is read: eleven ideas meet one screen. If that
+    screen let a no-skill book through 3 times in 100, one of eleven would pass by luck about 28 times in 100.
+    A survivor is a candidate for one counted trial at most, and the number of ideas screened in the round goes
+    into the record of that decision.
+11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
+    passed with the new files in place. Its parts are appended below.

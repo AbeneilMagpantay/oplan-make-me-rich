@@ -1,0 +1,18 @@
+# Generation 3, round 3, W-10 (generations/gen003/PLAN.md, version 3, the wide screen). Basis instability.
+# READS index_close (the perp-index basis): screened on DEV only; submitted only after the per-program measurement
+# of playbook 4b (KP-017). p = (close - index_close) / index_close, the hourly perp premium. v = the week's mean
+# absolute hourly change of p divided by the week's mean absolute hourly return: how much the premium churns per unit
+# of price movement. The level and the sign of the premium are not read. instability = v over its mean over the last
+# m weekly bins. Weekly bins visible at the bar that opens Sunday 23:00, traded at the Monday 00:00 open. Short the
+# largest rise in instability, long the largest fall; rank weights, dollar neutral, gross 1.
+name = "gen003_w10_basis_instability"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leverage churn: when a coin's perp premium swings more than its price, leveraged traders on the perp dominate its trading and arbitrage capital is short; such episodes end in forced deleveraging that weighs on the price over the following weeks. Short the coins whose premium churn per unit of price movement rose most above their own m-week norm, long those where it fell most, weekly. Falsified if the DEV screen fails, VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(4, 3, 5)             # weekly bins in the coin's own norm (4 weeks)
+
+p = (close - index_close) / index_close
+v = tf_mean(abs(delta(p, 1)), weekly) / tf_mean(abs(ret(close, 1)), weekly)
+signal = cs_scale(cs_demean(-cs_rank(v / sma(v, m))))

@@ -1,0 +1,19 @@
+# Generation 3, round 3, W-08 (generations/gen003/PLAN.md, version 3, the wide screen). Decoupling from BTC.
+# c = the correlation of the coin's hourly returns with BTC's over the last k hours minus the same over the last n
+# hours (1 week against 6 weeks), taken at the last hour of each weekly bin (visible at the bar that opens Sunday
+# 23:00, traded at the Monday 00:00 open). Negative c: the coin has decoupled from the market this week. BTC's own c
+# is about 0 (mid-rank). Short the coins that decoupled most, long those that re-coupled most; rank weights, dollar
+# neutral, gross 1. Unsigned: the direction of the week's move is not read. No funding, mark or index input.
+name = "gen003_w08_decoupling"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Story coins: when a coin stops moving with the market, a coin-specific story is drawing attention traders who bid it beyond its value, and as attention fades over the next weeks it lags; a coin returning to the market's rhythm has lost its crowd. Short the coins whose 1-week correlation with BTC fell most below their 6-week correlation, long those where it rose most, weekly. Falsified if the DEV screen fails, VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(168, 134, 202)       # hours in the recent correlation (1 week)
+n = param(1008, 806, 1210)     # hours in the coin's own norm (6 weeks)
+
+r = ret(close, 1)
+rb = ret(btc(close), 1)
+c = tf_last(corr(r, rb, k) - corr(r, rb, n), weekly)
+signal = cs_scale(cs_demean(cs_rank(c)))
