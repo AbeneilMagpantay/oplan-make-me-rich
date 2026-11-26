@@ -302,6 +302,14 @@ of a premium unit is ordered (KP-028: the funding premium earned without price r
 its perpetual, which the scorer excludes by construction): DEV rows only, no kernel file changed, its
 measurement run by the coordinator; (3) the cost basis stays. The study's numbers and the coordinator's
 recommendation go back to the human before any build, any change of a gate or any counted trial.
+2026-11-27, what the human then said, and what followed. Asked for the account size he answered: about 100 USD
+of his own; the hope to double it in a month; the aim to "get funded" (a funded trading account) once an edge
+is found; and "we just need to be consistent not losing anything, it is okay to not earn than to lose". The
+coordinator stopped the premium study before any measurement (KP-028: at 100 USD the premium is a few dollars
+a year, and a funded account has no spot leg), told him plainly that his return targets and his own rule of
+not losing cannot both hold, and that the aim that fits his rule is the funded account: small steady returns
+under a fixed loss limit. What the search should aim at under that aim is being settled with him; nothing runs
+meanwhile, and nothing in the kernel changes.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.

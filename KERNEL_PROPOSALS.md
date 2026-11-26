@@ -763,5 +763,10 @@ rates, status.
   (the venue itself, funding regimes, the margin of the short leg); which gates carry over, which must be
   replaced and by what; how VAL would be spent (one counted read of the plain premium, then overlays against
   it); the size of the build and of its calibration.
-- Status: open, STUDY ONLY. Nothing here is approved for a build. The build, if recommended, needs the human's
-  approval with the study's numbers in front of him.
+- Status: STUDY STOPPED by the coordinator on 2026-11-27, about an hour after it was ordered and before any
+  measurement on real data (the designer had only begun to read; nothing of it is in the repository). Reason:
+  asked for the account size, the human answered: about 100 USD of his own, the aim of a funded account once an
+  edge is found, and "it is okay to not earn than to lose". At that size the premium is worth a few dollars a
+  year, and a funded account offers no spot leg to hold against the short perpetual, so the study could not
+  lead to anything he can use. The question it would have answered stays open for a larger account. Nothing
+  here is approved for a build.
