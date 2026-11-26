@@ -1874,3 +1874,109 @@ the sandbox log stands at 49 rows, none of round 3.
     into the record of that decision.
 11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
     passed with the new files in place. Its parts are appended below.
+
+## Sandbox run log (round 3), filled in during stage 2
+
+(Appended below the coordinator's round-3 rulings, so that the 169,613 bytes committed as 92d1a5a stay an unchanged
+prefix. Every run is listed, in the registered order. Each command was `python -m omr.sandbox
+strategies/gen003_wNN_<idea>.omr --g6-lags` at the defaults, full stage 1 (25 truncation cuts), one at a time, started
+only after the memory reading of ruling 9 (free physical 2.8 to 5.9 million KB, virtual 10.4 to 12.6 million KB). Output
+saved as ASCII in the session scratch folder, gen003_r3/run_NN_<name>.txt, by gen003_r3/run_sandbox.py, which only
+calls the sandbox. Pre-cost = DEV Sharpe + (DEV Sharpe - G4 DEV). Years: return sign and Sharpe for 2020, 2021,
+2022H1. Costs: equity over DEV, with C/G = costs / avg gross. Funding: gross paid / received over DEV.)
+
+| # | idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r(1), r(2), r(3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | names held | avg gross | dir. ch. | costs (C/G) | funding paid / recv |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | W-01 high_anchor | 1.558 | 1.296 | 0.888 | 1.820 | 0.601 | 0.129, -0.080, -0.032 | 6; -0.549 | 2 (3.721 / 1.831 / -2.093) | 27.7 of 28.0 | 0.855 | 1198 | 0.3024 (0.354) | 0.7320 / 0.7938 |
+| 2 | W-02 cost_basis | 1.049 | 0.794 | 0.438 | 1.304 | 0.755 | -0.026, -0.092, -0.013 | 9; -0.761 | 2 (3.469 / 0.787 / -2.290) | 27.7 | 0.854 | 1359 | 0.3138 (0.367) | 0.6814 / 0.7632 |
+| 3 | W-03 vol_shock | -0.276 | -0.612 | -0.833 | 0.060 | 0.057 | -0.123, -0.028, 0.003 | 0; 1.331 | 1 (-1.491 / 0.046, return -0.031 / 0.500) | 22.8 | 0.808 | 1514 | 0.1536 (0.190) | 0.2654 / 0.2580 |
+| 4 | W-04 illiquidity_shock | -0.156 | -0.530 | -0.875 | 0.218 | -0.407 | -0.108, -0.057, -0.015 | 1; 0.915 | 1 (-1.548 / -0.276 / 1.240) | 27.7 | 0.854 | 1705 | 0.1597 (0.187) | 0.3199 / 0.3056 |
+| 5 | W-05 us_session_shift | -0.537 | -0.961 | -1.224 | -0.113 | -1.372 | -0.079, -0.013, -0.050 | 1; 0.574 | 1 (-0.568 / -1.771 / 1.491) | 27.6 | 0.857 | 2040 | 0.1771 (0.207) | 0.3076 / 0.3058 |
+| 6 | W-06 weekend_tilt | -2.343 | -2.754 | -2.981 | -1.932 | -0.511 | -0.030, 0.022, -0.006 | 8; -0.816 | 0 (-2.837 / -3.281 / -0.658) | 27.7 | 0.854 | 2187 | 0.1268 (0.148) | 0.2110 / 0.1997 |
+| 7 | W-07 wick_absorption | -0.932 | -1.225 | -1.660 | -0.639 | -0.902 | 0.083, 0.037, 0.035 | 7; -1.154 | 1 (-0.527 / -2.153 / 1.457) | 27.6 | 0.852 | 1266 | 0.1126 (0.132) | 0.3073 / 0.2819 |
+| 8 | W-08 decoupling | -0.179 | -0.525 | -0.823 | 0.167 | -0.502 | -0.096, -0.034, 0.027 | 0; 0.980 | 1 (-0.938 / 0.011, return -0.032 / 0.378) | 27.6 | 0.855 | 1750 | 0.1655 (0.194) | 0.3193 / 0.3105 |
+| 9 | W-09 volume_trend | -0.375 | -0.595 | -1.003 | -0.155 | 0.105 | -0.083, -0.194, -0.010 | 10; -2.147 | 1 (2.138 / -0.932 / -2.357) | 27.7 | 0.854 | 1155 | 0.1571 (0.184) | 0.4307 / 0.4791 |
+| 10 | W-10 basis_instability | -0.188 | -0.568 | -0.861 | 0.192 | 0.670 | -0.101, -0.013, 0.006 | 9; -2.010 | 0 (-0.221 / -0.253 / 0.011, return -0.009) | 27.6 | 0.853 | 1904 | 0.1964 (0.230) | 0.3507 / 0.3544 |
+| 11 | W-11 ensemble | 0.372 | 0.025 | -0.275 | 0.719 | 0.029 | -0.009, 0.023, 0.018 | 2; 0.248 | 2 (1.424 / -0.152 / 0.174) | 22.9 | 0.811 | 1321 | 0.2102 (0.259) | 0.3964 / 0.3933 |
+
+Every run: stage 1 PASS, exit 0, nothing on stderr, not liquidated, 75 symbols ever in the unit, next30 over 100
+symbols, benchmark (equal-weight long of the in-play members) DEV Sharpe 0.619, maxDD 0.847. Wall times 82.0 to 232.9 s.
+Other printed numbers (PSR(0); total; maxDD; rebalances): W-01 0.993, 1.215, 0.292, 571; W-02 0.953, 0.777, 0.386, 602;
+W-03 0.332, -0.219, 0.477, 691; W-04 0.403, -0.129, 0.355, 574; W-05 0.203, -0.297, 0.521, 611; W-06 0.000, -0.767,
+0.798, 650; W-07 0.067, -0.405, 0.517, 570; W-08 0.389, -0.159, 0.399, 597; W-09 0.276, -0.264, 0.503, 634; W-10
+0.384, -0.155, 0.352, 583; W-11 0.721, 0.153, 0.252, 754. Stale-copy medians in the paired reading: -0.528, -0.437,
+-0.684, -0.735, -1.047, -0.504, 0.354, -0.237, -0.401, -0.285, 0.043. Speed-limit rows from 2020-07-20 14:00 (2020-08-31
+for W-03 and W-11) to 2022-06-30 22:00; paired lags 30 to 262 days, decisions 2021-06-30 23:00 to 2022-06-30 22:00.
+
+Total sandbox runs in round 3: 11 of the cap of 19 (11 defaults; no corner, no control, no reserve). No stage-1
+rejection, no kernel fault, no refusal. ledger/sandbox_log.jsonl now has 60 rows (49 + 11), rows 49 to 59 (0-indexed),
+each status ok, stage1 full, its logged readings equal to the printed ones and its source_sha256 equal to the committed
+file's; `omr.ledger verify` OK, all six chains; `omr.kernel_lock verify` OK, sealed (core 0.05, top30 0.1). Generation
+3 has used 17 of 60 sandbox runs.
+
+By the run order, corners were due only for ideas that passed W1 to W8, and the control of ruling 3 only if W-01 or
+W-02 passed its corners. None passed W1 to W8, so no corner and no control was run.
+
+## Amendments (round 3), stage 2
+
+none: no program text, param, default, screen item or run condition was changed, and the reserve was not used.
+
+## Screen outcome per idea (round 3)
+
+| idea | W1 | W2 (pre-cost >= 1.5) | W3 (G4 > 0) | W4 (G2 > 0) | W5 (next30 >= 0.3) | W6 (r <= 0.40) | W7 (A <= 4, B > 0) | W8 (years) | first failed | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| W-01 high_anchor | pass | pass (1.820) | pass | pass | pass | pass | FAIL (6; -0.549) | pass (2) | W7 | dropped |
+| W-02 cost_basis | pass | FAIL (1.304) | pass | pass | pass | pass | FAIL (9; -0.761) | pass (2) | W2 | dropped |
+| W-03 vol_shock | pass | FAIL (sign: -0.276) | FAIL | FAIL | FAIL (0.057) | pass | pass (0; 1.331) | FAIL (1) | W2 | dropped |
+| W-04 illiquidity_shock | pass | FAIL (sign: -0.156) | FAIL | FAIL | FAIL | pass | pass (1; 0.915) | FAIL (1) | W2 | dropped |
+| W-05 us_session_shift | pass | FAIL (sign: -0.537) | FAIL | FAIL | FAIL | pass | pass (1; 0.574) | FAIL (1) | W2 | dropped |
+| W-06 weekend_tilt | pass | FAIL (sign: -2.343) | FAIL | FAIL | FAIL | pass | FAIL (8; -0.816) | FAIL (0) | W2 | dropped |
+| W-07 wick_absorption | pass | FAIL (sign: -0.932) | FAIL | FAIL | FAIL | pass | FAIL (7; -1.154) | FAIL (1) | W2 | dropped |
+| W-08 decoupling | pass | FAIL (sign: -0.179) | FAIL | FAIL | FAIL | pass | pass (0; 0.980) | FAIL (1) | W2 | dropped |
+| W-09 volume_trend | pass | FAIL (sign: -0.375) | FAIL | FAIL | FAIL (0.105) | pass | FAIL (10; -2.147) | FAIL (1) | W2 | dropped |
+| W-10 basis_instability | pass | FAIL (sign: -0.188) | FAIL | FAIL | pass (0.670) | pass | FAIL (9; -2.010) | FAIL (0) | W2 | dropped |
+| W-11 ensemble | pass | FAIL (0.719) | pass (0.025) | FAIL (-0.275) | FAIL (0.029) | pass | pass (2; 0.248) | pass (2) | W2 | dropped |
+
+Against each registered falsifier ("the DEV screen fails; the sign is never flipped"): all eleven falsified on DEV.
+Eight had the wrong sign over DEV (W-03 to W-10). W-01 was the only idea to clear the pre-cost floor, the stresses,
+next30 and the speed limit, and it failed the paired reading: on the last 365 days of DEV it lost on the common names
+(B -0.549) and 6 of 10 stale copies did at least as well.
+
+## DEV observations (round 3; NOT hypotheses, never to be submitted from this plan)
+
+- Two time profiles. The books that lean toward recent winners (W-01 and W-02 rank price against a recent reference;
+  W-09 ranks volume growth, which goes with rising prices) earned in 2020 (SR 2.1 to 3.7) and lost in 2022H1 (SR -2.1
+  to -2.4) and on the last 365 days (B -0.55 to -2.15), the profile of round 2's continuation books (LESSONS 44). The
+  unsigned or move-orthogonal books (W-03, W-04, W-05, W-07, W-08) lost in 2020 and earned in 2022H1 (SR 0.38 to 1.49);
+  four of them had a positive book median on the last 365 days with stale copies negative (A 0 to 1, B 0.57 to 1.33).
+  No registered book earned in both halves of DEV. A rule built on this split would descend from this result. WEAK.
+- Unlike round 2's continuation books, W-01 and W-02 read positive on next30 (0.601, 0.755), and W-01 kept 0.888 under
+  G2 and 1.296 under G4. Its failure was the last year of DEV, which ruling 3's concern pointed at. WEAK.
+- W-06 lost in every DEV year (-2.343, the largest absolute Sharpe of the round): coins whose share of volume moved
+  toward the weekend did BETTER the next week, in the direction of round 1's H1 (the weekend part of the move
+  persisted, LESSONS 39). DEV is spent as a screen for the mirror. WEAK.
+- Costs: W-01 and W-02 paid 0.302 and 0.314 of equity over DEV (C/G 0.35 and 0.37), like the continuation books
+  (LESSONS 45), although their reference moves slowly; their G4 drops (0.262, 0.255) still matched the registered drag
+  of 0.25, because their volatility was higher. The unsigned weekly books cost 0.113 to 0.196 (C/G 0.13 to 0.23), the
+  cheapest weekly top30 books read so far; their G4 drops were 0.29 to 0.42.
+- Funding: W-01 and W-02 paid and received 0.73 / 0.79 and 0.68 / 0.76 of equity in gross funding over DEV, the largest
+  flows of any top30 book read by the sandbox (G2 drops 0.670 and 0.611); the unsigned books 0.20 to 0.35 each way.
+- Speed limit: every reading between -0.194 and 0.129; W-01's six-week reference read 0.129 at one step, under the
+  0.3 to 0.4 the plan feared. Names held 27.6 to 27.7 of 28.0 for every book without a cs_* inside a window, 22.8 and
+  22.9 for W-03 and W-11 (fact 3 of the plan).
+- W-11 read 0.372 (pre-cost 0.719; 2020 SR 1.424, 2022H1 0.174): its early-earning part (W-01) and its late-earning
+  parts (W-03 and W-07, which lost early) partly cancelled. WEAK.
+- WEAK throughout: one DEV period, one default each, one researcher session; nothing here is a parameter
+  recommendation, and no corner or control was run.
+
+## Recommendation (round 3)
+
+NONE. By the pre-registered selection rule an idea is eligible only if it passes W1 to W8 at the default and both
+corners. No idea passed W1 to W8 (W-01 failed W7; the other ten failed W2 first), so no corner was run, the control of
+ruling 3 was not due, and no program from version 3 is recommended. No KP-017 or KP-020 measurement is needed for this
+round. Generation 3 stands at 0 of 5 counted submissions and 17 of 60 sandbox runs; M is unchanged at 6.
+
+Correction to the first DEV observation above (same session, found on re-reading before the report; nothing above is
+changed): "No registered book earned in both halves of DEV" holds for the ten single-idea books. The combination W-11
+was positive in 2020 (SR 1.424) and, barely, in 2022H1 (SR 0.174), its parts' opposite profiles cancelling; its DEV
+Sharpe was 0.372 and it failed W2. The recommendation is unchanged: NONE.

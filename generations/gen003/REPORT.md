@@ -271,3 +271,120 @@ No hypothesis survived the screen, so there is no candidate to decide on; ruling
     liveness bar; a next30 sign that a mirror's reading had seemed to fix, but a mirror pays its costs again). PROCESS.
 - No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
   printed ones); every run took under 2.5 minutes.
+
+# Round 3 (PLAN version 3, the wide screen)
+
+## Sources
+- generations/gen003/PLAN.md: version 3 as committed in 92d1a5a together with the coordinator's round-3 rulings
+  (169,613 bytes, sha256 da83515e35b8c1d5...), with the stage-2 run log, amendments (none), screen outcome, DEV
+  observations, recommendation and a one-paragraph correction appended (180,229 bytes, sha256 7b27f7c6ea7c621c...).
+- The eleven sandbox outputs of the researcher session (DEV only; scratch gen003_r3/run_01 to run_11), rows 49 to 59
+  (0-indexed) of ledger/sandbox_log.jsonl, `python -m omr.status`, `python -m omr.ledger summary` (trial rows),
+  `omr.ledger verify`, `omr.kernel_lock verify`.
+- No returns file, no trial detail file, no calibration file and no data file was read. No VAL number exists for any
+  round-3 program: none was submitted.
+
+## What was run
+- Unit top30 on the sealed kernel of the batch re-key (semantic 7d923e7e2375986d..., G6 0.05 in core and 0.10 in
+  top30). The first round in the form of a WIDE SCREEN (RESEARCH_PLAYBOOK 8b as amended on 2026-11-27, after the
+  human's direction to go on in top30): eleven compactly registered ideas from eight mechanism classes, none from a
+  closed class, one default run each against one screen fixed in advance (W1 to W8).
+- A fresh researcher session wrote PLAN version 3 and eleven programs BEFORE any round-3 sandbox run; each parsed. The
+  coordinator committed them as 92d1a5a after rulings: sparse books are outside this screen by intent; a calendar
+  schedule fails the speed limit by construction, so calendar fields only select hours of a volume series; W-01 and
+  W-02 open with a condition (a plain four-week continuation control and a pre-cost margin of 0.5 before any
+  recommendation); W-09 and W-10 open (W-10 screen-only under KP-017); calendar thresholds as params accepted; W-11
+  accepted; cap 19 runs.
+- The eleven ideas, all dollar neutral (gross 1), decided once a week: W-01 distance below the 6-week high (anchoring),
+  W-02 price over the 4-week VWAP (capital-gains overhang), W-03 short residual-variance shocks, W-04 long illiquidity
+  shocks orthogonal to the week's move, W-05 long a rising US-hour share of volume, W-06 short a rising weekend share
+  of volume, W-07 long net lower-wick absorption, W-08 short decoupling from BTC, W-09 long 2-week over 8-week volume
+  growth, W-10 short a rise in basis churn per unit of price movement (reads index_close), W-11 the equal-weight sum of
+  W-01, W-03 and W-07.
+- 11 sandbox runs of the cap of 19: the eleven defaults with --g6-lags, in the registered order. No idea passed W1 to
+  W8, so no corner and no control was due. No stage-1 rejection, no kernel fault, no refusal; 82 to 233 s per run, one
+  at a time, under the coordinator's memory rule.
+
+## Result
+| idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r max (1..3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | costs (C/G) | first failed |
+|---|---|---|---|---|---|---|---|---|---|---|
+| W-01 high_anchor | 1.558 | 1.296 | 0.888 | 1.820 | 0.601 | 0.129 | 6; -0.549 | 2 (3.721 / 1.831 / -2.093) | 0.302 (0.354) | W7 |
+| W-02 cost_basis | 1.049 | 0.794 | 0.438 | 1.304 | 0.755 | -0.013 | 9; -0.761 | 2 (3.469 / 0.787 / -2.290) | 0.314 (0.367) | W2 |
+| W-03 vol_shock | -0.276 | -0.612 | -0.833 | 0.060 | 0.057 | 0.003 | 0; 1.331 | 1 (-1.491 / 0.046 / 0.500) | 0.154 (0.190) | W2 |
+| W-04 illiquidity_shock | -0.156 | -0.530 | -0.875 | 0.218 | -0.407 | -0.015 | 1; 0.915 | 1 (-1.548 / -0.276 / 1.240) | 0.160 (0.187) | W2 |
+| W-05 us_session_shift | -0.537 | -0.961 | -1.224 | -0.113 | -1.372 | -0.013 | 1; 0.574 | 1 (-0.568 / -1.771 / 1.491) | 0.177 (0.207) | W2 |
+| W-06 weekend_tilt | -2.343 | -2.754 | -2.981 | -1.932 | -0.511 | 0.022 | 8; -0.816 | 0 (-2.837 / -3.281 / -0.658) | 0.127 (0.148) | W2 |
+| W-07 wick_absorption | -0.932 | -1.225 | -1.660 | -0.639 | -0.902 | 0.083 | 7; -1.154 | 1 (-0.527 / -2.153 / 1.457) | 0.113 (0.132) | W2 |
+| W-08 decoupling | -0.179 | -0.525 | -0.823 | 0.167 | -0.502 | 0.027 | 0; 0.980 | 1 (-0.938 / 0.011 / 0.378) | 0.166 (0.194) | W2 |
+| W-09 volume_trend | -0.375 | -0.595 | -1.003 | -0.155 | 0.105 | -0.010 | 10; -2.147 | 1 (2.138 / -0.932 / -2.357) | 0.157 (0.184) | W2 |
+| W-10 basis_instability | -0.188 | -0.568 | -0.861 | 0.192 | 0.670 | 0.006 | 9; -2.010 | 0 (-0.221 / -0.253 / 0.011) | 0.196 (0.230) | W2 |
+| W-11 ensemble | 0.372 | 0.025 | -0.275 | 0.719 | 0.029 | 0.023 | 2; 0.248 | 2 (1.424 / -0.152 / 0.174) | 0.210 (0.259) | W2 |
+
+Years + counts returns above 0 (W-03's and W-08's 2021 and W-10's 2022H1 returns were slightly negative with Sharpe
+near 0). Names held 27.6 to 27.7 of 28.0, 22.8 for W-03 and 22.9 for W-11; avg gross 0.81 to 0.86; direction changes
+1155 to 2187; none liquidated. Every run printed the benchmark at DEV Sharpe 0.619, maxDD 0.847.
+
+No counted submission. M is unchanged at 6. Tier 1: none. Pool 0 of 5.
+
+## Screen outcome
+W-01 passed W1 to W6 and W8 and failed W7 only (6 of 10 stale copies at least as good; book median -0.549 over the last
+365 days of DEV). The other ten failed W2 first: eight with the wrong sign over DEV (W-03 to W-10), W-02 and W-11 with
+the registered sign but under the pre-cost floor (1.304, 0.719). All eleven are falsified on DEV; no sign is flipped.
+
+## Reading
+- No single-idea book earned in both halves of DEV. The books that lean toward recent winners (W-01, W-02, and W-09
+  through volume growth) earned in 2020 and lost in 2022H1 and over the last 365 days, the profile of round 2's
+  continuation books; the unsigned or move-orthogonal books (W-03, W-04, W-05, W-07, W-08) lost in 2020 and earned in
+  2022H1, four of them with a positive book median and negative stale copies over the last 365 days. The combination
+  W-11 was positive in both halves only because its parts' profiles cancelled (2020 SR 1.424, 2022H1 0.174; DEV 0.372).
+  WEAK. (The plan's DEV observations first said "no registered book"; a correction is appended there.)
+- W-01 came closest of any top30 book on its own readings: pre-cost 1.820, positive under both stresses and on next30
+  (0.601), speed limit 0.129. It failed on the last year of DEV, where ruling 3's concern (it moves with continuation)
+  pointed.
+- W-06 lost in every year (-2.343): coins whose share of volume tilted toward the weekend did better the next week, in
+  the direction of round 1's H1 (LESSONS 39).
+- The anchoring books traded and paid funding like continuation books (costs 0.30 to 0.31; gross funding 0.68 to 0.79
+  each way, the largest read); the unsigned volume and volatility books were the cheapest weekly top30 books so far
+  (0.11 to 0.20, C/G 0.13 to 0.23).
+
+## What must NOT be concluded
+- Eleven DEV failures say nothing about VAL. No VAL bar was read for any program of this round.
+- The time split above is a DEV observation, not a hypothesis: a rule built to earn in both halves, or one that keeps
+  only the late-DEV sign, would descend from these results, and DEV is spent as a screen for it. The same holds for
+  the mirror of W-06.
+- One default per idea was run; nothing is implied about other values of any param, and none is recommended. No corner
+  or control was run, so whether W-01's readings survive its corners or exceed plain continuation is not known.
+- A wide screen tests many ideas at once: had one passed, it would have been a candidate for one counted trial only,
+  with the number of ideas screened recorded (ruling 10). None did.
+- Choosing ideas is still open to hindsight (KP-010); the plan named what could bias each one.
+
+## After the round
+M = 6 (generation 0: 4, generation 1: 1, generation 2: 1, generation 3: 0 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool
+0 of 5, one uncounted stage-1 rejection (generation 0). Sandbox runs used in generation 3: 17 of 60 (rounds 1 to 3: 3,
+3 and 11; ledger/sandbox_log.jsonl now 60 rows, the eleven new rows status ok, stage1 full, source_sha256 equal to the
+committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.ledger verify`: OK, all six chains.
+
+## Requests to the coordinator
+- LESSONS.md entries proposed for review (numbering after 46):
+  - 47. In unit top30 on DEV, eleven pre-registered ideas from eight mechanism classes (reference price, volatility and
+    illiquidity shocks, calendar clientele of volume, intrabar wicks, comovement with BTC, volume trend, basis churn, and
+    an equal-weight combination) met one screen fixed in advance and none passed; eight had the wrong sign. Only the
+    anchoring book (distance below the 6-week high in volatility units) cleared the pre-cost floor (1.820), both
+    stresses and next30 (0.601), and it failed the paired reading (6 of 10; book median -0.549). Generation 3 PLAN run
+    log, round 3, runs 1 to 11; no trial id. WEAK: DEV only, one default each.
+  - 48. In round 3 no single-idea top30 book earned in both halves of DEV: books that lean toward recent winners (a
+    price against its recent high or VWAP, volume growth) earned in 2020 and lost in 2022H1 and over the last 365 days,
+    as round 2's continuation books did, while unsigned or move-orthogonal books lost in 2020 and earned in 2022H1; an
+    equal-weight combination of both kinds was flat (DEV Sharpe 0.372). Round 3, runs 1 to 11. WEAK as evidence about
+    markets; a rule built on the split would descend from it.
+  - 49. A weekly book short the coins whose weekend share of volume rose lost in every DEV year (Sharpe -2.343): coins
+    whose trading tilted toward the weekend did better the next week, in the direction of lesson 39. Round 3, run 6;
+    no trial id. WEAK; DEV is spent as a screen for the mirror.
+  - 50. Yardstick: weekly books that rank a price against a recent reference cost 0.30 to 0.31 of equity over DEV (C/G
+    0.35 to 0.37) and paid and received 0.68 to 0.79 in gross funding each way, like continuation books, while weekly
+    books on unsigned volume and volatility measures cost 0.11 to 0.20 (C/G 0.13 to 0.23). Round 3, runs 1 to 10. WEAK
+    as a number; a design yardstick next to lessons 19, 41 and 45.
+- Process, for the record: the wide screen spent 11 runs of a cap of 19 and no counted trial; every verdict came from
+  one default run.
+- No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
+  printed ones); every run took under 4 minutes.

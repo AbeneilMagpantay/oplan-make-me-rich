@@ -251,3 +251,32 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     (a DEV Sharpe under the liveness bar; a next30 sign that a mirror's reading had seemed to fix, but a mirror
     pays its costs again). The one pattern DEV had kept showing was put to its own unseen DEV readings before
     any VAL bar was spent on it, and it did not survive them. PROCESS.
+
+## From generation 3, round 3, the first wide screen (same kernel and unit; generations/gen003/REPORT.md, round 3)
+
+47. In unit top30 on DEV, eleven pre-registered ideas from eight mechanism classes (a price against a recent
+    reference, volatility and illiquidity shocks, the calendar clientele of volume, intrabar wicks, comovement
+    with BTC, a volume trend, the noise of the premium, and an equal-weight combination) met one screen fixed
+    in advance, and none passed; eight had the wrong sign. Only the anchoring book (distance below the 6-week
+    high in volatility units) cleared the floor before costs (1.820), both stresses and next30 (0.601), and it
+    failed the paired reading over the last 365 days of DEV (6 of 10 stale copies at least as good; book
+    median -0.549). Generation 3 PLAN run log, round 3, runs 1 to 11; no trial id. WEAK: DEV only, one default
+    each.
+48. In that round no single-idea top30 book earned in both halves of DEV. Books that lean toward recent winners
+    (a price against its recent high or average cost, volume growth) earned in 2020 and lost in 2022H1 and over
+    the last 365 days, as round 2's continuation books did; books on unsigned or move-neutral measures lost in
+    2020 and earned in 2022H1; an equal-weight combination of both kinds was flat (DEV Sharpe 0.372). WEAK as
+    evidence about markets; a rule built on the split would descend from it. What it does say about the
+    instrument: DEV holds two unlike regimes, and a book that reads well over the whole of it may be reading
+    one of them.
+49. A weekly book short the coins whose weekend share of volume rose lost in every DEV year (Sharpe -2.343):
+    coins whose trading tilted toward the weekend did better the next week, the direction of lesson 39. Two
+    constructions now agree on DEV in every year, but neither showed it on next30. Round 3, run 6; no trial
+    id. WEAK; DEV is spent as a screen for the mirror, whose next30 reading would fail the screen as fixed.
+50. Yardstick: weekly books that rank a price against a recent reference cost 0.30 to 0.31 of equity over DEV
+    (0.35 to 0.37 per unit of gross) and paid and received 0.68 to 0.79 in gross funding each way, like
+    continuation books; weekly books on unsigned volume and volatility measures cost 0.11 to 0.20 (0.13 to 0.23
+    per unit of gross). Round 3, runs 1 to 10. WEAK as a number; a design yardstick next to lessons 19, 41, 45.
+51. Process: the wide screen settled eleven ideas in eleven short runs, with no corner, no control and no
+    counted trial. Thirty-nine ideas have now been screened or scored in all (ten in unit core, twenty-nine in
+    unit top30), six of them in counted trials; none Tier 1. PROCESS.

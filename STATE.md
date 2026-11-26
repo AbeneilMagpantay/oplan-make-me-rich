@@ -319,6 +319,16 @@ compactly registered ideas from classes not yet closed, one default run each aga
 in advance, the fuller treatment only for a survivor. The coordinator's honest reading of the odds is
 unchanged (the meta-review), and it is the human's decision to go on. Nothing goes live before a pass and the
 forward test of CONSTITUTION 11, and going live stays his own explicit decision.
+Round 3, the first wide screen (2026-11-27; PLAN version 3, pre-registered and pushed as 92d1a5a before any
+run): eleven ideas from eight classes not tried before (a price against a recent reference, volatility and
+illiquidity shocks, the calendar clientele of volume, wicks, comovement with BTC, a volume trend, the noise of
+the premium, a combination), one default run each. None passed: eight had the wrong sign; the nearest, the
+distance below the 6-week high, read 1.820 before costs and passed every item but the last 365 days of DEV. No
+book earned in both halves of DEV (LESSONS 47 to 51). No counted trial; M unchanged. Generation 3 stands at 0
+of 5 counted submissions and 17 of 60 sandbox runs. Thirty-nine ideas have been screened or scored in all.
+The bound the coordinator sets on the human's direction: the search goes on within generation 3's remaining
+sandbox budget (43 runs, about three more wide screens); then generation 3 is closed and the result is put to
+him again.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
