@@ -1,0 +1,29 @@
+# Generation 3, round 1, H1 (generations/gen003/PLAN.md, version 1). Weekend share of the week's residual move.
+# e = the coin's hourly return net of its rolling hourly beta to the unit's equal-weighted mean return m (beta
+# = corr x std ratio over the last n hourly rows). Weekly bins run Monday 00:00 to Sunday 23:00 UTC (bar opens);
+# a bin is visible at the bar that opens Sunday 23:00 and is traded at the Monday 00:00 open, so the weights
+# change once a week. vol = the bin's residual hourly volatility; x = the bin's mean of e over vol (the week's
+# residual move); y = the bin's mean of the conditioned part over vol; z = y net of a cross-sectional fit on x,
+# orthogonal to the week's residual move across coins on every bin. Short the largest z, long the smallest;
+# dollar neutral, gross 1. No funding, mark or index input.
+# The conditioned part: e on the hours whose decision-time weekday is >= d (Saturday and Sunday at d = 5), 0
+# elsewhere. weekday SELECTS hours of a return series; it is not averaged, and it is not a constant, threshold or
+# scale. d is a float param so that G5's two outcomes (Saturday and Sunday; Sunday only) can be read on DEV.
+name = "gen003_weekend_share"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Weekend share: the weekend market is thin (fewer market makers and arbitrageurs, TradFi shut), so the part of a coin's weekly residual move made on Saturday and Sunday carries more transient pressure and partly reverses on weekdays, relative to the part made on weekdays. Short coins with a large weekend part for their week, long a small one; weekly. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+d = param(5.0, 4.0, 6.0)       # first decision-time weekday counted as weekend (5 = Saturday)
+
+r = ret(close, 1)
+m = cs_mean(r)
+e = r - corr(r, m, n) * std(r, n) / std(m, n) * m
+vol = sqrt(tf_mean(e * e, weekly))
+x = cs_demean(tf_mean(e, weekly) / vol)
+y = cs_demean(tf_mean(where(weekday >= d, e, 0), weekly) / vol)
+b = cs_mean(x * y) / cs_mean(x * x)
+z = y - b * x
+signal = cs_scale(cs_demean(-cs_rank(z)))

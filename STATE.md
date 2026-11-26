@@ -88,14 +88,15 @@
 
 ## Next
 
-Generation 2 is the next research step (generations/gen001/REPORT.md exists). It runs on the KP-015
-kernel in unit top30 (RESEARCH_PLAYBOOK section 4b). The human has the KP-016 counts (open decision 5);
-in unit top30 that proposal changes no threshold, so trials scored there keep their verdicts if it is
-adopted later (their ids would then belong to this kernel). Until the finding of the seal recount is
-measured (open decision 6), no funding-driven program is submitted for a counted trial in unit top30.
+Generation 3 is the research step now running (2026-11-26; see "Now" at the end of this section): unit
+top30, on the kernel sealed on 2026-11-26. Generation 2 ran on the KP-015 kernel and is closed. A program
+driven by funding or by the perp-index basis is submitted for a counted trial in unit top30 only after the
+coordinator's per-program measurement (open decision 6; RESEARCH_PLAYBOOK 4b), and a top30 Tier-1 result
+enters the pool only after a per-program measurement in null worlds (open decision 8, KP-020).
 The evidence so far (LESSONS 8 to 10) says single-coin timing rules on two instruments mostly collect
 the market's drift; that is why KP-015 (a point-in-time universe for market-neutral rules, with the
-index price as new data) was built first. What follows is the history of that build.
+index price as new data) was built first. What follows is the history of that build and of the batch
+re-key after it.
 
 KP-015 feasibility (2026-11-19, `notes/kp015_feasibility.md`): open interest and long/short ratios are
 not admissible for backtests (short history, archive rewritten); index price is admissible; a
@@ -270,8 +271,11 @@ rows, at every checkpoint and at the end); the seal on 2026-11-26 at core 0.05 a
 before the build; selftest OK; the recounts of the coordinator and of an independent recounter; the merge to
 `main`. Filed on the way, all open: KP-020 (a calibration family that is cheap to trade, unit top30), KP-021
 (the node limit can be exceeded by one), KP-022 (a sandbox run that faults before its row leaves no row).
-Now: research can resume on the new kernel. Generation 2 is open at 1 of 5 counted submissions and 22 of 60
-sandbox runs. New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
+Now: research resumes on the new kernel as GENERATION 3. Generation 2 was closed on 2026-11-26 with 1 counted
+trial of 5 and 22 sandbox runs of 60 (generations/gen002/REPORT.md, last part); its plan file is not touched
+again. Generation 3, round 1: a fresh researcher writes generations/gen003/PLAN.md and its programs (stage 1,
+no run); the coordinator commits and pushes the plan before any sandbox run, rules on its questions and
+orders stage 2. New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
 The rules for the rounds stand: no rule that was shaped on a DEV result is submitted for a counted trial
@@ -319,5 +323,5 @@ measurement in null worlds (KP-020).
    the unit's 3% bound is measured on families that lose to their costs; until then a top30 Tier-1 result is
    measured per program in null worlds before the pool, and both results are put to the human), KP-021 (the
    node limit of a program can be exceeded by one), KP-022 (a sandbox run that faults before its row is
-   written leaves no row) and KP-023 (a stale comment at NULL_FAULT_MAX). The last three are small and can
-   ride on the next re-key of their kind.
+   written leaves no row), KP-023 (a stale comment at NULL_FAULT_MAX) and KP-024 (a stale heading in
+   CONSTITUTION section 13). The last four are small and can ride on the next re-key of their kind.

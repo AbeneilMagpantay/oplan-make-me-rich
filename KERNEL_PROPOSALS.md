@@ -664,3 +664,13 @@ rates, status.
   re-key; no behaviour changes.
 - Expected effect: none.
 - Status: open (needs the human's approval).
+
+## 2026-11-26 (coordinator, from generation 3's researcher) KP-024 A stale heading in CONSTITUTION section 13
+
+- Source: the researcher of generation 3, round 1, stage 1 (a contradiction found while reading).
+- Problem: the heading of CONSTITUTION section 13 still reads "KP-015: the universe unit top30 (built 2026-11-19;
+  NOT in force until the human approves the re-key)". The unit has been in force since the seal of 2026-11-23.
+- Proposed change: correct the heading (text only; it can go with the text items of KP-014 and KP-017 in one
+  text-only re-key, which keeps the seal and every trial id).
+- Expected effect: none on any result.
+- Status: open (needs the human's approval).

@@ -1,0 +1,26 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 1, S9).
+# The placebo of H3 gen003_storm_share: the same program with s taken j = 168 hours earlier (BTC's storm weights
+# of the same hour of the week, one week before), so the weights keep their distribution and BTC's hour-of-week
+# volatility pattern but no longer mark this week's storms. If it earns as well as H3 on DEV, H3's result is not a
+# storm effect.
+name = "gen003_diag_lagged_storm_share"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only placebo, never to be submitted: H3 with the storm weights shifted back one week, to check on DEV that H3 reads this week's BTC storm hours and not its construction. Its returns are read only against H3's DEV Sharpe."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+k = param(168, 134, 202)       # hours in the coin's own trailing norm (7 days)
+j = param(168, 134, 202)       # hours by which the conditioning series is shifted (one week): the placebo
+
+r = ret(close, 1)
+m = cs_mean(r)
+e = r - corr(r, m, n) * std(r, n) / std(m, n) * m
+vol = sqrt(tf_mean(e * e, weekly))
+x = cs_demean(tf_mean(e, weekly) / vol)
+rb = ret(btc(close), 1)
+s = lag(rb * rb / sma(rb * rb, k), j)
+y = cs_demean(tf_mean(e * s, weekly) / vol)
+b = cs_mean(x * y) / cs_mean(x * x)
+z = y - b * x
+signal = cs_scale(cs_demean(-cs_rank(z)))

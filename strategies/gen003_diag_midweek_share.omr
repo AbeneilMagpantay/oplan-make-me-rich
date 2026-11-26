@@ -1,0 +1,21 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 1, S9).
+# The placebo of H1 gen003_weekend_share: the same program with the weekend hours replaced by the 48 hours whose
+# decision-time weekday is Wednesday or Thursday (2 or 3). If it earns as well as H1 on DEV, H1's result is not a
+# weekend effect but a property of the construction.
+name = "gen003_diag_midweek_share"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only placebo, never to be submitted: H1 with the weekend hours replaced by Wednesday and Thursday hours, to check on DEV that H1 reads a weekend effect and not its construction. Its returns are read only against H1's DEV Sharpe."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+
+r = ret(close, 1)
+m = cs_mean(r)
+e = r - corr(r, m, n) * std(r, n) / std(m, n) * m
+vol = sqrt(tf_mean(e * e, weekly))
+x = cs_demean(tf_mean(e, weekly) / vol)
+y = cs_demean(tf_mean(where((weekday >= 2) and (weekday < 4), e, 0), weekly) / vol)
+b = cs_mean(x * y) / cs_mean(x * x)
+z = y - b * x
+signal = cs_scale(cs_demean(-cs_rank(z)))

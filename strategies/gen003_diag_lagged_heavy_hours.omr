@@ -1,0 +1,25 @@
+# DEV-ONLY DIAGNOSTIC - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 1, S9).
+# The placebo of H2 gen003_heavy_hours: the same program with q taken j = 168 hours earlier (the same hour of
+# the week, one week before), so the weights keep their distribution and their hour-of-week pattern but no longer
+# mark the hours in which the coin's own volume was heavy. If it earns as well as H2 on DEV, H2's result is not a
+# heavy-hour effect.
+name = "gen003_diag_lagged_heavy_hours"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only placebo, never to be submitted: H2 with the heavy-hour weights shifted back one week, to check on DEV that H2 reads the coin's own heavy hours and not its construction. Its returns are read only against H2's DEV Sharpe."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+k = param(168, 134, 202)       # hours in the coin's own trailing norm (7 days)
+j = param(168, 134, 202)       # hours by which the conditioning series is shifted (one week): the placebo
+
+r = ret(close, 1)
+m = cs_mean(r)
+e = r - corr(r, m, n) * std(r, n) / std(m, n) * m
+vol = sqrt(tf_mean(e * e, weekly))
+x = cs_demean(tf_mean(e, weekly) / vol)
+q = lag(cs_rank(quote_volume / sma(quote_volume, k)), j)
+y = cs_demean(tf_mean(e * q, weekly) / vol)
+b = cs_mean(x * y) / cs_mean(x * x)
+z = y - b * x
+signal = cs_scale(cs_demean(-cs_rank(z)))

@@ -1,0 +1,32 @@
+# Generation 3, round 1, H2 (generations/gen003/PLAN.md, version 1). Heavy-hour share of the week's residual move.
+# e = the coin's hourly return net of its rolling hourly beta to the unit's equal-weighted mean return m (beta
+# = corr x std ratio over the last n hourly rows). Weekly bins run Monday 00:00 to Sunday 23:00 UTC (bar opens);
+# a bin is visible at the bar that opens Sunday 23:00 and is traded at the Monday 00:00 open, so the weights
+# change once a week. vol = the bin's residual hourly volatility; x = the bin's mean of e over vol (the week's
+# residual move); y = the bin's mean of the conditioned part over vol; z = y net of a cross-sectional fit on x,
+# orthogonal to the week's residual move across coins on every bin. Short the largest z, long the smallest;
+# dollar neutral, gross 1. No funding, mark or index input.
+# The conditioned part: e times q, q = the cross-sectional rank (in [-1, 1], every hour, across the in-play coins)
+# of the coin's hourly quote volume over its own trailing k-hour mean. The rank removes market-wide volume surges
+# and the calendar's volume cycle (every coin's volume rises in the same hours), so q marks COIN-SPECIFIC heavy
+# hours. quote_volume is the signal input through a ratio to its own trailing mean; it is not a constant,
+# threshold or scale.
+name = "gen003_heavy_hours"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Heavy hours: in perps a coin-specific volume spike is mostly forced or attention flow (liquidation cascades, stop runs, a crowd arriving), so the part of a weekly residual move made in the coin's own abnormally heavy hours partly reverses relative to the part made in quiet hours. Short coins with a large heavy-hour part for their week, long a small one; weekly. Falsified if the DEV sign is wrong (never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+k = param(168, 134, 202)       # hours in the coin's own trailing norm (7 days)
+
+r = ret(close, 1)
+m = cs_mean(r)
+e = r - corr(r, m, n) * std(r, n) / std(m, n) * m
+vol = sqrt(tf_mean(e * e, weekly))
+x = cs_demean(tf_mean(e, weekly) / vol)
+q = cs_rank(quote_volume / sma(quote_volume, k))
+y = cs_demean(tf_mean(e * q, weekly) / vol)
+b = cs_mean(x * y) / cs_mean(x * x)
+z = y - b * x
+signal = cs_scale(cs_demean(-cs_rank(z)))

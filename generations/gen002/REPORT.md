@@ -411,3 +411,18 @@ fail. Falsified.
 ## After the trial
 M = 6 (generation 0: 4, generation 1: 1, generation 2: 1 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool 0 of 5;
 sandbox runs used in generation 2: 22 of 60; all chains verified; the lock verifies, sealed.
+
+# Generation 2 closed (written by the coordinator, 2026-11-26)
+
+Generation 2 ends with one counted trial of the five allowed (7eadbeeaf2adc98d, failed on its merits) and 22
+sandbox runs of the 60 allowed, under the KP-015 kernel (5ea66b0fb79ca267). The kernel was changed and sealed
+anew on 2026-11-26 (7d923e7e2375986d; audits/AUDIT_LOG.md, round 8). Research continues as generation 3: a
+program submitted now is a new trial under the new kernel whatever its generation, and a new plan file keeps
+the two kernels apart. generations/gen002/PLAN.md is not touched again (its sha256 is in the counted trial's
+row).
+
+Rows 40 to 42 of ledger/sandbox_log.jsonl are the coordinator's verification runs after the re-key (three
+logged runs repeated on real DEV data, identical numbers) and belong to no generation's count.
+
+The kernel's full test suite ran at the build of the new kernel with every strategy of this generation in
+place (1228 passed), which is the run the playbook now asks for when a generation closes.
