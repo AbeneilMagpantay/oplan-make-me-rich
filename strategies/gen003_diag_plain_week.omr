@@ -1,0 +1,14 @@
+# DEV-ONLY CONTROL - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 2, S9).
+# The plain control of H6 gen003_week_continuation: the same weekly bins, with no beta and no volatility scaling:
+# the coins' raw mean hourly return over the last week, ranked (r - mk ranks as r on every bin; mk ties the
+# knownness to play as in H6, which also needs its 14-day beta window).
+name = "gen003_diag_plain_week"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: plain one-week continuation on the same weekly bins as H6, without the beta residual and the volatility scaling, to check on DEV that H6's construction adds to the raw weekly move. Its returns are read only against H6's DEV Sharpe."
+
+r = ret(close, 1)
+mk = cs_mean(r)
+x = tf_mean(r - mk, weekly)
+signal = cs_scale(cs_demean(cs_rank(x)))

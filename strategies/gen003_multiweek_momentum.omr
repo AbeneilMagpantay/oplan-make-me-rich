@@ -1,0 +1,23 @@
+# Generation 3, round 2, H4 (generations/gen003/PLAN.md, version 2). Multi-week residual momentum, decided weekly.
+# A CONTINUATION rule WRITTEN AFTER DEV RESULTS (LESSONS 16 and 23: generation 2's weekly residual reversal lost on
+# DEV, and its 4-week residual momentum rule was positive on DEV but lost in 2022H1): its DEV numbers are not evidence.
+# e = the coin's hourly return net of its rolling hourly beta to the unit's equal-weighted mean return mk (beta =
+# corr x std ratio over the last n hourly rows), as in round 1. Weekly bins run Monday 00:00 to Sunday 23:00 UTC
+# (bar opens); a bin is visible at the bar that opens Sunday 23:00 and is traded at the Monday 00:00 open, so the
+# weights change once a week. z = the mean of e over the last m weekly bins divided by its root mean square over the
+# same bins: the coin's residual move of the last m weeks in units of its residual volatility. Long the largest z,
+# short the smallest (rank weights); dollar neutral, gross 1. No funding, mark or index input.
+name = "gen003_multiweek_momentum"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Residual momentum, written after DEV results: a coin's move of the last m weeks net of its beta to the unit's mean, in units of its residual volatility, continues over the next week, because coin-specific news diffuses slowly through a fragmented, attention-driven clientele. Long the largest, short the smallest, weekly. Falsified if VAL PSR(0) < 0.90, funding stress or 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+m = param(3, 2, 4)             # weekly bins in the formation window (3 weeks)
+
+r = ret(close, 1)
+mk = cs_mean(r)
+e = r - corr(r, mk, n) * std(r, n) / std(mk, n) * mk
+z = sma(tf_mean(e, weekly), m) / sqrt(sma(tf_mean(e * e, weekly), m))
+signal = cs_scale(cs_demean(cs_rank(z)))

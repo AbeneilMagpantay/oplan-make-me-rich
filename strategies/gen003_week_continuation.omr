@@ -1,0 +1,20 @@
+# Generation 3, round 2, H6 (generations/gen003/PLAN.md, version 2). One-week residual continuation, decided weekly.
+# A CONTINUATION rule WRITTEN AFTER DEV RESULTS (LESSONS 16: generation 2's weekly residual REVERSAL lost on DEV in
+# all three years): its DEV numbers are not evidence. It ranks round 1's x itself (the week's residual move over the
+# week's residual volatility; round 1's three books were built orthogonal to it), with the continuation sign.
+# e as in round 1: the hourly return net of the rolling hourly beta to the unit's mean return mk over n hourly rows.
+# Weekly bins from Monday 00:00 UTC, visible at the bar that opens Sunday 23:00, traded at the Monday 00:00 open.
+# Long the largest z, short the smallest (rank weights); dollar neutral, gross 1. No funding, mark or index input.
+name = "gen003_week_continuation"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "One-week residual continuation, written after DEV results: a coin's move of the last week net of its beta to the unit's mean, in units of the week's residual volatility, continues over the next week, because news about a coin is absorbed by a fragmented clientele over more than a week. Long the largest, short the smallest, weekly. Falsified if VAL PSR(0) < 0.90, funding stress or 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the rolling hourly beta to the unit's mean return (14 days)
+
+r = ret(close, 1)
+mk = cs_mean(r)
+e = r - corr(r, mk, n) * std(r, n) / std(mk, n) * mk
+z = tf_mean(e, weekly) / sqrt(tf_mean(e * e, weekly))
+signal = cs_scale(cs_demean(cs_rank(z)))

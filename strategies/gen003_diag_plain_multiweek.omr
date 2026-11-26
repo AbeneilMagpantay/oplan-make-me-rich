@@ -1,0 +1,18 @@
+# DEV-ONLY CONTROL - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 2, S9).
+# The plain control of H4 gen003_multiweek_momentum: the same weekly bins and formation window, with no beta and no
+# volatility scaling. r - mk has the same rank across coins as r on every bin (mk is the same number for every coin
+# in an hour), so this ranks the coins' raw mean hourly return over the last m weeks: plain momentum, the shape of
+# the calibration's momentum family, re-decided weekly. mk ties the knownness to play as in H4 (H4 also needs its
+# 14-day beta window, so it holds a recent entrant about two weeks later than this control).
+name = "gen003_diag_plain_multiweek"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: plain m-week momentum on the same weekly bins as H4, without the beta residual and the volatility scaling, to check on DEV that H4's construction adds to raw momentum. Its returns are read only against H4's DEV Sharpe."
+
+m = param(3, 2, 4)             # weekly bins in the formation window (3 weeks)
+
+r = ret(close, 1)
+mk = cs_mean(r)
+x = sma(tf_mean(r - mk, weekly), m)
+signal = cs_scale(cs_demean(cs_rank(x)))

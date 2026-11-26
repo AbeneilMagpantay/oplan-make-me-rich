@@ -1,0 +1,20 @@
+# DEV-ONLY CONTROL - NOT A CANDIDATE - NEVER TO BE SUBMITTED (generations/gen003/PLAN.md, version 2, S9).
+# The drift control of H5 gen003_jump_continuation: the same daily residuals e, windows and weekly sampling, with the
+# uncentred skewness sma(e^3) / sma(e^2)^1.5 replaced by sma(e) / sma(e^2)^0.5, the residual drift of the last n days
+# in units of its root mean square. H5's uncentred skewness is about the centred skewness plus 3 times this drift, so
+# if this control earns as much as H5 on DEV, H5's DEV result is residual momentum, not jump continuation.
+name = "gen003_diag_resid_drift"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "DEV-only control, never to be submitted: H5 with the uncentred skewness replaced by the residual drift (mean over root mean square of the same daily residuals), to check on DEV that H5 reads jumps and not momentum. Its returns are read only against H5's DEV Sharpe."
+
+n = param(21, 16, 26)          # daily rows for the beta and for the drift (3 weeks)
+
+d = daily(close)
+r = logret(d, 1)
+mk = cs_mean(r)
+beta = corr(r, mk, n) * std(r, n) / std(mk, n)
+e = r - beta * mk
+t = tf_last(sma(e, n) / sqrt(sma(e * e, n)), weekly)
+signal = cs_scale(cs_demean(cs_rank(t)))
