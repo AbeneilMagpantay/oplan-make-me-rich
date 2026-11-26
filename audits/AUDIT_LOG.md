@@ -1639,3 +1639,65 @@ round 3 also the coordinator's own read of the core modules.
   calibration, every core row compared with ledger/calibration_5ea66b0fb79ca267.json, and only on a match the
   top30 calibration, compared at its checkpoints and at the end with ledger/ucalibration_5ea66b0fb79ca267.json.
   It seals nothing. While it runs no kernel file changes.
+
+## Round 8 (batch re-key of KP-016, KP-018 and KP-019) - 2026-11-26 - the supervised run, the reading before the seal, the seal
+
+- The supervised run (_build/kp019_lock_run; started detached at 02:58 local time; it sealed nothing). It
+  waited 9 minutes for memory (other sessions held all but 1.3 GiB), then ran the core calibration with 3
+  workers from 03:07 to 04:20 (4,361 s) and compared it: all 4,600 core rows equal the rows of
+  ledger/calibration_5ea66b0fb79ca267.json in every stored field; protocol version 7; verdict 0.05. Only then
+  top30: started at 04:32 with the 2 workers that fitted, restarted from its partial file with 3 workers at
+  05:32 (one upgrade), finished at 16:59 (wall time of the second attempt 41,219 s). 72 comparisons of the
+  partial file, one every 10 minutes, each OK: the eight oracle curves and achieved levels equal to the sealed
+  ones as they completed, then all 400 power rows, then the null rows as they came. At the end: all 1,600 top30
+  rows equal the rows of ledger/ucalibration_5ea66b0fb79ca267.json in every stored field; g6_lag_detail
+  reproduces perm_p in every evaluated row; protocol version 10; verdict 0.10. End state ALL_MATCH. A top30 run
+  that was interrupted and resumed (the upgrade) wrote the same rows, which the build had left unverified.
+- The new artifacts: ledger/calibration_7d923e7e2375986d.json (sha256
+  3f384d217cbb3872dabeb79294e660430b9dc516220e1b347d7ec58366d64eef; row 5 of ledger/calibration_log.jsonl) and
+  ledger/ucalibration_7d923e7e2375986d.json (16.2 MB with the per-lag details; sha256
+  31c27752c75b9931e49e6752da8442aed3b9d1da6bd3a52827026088eb6f3c77; row 6).
+- The coordinator's reading before the seal (own script from the raw rows, without the kernel's summary code).
+  Core: null A 1,498 evaluated of 1,500 designed, 1,144 of them DEV-positive, Tier-1 passes at 0.025 / 0.05 /
+  0.10: 10 / 26 / 44 against 34.3 allowed; null B 1,500 evaluated, 1,130 DEV-positive, 6 / 18 / 35 against 33.9
+  allowed. So 0.10 fails under both nulls and 0.05 is chosen; at 0.05 no family is above 3.0% of its evaluated
+  pairs (9 of 300); 0 faults, 0 stage-1 failures, 0 p values off k / 201; power at 0.05 and true Sharpe 1.5:
+  0.840, 0.830, 0.905, 0.810 (at 1.0: 0.570, 0.505, 0.630, 0.500); every oracle level within 0.005 of nominal.
+  Top30: null A 547 evaluated of 600 designed (2 liquidated, 51 not submitted), 165 DEV-positive (carry 14,
+  momentum 92, reversal 59), Tier-1 passes 0 / 0 / 0; null B 542 evaluated (58 not submitted), 225 DEV-positive
+  (44, 111, 70), 0 / 0 / 1 against 6.75 allowed. So 0.10 is chosen; 0 faults, 0 stage-1 failures, 0 p values
+  off k / 21; power at 0.10: 0.82, 0.74, 0.70, 0.68; levels within 0.002 of 1.5. g6_lag_detail: each of the
+  1,489 evaluated rows reproduces its perm_p; 1 row is over the speed limit; no row holds a tie or a liquidated
+  lag book. Both units: the stored summaries and verdicts equal the recount; the rows are the protocol's
+  design; every stored field of every row of the KP-015 artifacts is reproduced exactly; the only new field is
+  g6_lag_detail (top30); the oracle tuning blocks are equal. This is what the decision entry expected before
+  the build; there was no deviation to explain.
+- Seal (coordinator, 17:07 local time): "sealed: G6 threshold core 0.05 top30 0.1". The lock verifies, sealed;
+  row 12 of ledger/kernel_history.jsonl; all chains verify.
+- Selftest (python -m omr.selftest on the sealed kernel, 461 s): OK. It runs the five baselines and both
+  kitchen-sink programs (the new one exercises tf_last and tf_mean) on the real frames, and the three noise
+  programs through the complete evaluate path into a temporary ledger; nothing leaves it but OK.
+- Independent recount (a fresh recounter; its own script from the raw rows, no project code and no script of
+  the coordinator or the builder): the seal follows from the stored rows under the rule as CONSTITUTION
+  sections 8 and 13 write it. Its counts equal the coordinator's in every cell (designed, submitted, evaluated,
+  liquidated, faults, DEV-positive, Tier-1 passes at the three thresholds, family rates, floors, power, achieved
+  levels). Every evaluated p lies exactly on its lattice. The rows are the protocol's design with the module's
+  seeds and the sizes of a real run. The headers, the hashes, the seal block of kernel.lock, row 12 of the
+  kernel history and rows 5 and 6 of the calibration log agree with what it computed (it recomputed both hash
+  chains itself). Every stored field of all 6,200 rows of the KP-015 artifacts equals the new row of the same
+  key; the only new field is g6_lag_detail, which reproduces perm_p in 1,489 of 1,489 rows and holds numbers
+  and booleans only. It adds that unit core moves from 0.10 to 0.05 through the change of the denominator
+  alone: over evaluated pairs the rates at 0.10 are 2.94% and 2.33%, which passed. Its notes, none touching a
+  threshold: six stored mean Sharpes differ from a plain sum in the last bit (the order of summation); 17
+  top30 null rows store a G5 median of "-inf" (G5 is false in each, and the KP-015 rows are the same); the
+  comment of NULL_FAULT_MAX in omr/constants.py still names the old denominator of the fault share (no fault
+  exists; filed as KP-023); testing the power before or after choosing the threshold gives the same result
+  here.
+- What the seal does not show (limits that stand): G8 is not run in calibration; the top30 bound is measured
+  on families that lose to their costs (KP-020 and the interim rule of RESEARCH_PLAYBOOK 4b); S1 of KP-017 is
+  open and can now be examined from the stored per-lag details.
+- Records with this commit: STATE.md (the kernel, the batch closed, open decisions 5 to 8), KERNEL_PROPOSALS.md
+  (KP-016, KP-018 and KP-019 done; the riders of KP-017 done), RESEARCH_PLAYBOOK.md (tf_last / tf_mean in
+  section 4; the sandbox readings and the core threshold in 4b; the new forms of the source read in 5; the
+  full suite at a generation's close in 6), LESSONS.md (37 and 38). Then the merge of kp019-build into main
+  (fast-forward).

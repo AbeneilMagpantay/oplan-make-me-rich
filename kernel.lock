@@ -84,6 +84,67 @@
   "tests/test_universe.py": "9aabd2b61f484c7ad35d35bc1d01c1bbe9317ae1c4a825b0438b9d206d523f45"
  },
  "reason": "Batch re-key of 2026-11-25: KP-019 (tf_last and tf_mean), KP-018 (DEV readings of the top30 gates in the sandbox; gross funding totals in the universe engine), KP-016 (the pooled 3 percent bound over DEV-positive evaluated pairs, DEV_POSITIVE_MIN 100) and the riders of KP-017 (g6_lag_detail in the top30 calibration rows, a chosen draw that fails stage 1 counts as a fault, tier_at checks the p lattice); with them the mend of tests/test_core_identity.py; built at commit 45427bf, full suite 1228 passed; audits/AUDIT_LOG.md round 8 (design gate, build, independent audit, fix pass 1, delta audit)",
+ "seal": {
+  "calibration_file": "ledger/calibration_7d923e7e2375986d.json",
+  "calibration_sha256": "3f384d217cbb3872dabeb79294e660430b9dc516220e1b347d7ec58366d64eef",
+  "g6_threshold": {
+   "core": 0.05,
+   "top30": 0.1
+  },
+  "null_pass_rate": {
+   "core": {
+    "A": {
+     "0.025": 0.008741258741258742,
+     "0.05": 0.022727272727272728,
+     "0.1": 0.038461538461538464
+    },
+    "B": {
+     "0.025": 0.005309734513274336,
+     "0.05": 0.01592920353982301,
+     "0.1": 0.030973451327433628
+    }
+   },
+   "top30": {
+    "A": {
+     "0.025": 0.0,
+     "0.05": 0.0,
+     "0.1": 0.0
+    },
+    "B": {
+     "0.025": 0.0,
+     "0.05": 0.0,
+     "0.1": 0.0044444444444444444
+    }
+   }
+  },
+  "power_at_1_5": {
+   "core": {
+    "A": {
+     "fast": 0.84,
+     "slow": 0.83
+    },
+    "B": {
+     "fast": 0.905,
+     "slow": 0.81
+    }
+   },
+   "top30": {
+    "A": {
+     "fast": 0.82,
+     "slow": 0.74
+    },
+    "B": {
+     "fast": 0.7,
+     "slow": 0.68
+    }
+   }
+  },
+  "rule": "G6 threshold PER UNIT (core, top30), each from its own stored rows: the LARGEST of G6_GRID whose null pass rate (Tier-1 passes / DEV-POSITIVE EVALUATED pairs, KP-016) is <= NULL_PASS_MAX under BOTH nulls of that unit and whose every family's null pass rate (per its own EVALUATED pairs; a missing rate fails) is <= FAMILY_PASS_MAX under BOTH nulls of that unit (R-L, R-R), a null of that unit failing every threshold below FAMILY_EVALUATED_MIN (a family) or NULL_EVALUATED_MIN (the null) of its DESIGNED pairs evaluated, below DEV_POSITIVE_MIN DEV-positive evaluated pairs (KP-016) or above NULL_FAULT_MAX of its CANDIDATE pairs in a fault (KP-017 item 3: a chosen draw that fails stage 1 is a fault), every evaluated p on its lattice (KP-017 item 4), the unit's stored rows exactly its protocol design (fix pass 11, R-R); then oracle power at true Sharpe 1.5 >= POWER_MIN for BOTH speeds under BOTH nulls of that unit at that unit's threshold, every oracle level present in that unit's artifact achieved within RHO_BOUND. Both units seal or neither: STOP if either unit has no qualifying threshold, power below POWER_MIN or a level outside its bound",
+  "sealed_at": "2026-11-26T09:07:42Z",
+  "semantic_hash": "7d923e7e2375986dc12df4e54c20049bf214d90b49544be64d0665e24e6c3194",
+  "universe_calibration_file": "ledger/ucalibration_7d923e7e2375986d.json",
+  "universe_calibration_sha256": "31c27752c75b9931e49e6752da8442aed3b9d1da6bd3a52827026088eb6f3c77"
+ },
  "semantic": "7d923e7e2375986dc12df4e54c20049bf214d90b49544be64d0665e24e6c3194",
  "text": "b74122f3f9821056bbb5217ece9526d7068207d61f5941f47f5118c16fcd5209"
 }

@@ -452,9 +452,10 @@ rates, status.
   would keep 0.10); core would get 0.05, with power at true Sharpe 1.5 of 0.84, 0.83, 0.905 and 0.81. The
   cost as measured: both calibrations again take about 13 machine hours with three workers (top30 11.8
   hours, core 0.7), after a build, an audit and a re-key.
-- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the
-  batch re-key with KP-018 and KP-019. The one counted trial of generation 2 (7eadbeeaf2adc98d) keeps the id
-  of the earlier kernel.
+- Status: DONE. Approved by delegation 2026-11-25 (see the entry of that date at the end of this file); built,
+  audited, re-keyed and sealed on 2026-11-26 in the batch re-key with KP-018 and KP-019 (kernel
+  7d923e7e2375986d; audits/AUDIT_LOG.md, round 8): unit core is sealed at 0.05, unit top30 at 0.10. The one
+  counted trial of generation 2 (7eadbeeaf2adc98d) keeps the id of the earlier kernel.
 
 ## 2026-11-23 (coordinator, seal recount) KP-017 Findings of the independent recount of the KP-015 seal
 
@@ -493,8 +494,10 @@ rates, status.
   calibration could store the per-lag details of the carry family. No change of the G6 statistic is proposed.
   For every other program reading funding or the basis the restriction of RESEARCH_PLAYBOOK section 4b stays.
 - Status: open (S1 not explained; no change of the G6 statistic proposed; every change needs the human's
-  approval). Riding on the batch re-key of 2026-11-25 (see the entry of that date at the end of this file): the
-  storage of per-lag details in the top30 calibration and the code items above; the text items wait.
+  approval). Done in the batch re-key of 2026-11-25, sealed 2026-11-26 (kernel 7d923e7e2375986d;
+  audits/AUDIT_LOG.md, round 8): every evaluated top30 calibration row stores the per-lag details of G6
+  (g6_lag_detail), so S1 can be examined from the stored rows; code items 2 to 4 (item 1 stays in the code and
+  goes to the text pass). The text items wait for a text-only re-key.
 
 ## 2026-11-23 (researcher, generation 2 round 1) KP-018 Sandbox readings of G6's speed limit and of next30 for unit top30
 
@@ -518,8 +521,12 @@ rates, status.
   although no gate changes: worth it only together with another semantic change.
 - Expected effect: no change in any pass rate; fewer counted trials wasted on books that fail the speed limit
   by construction or that work only in the top 30; diagnostic programs are no longer needed.
-- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the batch
-  re-key; design, build and audit pending.
+- Status: DONE. Approved by delegation 2026-11-25 (see the entry of that date at the end of this file); built,
+  audited, re-keyed and sealed on 2026-11-26 in the batch re-key (kernel 7d923e7e2375986d; audits/AUDIT_LOG.md,
+  round 8). As built: for a top30 program the sandbox prints and logs, on DEV rows only, G6's speed-limit
+  statistic at one to three lag steps, the DEV Sharpe on next30, funding paid and received, the DEV Sharpe
+  under G2's funding stress and G4's doubled costs, and the names held; --g6-lags adds a DEV reading of G6's
+  paired comparison.
 
 ## 2026-11-23 (researcher, generation 2 round 1) KP-019 Aggregate or sample a dimensionless expression over a timeframe
 
@@ -547,8 +554,10 @@ rates, status.
   bin-close snapshots or as an hourly rolling mean, so a daily mean premium is out of reach without (a); and
   `funding_mean(n)` counts settlements, so the same n spans half the hours on a coin with 4-hour funding: a
   funding window measured in hours would need a time-based function.
-- Status: APPROVED BY DELEGATION 2026-11-25 (see the entry of that date at the end of this file); in the batch
-  re-key; design, build and audit pending.
+- Status: DONE. Approved by delegation 2026-11-25 (see the entry of that date at the end of this file); built,
+  audited, re-keyed and sealed on 2026-11-26 in the batch re-key (kernel 7d923e7e2375986d; audits/AUDIT_LOG.md,
+  round 8). As built: tf_last(x, tf) and tf_mean(x, tf) on the existing timeframe machinery (LANGUAGE.md
+  section 6); no tf_sum; the timeframe functions for fields are unchanged.
 
 ## 2026-11-25 (coordinator) Decision by delegation: one semantic re-key for KP-016, KP-018 and KP-019
 
@@ -644,3 +653,14 @@ rates, status.
   (semantic).
 - Expected effect: none on any result.
 - Status: open (needs the human's approval; a candidate for the next semantic re-key).
+
+## 2026-11-26 (coordinator, recount of the seal) KP-023 A stale comment at NULL_FAULT_MAX
+
+- Source: the independent recount of the seal of 2026-11-26 (audits/AUDIT_LOG.md, round 8, the seal).
+- Problem: the comment of NULL_FAULT_MAX in omr/constants.py still says "submitted pairs neither evaluated nor
+  liquidated / submitted". Since KP-017 item 3 the share is counted over the candidate pairs (the submitted
+  pairs plus the chosen draws that failed stage 1), as CONSTITUTION section 8 (c) and omr/calibrate.py say.
+- Proposed change: correct the comment. The file is in the semantic set, so it rides on the next semantic
+  re-key; no behaviour changes.
+- Expected effect: none.
+- Status: open (needs the human's approval).

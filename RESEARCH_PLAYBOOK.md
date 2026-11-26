@@ -72,6 +72,14 @@ A hypothesis written after looking at VAL numbers is not a hypothesis.
   trading. `ema` remembers 5n rows, `rsi` and `atr` 10n; `hold(..., h)` rebuilds its state from flat
   over the last h bars - choose h long enough that positions re-synchronise within it (the sandbox
   shows when the program is known). Nothing can tell where it is in history; do not try.
+- Your own series over a timeframe (kernel of 2026-11-26, KP-019): `tf_last(x, tf)` and `tf_mean(x, tf)` take
+  a dimensionless series x and a bare timeframe name (`h2 h3 h4 h6 h8 h12 daily weekly`) and give x at the
+  last hour of each complete bin, or its mean over the bin's hours (tf_mean needs an hourly x). The result is
+  a series of that timeframe: it changes once per bin, is visible from the bin's last hourly bar, and rolling
+  functions on it count bins (`sma(tf_last(x, daily), n)` averages n daily samples). A `cs_*` inside x ranks
+  on every hour; a `cs_*` around the result ranks once per bin (LANGUAGE.md sections 6 and 10). The lookback
+  is 2h - 2 hours for a bin of h hours, plus x's own. A funding window measured in hours is
+  `sma(funding8h, n)`.
 - The program cannot see dates, bar positions or price levels; only hour and weekday of the
   decision time. Do not try to encode remembered history through the choice of structure and
   parameters either (KP-010): forward results will judge it.
@@ -101,8 +109,18 @@ before writing a top30 program. What decides whether a top30 idea can pass at al
 - Cross-sections: a `cs_*` needs at least 10 in-play symbols with a known input; a symbol with a hole in
   its window drops out until the window is clean.
 - G8 runs the same program on the next 30 symbols (ranks 31 to 60).
-- The sealed G6 threshold is 0.10 in unit top30 and 0.10 in unit core. G6 tests timing, not luck: a book
-  that earns a premium without timing passes it about 1 time in 10.
+- The sealed G6 threshold is 0.10 in unit top30 and, since the kernel of 2026-11-26, 0.05 in unit core (the
+  no-skill pass rate is now counted over the pairs with a positive DEV Sharpe; LESSONS 37). G6 tests timing,
+  not luck: a book that earns a premium without timing passes it about 1 time in 10.
+- What the sandbox prints for a top30 program since the kernel of 2026-11-26 (KP-018; DEV rows only, logged
+  with the run): G6's speed-limit statistic at one, two and three lag steps of 621 hours (the limit is 0.5; on
+  VAL G6 takes the largest over 19 steps, and an undefined correlation counts as over); the DEV Sharpe of the
+  same program on next30 (G8's unit); funding paid and funding received, and the DEV Sharpe under G2's funding
+  stress and under G4's doubled costs; the average number of names held. `--g6-lags` adds a DEV reading of
+  G6's paired comparison (10 stale copies over the last 365 days of DEV). These replace the diagnostic
+  programs generation 2 wrote by hand for the speed limit and the stale copy; twins and plain controls stay a
+  researcher's tool. They are readings on DEV, not the gates: a program that read well on DEV failed six gates
+  on VAL (LESSONS 34 and 35), so a reading can drop a hypothesis but is never the reason to submit one.
 - Memory: the evaluator refuses a top30 run, uncounted, when the machine is short of free memory (about
   1.5 GiB for a small program).
 - Not yet (KERNEL_PROPOSALS KP-017, from the recount of the seal): no program driven by funding
@@ -128,7 +146,9 @@ before writing a top30 program. What decides whether a top30 idea can pass at al
 Before ANY counted submission the coordinator reads the program text for the patterns the constant
 probe cannot see: a threshold or scale built from same-unit field ratios (`mark_close / close`,
 `taker_buy_volume / volume` used as a constant), from calendar fields averaged over a cycle
-(`sma(hour, 25)`, small-offset averages such as `sma(hour + 0.5, n)` at n = 24), rounding-noise
+(`sma(hour, 25)`, small-offset averages such as `sma(hour + 0.5, n)` at n = 24) or over a bin
+(`tf_mean(0.5 * hour, daily)`, `tf_mean(hour + funding8h, daily)`: the probe rejects only the bare
+`tf_mean(hour, daily)`; `tf_last` of hour or weekday at a bin's end is a constant 0 or a clock), rounding-noise
 constants (`sma(hour + e, n) - e`), a sign cliff tuned to the probe panel's fixed seed, a scale such
 as `1 / (1 + k)` with a tiny param, or by algebra across a comparison (both sides multiplied by the
 same series). A program using them is not submitted. The researcher's inputs are trial rows and `status` only.
@@ -158,6 +178,8 @@ the work; it is not a budget: every counted trial raises M in every later DSR.
 - A verdict per hypothesis against its pre-registered falsifier.
 - LESSONS.md takes only what the evidence supports, with trial ids. Mark anything suggestive but
   unproven as such.
+- When a generation closes, the coordinator has the kernel's full test suite run (about 45 minutes; LESSONS
+  36: a kernel test broke on a new generation's files and nobody saw it until the next kernel build).
 
 ## 7. Pool decisions
 

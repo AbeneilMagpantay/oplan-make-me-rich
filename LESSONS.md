@@ -191,3 +191,16 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     nobody saw it for the life of that kernel: the full suite ran at the kernel's build and not again before
     the next kernel change. A kernel test that reads the genome folder by a pattern must hold for every program
     the language accepts, and the full suite runs when a generation closes as well as at every build. PROCESS.
+
+## About the instrument after the batch re-key (ledger/calibration_7d923e7e2375986d.json, ledger/ucalibration_7d923e7e2375986d.json)
+
+37. Counted over the pairs a researcher would submit (a positive DEV Sharpe), the no-skill worlds of unit
+    core passed Tier 1 in 3.8% (null A, 44 of 1,144) and 3.1% (null B, 35 of 1,130) of cases at a G6
+    threshold of 0.10, above the 3% bound; at 0.05 in 2.3% and 1.6%. Unit core is sealed at 0.05 since
+    2026-11-26. At 0.05 a program with a true VAL Sharpe of 1.5 passes 81% to 91% of the time, one with 1.0
+    only 50% to 63%. INSTRUMENT.
+38. In unit top30 the same count gives 0 of 165 and 1 of 225 at 0.10, but on families that lose to their
+    costs (lesson 13). For a book that is cheap to trade the 3% bound is not measured (KERNEL_PROPOSALS
+    KP-020): in the null worlds of the KP-017 measurement two cheap books, with costs switched off, passed
+    every gate but G6 in 4 of 128 cases and G6 as well in 1; with costs on, in none. A top30 Tier-1 result is
+    therefore measured per program in null worlds before it enters the pool. INSTRUMENT, open.

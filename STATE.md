@@ -1,12 +1,22 @@
-# STATE (2026-11-25: generations 0 to 2 have counted trials, six in all, none Tier 1; the KP-015 kernel is sealed)
+# STATE (2026-11-26: generations 0 to 2 have counted trials, six in all, none Tier 1; the kernel of the batch re-key is sealed)
 
 ## Where things stand
 
-- Kernel (KP-015; sealed 2026-11-23 and on `main` since the merge of the same day): semantic
+- Kernel (the batch re-key of 2026-11-25: KP-016, KP-018, KP-019 and riders of KP-017; re-keyed and sealed
+  2026-11-26 and on `main` since the merge of the same day): semantic
+  `7d923e7e2375986dc12df4e54c20049bf214d90b49544be64d0665e24e6c3194` (40 files), text
+  `b74122f3f9821056bbb5217ece9526d7068207d61f5941f47f5118c16fcd5209` (39 files), G6 threshold 0.05 for unit
+  core and 0.10 for unit top30, from `ledger/calibration_7d923e7e2375986d.json` and
+  `ledger/ucalibration_7d923e7e2375986d.json`. Every stored row equals the KP-015 kernel's row; the core
+  threshold fell from 0.10 to 0.05 because the pooled 3% bound is now counted over the pairs with a positive
+  DEV Sharpe. Selftest OK. The seal was recounted by the coordinator and by an independent recounter
+  (audits/AUDIT_LOG.md, round 8, the seal).
+- The KP-015 kernel (it scored generation 2's counted trial 7eadbeeaf2adc98d; sealed 2026-11-23, on `main`
+  until the merge of 2026-11-26): semantic
   `5ea66b0fb79ca267d3c8de22d203976aab3bca5634b22e026b13687c69eb2687` (39 files), text
   `1366fb8fd0b6976839a3e6b16e40c402291c0154bb8ccfeae24bcd6848c72924` (35 files), G6 threshold 0.10
   for unit core and 0.10 for unit top30, from `ledger/calibration_5ea66b0fb79ca267.json` and
-  `ledger/ucalibration_5ea66b0fb79ca267.json`. Selftest OK. The seal was recounted by the coordinator
+  `ledger/ucalibration_5ea66b0fb79ca267.json`. Its seal was recounted by the coordinator
   and by an independent auditor (audits/seal_recount_findings.md: AGREE, no blocker).
 - The earlier kernel (the one that scored the five counted trials; on `main` until 521687f): semantic
   `7446278556aadd8f4f10e30b75ddebbc2ab272a255f2b8fc0472ed57a18ecad1` (32 files), text
@@ -242,30 +252,31 @@ recount in those worlds, so KP-017 itself stays open (KERNEL_PROPOSALS).
 The counted trial (2026-11-25): gen002_averaged_funding_shock failed in VAL (Sharpe -0.249 against 1.499 on
 DEV; six gates failed; lessons 34 and 35). Generation 2 stands at 1 of 5 counted submissions and 22 of 60
 sandbox runs; 12 pre-registered hypotheses in four rounds, one counted trial, no Tier 1.
-Now: the kernel is being changed. Asked on 2026-11-25 to choose between one re-key for the researchers' two
-requests (KP-018 and KP-019, with KP-016 riding on it) and more rounds on the kernel as it is, the human
-replied "decide whats the best". The coordinator decided for the re-key and recorded it as an approval by
-delegation for this batch only (KERNEL_PROPOSALS.md, entry of 2026-11-25). In the batch: KP-019, KP-018,
-KP-016 and, of KP-017, the storage of per-lag details in the top30 calibration and the small code items; not
-in it: the text items of KP-017 and KP-014. Order: design (no kernel file changed), the coordinator's gate,
-build on branch kp019-build, tests, independent audit and the coordinator's own review, re-key, both
-calibrations (about 13 machine hours, unattended), pre-seal reading, seal, selftest, recount, merge. Expected:
-every stored row identical to the sealed artifacts; thresholds top30 0.10 and core 0.05. Until the seal no
-research round runs and nothing is submitted; the human can strike any item until the re-key. Stage reached
-(2026-11-26): the build on branch kp019-build passed the independent audit and the coordinator's own review
-with no blocker (audits/AUDIT_LOG.md, round 8, the build); one fix pass followed; the full suite gives 1228
-passed. An older fault came to light and was mended in the batch: the kernel's core-identity test had failed
-on main since generation 2's first programs (it read every file in strategies/). Filed on the way: KP-020 (a
-calibration family that is cheap to trade, unit top30), KP-021 (the node limit can be exceeded by one) and
-KP-022 (a sandbox run that faults before its row leaves no row); all open. On 2026-11-26 the kernel was
-re-keyed on the branch (semantic 7d923e7e2375986d, text b74122f3f9821056, NOT sealed; row 11 of
-ledger/kernel_history.jsonl), and three logged sandbox runs repeated on real DEV data gave identical numbers
-(rows 40 to 42 of ledger/sandbox_log.jsonl: the coordinator's verification runs, generation 2 stays at 22 of
-60). The supervised calibrations follow that commit (_build/kp019_lock_run/status.txt): the core unit first,
-then top30, every row compared with the sealed artifacts; about 13 machine hours with three workers, longer
-when memory is short. While they run no kernel file may change, and `main` keeps the sealed KP-015 kernel. The
-rule for the rounds after it stands: no rule that was shaped on a DEV result is submitted for a counted trial
-without a reason beyond its DEV numbers.
+The batch re-key (2026-11-25 to 26; audits/AUDIT_LOG.md, round 8). Asked on 2026-11-25 to choose between one
+re-key for the researchers' two requests (KP-018 and KP-019, with KP-016 riding on it) and more rounds on the
+kernel as it was, the human replied "decide whats the best". The coordinator decided for the re-key and
+recorded it as an approval by delegation for that batch only (KERNEL_PROPOSALS.md, entry of 2026-11-25). In
+the batch: KP-019 (tf_last, tf_mean), KP-018 (the sandbox's DEV readings of the top30 gates), KP-016 (the
+pooled 3% bound over the pairs with a positive DEV Sharpe, at least 100 of them per null) and, of KP-017, the
+per-lag details of G6 in the top30 calibration rows and the small code items; with them a mend of the kernel's
+core-identity test, which had failed on main since generation 2's first programs (it read every file in
+strategies/). Not in it: the text items of KP-017 and KP-014. What was done: design, the coordinator's gate,
+the build on branch kp019-build, an independent audit and the coordinator's own review (no blocker), one fix
+pass with its delta audit, the full suite at 1228 passed; the re-key at commit 45427bf; three logged sandbox
+runs repeated on real DEV data with identical numbers (rows 40 to 42 of ledger/sandbox_log.jsonl, the
+coordinator's verification runs: generation 2 stays at 22 of 60); the supervised calibrations (the core unit
+in 73 minutes, top30 in 12.5 hours from start to end; all 4,600 and 1,600 rows equal to the KP-015 kernel's
+rows, at every checkpoint and at the end); the seal on 2026-11-26 at core 0.05 and top30 0.10, as expected
+before the build; selftest OK; the recounts of the coordinator and of an independent recounter; the merge to
+`main`. Filed on the way, all open: KP-020 (a calibration family that is cheap to trade, unit top30), KP-021
+(the node limit can be exceeded by one), KP-022 (a sandbox run that faults before its row leaves no row).
+Now: research can resume on the new kernel. Generation 2 is open at 1 of 5 counted submissions and 22 of 60
+sandbox runs. New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
+prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
+of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
+The rules for the rounds stand: no rule that was shaped on a DEV result is submitted for a counted trial
+without a reason beyond its DEV numbers, and no top30 Tier-1 result enters the pool before the per-program
+measurement in null worlds (KP-020).
 
 ## Open decisions for the human
 
@@ -285,24 +296,28 @@ without a reason beyond its DEV numbers.
    again).
 3. KP-014: text-only LANGUAGE.md additions from the fifth audit (keeps the seal and trial ids).
 4. KP-002, KP-004, KP-005, KP-010 remain open; KP-009 kernel-side check optional.
-5. KP-016 (approved by delegation on 2026-11-25 as part of the batch re-key, see "Now"; its counts were put
-   to the human on 2026-11-23, then with the recommendation not to re-key for it alone): count the null pass
-   rate over DEV-positive submissions only. Fix pass 7 built a weaker safeguard into KP-015 (R-L, no family above 6%). On the
-   sealed rows of 2026-11-23, over the evaluated pairs with a positive DEV Sharpe: top30 has no Tier-1
-   pass among 165 under null A and 1 among 225 (0.44%) under null B at 0.10, so top30 would keep 0.10;
-   core has 44 of 1144 (3.85%) and 35 of 1130 (3.10%) at 0.10 and 26 of 1144 (2.27%) and 18 of 1130
-   (1.59%) at 0.05, so core would get 0.05 instead of 0.10 (power at Sharpe 1.5 then 0.81 to 0.905).
-   Adopting it is a semantic change: a build, an audit, a re-key and both calibrations again (about 13
-   machine hours; the rows should come out the same). Left as it is, the count stays information that
-   every calibration reports.
-6. KP-017 (open): the findings of the independent recount of the seal. S1: G6 in unit top30 on books
-   dominated by costs (see "Open from the recount" above); a measurement is ordered, and a change of the
-   G6 statistic is proposed only if it shows an effect on books that can pass the other gates. Also small
-   alignments of text and code, each waiting for the next re-key of its kind. Every change needs the
-   human's approval. Riding on the batch re-key of 2026-11-25 (see "Now"): the storage of per-lag details in
-   the top30 calibration and the code items; the text items wait.
-7. KP-018 and KP-019 (approved by delegation on 2026-11-25, in the batch re-key, see "Now"; requests of
-   generation 2's researcher): the sandbox to print the speed-limit
-   statistic of G6 and a next30 reading on DEV; a way to aggregate or sample a dimensionless expression
-   over a timeframe, so that signals built from hourly data can be re-ranked weekly. Both are semantic
-   changes (a re-key and both calibrations), so they go into that one re-key.
+5. KP-016 (approved by delegation on 2026-11-25, built and sealed on 2026-11-26 in the batch re-key): the null
+   pass rate of the seal is counted over the evaluated pairs with a positive DEV Sharpe, at least 100 of them
+   per null. On the new rows, as on the rows of 2026-11-23: top30 has no Tier-1 pass among 165 under null A
+   and 1 among 225 (0.44%) under null B at 0.10 and keeps 0.10; core has 44 of 1144 (3.85%) and 35 of 1130
+   (3.10%) at 0.10 and 26 of 1144 (2.27%) and 18 of 1130 (1.59%) at 0.05, so core is sealed at 0.05 (power at
+   Sharpe 1.5 then 0.81 to 0.905; at Sharpe 1.0 only 0.50 to 0.63). The human may still decline it (that means
+   another re-key and both calibrations again).
+6. KP-017 (open): the findings of the independent recount of the KP-015 seal. S1: G6 in unit top30 on books
+   dominated by costs (see "Open from the recount" above); a change of the G6 statistic is proposed only if a
+   measurement shows an effect on books that can pass the other gates. Done in the batch re-key: every
+   evaluated top30 calibration row now stores the statistics of the books G6 ran, per lag, so S1 can be
+   examined from the stored rows without another run, and the small code items. The text items wait for a
+   text-only re-key. Every change needs the human's approval.
+7. KP-018 and KP-019 (approved by delegation on 2026-11-25, built and sealed on 2026-11-26 in the batch
+   re-key; requests of generation 2's researcher): the sandbox prints DEV readings of the top30 gates (the
+   speed-limit statistic of G6, next30, funding paid and received, the DEV Sharpe under G2's and G4's
+   stresses, names held; opt-in a DEV reading of G6's paired comparison), and tf_last / tf_mean sample or
+   average a dimensionless series over a timeframe, so that signals built from hourly data can be re-ranked
+   weekly. The human may still decline either (another re-key and both calibrations).
+8. Filed during the batch re-key, open: KP-020 (a calibration family that is cheap to trade, for unit top30:
+   the unit's 3% bound is measured on families that lose to their costs; until then a top30 Tier-1 result is
+   measured per program in null worlds before the pool, and both results are put to the human), KP-021 (the
+   node limit of a program can be exceeded by one), KP-022 (a sandbox run that faults before its row is
+   written leaves no row) and KP-023 (a stale comment at NULL_FAULT_MAX). The last three are small and can
+   ride on the next re-key of their kind.
