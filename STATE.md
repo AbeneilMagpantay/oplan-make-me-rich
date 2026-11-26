@@ -291,6 +291,11 @@ next30 and losing over the last 365 days of DEV in the paired reading; no counte
 Generation 3 stands at 0 of 5 counted submissions and 6 of 60 sandbox runs. Eighteen market-neutral top30
 ideas have now been screened on DEV in generations 2 and 3: one passed its screen and failed its counted
 trial, and none of the other seventeen was eligible.
+The meta-review (2026-11-26, early; generations/META_REVIEW_2026-11-26.md, by an independent analyst, with the
+coordinator's note): as set up, the top30 search is unlikely to reach Tier 1; the weekly market-neutral rank
+book is stopped; RESEARCH_PLAYBOOK section 8b holds the stop list and a bar check that every later hypothesis
+must pass at registration. RESEARCH IS ON HOLD for the human's direction (open decisions 9 to 11): no round
+starts and nothing in the kernel changes before he answers.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
@@ -341,3 +346,25 @@ measurement in null worlds (KP-020).
    node limit of a program can be exceeded by one), KP-022 (a sandbox run that faults before its row is
    written leaves no row), KP-023 (a stale comment at NULL_FAULT_MAX) and KP-024 (a stale heading in
    CONSTITUTION section 13). The last four are small and can ride on the next re-key of their kind.
+9. THE DIRECTION OF THE SEARCH (put to the human on 2026-11-26 with generations/META_REVIEW_2026-11-26.md). The
+   independent review's judgement: as set up, the top30 search is unlikely to reach Tier 1. A top30 book needs
+   a true VAL Sharpe of about 1.5 after costs (about 1.85 before costs for a weekly book) for the 68 to 82%
+   odds the calibration measured; nothing measured comes near that out of sample, and DEV Sharpe has said
+   almost nothing about VAL in the four pairs that exist. Choices: (A) at most two more cheap rounds from the
+   review's agenda (calendar timing on BTC/ETH; crowded leverage as a time series on BTC/ETH; a top30 book held
+   only after market stress), under the new bar check, then pause; (B) pause now and answer decisions 10 and 11
+   first; (C) stop. The coordinator recommends (A) then (B). No round starts before the human answers.
+10. WHAT THE BOT SHOULD LOOK FOR (review Q4). The scorer credits timing skill only: G6 and its speed limit fail
+   any book whose stale copies earn as much, and G2 halves funding income, so steady premia (funding carry,
+   size, low volatility), the best-documented source of return in crypto, cannot pass by construction. Is that
+   the goal? Admitting premia needs a different guard (a longer forward test) and a gate redesign with both
+   calibrations again.
+11. THE COST BASIS (review Q1 and Q6). No document says which account size and order type the top30 cost rate
+   of 12.5 bps per side (5.5 fee + 7 slippage) stands for; the human's intended capital and execution style
+   would settle it by a forward measurement. Lower costs would not have changed any verdict so far, and they
+   could stop the top30 seal (one power cell reads 0.48 at 0.05). Also for the human: whether missing about
+   half of true Sharpe-1.0 edges (core power 0.50 to 0.63 at 1.0) is acceptable.
+12. Filed from the meta-review, open: KP-025 (G2 charges both funding legs of a book that pays and receives
+   equally; a stress on net funding would keep the protection against living on received funding), KP-026 (the
+   rebalance rule trades every name when any name is outside its band; a cost decomposition first), KP-027 (two
+   stale texts in the kernel).

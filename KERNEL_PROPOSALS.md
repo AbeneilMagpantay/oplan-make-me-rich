@@ -674,3 +674,45 @@ rates, status.
   text-only re-key, which keeps the seal and every trial id).
 - Expected effect: none on any result.
 - Status: open (needs the human's approval).
+
+## 2026-11-26 (coordinator, from the meta-review) KP-025 G2 charges both funding legs of a book that pays and receives equally
+
+- Source: generations/META_REVIEW_2026-11-26.md, section 4 (Q2); LESSONS 42.
+- Problem: G2's stress multiplies funding paid by 1.5 and funding received by 0.5, per symbol and settlement. A
+  dollar-neutral top30 book that never reads funding pays and receives about the same gross amount, so the
+  stress is a standing charge of half its gross funding flows. On DEV it took 0.53 to 0.77 Sharpe from the
+  eight books with readings (sandbox rows 40 to 48), more than G4's doubled costs in each; in VAL it took 0.45
+  from the one counted top30 trial. It is not a market scenario: a market-wide rise in funding lifts what the
+  short leg receives as much as what the long leg pays.
+- Question for the human: is G2 meant to tax every book that holds both legs, or only a book that lives on net
+  funding income? If the second, a stress on NET funding (net received x 0.5, net paid x 1.5) keeps that
+  protection.
+- Cost of a change: semantic (a build, an audit, a re-key and both calibrations, about 13 machine hours); every
+  later trial gets a new kernel id.
+- What would be lost: the per-leg charge also covers a venue whose funding differs on both legs at once.
+- Note: the change would not have altered any verdict so far; each book that failed G2's reading failed other
+  items too.
+- Status: open (needs the human's approval; not urgent).
+
+## 2026-11-26 (coordinator, from the meta-review) KP-026 The rebalance rule trades every name when any name is outside its band
+
+- Source: generations/META_REVIEW_2026-11-26.md, section 4 (Q5).
+- Problem: weekly top30 books rebalanced 573 to 668 times in the 912 days of DEV although their targets changed
+  about 130 times (generation 3 run logs); their costs per unit of gross (up to 0.45) exceed the estimate from
+  the target changes (about 0.22). The engine rebalances the whole book whenever one name is 0.01 away from
+  its target.
+- Proposed first step: a cost decomposition on DEV (how much of a weekly book's costs comes from target changes,
+  from drift traded back, from names entering and leaving). No kernel change before that measurement.
+- Expected effect of a per-name band, if adopted later: an estimated 0.1 Sharpe or less for weekly books.
+- Status: open (a measurement first; any change is semantic and needs the human's approval).
+
+## 2026-11-26 (coordinator, from the meta-review) KP-027 Two stale texts in the kernel
+
+- Source: generations/META_REVIEW_2026-11-26.md, section 6.
+- Problem: (1) the comment at UNIVERSE_G6_LAGS and UNIVERSE_G6_MEMORY_MAX in omr/constants.py still says
+  "PROVISIONAL (to be confirmed by measurement before the re-key)", though the choice stands and the kernel has
+  been sealed twice since; (2) the top30 verdict lists 0.025 among the qualifying thresholds, though the
+  smallest p in top30 is 1/21, so that threshold cannot be reached (harmless: the rule takes the largest).
+- Proposed change: correct the comment; say in the verdict or in CONSTITUTION section 13 that 0.025 is out of
+  reach in top30. Both ride on the next re-key of their kind.
+- Status: open (needs the human's approval).

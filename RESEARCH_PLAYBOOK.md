@@ -198,6 +198,30 @@ compare with backtests, and what the stage-1 log says. Then:
 - file kernel change requests in `KERNEL_PROPOSALS.md` for the human (problem, evidence, proposed
   change, expected effect on pass rates) - including new fields or functions for the language.
 
+## 8b. Meta-review of 2026-11-26 (early, after generation 3's round 2; generations/META_REVIEW_2026-11-26.md)
+
+What changed in this playbook and why (coordinator, on the independent analyst's review of generations 0 to 3):
+
+- Stopped, because the evidence closes them: weekly market-neutral rank books on price, volume or flow
+  residuals in unit top30 (15 of the 18 top30 ideas; none reached even the in-sample bar, and continuation died
+  on readings nobody had seen); top30 funding or premium contrarian forms (LESSONS 27 and 34); "long when X"
+  switches in unit core (LESSONS 8 and 9); anything that replaces its book daily or faster (the cost rate alone
+  takes more than any edge shown). No plan registers one of these.
+- The bar check at registration (binding from now on). For every hypothesis the plan states, before any run: its
+  estimated cost drag in Sharpe units; the Sharpe before costs it therefore needs in VAL (0.74 plus the drag to
+  sit on G1's line, 1.5 plus the drag for the odds the calibration measured: about 1.85 for a weekly top30
+  book); and the outside evidence that an effect of that size exists in liquid crypto after 2021. An effect
+  documented below the bar is not registered. In the DEV screen the liveness item is no longer "DEV Sharpe at
+  least 0.6": it is "DEV Sharpe before costs (the DEV Sharpe plus the drop under G4's reading) at least 1.5,
+  AND the paired reading's book median over the last 365 days of DEV positive".
+- Rules descended from a DEV result: registered only if the parent's DEV Sharpe before costs was at least 2.5
+  (room for the decay seen between DEV and VAL), and said to be descended, as before.
+- The last 12 months of DEV weigh as much as the whole period: an edge that sits in 2020 is not an edge.
+- What a DEV screen is for: killing cheaply. It has not told VAL winners apart (LESSONS 35), so a survivor is
+  still only a candidate.
+- The direction of the search after this review is the human's decision (STATE.md, open decisions 9 to 11); no
+  round starts before it.
+
 ## 9. New data sources
 
 Propose them in `KERNEL_PROPOSALS.md` with the data-admission evidence (CONSTITUTION section 3.2).
