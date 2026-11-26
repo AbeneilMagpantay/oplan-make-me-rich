@@ -273,9 +273,14 @@ before the build; selftest OK; the recounts of the coordinator and of an indepen
 (the node limit can be exceeded by one), KP-022 (a sandbox run that faults before its row leaves no row).
 Now: research resumes on the new kernel as GENERATION 3. Generation 2 was closed on 2026-11-26 with 1 counted
 trial of 5 and 22 sandbox runs of 60 (generations/gen002/REPORT.md, last part); its plan file is not touched
-again. Generation 3, round 1: a fresh researcher writes generations/gen003/PLAN.md and its programs (stage 1,
-no run); the coordinator commits and pushes the plan before any sandbox run, rules on its questions and
-orders stage 2. New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
+again. Generation 3, round 1 (2026-11-26; generations/gen003/PLAN.md version 1, pre-registered and pushed as
+48e12d0 before any run; generations/gen003/REPORT.md): three hypotheses, each a weekly book that ranks HOW a
+coin's week was made (its weekend part, its heavy-hour part, its storm-hour part), orthogonal to the week's
+residual move and contrarian; the first use of tf_mean. All three were dropped at the DEV screen at their
+defaults (DEV Sharpe -1.348, -0.256 and 0.349; each negative under G2's and G4's DEV readings) in 3 sandbox
+runs of the 14 allowed; no placebo or corner run was due; no counted trial; M unchanged (LESSONS 39 to 43).
+Generation 3 stands at 0 of 5 counted submissions and 3 of 60 sandbox runs. Next: round 2 (PLAN version 2).
+New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
 The rules for the rounds stand: no rule that was shaped on a DEV result is submitted for a counted trial

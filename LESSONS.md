@@ -204,3 +204,27 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     KP-020): in the null worlds of the KP-017 measurement two cheap books, with costs switched off, passed
     every gate but G6 in 4 of 128 cases and G6 as well in 1; with costs on, in none. A top30 Tier-1 result is
     therefore measured per program in null worlds before it enters the pool. INSTRUMENT, open.
+
+## From generation 3, round 1 (kernel 7d923e7e2375986d, unit top30; generations/gen003/REPORT.md)
+
+39. In unit top30 on DEV, a weekly book contrarian on the weekend part of a coin's residual move, held
+    orthogonal to the whole move of the week, lost (DEV Sharpe -1.348, negative in 2020, 2021 and 2022H1): the
+    weekend part tended to persist relative to the weekday part. Generation 3 PLAN run log, run 1; no trial id.
+    WEAK: DEV only, one default. DEV is spent as a screen for the mirror.
+40. The heavy-hour part (contrarian, coin-specific volume) and the storm-hour part (contrarian, BTC's share of
+    variance) of the same construction showed no usable DEV edge after costs and stresses (DEV Sharpe -0.256
+    and 0.349; under doubled costs -0.705 and -0.071). Runs 2 and 3; no trial id. WEAK.
+41. Weekly targets built from hourly inputs through tf_mean(., weekly) traded like weekly rank books (0.172 to
+    0.229 of equity over DEV at 12.5 bps per side, 0.21 to 0.27 per unit of gross), although their beta is
+    re-estimated every hour: the weekly bar bounds the turnover, unlike the daily-updated beta of lesson 24.
+    Runs 1 to 3. WEAK as a number; a design yardstick next to lesson 19.
+42. For a dollar-neutral top30 book that holds a full book through DEV, the funding stress of G2 cost more
+    Sharpe than the doubled costs of G4 (0.66 to 0.77 against 0.41 to 0.45 in these three books; 0.61 against
+    0.46 and 0.76 against 0.33 in two books of generation 2, sandbox rows 40 and 41), whether or not the book
+    reads funding: such a book pays and receives 0.3 to 0.5 of equity in gross funding over DEV, and G2 charges
+    half of each. A top30 idea needs a DEV Sharpe of about 0.7 before either stress to survive both. WEAK as a
+    number; a design yardstick. INSTRUMENT.
+43. Process: a screen fixed in advance on the kernel's own DEV readings stopped three defaults in 3 sandbox runs
+    of 12 planned, before any placebo or corner run, with no counted trial. Across generations 2 and 3, fifteen
+    pre-registered market-neutral top30 ideas have now been screened on DEV: every bet against a recent move
+    lost or earned too little, and the only DEV-positive price books continue a recent move. PROCESS.
