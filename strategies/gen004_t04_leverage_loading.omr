@@ -1,0 +1,25 @@
+# Generation 4, round 1, T-04 (generations/gen004/PLAN.md, version 1, the tier premise test). Leverage loading.
+# READS funding8h: allowed in this premise test; any later submission subject to KP-017. fd = the coin's daily mean of
+# funding8h; fm = the unit's mean, over coins, of the daily change of fd (the market's leverage factor; in a next30 run
+# the mean over ranks 31 to 60). c = corr over the last k days of the coin's daily log return minus BTC's with fm: how
+# much the coin outperforms BTC on days when the unit's leverage builds. No coin is ranked on its own funding. Sampled at
+# the last hour of each weekly bin. Short the highest c, long the lowest; rank weights, dollar and beta neutral, gross 1,
+# traded at the Monday 00:00 open. BTC's own c is undefined (0/0) and it drops out.
+name = "gen004_t04_leverage_loading"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leverage darlings: coins that outperform when the market's leverage builds are bid up by leveraged speculators and fall back when it unwinds; leverage-constrained buyers overpay for them. In the less liquid tier prices are set more by perp leverage. Short the coins whose returns relative to BTC moved most with the unit's daily funding changes over 4 weeks, long the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+fd = tf_mean(funding8h, daily)
+fm = cs_mean(delta(fd, 1))
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+c = tf_last(corr(rd - rbd, fm, k), weekly)
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

@@ -1,0 +1,30 @@
+# Generation 4, round 1, T-08 (generations/gen004/PLAN.md, version 1, the tier premise test). Volume leads, or follows.
+# q = daily quote volume, dq its daily log change; rd = the daily log return, a = |rd|. ql = the log change of q over the
+# j - 1 days before today, al = |the log return over the j - 1 days before today| (j = 3: the two days before; written
+# as a difference of windows, so no one-day lag sits on a one-day change). c = corr(ql, a) - corr(al, dq) over the last
+# k days (6 weeks): how much more trading activity runs ahead of the coin's big days than it trails them. Sampled at the
+# last hour of each weekly bin. Long the highest c, short the lowest; rank weights, dollar and beta neutral, gross 1,
+# traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen004_t08_volume_lead"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Informed versus attention volume: where trading builds before a coin's big moves, informed traders are active; where it builds after them, attention-driven traders arrive late and overprice. Late clienteles are larger in the less liquid coins. Long the coins whose volume most leads rather than trails their volatility over 6 weeks, short the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+j = param(3, 2, 4)             # days that delimit the lagged window (3: the two days before today)
+k = param(42, 33, 51)          # days in the correlations (6 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+q = daily(quote_volume)
+dq = logret(q, 1)
+rd = logret(d, 1)
+a = abs(rd)
+ql = logret(q, j) - dq
+al = abs(logret(d, j) - rd)
+c = tf_last(corr(ql, a, k) - corr(al, dq, k), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

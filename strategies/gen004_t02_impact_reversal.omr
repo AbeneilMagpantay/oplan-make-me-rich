@@ -1,0 +1,25 @@
+# Generation 4, round 1, T-02 (generations/gen004/PLAN.md, version 1, the tier premise test). Liquidity provision
+# where liquidity was withdrawn. FAMILY SEEN and STATE-CONDITIONAL at the coin level (an illiquidity proxy decides the
+# sign of the week's move, as round 5's Y-13 did with the noise ratio, which read 0.711 on next30).
+# a = the absolute daily log return; y = (the mean of a over the last k days over its mean over n days) divided by
+# (the mean daily quote volume over k days over its mean over n days): how much more the price moved per unit of
+# trading than usual (an Amihud ratio against the coin's own norm; round 3's W-04 input). x = the k-day log return in
+# units of the coin's annualised daily volatility over n days (W-04's other input). Both sampled at the last hour of
+# each weekly bin. Weight = -rank(y) x rank(x), centred: where price impact rose, the week's move is reversed; where it
+# fell, the move is continued; coins in the middle of either rank get little weight. Dollar neutral, gross 1, traded at
+# the Monday 00:00 open. No funding, mark or index input.
+name = "gen004_t02_impact_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity provision: a week's move made while liquidity was withdrawn from a coin (its price moved more per dollar traded than usual) is mostly price pressure that reverses; a move made while liquidity improved is mostly news that continues. Reversal is paid where market makers are scarce. Rank of the price-impact shock times rank of the 1-week move, reversed, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(7, 5, 9)             # days in the recent window (1 week)
+n = param(42, 33, 51)          # days in the coin's own norm and in the volatility (6 weeks)
+
+d = daily(close)
+q = daily(quote_volume)
+a = abs(logret(d, 1))
+y = tf_last((sma(a, k) / sma(a, n)) / (sma(q, k) / sma(q, n)), weekly)
+x = tf_last(logret(d, k) / realised_vol(d, n), weekly)
+signal = cs_scale(cs_demean(-cs_rank(y) * cs_rank(x)))

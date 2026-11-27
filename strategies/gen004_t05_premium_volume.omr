@@ -1,0 +1,27 @@
+# Generation 4, round 1, T-05 (generations/gen004/PLAN.md, version 1, the tier premise test). Leveraged activity.
+# READS index_close (the perp-index basis): allowed in this premise test; any later submission subject to KP-017.
+# p = the perp premium at each daily close (as T-03); dq = the daily log change of quote volume; c = corr over the last
+# k days of the daily change of p with dq: whether the coin's bursts of trading come with a widening premium (leveraged
+# entry on the perp) or a narrowing one (deleveraging, or spot-led trading). Neither the premium's level nor its trend is
+# ranked. Sampled at the last hour of each weekly bin. Short the highest c, long the lowest; rank weights, dollar and
+# beta neutral, gross 1, traded at the Monday 00:00 open.
+name = "gen004_t05_premium_volume"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leveraged activity: a coin whose trading surges come with a widening perp premium is traded by leveraged entrants who chase it and leave it overpriced; one whose surges come with a narrowing premium has been deleveraged. Thin spot arbitrage lets this matter more in the less liquid coins. Short the coins whose daily premium changes moved most with their volume changes over 4 weeks, long the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+ix = daily(index_close)
+p = (d - ix) / ix
+dq = logret(daily(quote_volume), 1)
+c = tf_last(corr(delta(p, 1), dq, k), weekly)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

@@ -1,0 +1,32 @@
+# Generation 4, round 1, T-01 (generations/gen004/PLAN.md, version 1, the tier premise test). BTC catch-up.
+# FAMILY SEEN: a price-delay measure (round 4's X-08 read 1.302 on next30); here it only sets which coins are slow,
+# and the sign of the book is set each week by BTC's move of the last day, so no unconditional delay premium enters.
+# r1 = the coin's hourly log return, b1 = BTC's; lr = the coin's log return over the j - 1 hours before this one, lb =
+# BTC's over the same hours (j = 25: the 24 hours before). dl = corr(r1, lb) - corr(lr, b1) over the last n hours
+# (3 weeks): how much more the coin follows BTC's moves of the previous day than BTC follows the coin's. s = the sign of
+# BTC's log return over the last j hours. Both sampled at the last hour of each weekly bin. After a BTC rise: long the
+# slowest followers, short the fastest; after a fall the reverse. Rank weights times s, then dollar and beta neutral
+# (the centred weight's residual on the coins' centred daily beta to BTC over nb days); gross 1; traded at the Monday
+# 00:00 open. No funding, mark or index input.
+name = "gen004_t01_btc_catchup"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Slow diffusion: coins that follow BTC's moves with a delay of hours to a day have not yet priced BTC's last move when the week starts and catch up early in the next week; delays are longer where fewer market makers and arbitrageurs map BTC into the coin. After a BTC rise over the last day long the most delayed coins and short the leaders, after a fall the reverse, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+j = param(25, 20, 30)          # hours that delimit BTC's previous-day window (25: the 24 hours before this one)
+n = param(504, 403, 605)       # hours in the delay estimate (3 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+r1 = logret(close, 1)
+b1 = logret(btc(close), 1)
+lr = logret(close, j) - r1
+lb = logret(btc(close), j) - b1
+dl = tf_last(corr(r1, lb, n) - corr(lr, b1, n), weekly)
+s = tf_last(sign(logret(btc(close), j)), weekly)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(dl)) * s
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

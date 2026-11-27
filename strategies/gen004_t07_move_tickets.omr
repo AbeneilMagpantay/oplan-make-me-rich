@@ -1,0 +1,24 @@
+# Generation 4, round 1, T-07 (generations/gen004/PLAN.md, version 1, the tier premise test). Who trades the big days.
+# tk = daily quote volume / daily number of trades (USD per trade); c = corr over the last k days of the daily log
+# change of tk with the coin's absolute daily log return: negative when the coin's big days draw a crowd of small
+# tickets, positive when they draw larger ones. Unsigned in the move (T-06 is the signed form). The level of the ticket
+# size is not read. Sampled at the last hour of each weekly bin. Long the highest c, short the lowest; rank weights,
+# dollar and beta neutral, gross 1, traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen004_t07_move_tickets"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Attention composition: a coin whose big days pull in a crowd of small trades has an attention-driven retail clientele that overprices it; one whose big days bring larger trades is moved by better-informed traders. The retail share is larger in the less liquid coins. Long the coins whose daily ticket-size changes moved most with their absolute returns over 4 weeks, short the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+tk = daily(quote_volume) / daily(trades)
+rd = logret(d, 1)
+c = tf_last(corr(logret(tk, 1), abs(rd), k), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

@@ -1,0 +1,27 @@
+# Generation 4, round 1, T-10 (generations/gen004/PLAN.md, version 1, the tier premise test). Who builds the premium.
+# READS index_close (the perp-index basis): allowed in this premise test; any later submission subject to KP-017.
+# tk = daily quote volume / daily number of trades (USD per trade); p = the perp premium at each daily close (as T-03).
+# c = corr over the last k days of the daily log change of tk with the daily change of p: negative when the premium
+# widens on days of smaller tickets (retail leverage piling into the perp), positive when it widens on days of larger
+# tickets. Neither the premium's level nor the ticket size's level is read. Sampled at the last hour of each weekly bin.
+# Long the highest c, short the lowest; rank weights, dollar and beta neutral, gross 1, traded at the Monday 00:00 open.
+name = "gen004_t10_premium_tickets"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Retail leverage: where the perp premium widens on days when trades are small, retail leverage is building the premium and the coin is overpriced; where it widens with larger trades, better-capitalised traders pay for exposure. Retail leverage weighs more in the less liquid coins. Long the coins whose ticket-size changes moved most with their premium changes over 4 weeks, short the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+ix = daily(index_close)
+p = (d - ix) / ix
+tk = daily(quote_volume) / daily(trades)
+c = tf_last(corr(logret(tk, 1), delta(p, 1), k), weekly)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

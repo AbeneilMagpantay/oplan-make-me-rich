@@ -1,0 +1,27 @@
+# Generation 4, round 1, T-03 (generations/gen004/PLAN.md, version 1, the tier premise test). Premium feedback.
+# READS index_close (the perp-index basis): allowed in this premise test; any later submission subject to KP-017.
+# p = (daily close - daily index close) / daily index close, the perp premium at each daily close; c = corr over the
+# last k days of the daily change of p with the coin's daily log return: how much the perp's premium over spot widens
+# when the coin rises and narrows when it falls (leveraged perp demand moving with the price). The level and the sign
+# of the premium are not read. Sampled at the last hour of each weekly bin. Short the highest c, long the lowest; rank
+# weights, dollar and beta neutral (residual on the centred daily beta to BTC over nb days), gross 1, traded at the
+# Monday 00:00 open.
+name = "gen004_t03_premium_feedback"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leverage feedback: where the perp premium widens with the price and narrows with it, leveraged perp traders are setting the price and spot arbitrage is too thin to hold it; such prices overshoot and give back. Arbitrage capacity is smallest in the less liquid coins. Short the coins whose daily premium changes moved most with their returns over 4 weeks, long the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+ix = daily(index_close)
+p = (d - ix) / ix
+rd = logret(d, 1)
+c = tf_last(corr(delta(p, 1), rd, k), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

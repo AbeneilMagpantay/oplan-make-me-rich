@@ -1,0 +1,27 @@
+# Generation 4, round 1, T-09 (generations/gen004/PLAN.md, version 1, the tier premise test). Volume that chases gains.
+# rl = the coin's log return over the j - 1 days before today (j = 3: the two days before; a difference of windows);
+# dq = today's daily log change of quote volume. c = corr(rl, dq) over the last k days (6 weeks): whether trading rises
+# after the coin's gains and falls after its losses (positive) or rises after losses (negative). The size and the sign of
+# the coin's own recent move are not ranked. Sampled at the last hour of each weekly bin. Short the highest c, long the
+# lowest; rank weights, dollar and beta neutral, gross 1, traded at the Monday 00:00 open. No funding, mark or index
+# input.
+name = "gen004_t09_gain_chasing"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Trend-chasing clientele: a coin whose trading picks up after its gains and dries up after its losses is held by traders who buy what has just risen; their demand pushes it above value and it gives back. Such clienteles are larger in the less liquid coins. Short the coins whose volume changes followed their prior two-day returns most over 6 weeks, long the least, beta neutral, weekly. Read first on next30 (the tier premise test); sign never flipped."
+
+j = param(3, 2, 4)             # days that delimit the lagged window (3: the two days before today)
+k = param(42, 33, 51)          # days in the correlation (6 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+rd = logret(d, 1)
+rl = logret(d, j) - rd
+dq = logret(daily(quote_volume), 1)
+c = tf_last(corr(rl, dq, k), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)
