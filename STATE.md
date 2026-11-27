@@ -1,4 +1,4 @@
-# STATE (2026-11-27: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; the weekly top30 search is put to the human as exhausted)
+# STATE (2026-11-27: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; generation 4's round 1 tested the premise of the less liquid coins and closed that front, k = 2 of 12; a desk study of other data is under way)
 
 ## Where things stand
 
@@ -366,6 +366,23 @@ the sandbox already reads for every top30 program). The reading rule is fixed in
 with a next30 DEV Sharpe of 1.0 or more and the coordinator proposes a unit for the less liquid tier to the
 human; two or fewer and that front is closed, and a desk study of other data follows. No kernel change, no
 counted trial.
+GENERATION 4, ROUND 1, THE TIER PREMISE TEST (2026-11-27; generations/gen004/PLAN.md version 1 and REPORT.md;
+pre-registered in commit e116ad8 before any run). Twelve ideas whose mechanism belongs to the less liquid
+coins (ten new programs gen004_t01 to t10; two closed top30 forms of generation 2 never read on next30), twelve
+default runs of the 18 allowed, sandbox rows 83 to 94. RESULT: k = 2 of twelve reached a next30 DEV Sharpe of
+1.0 (a reversal where price impact rose 1.259; trade size against the premium 1.559); six of twelve above 0,
+mean -0.106, two at -1.0 or worse; both hits lost in every DEV year in unit top30; with no edge two or more of
+twelve happen in about 14 rounds of 100. All twelve failed the top30 screen at its second item. BY THE RULE
+FIXED IN ADVANCE THE PLACE GAP IS CLOSED as a front for these data: no unit for the less liquid tier is
+proposed, and no mirror of these readings is registered (LESSONS 62 to 65). No counted trial; M unchanged at 6;
+generation 4 has used 12 of 60 sandbox runs and stays open. Seventy-two ideas have now been screened or scored
+(ten in unit core, sixty-two in unit top30), six in counted trials; none Tier 1.
+THE DESK STUDY OF OTHER DATA (the information gap; ordered 2026-11-27 under the same delegation). A fresh
+analyst checks which other data are free, reach back to the start of DEV, are still published, are stamped as
+of when each value was knowable and are not rewritten later (CONSTITUTION 3.2), and carry information that
+changes fast enough for G6 to credit. Documentation, file listings and papers only; no project file changes.
+Its outcome is either an OPEN proposal in KERNEL_PROPOSALS.md for the human (admitting a dataset is a re-key
+and his decision) or the record that nothing qualifies. Nothing is built and no round starts on its account.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
@@ -451,3 +468,8 @@ measurement in null worlds (KP-020).
    31 to 100, where a small account is not at a disadvantage but costs and data are worse), other data, another
    horizon, or the premium unit of KP-028 (small at his account size). (c) Stop. His own money is not to go
    into any rule tested so far: none passed.
+   ANSWERED IN PART on 2026-11-27 ("continue go ahead what u think is best", a delegation of that step): the
+   less liquid coins were tested by a premise test before any build, and that front is closed (k = 2 of 12;
+   generation 4, round 1). A desk study of other data is under way; its outcome comes back here, as a proposal
+   to admit a dataset (his decision) or as the record that nothing qualifies. Still open for him: (a), another
+   horizon, and (c).

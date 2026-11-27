@@ -835,3 +835,25 @@ rates, status.
   a DEV reading of a program written for another unit, after the top30 cost rate, with one number and no stress;
   it can justify a proposal and nothing more. An idea that happens to pass the ordinary top30 screen W1 to W8
   is handled as in generation 3.
+
+## 2026-11-27 (coordinator) Outcome of the tier premise test: k = 2, the place gap is closed as a front; the desk study of other data is ordered
+
+- The test (generation 4, round 1; plan pre-registered in commit e116ad8 before any run): twelve ideas whose
+  mechanism belongs to the less liquid coins, one default run each, read first on next30 (ranks 31 to 60).
+- The result, counted by the researcher and again by the coordinator from the sandbox log: k = 2 of twelve
+  (impact-conditioned reversal 1.259; trade size against the premium 1.559). Six of twelve above 0, mean
+  -0.106; two read -1.0 or worse. Both hits lost in every DEV year in unit top30. With no edge, two or more of
+  twelve happen in about 14 rounds of 100.
+- The rule fixed in advance (entry above, "test the premise of the place gap before any build") says for k of
+  2 or fewer: the place gap is closed as a front for these data and no unit is proposed. So it is: NO proposal
+  of a unit for the less liquid tier goes to the human. The readings stay in the log; no mirror of any of them
+  is registered.
+- The next step under the same decision: a desk study of which other data are free, long enough and clean
+  enough to be admitted under CONSTITUTION section 3.2 (the information gap). Ordered on 2026-11-27 from a
+  fresh analyst: documentation, file listings and published papers only; no data rows of the held-back period;
+  no account, key or personal detail in any request; a note in scratch; no project file changed.
+- What the study can lead to, and what it cannot: if a source qualifies, the coordinator files it here as an
+  OPEN proposal with the admission evidence, for the human. Admitting a dataset is a re-key of the semantic
+  part (a build, audits and both calibrations again) and is his decision, as is any account or licence a source
+  asks for. If none qualifies, that is recorded and the choices left are put to him again (STATE.md, open
+  decision 13). The delegation covers the study, nothing after it.

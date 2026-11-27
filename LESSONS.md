@@ -339,3 +339,29 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     gates as they stand, the weekly top30 search is exhausted for practical purposes. What remains are changes
     of what is searched (the universe, the horizon, the data, the objective), each the human's decision and each
     a change of the kernel or of the data. PROCESS and INSTRUMENT.
+
+## From generation 4, round 1, the tier premise test (kernel 7d923e7e2375986d; top30 programs read on next30; generations/gen004/REPORT.md)
+
+62. A tier premise test registered twelve weekly top30 programs whose mechanisms belong to the less liquid
+    coins (ten new; two closed top30 forms never read on next30) and counted those with a next30 DEV Sharpe of
+    1.0 or more with the registered sign, by a rule fixed before any idea was written: three or more and a unit
+    for that tier is proposed, two or fewer and the front is closed. k = 2 (a reversal where price impact rose,
+    1.259; trade size against the premium, 1.559); the twelve read a mean of -0.106, six above 0. With no edge
+    two or more of twelve happen in about 14 rounds of 100. Generation 4 PLAN run log, round 1, runs 1 to 12;
+    no trial id. WEAK: DEV only, one default each; under the rule the place gap is closed as a front for these
+    data.
+63. Across that round the top30 and next30 DEV Sharpes of the same program pulled apart (correlation -0.589,
+    the same sign in 4 of 12; +0.244 over the 42 runs logged before). Both readings that reached 1.0 on next30
+    came from books that lost in every DEV year in top30, as the price-delay book of round 4 and two books of
+    round 5 had, and the best top30 books of the round read 0.554, -1.402 and -0.790 on next30. No rule has yet
+    earned in both tiers. The twelve next30 readings spread wider than chance alone gives (0.93 against about
+    0.63), in both directions; three of them read the same series, so that is an observation and no finding.
+    Round 1, runs 1 to 12. WEAK; suggestive only.
+64. The two textbook forms for less liquid assets that were closed in top30 also read negative on next30 (the
+    reversal of the month before last -0.790, the fade of a burst of trades -0.332). Round 1, runs 11 and 12;
+    no trial id. WEAK: one default each.
+65. Process: a premise can be tested before the build it would justify. A unit for the less liquid coins would
+    have cost a design, a build, audits and both calibrations; the sandbox's existing next30 reading tested its
+    premise in twelve short runs. The count rule was written before the ideas were, and it did its work at the
+    margin: k came out one short, and the record leaves no room to argue it up. The next30 reading charges the
+    top30 cost rate, so it flatters the tier; a result that fails even so is the cheaper kind of no. PROCESS.

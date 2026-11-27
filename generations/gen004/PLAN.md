@@ -403,3 +403,117 @@ none of generation 4.
    recorded before any number: k = 0 most likely.
 10. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
     passed with the new files in place. Its parts are appended below.
+
+## Sandbox run log (round 1), filled in during stage 2
+
+(Appended below the coordinator's rulings, so that the 36,075 bytes committed as e116ad8 stay an unchanged prefix.
+Every run is listed, in the registered order. Each command was `python -m omr.sandbox strategies/<file>.omr --g6-lags`
+at the defaults, full stage 1 (25 truncation cuts), one at a time, started only after the memory reading of ruling 7
+(free physical 2.96 to 5.30 million KB, virtual 10.54 to 10.79 million KB). Output saved as ASCII in the session scratch
+folder, gen004_r1/run_NN_<name>.txt, by gen004_r1/run_round1.py, which only calls the sandbox. Pre-cost = DEV Sharpe +
+(DEV Sharpe - G4 DEV). Years: the number of 2020, 2021, 2022H1 with a return above 0. Costs: equity over DEV, with
+C/G = costs / avg gross.)
+
+| # | idea | next30 DEV | top30 DEV | G4 DEV | G2 DEV | pre-cost | r(1), r(2), r(3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | names held | costs (C/G) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | T-01 btc_catchup | -0.568 | -0.544 | -0.950 | -1.223 | -0.138 | -0.009, -0.015, -0.014 | 6; -0.952 | 0 (-0.156 / -0.648 / -0.817) | 27.7 | 0.1924 (0.225) |
+| 2 | T-02 impact_reversal | 1.259 | -0.984 | -1.340 | -1.519 | -0.628 | -0.014, -0.007, -0.004 | 4; -0.563 | 0 (-0.560 / -1.736 / -0.521) | 27.7 | 0.1911 (0.222) |
+| 3 | T-03 premium_feedback | -1.402 | 0.565 | 0.300 | -0.141 | 0.830 | 0.078, -0.039, -0.053 | 6; -0.268 | 2 (1.267 / 1.313 / -1.615) | 27.7 | 0.1832 (0.215) |
+| 4 | T-04 leverage_loading | 0.394 | -0.407 | -0.676 | -1.077 | -0.138 | 0.024, -0.035, -0.013 | 0; 0.778 | 1 (-0.343 / -1.083 / 1.754) | 22.7 | 0.1129 (0.138) |
+| 5 | T-05 premium_volume | -1.078 | -0.063 | -0.335 | -0.773 | 0.209 | -0.022, -0.088, -0.002 | 6; -0.105 | 1 (-0.369 / 0.417 / -0.625) | 27.7 | 0.1418 (0.166) |
+| 6 | T-06 rally_tickets | 0.020 | 0.094 | -0.174 | -0.638 | 0.362 | 0.032, -0.030, -0.051 | 9; -1.499 | 2 (0.679 / 0.961 / -2.527) | 27.7 | 0.1539 (0.180) |
+| 7 | T-07 move_tickets | 0.095 | -0.582 | -0.866 | -1.386 | -0.298 | 0.053, -0.022, -0.016 | 9; -1.768 | 1 (0.795 / -1.217 / -1.191) | 27.7 | 0.1344 (0.157) |
+| 8 | T-08 volume_lead | -0.981 | 0.220 | -0.067 | -0.642 | 0.507 | 0.223, -0.132, -0.089 | 1; 1.779 | 2 (-1.567 / 0.686 / 2.250) | 27.7 | 0.1103 (0.129) |
+| 9 | T-09 gain_chasing | 0.554 | 1.102 | 0.862 | 0.344 | 1.342 | 0.274, -0.066, -0.083 | 5; -0.187 | 2 (0.743 / 2.325 / -0.926) | 27.7 | 0.1669 (0.196) |
+| 10 | T-10 premium_tickets | 1.559 | -1.431 | -1.727 | -2.200 | -1.135 | -0.031, -0.086, 0.004 | 6; -1.254 | 0 (-1.279 / -1.760 / -1.112) | 27.7 | 0.1002 (0.117) |
+| 11 | T-11 prior_month_reversal | -0.790 | 0.381 | 0.057 | -0.297 | 0.705 | 0.030, -0.085, -0.002 | 8; -0.658 | 2 (-0.647 / 0.292 / 2.172) | 27.9 | 0.1772 (0.205) |
+| 12 | T-12 activity_fade | -0.332 | 0.172 | -0.140 | -0.457 | 0.484 | -0.165, -0.014, 0.007 | 1; 0.899 | 2 (-1.098 / 0.564 / 1.063) | 27.7 | 0.1669 (0.195) |
+
+Every run: stage 1 PASS, exit 0, nothing on stderr, not liquidated, 75 symbols ever in the unit, next30 over 100
+symbols (a Sharpe printed for all twelve, no code), names held of 28.0 in play, benchmark (equal-weight long of the
+in-play members) DEV Sharpe 0.619, maxDD 0.847. Wall times 79.2 to 211.2 s. Other printed numbers (direction changes;
+avg gross; rebalances; PSR(0); maxDD; gross funding paid / received): T-01 2001, 0.854, 599, 0.189, 0.346, 0.3228 /
+0.3371; T-02 2093, 0.859, 871, 0.065, 0.685, 0.2949 / 0.3070; T-03 1130, 0.853, 597, 0.810, 0.256, 0.4439 / 0.5054; T-04
+979, 0.816, 617, 0.260, 0.451, 0.2961 / 0.3072; T-05 1190, 0.856, 604, 0.461, 0.291, 0.3616 / 0.3928; T-06 1141, 0.855,
+594, 0.559, 0.294, 0.4015 / 0.4139; T-07 1145, 0.854, 591, 0.176, 0.428, 0.3811 / 0.3920; T-08 1067, 0.855, 555, 0.636,
+0.285, 0.3254 / 0.3127; T-09 980, 0.853, 578, 0.952, 0.233, 0.4825 / 0.5058; T-10 1165, 0.855, 570, 0.011, 0.515, 0.2822
+/ 0.2725; T-11 1894, 0.866, 838, 0.727, 0.201, 0.3687 / 0.3570; T-12 1635, 0.854, 625, 0.607, 0.319, 0.3466 / 0.3325.
+Speed-limit rows from 2020-07-20 14:00 (2020-08-24 for T-04; 2020-07-17 for T-11) to 2022-06-30 22:00; paired lags 30 to 262 days,
+decisions 2021-06-30 23:00 to 2022-06-30 22:00. Year rows are counted by their return, as fixed; no year row had a
+return and a Sharpe of opposite signs.
+
+Total sandbox runs in round 1: 12 of the cap of 18 (12 defaults; no corner, no reserve). No stage-1 rejection, no
+kernel fault, no refusal. ledger/sandbox_log.jsonl now has 95 rows (83 + 12), rows 83 to 94 (0-indexed), each written
+by the sandbox, its logged next30, top30, G2, G4, names held, speed limit and paired readings equal to the printed ones.
+Generation 4 has used 12 of 60 sandbox runs. No idea passed W1 to W8, so no corner was due.
+
+## Amendments (round 1), stage 2
+
+none: no program text, param, default, screen item or run condition was changed, and the reserve was not used.
+
+## The round's reading: next30 and k
+
+| idea | next30 DEV Sharpe | 1.0 or more with the registered sign | family seen |
+|---|---|---|---|
+| T-01 btc_catchup | -0.568 | no | yes |
+| T-02 impact_reversal | 1.259 | YES | yes |
+| T-03 premium_feedback | -1.402 | no | no |
+| T-04 leverage_loading | 0.394 | no | no |
+| T-05 premium_volume | -1.078 | no | no |
+| T-06 rally_tickets | 0.020 | no | no |
+| T-07 move_tickets | 0.095 | no | no |
+| T-08 volume_lead | -0.981 | no | no |
+| T-09 gain_chasing | 0.554 | no | no |
+| T-10 premium_tickets | 1.559 | YES | no |
+| T-11 prior_month_reversal | -0.790 | no | no |
+| T-12 activity_fade | -0.332 | no | no |
+
+k = 2 (T-02 and T-10). One of the two is family seen (T-02); T-10 reads the basis (index_close). Every one of the
+twelve printed a next30 Sharpe, so ruling 8 did not come into play. By the rule fixed in advance (KERNEL_PROPOSALS.md,
+entry of 2026-11-27; ruling 9), k of 2 or fewer: the place gap is closed as a front for these data and no unit for the
+less liquid tier is proposed. With no edge, two or more of twelve reach 1.0 in about 14 rounds of 100 (binomial, one
+in 18 each; my arithmetic): the count is in the range chance gives.
+
+## Top30 screen outcome per idea (information)
+
+| idea | W1 | W2 (pre-cost >= 1.5) | W3 (G4 > 0) | W4 (G2 > 0) | W5 (next30 >= 0.3) | W6 (r <= 0.40) | W7 (A <= 4, B > 0) | W8 (years) | first failed |
+|---|---|---|---|---|---|---|---|---|---|
+| T-01 | pass | FAIL (sign: -0.544) | FAIL | FAIL | FAIL (-0.568) | pass | FAIL (6; -0.952) | FAIL (0) | W2 |
+| T-02 | pass | FAIL (sign: -0.984) | FAIL | FAIL | pass (1.259) | pass | FAIL (4; -0.563) | FAIL (0) | W2 |
+| T-03 | pass | FAIL (0.830) | pass | FAIL | FAIL (-1.402) | pass | FAIL (6; -0.268) | pass (2) | W2 |
+| T-04 | pass | FAIL (sign: -0.407) | FAIL | FAIL | pass (0.394) | pass | pass (0; 0.778) | FAIL (1) | W2 |
+| T-05 | pass | FAIL (sign: -0.063) | FAIL | FAIL | FAIL (-1.078) | pass | FAIL (6; -0.105) | FAIL (1) | W2 |
+| T-06 | pass | FAIL (0.362) | FAIL | FAIL | FAIL (0.020) | pass | FAIL (9; -1.499) | pass (2) | W2 |
+| T-07 | pass | FAIL (sign: -0.582) | FAIL | FAIL | FAIL (0.095) | pass | FAIL (9; -1.768) | FAIL (1) | W2 |
+| T-08 | pass | FAIL (0.507) | FAIL | FAIL | FAIL (-0.981) | pass | pass (1; 1.779) | pass (2) | W2 |
+| T-09 | pass | FAIL (1.342) | pass | pass | pass (0.554) | pass | FAIL (5; -0.187) | pass (2) | W2 |
+| T-10 | pass | FAIL (sign: -1.431) | FAIL | FAIL | pass (1.559) | pass | FAIL (6; -1.254) | FAIL (0) | W2 |
+| T-11 | pass | FAIL (0.705) | pass | FAIL | FAIL (-0.790) | pass | FAIL (8; -0.658) | pass (2) | W2 |
+| T-12 | pass | FAIL (0.484) | FAIL | FAIL | FAIL (-0.332) | pass | pass (1; 0.899) | pass (2) | W2 |
+
+All twelve failed W2 first: six with the wrong sign in top30 over DEV (T-01, T-02, T-04, T-05, T-07, T-10), six with the
+registered sign under the pre-cost floor (T-09 1.342, T-03 0.830, T-11 0.705, T-08 0.507, T-12 0.484, T-06 0.362). T-09
+came closest: it failed W2 and W7 only. No corner and no control was due; nothing is recommended, as the plan fixed.
+
+## DEV observations (round 1; NOT hypotheses)
+
+- The twelve next30 readings: mean -0.106, standard deviation 0.929, 6 positive, 4 at 0.3 or more, 2 at 1.0 or more, 2
+  at -1.0 or less; range -1.402 to 1.559. The 42 logged before: mean -0.265, standard deviation 0.661, 16 positive, 8 at
+  0.3 or more, 1 at 1.0 or more, 4 at -1.0 or less. All 54: mean -0.229, 3 at 1.0 or more (X-08, T-10, T-02). The
+  round's spread is wider than one number's sampling noise (about 0.63; for twelve draws the spread itself would read
+  0.63 give or take about 0.13); suggestive only, and it cuts both ways (the three B ideas read -1.402, 0.394, -1.078).
+- Tiers disagreed more than before: across the twelve the correlation of the top30 and next30 DEV Sharpes of the same
+  program was -0.589 (same sign in 4 of 12), against +0.244 over the 42 logged (23 of 42). The two readings that counted
+  both came with a top30 book that lost in every DEV year (T-02 -0.984, T-10 -1.431), the profile of X-08, Y-05 and Y-13
+  before; the books with the best top30 readings (T-09 1.102, T-03 0.565, T-11 0.381) read 0.554, -1.402 and -0.790 on
+  next30. No rule earned in both tiers at the size the rule asks.
+- DEV is now spent on next30 for the mirrors of the strongly negative readings (T-03 short premium feedback -1.402, T-05
+  -1.078, T-08 -0.981): flipped, they would be flipped readings, not discoveries.
+- The two closed top30 forms added by ruling 3 read negative on next30 (prior-month reversal -0.790, activity fade
+  -0.332); the textbook liquidity-provision case did not show in ranks 31 to 60 at the month-before-last horizon.
+- Costs: 0.100 to 0.192 of equity over DEV (C/G 0.117 to 0.225); G4 drops 0.240 to 0.406, G2 drops 0.535 to 0.862 (larger
+  than G4's in all twelve). T-01, whose whole book reverses when BTC's last-day sign flips, cost 0.192 (C/G 0.225), less
+  than the 1.5 to 2 times a rank book the plan estimated; its G4 drop (0.406) was the largest. T-04's names held were
+  22.7 of 28.0, the 28-day wait of entrants, as expected. Speed limit -0.165 to 0.274 at one to three steps.
+- WEAK throughout: one DEV period, one default each, one researcher session; a next30 reading is one DEV number after
+  the top30 cost rate with no stress; nothing here is a parameter recommendation, and no corner was run.

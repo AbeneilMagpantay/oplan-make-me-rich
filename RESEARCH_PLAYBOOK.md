@@ -250,6 +250,12 @@ What changed in this playbook and why (coordinator, on the independent analyst's
   next30 DEV Sharpe of 1.0 or more with the registered sign: three or more and the coordinator proposes a unit
   for the less liquid tier to the human; two or fewer and that front is closed. A next30 reading is one DEV
   number after the top30 cost rate, with no stress: it can justify a proposal, never a submission.
+- Outcome of the tier premise test (2026-11-27; generations/gen004/REPORT.md, LESSONS 62 to 65): k = 2 of
+  twelve, so the front is closed. No plan proposes a unit for ranks 31 to 60 on the strength of next30
+  readings, and no mirror or close relative of that round's readings is registered (flipped, the strongly
+  negative ones would be flipped readings, not discoveries). The next30 reading keeps its place as item five of
+  the wide screen. The form is worth keeping: when a front would need a build, test its premise first with the
+  tools as they are, under a count rule written before the ideas.
 
 ## 9. New data sources
 
