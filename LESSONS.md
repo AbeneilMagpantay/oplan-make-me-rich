@@ -280,3 +280,31 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
 51. Process: the wide screen settled eleven ideas in eleven short runs, with no corner, no control and no
     counted trial. Thirty-nine ideas have now been screened or scored in all (ten in unit core, twenty-nine in
     unit top30), six of them in counted trials; none Tier 1. PROCESS.
+
+## From generation 3, round 4, the second wide screen (same kernel and unit; generations/gen003/REPORT.md, round 4)
+
+52. In unit top30 on DEV, ten pre-registered ideas (eight from six new mechanism classes, most built from the
+    taker fields; two state-conditional forms) met one screen fixed in advance, and none passed; eight had the
+    wrong sign. The market-state continuation book (three-week continuation after BTC's 8-week rise, reversal
+    after its fall) read well on every item its design could shape (1.879 before costs, both stresses
+    positive, all three DEV years positive, 2 of 10 stale copies with a book median of 0.579) and failed the
+    one it could not shape: next30 read 0.106 against 0.3 required. Generation 3 PLAN run log, round 4, runs 1
+    to 10; no trial id. WEAK: DEV only, one default each; the state rule was DEV-informed by design.
+53. A weekly book short the coins whose takers bought at higher prices than they sold within the week, net of
+    the week's move, lost in every DEV year (Sharpe -2.514): such coins did better the next week; next30 read
+    +0.059. Round 4, run 1; no trial id. WEAK; DEV is spent as a screen for the mirror.
+54. Yardstick: weekly top30 books on taker-imbalance and co-movement measures cost 0.09 to 0.17 of equity over
+    DEV (0.11 to 0.20 per unit of gross) and lost 0.24 to 0.45 Sharpe under G4's reading and 0.57 to 0.82 under
+    G2's; a state-switched continuation book cost 0.31 (0.37 per unit of gross) and paid and received 0.62 and
+    0.69 in gross funding, like continuation books. Round 4, runs 1 to 10. WEAK as a number; a design yardstick
+    next to lessons 41, 45 and 50.
+55. Process: the second wide screen settled ten ideas in ten short runs, with no corner, no control and no
+    counted trial. Forty-nine ideas have now been screened or scored (ten in unit core, thirty-nine in unit
+    top30), six in counted trials; none Tier 1. PROCESS.
+56. Across generation 3 the bets AGAINST pressure in the thirty most liquid perpetuals lost in every DEV year,
+    whichever way the pressure was measured (the weekend part of a move, lesson 39; the weekend share of volume,
+    lesson 49; the prices takers paid against the prices they sold at, lesson 53; flow in quiet hours), while
+    the same books read about zero or the other way on next30. So DEV shows something in top30 that it does
+    not show in ranks 31 to 60: a rule built on it would be a mirror of failed books, and it would meet G8,
+    which asks for a positive Sharpe on next30, with DEV's own next30 readings against it. Rounds 1, 3 and 4;
+    no trial id. WEAK: DEV only, read from failures, never registered. INSTRUMENT and PROCESS.

@@ -388,3 +388,113 @@ committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.led
   one default run.
 - No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
   printed ones); every run took under 4 minutes.
+
+# Round 4 (PLAN version 4, the second wide screen)
+
+## Sources
+- generations/gen003/PLAN.md: version 4 as committed in ec5a3c9 together with the coordinator's round-4 rulings
+  (212,289 bytes, sha256 a9199ad4a1577d28...), with the stage-2 run log, amendments (none), screen outcome, DEV
+  observations and recommendation appended (221,510 bytes, sha256 62320eeba9d0ee3e...).
+- The ten sandbox outputs of the researcher session (DEV only; scratch gen003_r4/run_01 to run_10), rows 60 to 69
+  (0-indexed) of ledger/sandbox_log.jsonl, `omr.ledger verify`, `omr.kernel_lock verify`.
+- No returns file, no trial detail file, no calibration file and no data file was read. No VAL number exists for any
+  round-4 program: none was submitted.
+
+## What was run
+- Unit top30 on the sealed kernel of the batch re-key (semantic 7d923e7e2375986d..., G6 0.05 in core and 0.10 in
+  top30). The second wide screen, framed by the question of what could hold in both kinds of market DEV contains: route
+  (a), a mechanism that does not depend on the market's direction; route (b), at most three ideas in which a market
+  state known at the decision enters the signal while the book stays in the market, each said to be DEV-informed.
+- A fresh researcher session wrote PLAN version 4 and eleven programs BEFORE any round-4 sandbox run; each parsed. The
+  coordinator's rulings: X-09 and X-10 accepted as route (b) (the 2.5-parent rule set aside for these seats); X-10's calm
+  half not a banned mirror; a state-free control for a route-(b) survivor (pre-cost at least 0.5 above it); X-01 to X-08
+  open, with X-04's kinship to the mirror of generation 2's absorbed-flow book and X-06's closeness to the shock forms
+  recorded; X-11 (market trend through a beta spread) STRUCK before any run as a closed trend bet; cap 18 runs.
+- The ten ideas, all dollar neutral (gross 1), decided once a week, none reading funding, mark or index prices. Route
+  (a): X-01 short coins whose takers bought at higher prices than they sold (net of the week's move); X-02 short volume
+  traded at the week's highs (VWAP minus TWAP, net of the move); X-03 long where buying moves the price more than
+  selling (relative to BTC, net of the move); X-04 the week's flow times its measured informativeness; X-05 long
+  quiet-hour minus busy-hour flow (net of the move); X-06 long a rise in normalised flow one-sidedness; X-07 short a rise
+  in up-beta minus down-beta to BTC; X-08 long coins that follow BTC late. Route (b): X-09 three-week continuation after
+  BTC's 8-week rise, reversal after its fall; X-10 one-week continuation when BTC is calm, reversal when stressed.
+- 10 sandbox runs of the cap of 18: the ten defaults with --g6-lags, in the registered order. No idea passed W1 to W8,
+  so no corner and no control was due. No stage-1 rejection, no kernel fault, no refusal; 95 to 528 s per run, one at a
+  time, under the coordinator's memory rule.
+
+## Result
+| idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r max (1..3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | costs (C/G) | first failed |
+|---|---|---|---|---|---|---|---|---|---|---|
+| X-01 taker_vwap_gap | -2.514 | -2.893 | -3.226 | -2.135 | 0.059 | 0.026 | 9; -2.274 | 0 (-2.685 / -2.042 / -3.496) | 0.122 (0.143) | W2 |
+| X-02 vwap_twap_gap | 0.220 | -0.163 | -0.445 | 0.603 | 0.520 | -0.014 | 6; -0.482 | 2 (0.578 / 0.626 / -0.841) | 0.263 (0.308) | W2 |
+| X-03 impact_asymmetry | -0.781 | -1.024 | -1.446 | -0.538 | -1.504 | 0.173 | 10; -0.182 | 0 (-2.164 / -0.606 / 0.099) | 0.093 (0.109) | W2 |
+| X-04 informed_flow | -0.744 | -1.038 | -1.497 | -0.450 | -0.446 | 0.049 | 5; -0.444 | 0 (-1.905 / -0.327 / -0.481) | 0.109 (0.127) | W2 |
+| X-05 stealth_flow | -1.085 | -1.536 | -1.907 | -0.634 | -0.055 | 0.035 | 10; -1.030 | 0 (-0.317 / -1.852 / -0.391) | 0.168 (0.197) | W2 |
+| X-06 flow_toxicity | -0.307 | -0.678 | -1.009 | 0.064 | -0.620 | 0.055 | 6; -1.181 | 1 (1.690 / -1.109 / -1.005) | 0.206 (0.241) | W2 |
+| X-07 convexity_shift | -0.493 | -0.814 | -1.176 | -0.172 | -2.031 | -0.004 | 4; 1.051 | 1 (-0.571 / -1.054 / 0.928) | 0.139 (0.162) | W2 |
+| X-08 price_delay | -0.255 | -0.557 | -0.932 | 0.047 | 1.302 | 0.008 | 1; 0.752 | 2 (1.055 / -1.600 / 0.846) | 0.163 (0.191) | W2 |
+| X-09 state_continuation | 1.619 | 1.359 | 1.032 | 1.879 | 0.106 | -0.016 | 2; 0.579 | 3 (2.312 / 1.532 / 1.025) | 0.314 (0.367) | W5 |
+| X-10 stress_reversal | -0.340 | -0.683 | -0.910 | 0.003 | -0.381 | -0.015 | 8; -0.576 | 1 (0.719 / -1.088 / -0.130) | 0.224 (0.262) | W2 |
+
+X-03's 2022H1 return was slightly negative (-0.008) with Sharpe 0.099. Names held 26.5 to 27.7 of 28.0; avg gross 0.853
+to 0.856; direction changes 1192 to 2031; none liquidated. Every run printed the benchmark at DEV Sharpe 0.619, maxDD
+0.847. X-11 was struck by the coordinator before any run and never ran.
+
+No counted submission. M is unchanged at 6. Tier 1: none. Pool 0 of 5.
+
+## Screen outcome
+X-09 passed W1 to W4 and W6 to W8 and failed W5 only (next30 0.106 against 0.3). The other nine failed W2 first: eight
+with the wrong sign over DEV (X-01, X-03 to X-08, X-10), X-02 with the registered sign but under the pre-cost floor
+(0.603). All ten are falsified on DEV; no sign is flipped. Recommendation: NONE.
+
+## Reading
+- Did any book earn in both halves of DEV? X-09 did, in all three DEV years, and X-08 did in 2020 and 2022H1 (losing in
+  2021 and over DEV). X-09's yearly profile is what its design (a sign set by BTC's 8-week return) was expected to give
+  from round 2's continuation books, and the plan said so in advance: it is not evidence. The one reading its design
+  could not shape, next30, failed (0.106). WEAK.
+- The route-(a) microstructure books built from the taker fields (X-01 to X-06) all failed, five with the wrong sign.
+  X-01 lost by more than two Sharpe units in every DEV year: coins whose takers bought at higher prices than they sold,
+  net of the week's move, did better the next week; next30 read +0.059, so the reverse did not carry to ranks 31 to 60.
+- X-07 and X-08 had the profile of round 3's unsigned books on the last 365 days (positive book median, negative stale
+  copies) while losing over DEV; X-08 read 1.302 on next30, the largest next30 reading of the round, with a negative
+  DEV Sharpe in top30.
+- The taker and co-movement books were among the cheapest weekly top30 books read (0.09 to 0.17 of equity over DEV;
+  C/G 0.11 to 0.20); G2's reading still took 0.57 to 0.82 Sharpe from every book, more than G4's in all ten.
+
+## What must NOT be concluded
+- Ten DEV failures say nothing about VAL. No VAL bar was read for any program of this round.
+- X-09's DEV Sharpe and its three positive years are not evidence for market-state momentum: the design was chosen with
+  DEV's two regimes in view (LESSONS 44 and 48). Its next30 failure is the informative reading, and it is one reading.
+  A variant built to get past W5 would be fitted to readings now seen.
+- DEV is now spent as a screen for the mirror of X-01 (long the coins whose takers bought higher than they sold) and,
+  with less force, for the mirrors of X-03 to X-05.
+- One default per idea was run; nothing is implied about other values of any param, and none is recommended.
+- A wide screen tests many ideas at once; had one passed, it would have been a candidate for one counted trial only.
+- Choosing ideas is still open to hindsight (KP-010); the plan named what could bias each one.
+
+## After the round
+M = 6 (generation 0: 4, generation 1: 1, generation 2: 1, generation 3: 0 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool
+0 of 5, one uncounted stage-1 rejection (generation 0). Sandbox runs used in generation 3: 27 of 60 (rounds 1 to 4: 3,
+3, 11 and 10; ledger/sandbox_log.jsonl now 70 rows, the ten new rows status ok, stage1 full, source_sha256 equal to the
+committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.ledger verify`: OK, all six chains.
+
+## Requests to the coordinator
+- LESSONS.md entries proposed for review (numbering after 51):
+  - 52. In unit top30 on DEV, ten pre-registered ideas (eight route-(a) ideas from six new mechanism classes, most built
+    from the taker fields; two route-(b) state-conditional forms) met one screen fixed in advance and none passed; eight
+    had the wrong sign. The market-state continuation book (three-week continuation after BTC's 8-week rise, reversal
+    after its fall) read well on every item its design could shape (pre-cost 1.879, both stresses positive, all three
+    DEV years positive, paired 2 of 10 with book median 0.579) and failed the one it could not: next30 0.106. Generation
+    3 PLAN run log, round 4, runs 1 to 10; no trial id. WEAK: DEV only, one default each; the state rule was
+    DEV-informed by design.
+  - 53. A weekly book short the coins whose takers bought at higher prices than they sold within the week, net of the
+    week's move, lost in every DEV year (Sharpe -2.514): such coins did better the next week; next30 read +0.059. Round
+    4, run 1; no trial id. WEAK; DEV is spent as a screen for the mirror.
+  - 54. Yardstick: weekly top30 books on taker-imbalance and co-movement measures cost 0.09 to 0.17 of equity over DEV
+    (C/G 0.11 to 0.20) and lost 0.24 to 0.45 Sharpe under G4's reading and 0.57 to 0.82 under G2's; a state-switched
+    continuation book cost 0.31 (C/G 0.37) and paid and received 0.62 / 0.69 in gross funding, like continuation books.
+    Round 4, runs 1 to 10. WEAK as a number; a design yardstick next to lessons 41, 45 and 50.
+  - 55. Process: the second wide screen settled ten ideas in ten short runs, with no corner, no control and no counted
+    trial. Forty-nine ideas have now been screened or scored (ten in unit core, thirty-nine in unit top30), six in
+    counted trials; none Tier 1. PROCESS.
+- No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
+  printed ones). Two runs took longer than the expected two to four minutes (X-05 429 s, X-07 528 s), with no error.

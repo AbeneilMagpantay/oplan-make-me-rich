@@ -2342,3 +2342,98 @@ stands at 60 rows, none of round 4.
     and, for a route (b) survivor, its DEV-informed design go into the record of that decision.
 11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
     passed with the new files in place. Its parts are appended below.
+
+
+## Sandbox run log (round 4), filled in during stage 2
+
+(Appended below the coordinator's round-4 rulings, so that the 212,289 bytes committed as ec5a3c9 stay an unchanged
+prefix. Every run is listed, in the registered order; X-11 was struck by ruling 8 and not run. Each command was
+`python -m omr.sandbox strategies/gen003_xNN_<idea>.omr --g6-lags` at the defaults, full stage 1 (25 truncation cuts),
+one at a time, started only after the memory reading of ruling 9 (free physical 2.08 to 4.74 million KB, virtual 10.4
+to 12.4 million KB). Output saved as ASCII in the session scratch folder, gen003_r4/run_NN_<name>.txt, by
+gen003_r4/run_one.py, which only calls the sandbox. Pre-cost = DEV Sharpe + (DEV Sharpe - G4 DEV). Years: return sign
+and Sharpe for 2020, 2021, 2022H1. Costs: equity over DEV, with C/G = costs / avg gross. Funding: gross paid / received.)
+
+| # | idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r(1), r(2), r(3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | names held | avg gross | dir. ch. | costs (C/G) | funding paid / recv |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | X-01 taker_vwap_gap | -2.514 | -2.893 | -3.226 | -2.135 | 0.059 | 0.006, -0.008, 0.026 | 9; -2.274 | 0 (-2.685 / -2.042 / -3.496) | 27.7 of 28.0 | 0.855 | 1833 | 0.1221 (0.143) | 0.2410 / 0.2331 |
+| 2 | X-02 vwap_twap_gap | 0.220 | -0.163 | -0.445 | 0.603 | 0.520 | -0.023, -0.021, -0.014 | 6; -0.482 | 2 (0.578 / 0.626 / -0.841) | 27.6 | 0.855 | 1830 | 0.2634 (0.308) | 0.4509 / 0.4699 |
+| 3 | X-03 impact_asymmetry | -0.781 | -1.024 | -1.446 | -0.538 | -1.504 | 0.173, 0.024, 0.059 | 10; -0.182 | 0 (-2.164 / -0.606 / 0.099, return -0.008) | 26.5 | 0.855 | 1197 | 0.0931 (0.109) | 0.2853 / 0.2347 |
+| 4 | X-04 informed_flow | -0.744 | -1.038 | -1.497 | -0.450 | -0.446 | 0.049, 0.004, -0.020 | 5; -0.444 | 0 (-1.905 / -0.327 / -0.481) | 26.7 | 0.854 | 1192 | 0.1088 (0.127) | 0.2959 / 0.2520 |
+| 5 | X-05 stealth_flow | -1.085 | -1.536 | -1.907 | -0.634 | -0.055 | 0.035, -0.010, -0.030 | 10; -1.030 | 0 (-0.317 / -1.852 / -0.391) | 27.6 | 0.853 | 1853 | 0.1679 (0.197) | 0.3297 / 0.3135 |
+| 6 | X-06 flow_toxicity | -0.307 | -0.678 | -1.009 | 0.064 | -0.620 | -0.116, -0.040, 0.055 | 6; -1.181 | 1 (1.690 / -1.109 / -1.005) | 27.7 | 0.856 | 1755 | 0.2061 (0.241) | 0.4299 / 0.4124 |
+| 7 | X-07 convexity_shift | -0.493 | -0.814 | -1.176 | -0.172 | -2.031 | -0.098, -0.058, -0.004 | 4; 1.051 | 1 (-0.571 / -1.054 / 0.928) | 27.7 | 0.854 | 1530 | 0.1385 (0.162) | 0.3066 / 0.2981 |
+| 8 | X-08 price_delay | -0.255 | -0.557 | -0.932 | 0.047 | 1.302 | -0.044, 0.003, 0.008 | 1; 0.752 | 2 (1.055 / -1.600 / 0.846) | 27.6 | 0.854 | 1455 | 0.1629 (0.191) | 0.3627 / 0.3887 |
+| 9 | X-09 state_continuation | 1.619 | 1.359 | 1.032 | 1.879 | 0.106 | -0.072, -0.016, -0.061 | 2; 0.579 | 3 (2.312 / 1.532 / 1.025) | 27.6 | 0.855 | 1433 | 0.3138 (0.367) | 0.6226 / 0.6874 |
+| 10 | X-10 stress_reversal | -0.340 | -0.683 | -0.910 | 0.003 | -0.381 | -0.029, -0.015, -0.016 | 8; -0.576 | 1 (0.719 / -1.088 / -0.130) | 27.7 | 0.855 | 2031 | 0.2236 (0.262) | 0.3724 / 0.3740 |
+
+Every run: stage 1 PASS, exit 0, nothing on stderr, not liquidated, 75 symbols ever in the unit, next30 over 100
+symbols, benchmark (equal-weight long of the in-play members) DEV Sharpe 0.619, maxDD 0.847. Wall times 95.0 to 528.2 s
+(X-05 429.3 s and X-07 528.2 s, longer than the expected two to four minutes; no error). Other printed numbers (PSR(0);
+total; maxDD; rebalances): X-01 0.000, -0.742, 0.749, 591; X-02 0.634, 0.061, 0.351, 638; X-03 0.114, -0.399, 0.510,
+611; X-04 0.119, -0.346, 0.428, 623; X-05 0.042, -0.424, 0.529, 581; X-06 0.312, -0.201, 0.474, 618; X-07 0.218, -0.286,
+0.494, 627; X-08 0.345, -0.190, 0.473, 593; X-09 0.995, 1.661, 0.178, 636; X-10 0.294, -0.273, 0.512, 647. Stale-copy
+medians in the paired reading: -0.078, -0.138, 0.752, -0.410, -0.215, -0.835, -0.075, -0.040, -0.541, 0.267. Speed-limit
+rows from 2020-07-20 14:00 to 2022-06-30 22:00; paired lags 30 to 262 days, decisions 2021-06-30 23:00 to 2022-06-30
+22:00.
+
+Total sandbox runs in round 4: 10 of the cap of 18 (10 defaults; no corner, no control, no reserve). No stage-1
+rejection, no kernel fault, no refusal. ledger/sandbox_log.jsonl now has 70 rows (60 + 10), rows 60 to 69 (0-indexed),
+each status ok, stage1 full, its logged readings equal to the printed ones and its source_sha256 equal to the committed
+file's; `omr.ledger verify` OK, all six chains; `omr.kernel_lock verify` OK, sealed (core 0.05, top30 0.1). Generation
+3 has used 27 of 60 sandbox runs.
+
+By the run order, corners were due only for ideas that passed W1 to W8, and the route-(b) control only for X-09 or X-10
+after passing its corners. None passed W1 to W8, so no corner and no control was run.
+
+## Amendments (round 4), stage 2
+
+none: no program text, param, default, screen item or run condition was changed, and the reserve was not used.
+
+## Screen outcome per idea (round 4)
+
+| idea | W1 | W2 (pre-cost >= 1.5) | W3 (G4 > 0) | W4 (G2 > 0) | W5 (next30 >= 0.3) | W6 (r <= 0.40) | W7 (A <= 4, B > 0) | W8 (years) | first failed | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| X-01 taker_vwap_gap | pass | FAIL (sign: -2.514) | FAIL | FAIL | FAIL (0.059) | pass | FAIL (9; -2.274) | FAIL (0) | W2 | dropped |
+| X-02 vwap_twap_gap | pass | FAIL (0.603) | FAIL | FAIL | pass (0.520) | pass | FAIL (6; -0.482) | pass (2) | W2 | dropped |
+| X-03 impact_asymmetry | pass | FAIL (sign: -0.781) | FAIL | FAIL | FAIL | pass | FAIL (10; -0.182) | FAIL (0) | W2 | dropped |
+| X-04 informed_flow | pass | FAIL (sign: -0.744) | FAIL | FAIL | FAIL | pass | FAIL (5; -0.444) | FAIL (0) | W2 | dropped |
+| X-05 stealth_flow | pass | FAIL (sign: -1.085) | FAIL | FAIL | FAIL | pass | FAIL (10; -1.030) | FAIL (0) | W2 | dropped |
+| X-06 flow_toxicity | pass | FAIL (sign: -0.307) | FAIL | FAIL | FAIL | pass | FAIL (6; -1.181) | FAIL (1) | W2 | dropped |
+| X-07 convexity_shift | pass | FAIL (sign: -0.493) | FAIL | FAIL | FAIL | pass | pass (4; 1.051) | FAIL (1) | W2 | dropped |
+| X-08 price_delay | pass | FAIL (sign: -0.255) | FAIL | FAIL | pass (1.302) | pass | pass (1; 0.752) | pass (2) | W2 | dropped |
+| X-09 state_continuation | pass | pass (1.879) | pass | pass | FAIL (0.106) | pass | pass (2; 0.579) | pass (3) | W5 | dropped |
+| X-10 stress_reversal | pass | FAIL (sign: -0.340) | FAIL | FAIL | FAIL | pass | FAIL (8; -0.576) | FAIL (1) | W2 | dropped |
+| X-11 trend_beta | - | - | - | - | - | - | - | - | - | struck before any run (ruling 8); never run |
+
+Against each registered falsifier ("the DEV screen fails; the sign is never flipped"): all ten falsified on DEV. Eight
+had the wrong sign over DEV (X-01, X-03 to X-08, X-10); X-02 had the registered sign but read under the pre-cost floor
+(0.603). X-09 passed every item but W5: next30 read 0.106 against the floor of 0.3.
+
+## DEV observations (round 4; NOT hypotheses, never to be submitted from this plan)
+
+- X-09, the market-state continuation book, read well on every item its design could shape (pre-cost 1.879, G4 1.359,
+  G2 1.032, positive in all three DEV years, paired 2 of 10 with B 0.579) and failed the one item it could not shape:
+  next30 0.106. The plan had called its DEV and yearly readings partly predictable; they were. WEAK.
+- X-01 lost in every DEV year (-2.514, the largest absolute Sharpe of the round): coins whose takers bought at higher
+  prices than they sold, net of the week's move, did better the next week. Its next30 reading was +0.059 (the registered
+  sign, near zero), so the reverse did not show in ranks 31 to 60. DEV is spent as a screen for the mirror. WEAK.
+- Both halves of DEV: X-09 earned in 2020, 2021 and 2022H1; X-08 earned in 2020 and 2022H1 but lost in 2021 (SR -1.600)
+  and over DEV; no route-(a) book was positive over DEV with the registered sign except X-02 (0.220, 2020 and 2021
+  positive, 2022H1 negative). X-07 and X-08 read like round 3's unsigned books on the last 365 days (book medians 1.051
+  and 0.752, stale copies negative) while losing over DEV. WEAK.
+- Costs: the taker-imbalance and co-movement books cost 0.093 to 0.168 of equity over DEV (C/G 0.11 to 0.20; X-02 0.263,
+  X-06 0.206), among the cheapest weekly top30 books read; their G4 drops were 0.24 to 0.45. X-09 cost 0.314 (C/G 0.37)
+  and paid and received 0.62 / 0.69 in gross funding, like round 2's continuation books. G2 drops 0.57 to 0.82 in every
+  book, larger than the G4 drop in all ten.
+- Speed limit: every reading between -0.116 and 0.173; names held 26.5 to 27.7 of 28.0.
+- WEAK throughout: one DEV period, one default each, one researcher session; nothing here is a parameter
+  recommendation, and no corner or control was run.
+
+## Recommendation (round 4)
+
+NONE. By the pre-registered selection rule an idea is eligible only if it passes W1 to W8 at the default and both
+corners (and, for X-09 and X-10, the control condition). No idea passed W1 to W8 (X-09 failed W5; the other nine failed
+W2 first), so no corner and no control was run and no program from version 4 is recommended. No KP-017 or KP-020
+measurement is needed for this round. Generation 3 stands at 0 of 5 counted submissions and 27 of 60 sandbox runs; M is
+unchanged at 6.

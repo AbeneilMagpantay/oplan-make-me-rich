@@ -329,6 +329,19 @@ of 5 counted submissions and 17 of 60 sandbox runs. Thirty-nine ideas have been 
 The bound the coordinator sets on the human's direction: the search goes on within generation 3's remaining
 sandbox budget (43 runs, about three more wide screens); then generation 3 is closed and the result is put to
 him again.
+Round 4, the second wide screen (2026-11-27; PLAN version 4, pre-registered and pushed as ec5a3c9 before any
+run): the question was what could hold in both kinds of market DEV contains. Eight ideas by mechanism, most
+built from the taker fields (the prices takers paid against the prices they sold at, volume-weighted against
+time-weighted price, the asymmetry of price impact, how well flow has predicted moves, quiet-hour flow, the
+one-sidedness of flow, up-beta against down-beta, the delay behind BTC), and two that read the market's state
+(continuation after BTC's rise and reversal after its fall; continuation in calm and reversal in stress); an
+eleventh, a trend bet through beta, was struck by the coordinator before any run. None passed: eight had the
+wrong sign. The nearest, the market-state continuation, passed every item its design could shape and failed
+the one it could not (next30 0.106 against 0.3). No counted trial; M unchanged (LESSONS 52 to 56). Generation
+3 stands at 0 of 5 counted submissions and 27 of 60 sandbox runs. Forty-nine ideas have been screened or
+scored in all. What the four rounds show together (LESSONS 56): on DEV, betting against pressure in the top
+30 lost in every year however the pressure was measured, and next30 did not show it; a rule built on that
+would be a mirror of failed books and would meet G8 with DEV's own next30 readings against it.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
