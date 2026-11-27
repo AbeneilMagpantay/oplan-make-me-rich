@@ -2832,3 +2832,110 @@ round 5.
     puts the whole of it to the human.
 11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
     passed with the new files in place. Its parts are appended below.
+
+## Sandbox run log (round 5), filled in during stage 2
+
+(Appended below the coordinator's round-5 rulings, so that the 255,486 bytes committed as 652e391 stay an unchanged
+prefix. Every run is listed, in the registered order. Each command was `python -m omr.sandbox
+strategies/gen003_yNN_<idea>.omr --g6-lags` at the defaults, full stage 1 (25 truncation cuts), one at a time, started
+only after the memory reading of ruling 8 (free physical 3.09 to 5.50 million KB, virtual 12.04 to 12.50 million KB).
+Output saved as ASCII in the session scratch folder, gen003_r5/run_NN_<name>.txt, by gen003_r5/run_round5.py, which only
+calls the sandbox. Pre-cost = DEV Sharpe + (DEV Sharpe - G4 DEV). Years: the number of 2020, 2021, 2022H1 with a return
+above 0, then their Sharpes. Costs: equity over DEV, with C/G = costs / avg gross. Funding: gross paid / received.)
+
+| # | idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r(1), r(2), r(3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | names held | avg gross | dir. ch. | costs (C/G) | funding paid / recv |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Y-01 kurtosis | -0.891 | -1.208 | -1.627 | -0.574 | -0.371 | 0.038, 0.020, -0.015 | 10; -3.155 | 0 (-0.860 / 0.013 / -3.208) | 26.7 of 28.0 | 0.855 | 1408 | 0.1432 (0.167) | 0.3235 / 0.3108 |
+| 2 | Y-02 vol_of_vol | -0.153 | -0.423 | -0.824 | 0.117 | -0.505 | 0.065, 0.003, -0.023 | 0; 2.352 | 2 (0.452 / -0.636 / 0.431) | 26.7 | 0.854 | 1206 | 0.1449 (0.170) | 0.3680 / 0.3994 |
+| 3 | Y-03 beta_instability | 0.657 | 0.424 | 0.076 | 0.890 | -0.780 | 0.102, -0.066, -0.061 | 3; 0.794 | 3 (0.622 / 0.155 / 1.539) | 22.9 | 0.811 | 882 | 0.1525 (0.188) | 0.3760 / 0.3680 |
+| 4 | Y-04 volume_cv | 0.140 | -0.119 | -0.537 | 0.399 | -0.754 | 0.034, -0.004, -0.019 | 1; 1.835 | 1 (0.010 / -0.120 / 1.220) | 27.7 | 0.855 | 1178 | 0.1433 (0.168) | 0.3939 / 0.3932 |
+| 5 | Y-05 noise_ratio | -1.051 | -1.372 | -1.830 | -0.730 | 0.456 | -0.069, 0.006, -0.005 | 8; -1.142 | 0 (-2.250 / -0.546 / -0.495) | 27.7 | 0.857 | 1355 | 0.1152 (0.134) | 0.2802 / 0.2839 |
+| 6 | Y-06 wick_share | -0.653 | -0.947 | -1.393 | -0.359 | -0.751 | 0.115, 0.052, 0.039 | 5; -0.078 | 1 (-0.252 / -1.316 / 0.486) | 27.7 | 0.854 | 1205 | 0.1098 (0.129) | 0.2997 / 0.2655 |
+| 7 | Y-07 vol_feedback | -0.899 | -1.230 | -1.579 | -0.568 | -0.738 | 0.007, -0.034, -0.046 | 3; 0.478 | 1 (-2.732 / 0.413 / -1.154) | 26.7 | 0.853 | 1472 | 0.1286 (0.151) | 0.2659 / 0.2598 |
+| 8 | Y-08 volume_coupling | 0.152 | -0.190 | -0.606 | 0.494 | -0.346 | 0.021, -0.001, -0.014 | 8; -0.773 | 2 (1.654 / -0.989 / 0.765) | 27.7 | 0.856 | 1438 | 0.1771 (0.207) | 0.4214 / 0.3748 |
+| 9 | Y-09 volume_commonality | 0.588 | 0.338 | -0.127 | 0.838 | -0.429 | 0.047, -0.027, 0.006 | 2; 0.894 | 3 (1.389 / 0.262 / 0.357) | 23.7 | 0.818 | 872 | 0.1454 (0.178) | 0.4375 / 0.3911 |
+| 10 | Y-10 premium_commonality | -0.676 | -0.945 | -1.415 | -0.407 | 0.020 | -0.003, -0.055, -0.035 | 7; -0.255 | 0 (-1.844 / -0.169 / -0.413) | 23.7 | 0.818 | 934 | 0.1019 (0.125) | 0.2984 / 0.2646 |
+| 11 | Y-11 ensemble | 0.009 | -0.328 | -0.689 | 0.346 | -0.433 | 0.019, -0.035, 0.011 | 3; -0.064 | 1 (1.649 / -0.531 / -1.364) | 22.7 | 0.820 | 1109 | 0.1938 (0.236) | 0.4221 / 0.3909 |
+| 12 | Y-12 leverage_state_kurtosis | -0.897 | -1.271 | -1.610 | -0.523 | -0.520 | -0.072, -0.065, 0.042 | 5; -0.532 | 1 (-3.653 / 0.294 / 0.023) | 26.7 | 0.856 | 1726 | 0.1347 (0.157) | 0.2516 / 0.2477 |
+| 13 | Y-13 noise_state_reversal | -0.369 | -0.732 | -0.906 | -0.006 | 0.711 | -0.008, -0.044, -0.014 | 2; 0.003 | 1 (-0.136 / -1.090 / 0.404) | 27.7 | 0.860 | 2057 | 0.2174 (0.253) | 0.3411 / 0.3285 |
+
+Every run: stage 1 PASS, exit 0, nothing on stderr, not liquidated, 75 symbols ever in the unit, next30 over 100
+symbols, benchmark (equal-weight long of the in-play members) DEV Sharpe 0.619, maxDD 0.847. Wall times 83.8 to 144.5 s.
+Other printed numbers (PSR(0); total; maxDD; rebalances): Y-01 0.077, -0.412, 0.424, 634; Y-02 0.404, -0.139, 0.413,
+642; Y-03 0.860, 0.374, 0.158, 711; Y-04 0.587, 0.017, 0.367, 631; Y-05 0.049, -0.436, 0.493, 609; Y-06 0.150, -0.311,
+0.384, 610; Y-07 0.064, -0.419, 0.476, 619; Y-08 0.595, 0.027, 0.360, 577; Y-09 0.824, 0.271, 0.248, 613; Y-10 0.144,
+-0.302, 0.317, 584; Y-11 0.506, -0.047, 0.304, 769; Y-12 0.075, -0.416, 0.521, 623; Y-13 0.281, -0.307, 0.400, 968.
+Stale-copy medians in the paired reading: -0.270, -0.370, 0.396, 0.443, -0.216, -0.014, -0.360, -0.052, -0.466, 0.039,
+-0.271, -0.192, -0.646. Three year rows have a return and a Sharpe of opposite signs (counted by the return, as fixed):
+Y-01 2021 (return -0.029, Sharpe 0.013), Y-04 2020 (-0.010, 0.010), Y-12 2022H1 (-0.010, 0.023). Speed-limit rows from
+2020-07-20 14:00 (2020-08-31 for Y-03; 2020-08-24 for Y-09, Y-10 and Y-11) to 2022-06-30 22:00; paired lags 30 to 262
+days, decisions 2021-06-30 23:00 to 2022-06-30 22:00.
+
+Total sandbox runs in round 5: 13 of the cap of 21 (13 defaults; no corner, no control, no reserve). No stage-1
+rejection, no kernel fault, no refusal. ledger/sandbox_log.jsonl now has 83 rows (70 + 13), rows 70 to 82 (0-indexed),
+each status ok, stage1 full, its logged readings equal to the printed ones and its source_sha256 equal to the committed
+file's; `omr.ledger verify` OK, all six chains; `omr.kernel_lock verify` OK, sealed (core 0.05, top30 0.1). Generation
+3 has used 40 of 60 sandbox runs.
+
+By the run order, corners were due only for ideas that passed W1 to W8, and the controls (Y-01 for Y-12,
+gen003_diag_plain_week for Y-13) only for a state-conditional survivor after its corners. None passed W1 to W8, so no
+corner and no control was run.
+
+## Amendments (round 5), stage 2
+
+none: no program text, param, default, screen item or run condition was changed, and the reserve was not used.
+
+## Screen outcome per idea (round 5)
+
+| idea | W1 | W2 (pre-cost >= 1.5) | W3 (G4 > 0) | W4 (G2 > 0) | W5 (next30 >= 0.3) | W6 (r <= 0.40) | W7 (A <= 4, B > 0) | W8 (years) | first failed | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Y-01 kurtosis | pass | FAIL (sign: -0.891) | FAIL | FAIL | FAIL (-0.371) | pass | FAIL (10; -3.155) | FAIL (0) | W2 | dropped |
+| Y-02 vol_of_vol | pass | FAIL (sign: -0.153) | FAIL | FAIL | FAIL (-0.505) | pass | pass (0; 2.352) | pass (2) | W2 | dropped |
+| Y-03 beta_instability | pass | FAIL (0.890) | pass | pass | FAIL (-0.780) | pass | pass (3; 0.794) | pass (3) | W2 | dropped |
+| Y-04 volume_cv | pass | FAIL (0.399) | FAIL | FAIL | FAIL (-0.754) | pass | pass (1; 1.835) | FAIL (1) | W2 | dropped |
+| Y-05 noise_ratio | pass | FAIL (sign: -1.051) | FAIL | FAIL | pass (0.456) | pass | FAIL (8; -1.142) | FAIL (0) | W2 | dropped |
+| Y-06 wick_share | pass | FAIL (sign: -0.653) | FAIL | FAIL | FAIL (-0.751) | pass | FAIL (5; -0.078) | FAIL (1) | W2 | dropped |
+| Y-07 vol_feedback | pass | FAIL (sign: -0.899) | FAIL | FAIL | FAIL (-0.738) | pass | pass (3; 0.478) | FAIL (1) | W2 | dropped |
+| Y-08 volume_coupling | pass | FAIL (0.494) | FAIL | FAIL | FAIL (-0.346) | pass | FAIL (8; -0.773) | pass (2) | W2 | dropped |
+| Y-09 volume_commonality | pass | FAIL (0.838) | pass | FAIL | FAIL (-0.429) | pass | pass (2; 0.894) | pass (3) | W2 | dropped |
+| Y-10 premium_commonality | pass | FAIL (sign: -0.676) | FAIL | FAIL | FAIL (0.020) | pass | FAIL (7; -0.255) | FAIL (0) | W2 | dropped |
+| Y-11 ensemble | pass | FAIL (0.346) | FAIL | FAIL | FAIL (-0.433) | pass | FAIL (3; -0.064) | FAIL (1) | W2 | dropped |
+| Y-12 leverage_state_kurtosis | pass | FAIL (sign: -0.897) | FAIL | FAIL | FAIL (-0.520) | pass | FAIL (5; -0.532) | FAIL (1) | W2 | dropped |
+| Y-13 noise_state_reversal | pass | FAIL (sign: -0.369) | FAIL | FAIL | pass (0.711) | pass | pass (2; 0.003) | FAIL (1) | W2 | dropped |
+
+Against each registered falsifier ("the DEV screen fails; the sign is never flipped"): all thirteen falsified on DEV.
+Eight had the wrong sign over DEV (Y-01, Y-02, Y-05, Y-06, Y-07, Y-10, Y-12, Y-13); five had the registered sign but
+read under the pre-cost floor (Y-03 0.890, Y-09 0.838, Y-08 0.494, Y-04 0.399, Y-11 0.346). Y-03 came closest: it failed
+W2 and W5 only. The control conditions of Y-12 and Y-13 were never reached.
+
+## DEV observations (round 5; NOT hypotheses, never to be submitted from this plan)
+
+- Both halves of DEV: Y-03 (short unstable betas) and Y-09 (long volume commonality) earned in all three DEV years (SR
+  0.622 / 0.155 / 1.539 and 1.389 / 0.262 / 0.357), with positive book medians on the last 365 days (0.794, 0.894) and
+  3 and 2 stale copies at least as good; both read under the pre-cost floor (0.890, 0.838) and negative on next30
+  (-0.780, -0.429). Y-02 and Y-08 earned in 2020 and 2022H1 and lost in 2021. WEAK.
+- Tiers: ten of thirteen read negative on next30, among them every idea that had the registered sign in top30. The three
+  positive next30 readings (Y-13 0.711, Y-05 0.456, Y-10 0.020) came with the wrong sign in top30; Y-05, a
+  limits-to-arbitrage premium, repeats round 4's X-08 profile (top30 negative, next30 positive). The expected tier
+  ("next30 at least as strong") was not seen for any idea. WEAK.
+- Coins with high realized kurtosis of their return relative to BTC did worse the next week in every DEV year (Y-01
+  -0.891; 2022H1 SR -3.208), the opposite of the equity sign; switching it on the market's funding trend did not help
+  (Y-12 -0.897). Noisier coins (low variance ratio, Y-05 -1.051, every year negative) and coins with a larger wick share
+  (Y-06 -0.653) did worse too. DEV is spent as a screen for these mirrors. WEAK.
+- With the beta-neutral construction, round 3's block pattern (every unsigned book negative in 2020, positive in 2022H1)
+  did not recur: 5 of the 11 beta-neutral books had a positive 2020 return and 6 of 11 a positive 2022H1 return. The
+  measures differ from round 3's, so this says nothing firm about the beta tilt. WEAK.
+- Costs: the beta-neutral books cost 0.102 to 0.194 of equity over DEV (C/G 0.125 to 0.236), Y-13 0.217 (0.253); G4
+  drops 0.233 to 0.374, under the registered 0.40; G2 drops 0.537 to 0.779, larger than the G4 drop in all thirteen.
+  Speed limit -0.072 to 0.115; names held 26.7 for the relative-return books (BTC drops out), 27.7, and 22.7 to 23.7 for
+  the books with a cs_* inside a window.
+- WEAK throughout: one DEV period, one default each, one researcher session; nothing here is a parameter
+  recommendation, and no corner or control was run.
+
+## Recommendation (round 5)
+
+NONE. By the pre-registered selection rule an idea is eligible only if it passes W1 to W8 at the default and both
+corners (and, for Y-12 and Y-13, the control condition). No idea passed W1 to W8 (all thirteen failed W2 first), so no
+corner and no control was run and no program from version 5 is recommended. No KP-017 or KP-020 measurement is needed
+for this round. Generation 3 stands at 0 of 5 counted submissions and 40 of 60 sandbox runs; M is unchanged at 6. This
+was generation 3's last round (ruling 10).

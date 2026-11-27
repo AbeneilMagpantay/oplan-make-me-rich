@@ -498,3 +498,168 @@ committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.led
     counted trials; none Tier 1. PROCESS.
 - No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
   printed ones). Two runs took longer than the expected two to four minutes (X-05 429 s, X-07 528 s), with no error.
+
+# Round 5 (PLAN version 5, the final wide screen)
+
+## Sources
+- generations/gen003/PLAN.md: version 5 as committed in 652e391 together with the coordinator's round-5 rulings
+  (255,486 bytes, sha256 eda9e74b31ad5288...), with the stage-2 run log, amendments (none), screen outcome, DEV
+  observations and recommendation appended (266,448 bytes, sha256 30e5f2ebca3bc6f6...).
+- The thirteen sandbox outputs of the researcher session (DEV only; scratch gen003_r5/run_01 to run_13), rows 70 to 82
+  (0-indexed) of ledger/sandbox_log.jsonl, `omr.status`, `omr.ledger verify`, `omr.kernel_lock verify`.
+- No returns file, no trial detail file, no calibration file and no data file was read. No VAL number exists for any
+  round-5 program: none was submitted.
+
+## What was run
+- Unit top30 on the sealed kernel of the batch re-key (semantic 7d923e7e2375986d..., G6 0.05 in core and 0.10 in
+  top30). The last round of generation 3: a third wide screen, framed by the question of what could earn in both
+  liquidity tiers (W5 and G8 ask the same rule to earn on ranks 31 to 60), with at most two state-conditional ideas.
+- A fresh researcher session wrote PLAN version 5 and thirteen programs BEFORE any round-5 sandbox run; each parsed. The
+  coordinator's rulings: beta neutrality accepted as a neutrality constraint, its DEV-informed motive (LESSONS 48)
+  recorded; three ideas of class U and two of class N accepted, the selection taking one per class; Y-13 accepted as
+  state-conditional (control gen003_diag_plain_week, margin 0.5 before costs); Y-12 accepted, screen-only under KP-017
+  (control Y-01, margin 0.5); Y-10 open, screen-only under KP-017; the neighbours of failed books open as written (Y-05's
+  kinship with X-08 recorded); Y-03, Y-09 and Y-10 kept; cap 21 runs.
+- The thirteen ideas, all decided once a week, gross 1. Route (a), dollar and beta neutral: Y-01 long realized kurtosis
+  of the hourly return relative to BTC; Y-02 short volatility of volatility; Y-03 short instability of the beta to the
+  unit's mean; Y-04 short variability of daily volume; Y-05 long intraday noise (a low ratio of daily to hourly
+  volatility); Y-06 long wick share of the hourly range; Y-07 short volatility rising after relative gains; Y-08 long
+  coupling of volume with absolute return; Y-09 long volume commonality; Y-10 long premium commonality (reads
+  index_close); Y-11 the equal-weight sum of Y-01, -Y-02 and Y-09. State-conditional, DEV-informed: Y-12 Y-01's book
+  signed by the unit's funding trend (reads funding8h); Y-13 the rank of the noise ratio times the rank of the one-week
+  move.
+- 13 sandbox runs of the cap of 21: the thirteen defaults with --g6-lags, in the registered order. No idea passed W1 to
+  W8, so no corner and no control was due. No stage-1 rejection, no kernel fault, no refusal; 84 to 145 s per run, one
+  at a time, under the coordinator's memory rule.
+
+## Result
+| idea | DEV SR | G4 DEV | G2 DEV | pre-cost | next30 | r max (1..3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | costs (C/G) | first failed |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Y-01 kurtosis | -0.891 | -1.208 | -1.627 | -0.574 | -0.371 | 0.038 | 10; -3.155 | 0 (-0.860 / 0.013 / -3.208) | 0.143 (0.167) | W2 |
+| Y-02 vol_of_vol | -0.153 | -0.423 | -0.824 | 0.117 | -0.505 | 0.065 | 0; 2.352 | 2 (0.452 / -0.636 / 0.431) | 0.145 (0.170) | W2 |
+| Y-03 beta_instability | 0.657 | 0.424 | 0.076 | 0.890 | -0.780 | 0.102 | 3; 0.794 | 3 (0.622 / 0.155 / 1.539) | 0.153 (0.188) | W2 |
+| Y-04 volume_cv | 0.140 | -0.119 | -0.537 | 0.399 | -0.754 | 0.034 | 1; 1.835 | 1 (0.010 / -0.120 / 1.220) | 0.143 (0.168) | W2 |
+| Y-05 noise_ratio | -1.051 | -1.372 | -1.830 | -0.730 | 0.456 | 0.006 | 8; -1.142 | 0 (-2.250 / -0.546 / -0.495) | 0.115 (0.134) | W2 |
+| Y-06 wick_share | -0.653 | -0.947 | -1.393 | -0.359 | -0.751 | 0.115 | 5; -0.078 | 1 (-0.252 / -1.316 / 0.486) | 0.110 (0.129) | W2 |
+| Y-07 vol_feedback | -0.899 | -1.230 | -1.579 | -0.568 | -0.738 | 0.007 | 3; 0.478 | 1 (-2.732 / 0.413 / -1.154) | 0.129 (0.151) | W2 |
+| Y-08 volume_coupling | 0.152 | -0.190 | -0.606 | 0.494 | -0.346 | 0.021 | 8; -0.773 | 2 (1.654 / -0.989 / 0.765) | 0.177 (0.207) | W2 |
+| Y-09 volume_commonality | 0.588 | 0.338 | -0.127 | 0.838 | -0.429 | 0.047 | 2; 0.894 | 3 (1.389 / 0.262 / 0.357) | 0.145 (0.178) | W2 |
+| Y-10 premium_commonality | -0.676 | -0.945 | -1.415 | -0.407 | 0.020 | -0.003 | 7; -0.255 | 0 (-1.844 / -0.169 / -0.413) | 0.102 (0.125) | W2 |
+| Y-11 ensemble | 0.009 | -0.328 | -0.689 | 0.346 | -0.433 | 0.019 | 3; -0.064 | 1 (1.649 / -0.531 / -1.364) | 0.194 (0.236) | W2 |
+| Y-12 leverage_state_kurtosis | -0.897 | -1.271 | -1.610 | -0.523 | -0.520 | 0.042 | 5; -0.532 | 1 (-3.653 / 0.294 / 0.023) | 0.135 (0.157) | W2 |
+| Y-13 noise_state_reversal | -0.369 | -0.732 | -0.906 | -0.006 | 0.711 | -0.008 | 2; 0.003 | 1 (-0.136 / -1.090 / 0.404) | 0.217 (0.253) | W2 |
+
+Years + counts returns above 0; three year rows have a return and a Sharpe of opposite signs (Y-01 2021, Y-04 2020,
+Y-12 2022H1, each return about -0.01 to -0.03). Names held 26.7 of 28.0 for the books on returns relative to BTC (BTC
+drops out), 27.7 for the others, 22.7 to 23.7 for the books with a cs_* inside a window; avg gross 0.811 to 0.860;
+direction changes 872 to 2057; none liquidated. Every run printed the benchmark at DEV Sharpe 0.619, maxDD 0.847.
+
+No counted submission. M is unchanged at 6. Tier 1: none. Pool 0 of 5.
+
+## Screen outcome
+All thirteen failed W2 first: eight with the wrong sign over DEV (Y-01, Y-02, Y-05, Y-06, Y-07, Y-10, Y-12, Y-13), five
+with the registered sign but under the pre-cost floor (Y-03 0.890, Y-09 0.838, Y-08 0.494, Y-04 0.399, Y-11 0.346). Y-03
+came closest: it failed W2 and W5 only. The control conditions of Y-12 and Y-13 were never reached. All thirteen are
+falsified on DEV; no sign is flipped. Recommendation: NONE.
+
+## Reading
+- Did any book earn in both halves of DEV? Y-03 (short unstable betas) and Y-09 (long volume commonality) earned in all
+  three DEV years, with positive book medians over the last 365 days (0.794, 0.894) and 3 and 2 stale copies at least as
+  good; Y-02 and Y-08 earned in 2020 and 2022H1 and lost in 2021. The two all-year books were the round's highest DEV
+  Sharpes (0.657, 0.588) and still under the floor before costs, and both read negative on next30. WEAK.
+- Was the expected tier what next30 read? No. For most ideas the plan expected next30 to be at least as strong; ten of
+  thirteen read negative on next30, among them every idea with the registered sign in top30 (Y-03, Y-04, Y-08, Y-09,
+  Y-11). The three positive next30 readings (Y-13 0.711, Y-05 0.456, Y-10 0.020) came with the wrong sign in top30; Y-05,
+  a limits-to-arbitrage premium, repeats round 4's X-08 profile. Again no rule earned in both tiers.
+- Signs taken from equity results mostly did not carry: realized kurtosis (positive in equities) lost in every DEV year
+  (-0.891, 2022H1 SR -3.208), and the funding-state switch did not change that (-0.897); short volatility of volatility
+  had the wrong sign (small, -0.153); short variability of volume had the registered sign but little size (0.140).
+  Noisier coins did worse in every year (Y-05 -1.051), and wick share agreed (Y-06 -0.653). WEAK.
+- Beta neutrality: round 3's block pattern (every unsigned book negative in 2020 and positive in 2022H1) did not recur;
+  5 of the 11 beta-neutral books had a positive 2020 return and 6 of 11 a positive 2022H1 return. Different measures, so
+  suggestive only.
+- Costs were those of unsigned weekly books (0.10 to 0.19 of equity over DEV, C/G 0.13 to 0.24; Y-13 0.217); G4 drops
+  0.23 to 0.37, under the registered 0.40; G2 drops 0.54 to 0.78, larger than G4's in all thirteen.
+
+## What must NOT be concluded
+- Thirteen DEV failures say nothing about VAL. No VAL bar was read for any program of this round.
+- Y-03's and Y-09's all-year profile is a DEV observation, not a hypothesis: a variant built to lift them over the floor
+  or to turn their next30 sign would be fitted to readings now seen. DEV is spent as a screen for the mirrors of the
+  wrong-sign books, above all Y-01, Y-05 and Y-12 (negative in two or three DEV years each).
+- "Equity results do not transfer" is not established: one default per idea, one DEV period, measures of my own making.
+- The beta-neutral comparison with round 3 crosses different measures and says nothing firm about a beta tilt.
+- One default per idea was run; nothing is implied about other values of any param, and none is recommended.
+- A wide screen tests many ideas at once; had one passed, it would have been a candidate for one counted trial only.
+- Choosing ideas is still open to hindsight (KP-010); the plan named what could bias each one.
+
+## After the round
+M = 6 (generation 0: 4, generation 1: 1, generation 2: 1, generation 3: 0 of 5), N = 5.90, rho 0.021, Tier 1: 0, pool
+0 of 5, one uncounted stage-1 rejection (generation 0). Sandbox runs used in generation 3: 40 of 60 (rounds 1 to 5: 3,
+3, 11, 10 and 13; ledger/sandbox_log.jsonl now 83 rows, the thirteen new rows status ok, stage1 full, source_sha256
+equal to the committed files). `omr.kernel_lock`: OK, sealed (core 0.05, top30 0.1). `omr.ledger verify`: OK, all six
+chains. This was generation 3's last round (ruling 10).
+
+## For the coordinator's decision
+No idea survived the screen, so there is no candidate to decide on.
+
+## Requests to the coordinator
+- LESSONS.md entries proposed for review (numbering after 56):
+  - 57. In unit top30 on DEV, thirteen pre-registered ideas (eleven dollar- and beta-neutral weekly books on unsigned
+    higher-moment, uncertainty, noise, disagreement and commonality measures; a funding-state switch; a coin-level
+    noise-state switch) met one screen fixed in advance and none passed; eight had the wrong sign. The two that earned
+    in all three DEV years and over the last 365 days (short beta instability, long volume commonality; DEV Sharpe 0.657
+    and 0.588) read under the pre-cost floor (0.890, 0.838) and negative on next30 (-0.780, -0.429). Generation 3 PLAN
+    run log, round 5, runs 1 to 13; no trial id. WEAK: DEV only, one default each.
+  - 58. Coins whose hourly return relative to BTC had high realized kurtosis did worse the next week in every DEV year
+    (-0.891), the opposite of the equity sign, and signing that book by the unit's funding trend did not help (-0.897);
+    coins whose own hourly moves partly reverse within the day did worse in every year as well (-1.051) while reading
+    +0.456 on next30, round 4's X-08 profile. Round 5, runs 1, 5 and 12; no trial id. WEAK; DEV is spent as a screen for
+    the mirrors.
+  - 59. Yardstick: dollar- and beta-neutral weekly top30 books cost 0.10 to 0.19 of equity over DEV (C/G 0.125 to
+    0.236), lost 0.23 to 0.37 Sharpe under G4's reading and 0.58 to 0.78 under G2's, like the unsigned dollar-neutral books of
+    LESSONS 50 and 54: neutralising beta did not raise the cost drag measurably. Round 5, runs 1 to 12. WEAK as a number;
+    a design yardstick.
+  - 60. Process: the final wide screen settled thirteen ideas in thirteen short runs, with no corner, no control and no
+    counted trial. Generation 3 screened forty top30 ideas in forty default runs and spent no counted trial; sixty-two
+    ideas have now been screened or scored (ten in unit core, fifty-two in unit top30), six in counted trials; none Tier
+    1. PROCESS.
+- No kernel defect was seen. The sandbox's readings were printed and logged as documented (logged values equal the
+  printed ones); every run took under 2.5 minutes.
+
+# Generation 3 closed (written by the coordinator, 2026-11-27)
+
+Generation 3 ends with no counted trial of the five allowed and 40 sandbox runs of the 60 allowed, on the
+kernel sealed on 2026-11-26 (7d923e7e2375986d). Five rounds in two days: forty pre-registered ideas in unit
+top30 (three, three, eleven, ten and thirteen; an eleventh idea of round 4 was struck before any run). Every
+plan was committed and on the remote before its first run, and every idea was settled by one default run
+against a screen fixed in advance. None was eligible; no corner, no control and no counted trial was due. M
+stays at 6.
+
+What the generation showed, in the order it was learned:
+- Round 1: compositions of the week's move, bet against. Lost, or too weak.
+- Round 2: continuation, registered openly as descended from DEV. Earned in 2020, lost in 2022H1 and over the
+  last year of DEV, negative on next30. The one pattern DEV had kept showing did not survive readings nobody
+  had seen, and no VAL bar was spent to learn it.
+- Rounds 3 to 5: three wide screens, 34 ideas from classes not tried before. No always-on book earned in both
+  halves of DEV with enough size. The nearest misses each failed one reading their design could not shape (the
+  distance below the 6-week high: the last 365 days of DEV; the market-state continuation: next30). Bets
+  against pressure in the top 30 lost in every DEV year however the pressure was measured, and next30 did not
+  show it. In the last round the researcher's own account was that the space of untried ideas had become thin;
+  ten of its thirteen ideas read negative on next30.
+- What worked as built: the new timeframe functions (weekly books at weekly costs), the sandbox's DEV readings
+  (every verdict from one run), the wide screen (34 ideas in 34 runs), and pre-registration on the remote before
+  every run.
+
+The coordinator's reading for the human. The search in unit top30 at the weekly horizon, with the fields the
+data holds and the gates as they stand, is exhausted for practical purposes. Sixty-two ideas have been screened
+or scored in all (ten in unit core, fifty-two in unit top30), six of them in counted trials; none passed, and
+none came close out of sample. The kernel did what it was built for: forty ideas were stopped at the cost of
+forty short runs and no counted trial. What is left is the human's to decide (STATE.md, open decision 13): to
+park the search with the kernel ready to test any single idea he brings; to open another front (another
+universe, horizon, kind of data or objective), each a build of days and a change of the kernel or of the data;
+or to stop.
+
+The kernel's full test suite last ran at the build of this kernel (1228 passed, 2026-11-26). Since then the
+kernel's strategy test (tests/test_blocks.py) and its structure test passed with every program of this
+generation in place (five runs, the last with all 92 strategy files). The full suite is run again at this
+close, as the playbook asks since lesson 36; its result is recorded in STATE.md with the next commit.

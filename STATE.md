@@ -1,4 +1,4 @@
-# STATE (2026-11-26: generations 0 to 2 have counted trials, six in all, none Tier 1; the kernel of the batch re-key is sealed)
+# STATE (2026-11-27: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; the weekly top30 search is put to the human as exhausted)
 
 ## Where things stand
 
@@ -342,6 +342,19 @@ the one it could not (next30 0.106 against 0.3). No counted trial; M unchanged (
 scored in all. What the four rounds show together (LESSONS 56): on DEV, betting against pressure in the top
 30 lost in every year however the pressure was measured, and next30 did not show it; a rule built on that
 would be a mirror of failed books and would meet G8 with DEV's own next30 readings against it.
+Round 5, the final wide screen (2026-11-27; PLAN version 5, pre-registered and pushed as 652e391 before any
+run): thirteen ideas from what was left (the tail shape of returns, the swing of volatility, of beta and of
+volume, two measures of noise, a volatility feedback, the coupling of volume to moves, the commonality of
+volume and of the premium, a combination, a funding-state switch, a coin-level noise-state switch), eleven of
+them also neutral to the beta to BTC. None passed: eight had the wrong sign, five were under the floor before
+costs; ten of thirteen read negative on next30. The researcher's own account was that the space of untried
+ideas had become thin (LESSONS 57 to 61). No counted trial; M unchanged.
+GENERATION 3 IS CLOSED (2026-11-27; generations/gen003/REPORT.md, last part): 0 of 5 counted submissions, 40 of
+60 sandbox runs, forty ideas in five rounds, none eligible. Sixty-two ideas have been screened or scored in
+all (ten in unit core, fifty-two in unit top30), six in counted trials; none Tier 1. The coordinator's reading:
+with the fields, the horizon and the gates as they stand, the weekly top30 search is exhausted for practical
+purposes. What comes next is the human's decision (open decision 13); no round starts and nothing in the
+kernel changes before he gives it.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
@@ -420,3 +433,10 @@ measurement in null worlds (KP-020).
    equally; a stress on net funding would keep the protection against living on received funding), KP-026 (the
    rebalance rule trades every name when any name is outside its band; a cost decomposition first), KP-027 (two
    stale texts in the kernel).
+13. WHAT NEXT, after generation 3 (put to the human on 2026-11-27). (a) Park the search: no more rounds of
+   ideas; the kernel stays sealed and ready, and any single idea he brings is tested in one short run against
+   the same screen (the coordinator's recommendation). (b) Open another front, each a build of days and a
+   change of the kernel or of the data, none recommended by the evidence so far: the less liquid coins (ranks
+   31 to 100, where a small account is not at a disadvantage but costs and data are worse), other data, another
+   horizon, or the premium unit of KP-028 (small at his account size). (c) Stop. His own money is not to go
+   into any rule tested so far: none passed.

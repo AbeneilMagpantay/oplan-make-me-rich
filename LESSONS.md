@@ -308,3 +308,34 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     not show in ranks 31 to 60: a rule built on it would be a mirror of failed books, and it would meet G8,
     which asks for a positive Sharpe on next30, with DEV's own next30 readings against it. Rounds 1, 3 and 4;
     no trial id. WEAK: DEV only, read from failures, never registered. INSTRUMENT and PROCESS.
+
+## From generation 3, round 5, the final wide screen, and from the generation as a whole (generations/gen003/REPORT.md)
+
+57. In unit top30 on DEV, thirteen pre-registered ideas (eleven dollar- and beta-neutral weekly books on unsigned
+    measures of tail shape, uncertainty, noise, disagreement and commonality; a funding-state switch; a
+    coin-level noise-state switch) met one screen fixed in advance, and none passed; eight had the wrong sign.
+    The two that earned in all three DEV years and over the last 365 days (short beta instability, long volume
+    commonality; DEV Sharpe 0.657 and 0.588) read under the floor before costs (0.890, 0.838) and negative on
+    next30 (-0.780, -0.429). Generation 3 PLAN run log, round 5, runs 1 to 13; no trial id. WEAK: DEV only, one
+    default each.
+58. Coins whose hourly return relative to BTC had high realized kurtosis did worse the next week in every DEV
+    year (-0.891), the opposite of the sign reported for equities, and signing that book by the unit's funding
+    trend did not help (-0.897); coins whose own hourly moves partly reverse within the day did worse in every
+    year as well (-1.051) while reading +0.456 on next30, the profile of round 4's price-delay book. Round 5,
+    runs 1, 5 and 12; no trial id. WEAK; DEV is spent as a screen for the mirrors.
+59. Yardstick: dollar- and beta-neutral weekly top30 books cost 0.10 to 0.19 of equity over DEV (0.125 to 0.236
+    per unit of gross) and lost 0.23 to 0.37 Sharpe under G4's reading and 0.58 to 0.78 under G2's, like the
+    dollar-neutral books of lessons 50 and 54: taking the beta out did not raise the cost drag measurably.
+    Round 5, runs 1 to 12. WEAK as a number; a design yardstick.
+60. Process: the final wide screen settled thirteen ideas in thirteen short runs. Generation 3 screened forty
+    top30 ideas in forty default runs and spent no counted trial. Sixty-two ideas have now been screened or
+    scored (ten in unit core, fifty-two in unit top30), six in counted trials; none Tier 1. PROCESS.
+61. Generation 3 as a whole. Forty pre-registered ideas at the weekly horizon in unit top30, drawn from every
+    class the data's fields allow that was not already closed, were each settled by one default run against a
+    screen fixed in advance. None was eligible. The nearest misses each failed one reading their design could
+    not shape; the patterns DEV does show (continuation early in DEV, pressure that carries on in the top 30)
+    did not hold over the last year of DEV or on next30; and in the last round the researcher found the space of
+    untried ideas thin, with ten of thirteen ideas negative on next30. With the fields, the horizon and the
+    gates as they stand, the weekly top30 search is exhausted for practical purposes. What remains are changes
+    of what is searched (the universe, the horizon, the data, the objective), each the human's decision and each
+    a change of the kernel or of the data. PROCESS and INSTRUMENT.
