@@ -1,0 +1,25 @@
+# Generation 3, round 5, Y-13 (generations/gen003/PLAN.md, version 5, the final wide screen). STATE-CONDITIONAL at the
+# coin level, DEV-informed (LESSONS 44 and 56: weekly continuation in top30 early in DEV; contrarian books near zero or
+# positive on next30). x = the coin's k-day log return (1 week) in units of its own annualised daily volatility over a
+# days (round 4's X-10 input); vr = Y-05's noise ratio (the standard deviation of the daily mean of the coin's own
+# hourly log return over kd days / that of the hourly return over h hours). Weight = rank(vr) x rank(x), centred: where
+# hourly moves extend (vr high, an efficient or trending price) the week's relative move is continued; where they
+# reverse within the day (vr low, transient pressure) it is reversed; coins in the middle get little weight. Dollar
+# neutral, gross 1, not beta neutral (so that its state-free control, gen003_diag_plain_week, is comparable). Traded at
+# the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y13_noise_state_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity decides the sign of a week's move: where the price is noisy (hourly moves reverse within the day) a week's relative move is mostly pressure that reverses, where it is efficient it is mostly news that continues (reversal in illiquid names, momentum in liquid ones). Rank of the noise ratio times rank of the 1-week move, weekly. DEV-informed. Falsified if the DEV screen fails (sign never flipped), it does not beat its control by 0.5 before costs, or the gates fail."
+
+k = param(7, 5, 9)             # days of the coin's relative move (1 week)
+a = param(14, 11, 17)          # days of the volatility that scales it (2 weeks)
+kd = param(21, 16, 26)         # days of daily means in the noise ratio (3 weeks)
+h = param(504, 403, 605)       # hours of hourly returns in the noise ratio (3 weeks)
+
+d = daily(close)
+x = tf_last(logret(d, k) / realised_vol(d, a), weekly)
+r = logret(close, 1)
+vr = tf_last(std(tf_mean(r, daily), kd) / std(r, h), weekly)
+signal = cs_scale(cs_demean(cs_rank(vr) * cs_rank(x)))

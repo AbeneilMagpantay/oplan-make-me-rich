@@ -1,0 +1,27 @@
+# Generation 3, round 5, Y-07 (generations/gen003/PLAN.md, version 5, the final wide screen). Volatility feedback.
+# e = the coin's hourly log return minus BTC's; pe = the same relative log return over the j - 1 hours before this one
+# (j = 3: the two hours before; written logret(x, j) - logret(x, 1), so no one-hour lag sits on a one-hour return).
+# fb = corr(pe, |e|) over the last n hours: whether the coin's own volatility rises after its relative rises (fb > 0,
+# an inverted leverage effect, the pattern of a speculative chase) or after its falls (fb < 0, the usual leverage
+# effect). Unsigned in the direction of the move itself. BTC's own e is 0 and drops out. Sampled at the last hour of
+# each weekly bin. Short the highest fb, long the lowest. Dollar and beta neutral (the centred rank's residual on the
+# coins' centred daily beta to BTC over nb days); gross 1; traded at the Monday 00:00 open. No funding, mark or index.
+name = "gen003_y07_vol_feedback"
+family = "volatility"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Speculative volatility feedback: in a coin held by a chasing clientele, gains bring larger moves; the chasers overprice it and it earns less over the next weeks than a coin whose volatility rises after falls. Short the highest correlation of past relative return with current absolute relative return over 2 weeks, long the lowest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+j = param(3, 2, 4)             # hours back that delimit the lagged window (3: the two hours before)
+n = param(336, 268, 404)       # hours in the correlation (2 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+e = logret(close, 1) - logret(btc(close), 1)
+pe = logret(close, j) - logret(btc(close), j) - e
+fb = tf_last(corr(pe, abs(e), n), weekly)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(fb))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

@@ -1,0 +1,30 @@
+# Generation 3, round 5, Y-12 (generations/gen003/PLAN.md, version 5, the final wide screen). STATE-CONDITIONAL,
+# DEV-informed. READS funding8h (playbook 4b, KP-017: screen-only; recommended at most "subject to the per-program
+# measurement"). The book is Y-01's (kurtosis rank, dollar and beta neutral) times -s, where s = the sign of the market's
+# leverage trend: the cross-sectional mean, over the unit, of each coin's mean funding rate over the last a hours
+# (1 week) minus over the last b hours (6 weeks), at the last hour of each weekly bin. Leverage building (s = +1):
+# short the high-kurtosis coins; leverage unwinding (s = -1): long them. The book stays in the market in both states
+# (gross 1). Only the cross-sectional MEAN of the funding shock enters, as a market series; no coin is ranked on its
+# own funding. State-free control: gen003_y01_kurtosis. Traded at the Monday 00:00 open.
+name = "gen003_y12_leverage_state_kurtosis"
+family = "volatility"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leverage cycle and jump risk: while market leverage builds (funding above its norm) leveraged longs bid up the jump-prone coins, which then earn less; once leverage unwinds those coins have been dumped and carry a high premium. Kurtosis rank, beta neutral, short when the unit's mean funding trend is up and long when it is down, weekly. DEV-informed. Falsified if the DEV screen fails (sign never flipped), it does not beat its control by 0.5 before costs, or the gates fail."
+
+m = param(2, 1, 3)             # weekly bins pooled in the moments (2 weeks)
+a = param(168, 134, 202)       # hours in the recent funding mean (1 week)
+b = param(1008, 806, 1210)     # hours in the funding norm (6 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+e = logret(close, 1) - logret(btc(close), 1)
+e2 = e * e
+v2 = sma(tf_mean(e2, weekly), m)
+kurt = sma(tf_mean(e2 * e2, weekly), m) / (v2 * v2)
+lev = cs_mean(tf_last(sma(funding8h, a) - sma(funding8h, b), weekly))
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(kurt))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w * -sign(lev))

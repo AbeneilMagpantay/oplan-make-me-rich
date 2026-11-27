@@ -1,0 +1,27 @@
+# Generation 3, round 5, Y-01 (generations/gen003/PLAN.md, version 5, the final wide screen). Realized kurtosis.
+# e = the coin's hourly log return minus BTC's (relative return; BTC's own e is 0, so BTC drops out as 0/0).
+# kurt = the mean of e^4 over the last m weekly bins / (the mean of e^2 over them)^2: the fourth moment of the hourly
+# relative return against its variance, unsigned (how much of the coin's own risk arrives in a few large hours).
+# Long the highest kurtosis, short the lowest. Dollar neutral AND beta neutral: the centred rank z is replaced by its
+# residual on the coins' centred daily beta to BTC over nb days (w = z - c x bd, c = mean(z bd) / mean(bd bd) across
+# the unit), so sum(w) = 0 and sum(w x beta) = 0 by identity; gross 1; decided once a week, traded at the Monday 00:00
+# open. No funding, mark or index input.
+name = "gen003_y01_kurtosis"
+family = "volatility"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Jump-risk premium: a coin whose own risk lately came in a few large hourly moves (high realized kurtosis of its return relative to BTC) carries jump risk that BTC cannot hedge; holders and market makers demand more to hold it and it earns more over the next weeks. Long the highest kurtosis, short the lowest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(2, 1, 3)             # weekly bins pooled in the moments (2 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+e = logret(close, 1) - logret(btc(close), 1)
+e2 = e * e
+v2 = sma(tf_mean(e2, weekly), m)
+kurt = sma(tf_mean(e2 * e2, weekly), m) / (v2 * v2)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(kurt))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

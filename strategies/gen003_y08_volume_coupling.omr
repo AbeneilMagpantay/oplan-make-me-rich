@@ -1,0 +1,23 @@
+# Generation 3, round 5, Y-08 (generations/gen003/PLAN.md, version 5, the final wide screen). Volume without price
+# change. c = corr(hourly quote volume, |hourly log return|) over the last n hours: how closely the coin's trading
+# arrives together with its own price moves. High: trading is driven by news that moves the price; low: much volume
+# changes hands without moving it (disagreement, churning, wash-like flow). The correlation is free of the volume
+# level. Sampled at the last hour of each weekly bin. Long the highest coupling, short the lowest. Dollar and beta
+# neutral (the centred rank's residual on the coins' centred daily beta to BTC over nb days, sum(w) = 0 and
+# sum(w x beta) = 0 by identity); gross 1; traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y08_volume_coupling"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Disagreement: volume that changes hands without moving the price marks traders reading the same news differently; with costly shorting of the spot coin the optimists set the price, and the coin is overpriced until that resolves. Long the coins whose hourly volume moved most closely with their absolute hourly return over 2 weeks, short the least, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(336, 268, 404)       # hours in the correlation (2 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+c = tf_last(corr(quote_volume, abs(logret(close, 1)), n), weekly)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

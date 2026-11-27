@@ -1,0 +1,24 @@
+# Generation 3, round 5, Y-09 (generations/gen003/PLAN.md, version 5, the final wide screen). Commonality in trading
+# activity. dq = the daily log change of the coin's quote volume; c = corr(dq, the unit's mean dq) over the last k
+# days: how far the coin's trading rises and falls with the market's rather than on its own. Against the unit's mean
+# (not BTC's volume), so BTC is an ordinary member and not a fixed point at 1 (a cs_* inside a window: a coin enters
+# this measure about four weeks after it is in play). Sampled at the last hour of each weekly bin. Long the highest
+# commonality, short the lowest. Dollar and beta neutral (the centred rank's residual on the coins' centred daily beta
+# to BTC over nb days); gross 1; traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y09_volume_commonality"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity risk and attention: a coin whose trading moves with the market's carries systematic liquidity risk and is paid for it; a coin traded on its own rhythm is driven by coin-specific attention that overprices it. Long the highest correlation of daily volume changes with the unit's mean over 4 weeks, short the lowest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+dq = logret(daily(quote_volume), 1)
+c = tf_last(corr(dq, cs_mean(dq), k), weekly)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

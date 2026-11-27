@@ -2437,3 +2437,398 @@ corners (and, for X-09 and X-10, the control condition). No idea passed W1 to W8
 W2 first), so no corner and no control was run and no program from version 4 is recommended. No KP-017 or KP-020
 measurement is needed for this round. Generation 3 stands at 0 of 5 counted submissions and 27 of 60 sandbox runs; M is
 unchanged at 6.
+
+# Generation 3 - PLAN, version 5 (round 5, the final wide screen, pre-registered 2026-11-27 before any round-5 sandbox run)
+
+Researcher session for generation 3, round 5, stage 1. Unit top30. A fresh session: everything it knows of the project
+comes from the files below. Appended below version 4 and its stage-2 parts; the 221,510 bytes before this line (sha256
+62320eeba9d0ee3e...) are unchanged.
+
+- Kernel: `omr.status` OK d09812fdec752a17, semantic 7d923e7e2375986d, text b74122f3f9821056, sealed (G6 core 0.05,
+  top30 0.10), `omr.kernel_lock verify` OK. Data research_hash 28d9084a8c5c7659, validated, snapshot_end 2026-11-18.
+- Ledger: M = 6 (generation 0: 4, 1: 1, 2: 1, 3: 0 of 5), N 5.90, rho 0.021, Tier 1 0, pool 0 of 5, one uncounted
+  stage-1 rejection; `omr.ledger verify` OK, six chains. Sandbox log 70 rows; generation 3 has used 27 of 60 runs.
+- Read: RESEARCH_PLAYBOOK.md (all; 3, 4, 4b, 5 and 8b with care), generations/META_REVIEW_2026-11-26.md (all),
+  LESSONS.md (56), LANGUAGE.md (all), CONSTITUTION.md 4 to 7 and 13, generations/gen003/REPORT.md (rounds 1 to 4),
+  generations/gen003/PLAN.md versions 3 and 4 in full, rows 49 to 69 of ledger/sandbox_log.jsonl, `omr.status`,
+  `omr.ledger summary`. Kernel code read only for what the parser does (omr/lang.py: parse_file, Program, the lookback
+  rule, the typing of corr and btc). Shapes: round 3 and 4 programs, the two plain controls of round 2.
+- Not opened: data/, ledger/returns/, ledger/trials/, calibration files, audits/. No project program was run on data:
+  only `omr.status`, `omr.ledger summary`, `omr.ledger verify`, `omr.kernel_lock verify` and a parse-only check
+  (scratch gen003_r5/parse_check.py; omr.lang.parse_file).
+- Numbers seen before writing: every DEV number of generations 2 and 3 (REPORTs, run logs, sandbox rows 40 to 69), the
+  review's tables and bar, the VAL rows of the six counted trials. No VAL or DEV number exists for any program below.
+- Files of this version: this text and thirteen new programs, strategies/gen003_y01_* to gen003_y13_*. Nothing else.
+
+Facts from the kernel's rules that shaped the list (behaviour, not results):
+1. No level of size, volume, price or trade count can be ranked (a cs_* needs a dimensionless input): the size,
+   illiquidity and spread premia are out of reach. Rankable: returns and their moments, correlations and betas, ratios
+   of a quantity to its own history, the taker share, funding and the premium.
+2. A correlation or beta against BTC makes BTC a fixed point (correlation 1, beta 1, no instability) with the extreme
+   rank every week. So Y-03, Y-09 and Y-10 measure against the unit's equal-weighted mean (a cs_* inside a window: a
+   coin enters about 4 to 5 weeks after it is in play, round 3's fact 3; names held perhaps 22 to 25 of 28), and the
+   higher moments (Y-01, Y-02, Y-07, Y-11, Y-12) use the hourly return relative to BTC, 0/0 for BTC, which drops out.
+3. Beta neutrality is an identity, not a tuned number: with z the centred rank and bd the centred daily betas to BTC,
+   w = z - (mean(z bd) / mean(bd bd)) bd has sum(w) = 0 and sum(w x beta) = 0; cs_scale keeps both. The 51-day beta at
+   its high bound, sampled weekly, sets every beta-neutral book's lookback at 1,605 hours; a residual on that beta
+   inside a further daily window would pass 2,160, so no measure is built that way.
+4. A rank cannot see a common positive factor: the variance ratio's 24 hours a day drops out, so Y-05 writes it as
+   std(daily mean) / std(hourly) with no literal. Y-07's previous-hours return is logret(x, j) - logret(x, 1), j = 3
+   (as X-08), so no one-hour lag sits on a one-hour return (nested_unit_window).
+5. A product of two ranks (Y-13) gives little weight to coins in the middle of either: about a quarter of the names at
+   |w| <= 0.01 (estimate), names held about 21 of 28, above W1's 15.
+6. Source read (playbook 5): same-unit ratios appear only as measured series (Y-04's cv, Y-06's wick share, Y-10's
+   premium), never as a constant, threshold or scale; no calendar field; no jitterable literal in any file; Y-12's state
+   is the sign of a real market series.
+
+The shared construction. Every route-(a) book (Y-01 to Y-11) is dollar AND beta neutral. LESSONS 48's split (unsigned
+or move-neutral books lost in 2020 and earned in 2022H1) is what an incidental short-beta tilt in their ranks would
+produce; G6's paired copies keep each row's net, not its beta, so such a tilt is market timing by accident. Removing it
+is a construction chosen with that DEV observation in view (DEV-informed, question 1); no measure or sign descends from
+a result. Y-13 is not beta neutral, so that its control stays comparable.
+
+Considered, not registered: funding commonality (funding sits at the exchange's default rate for days, as I recall the
+rule, so a correlation of its changes is often undefined; Y-10 uses the premium); a market-liquidity state times
+three-week momentum (Avramov, Cheng and Hameed 2016; momentum is a top30 effect, against this round's ask; the two state
+seats went to Y-12 and Y-13); a dispersion state (likely to track X-10's volatility state); loadings on aggregate
+volatility, beta, low volatility, spread estimators (persistent characteristics G6 does not credit); the volatility of
+the Amihud ratio (equity sign opposite to Y-04's on a correlated measure); jump share (a cruder Y-01); flow commonality
+(a second Y-09); dispersion of the taker imbalance (next to X-06's mirror); the premium's beta to price (W-10's
+statistic in another form); MAX, salience, frog-in-the-pan (closed lottery and continuation forms).
+
+## The screen, fixed now, the same for every idea (W1 to W8)
+
+W1 stage 1 passes with at least 30 direction changes, average gross at least 0.5, at least 15 names held on average, not
+liquidated; W2 DEV Sharpe before costs (the DEV Sharpe plus the drop under G4's reading, i.e. DEV Sharpe + (DEV Sharpe -
+G4 DEV Sharpe)) at least 1.5; W3 G4's DEV reading positive; W4 G2's DEV reading positive; W5 next30 DEV Sharpe at least
+0.3; W6 the speed-limit statistic at most 0.40 at each of one to three steps (a reason line fails); W7 in the paired
+reading at most 4 of 10 stale copies at least as good as the book AND the book's median Sharpe over the last 365 days of
+DEV positive (a refused reading fails); W8 at least two of the three DEV years positive. A wrong sign is a failure; no
+sign is ever flipped; no default is changed after a run. No sparse book.
+
+Numbers are taken as the sandbox prints them (full stage 1, no --quick, with --g6-lags): the stage-1 line, "DEV
+Sharpe", "rebalances ... avg gross ... liquidated", the per-year rows (2020, 2021, 2022; a year is positive when its
+return is above 0), and the KP-018 block (r(1) to r(3), next30, G2 and G4 on DEV, names held, the paired reading A of 10
+and book median B). Every idea's registered sign is the sign of its signal line; a negative DEV Sharpe fails W2.
+
+## The bar, shared arithmetic (playbook 8b)
+
+- Cost drag = the Sharpe that 1x costs take, i.e. the expected G4 drop. Measured for weekly top30 books: unsigned or
+  move-neutral books 0.24 to 0.45 (C/G 0.11 to 0.23; LESSONS 50 and 54), reference-price books 0.26 (LESSONS 50),
+  continuation and state-switched books 0.23 to 0.34 (C/G 0.29 to 0.45; LESSONS 45 and 54), X-10 0.343.
+- Registered: 0.40 for every beta-neutral book (Y-01 to Y-11): the unsigned drag of about 0.30 to 0.35 for two- to
+  four-week windows sampled weekly, raised because removing the book's beta lowers its volatility (estimate 5 to 15%)
+  at the same costs and the 6-week beta moves the weights a little each week; 0.40 for Y-13 (a one-week input, two
+  ranks); 0.45 for Y-12 (Y-01's 0.40 plus whole-book flips when the state turns, estimate 10 to 25 over DEV, each
+  trading twice the gross, about 0.01 to 0.03 a year per unit of gross).
+- Sharpe needed in VAL before costs: 0.74 + drag for G1's line, 1.5 + drag for decent odds: 0.40 -> 1.14 / 1.90;
+  0.45 -> 1.19 / 1.95. G2 takes another 0.5 to 0.8 on DEV from any full book (LESSONS 42 and 54); W4 asks only that its
+  DEV reading stay positive.
+- W2's 1.5 is a floor, not the bar: with the decay the review estimates, 2.5 to 3.5 before costs on DEV would be needed
+  to expect 1.5 in VAL. A pass is a candidate for one counted trial, nothing more.
+
+## Disclosures for every idea
+
+- The author model has read this market's history through DEV, VAL and the vault, and this session every DEV number of
+  generations 2 and 3. No rule names a date, coin, price level or event; every tunable number is a declared param (all
+  thirteen files have n_literals 0). That does not remove hindsight from the CHOICE of ideas (KP-010).
+- Remembered DEV path: the 2020 to 2021 bull and the May 2021 crash; the 2021 memecoin waves (jumps, volume bursts,
+  decoupled rallies); the 2022 bear (LUNA in May, a jump-heavy crash with exploding volatility of volatility; Celsius
+  and Three Arrows in June); funding high through 2021, low or negative in 2022H1. Remembered VAL: FTT in November
+  2022, the 2023 recovery, spot ETFs and memecoins in 2024, the 2024 funding spikes, weekend shocks.
+- Remembered DEV readings: all of LESSONS 39 to 56, in particular LESSONS 48's split (answered by a construction, as
+  said), the positive next30 readings of W-01, W-02, W-10, X-02 and X-08, and X-09's next30 failure. I remember no
+  result for any of the thirteen measures in crypto, in DEV, VAL or anywhere.
+- Thirteen ideas against one screen: if a no-skill book passed it 3 times in 100, one of thirteen would pass by luck
+  about 33 times in 100 (round 3's ruling 10).
+
+## The ideas
+
+All thirteen: kind portfolio, unit top30, decided once a week (a weekly series visible at the bar that opens Sunday
+23:00 UTC, traded at the Monday 00:00 open), gross 1, no sparse book. Route (a), Y-01 to Y-11: rank weights, centred,
+then beta neutral as in fact 3, nb = param(42, 33, 51) days in every file. e = the coin's hourly log return minus BTC's.
+"Tier" says where the mechanism should be stronger ("next30": at least as strong in ranks 31 to 60). Nodes and
+lookbacks (window params at their high bounds) are from the parse check.
+
+### Y-01 gen003_y01_kurtosis (class T, tail shape; tier: both, stronger in next30)
+- Rule: kurt = the mean of e^4 over the last m weekly bins / (the mean of e^2 over them)^2; long the highest.
+  m = param(2, 1, 3); `kurt = sma(tf_mean(e2 * e2, weekly), m) / (v2 * v2)`, v2 = sma(tf_mean(e2, weekly), m).
+  60 nodes, lookback 1,605 h.
+- Mechanism: a jump-risk premium. Coin-specific jumps cannot be hedged with BTC; after jumpy weeks market makers widen
+  and cut inventory and risk-averse holders sell, so the coin is priced to earn more. Other side: holders who shed jump
+  risk, liquidity providers who step back; it lasts while that risk is not diversified away in a 30-name book.
+- Not one of the 49: #15 and #27 ranked the third moment (signed skewness of daily residuals), W-03 the change of the
+  second; this is the fourth over the second, unsigned, from hourly returns.
+- Tier: ranks 31 to 60 jump more and hedge worse; in equities higher-moment effects are stronger in small stocks.
+- Drag 0.40 -> before costs in VAL 1.14 line / 1.90 odds. Outside evidence: Amaya, Christoffersen, Jacobs and Vasquez
+  (2015), US equities, weekly, intraday data: realized kurtosis positively related to next week's return, less robust
+  than their (negative) skewness result. Crypto: none I can verify.
+- Bias: up-jumps went on rising on DEV (#15, #27), favouring the long leg in 2020 to 2021; LUNA's crash was a
+  jump-heavy path in the long leg.
+
+### Y-02 gen003_y02_vol_of_vol (class U, uncertainty about risk; tier: next30)
+- Rule: dv = the daily root mean square of e; vov = std of dv over the last k days / its mean; short the highest.
+  k = param(21, 16, 26); `dv = sqrt(tf_mean(e * e, daily))`, `vov = std(dv, k) / sma(dv, k)`. 57 nodes, 1,605 h.
+- Mechanism: speculators drawn to coins whose risk is in flux (a taste for ambiguity and lottery payoffs) overprice
+  them while steady coins are neglected. Other side: those speculators; it lasts as long as they do.
+- Not one of the 49: W-03 ranked the change of residual variance (this week over 4 weeks); this ranks how far the daily
+  volatility swung around its 3-week mean (spikes and lulls alike), scaled by its level (question 6).
+- Tier: a more speculative clientele and costlier spot shorting in ranks 31 to 60.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: Baltussen, van Bekkum and van der Grient (2018), US equities, monthly,
+  option-implied volatility of volatility: high values earn less. Crypto: none.
+- Bias: W-03 (short variance shocks) had the wrong sign on DEV (-0.276) and shares part of this short leg in spike
+  weeks. The registered sign is the outside evidence's.
+
+### Y-03 gen003_y03_beta_instability (class U, uncertainty about risk; tier: both)
+- Rule: bh = the coin's beta to the unit's mean hourly return over h hours; u = std of bh sampled at each daily close
+  over the last k days; short the highest. h = param(168, 134, 202), k = param(28, 22, 34);
+  `u = std(tf_last(bh, daily), k)`. 57 nodes, 1,605 h.
+- Mechanism: factor-loading uncertainty. Holders cannot price market risk they cannot measure; speculators who trade the
+  swings in a coin's exposure keep it rich. Other side: those speculators.
+- Not one of the 49: W-08 ranked the signed change of correlation with BTC, X-07 the change of up- minus down-beta; this
+  ranks how much the beta varied over 4 weeks, unsigned, against the unit's mean (fact 2).
+- Tier: nothing in it needs illiquidity; estimation noise is larger in ranks 31 to 60.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: Armstrong, Banerjee and Corona (2013), US equities: as I recall, firms
+  with more uncertain factor loadings earned less (sign from memory, unverified). Crypto: none.
+- Risk: part of u is estimation noise, larger for coins loosely tied to the market: a slow characteristic (W6, W7;
+  question 7). Names held lower (fact 2).
+
+### Y-04 gen003_y04_volume_cv (class U, uncertainty about liquidity; tier: both)
+- Rule: cv = std of the daily quote volume over the last k days / its mean; short the highest. k = param(28, 22, 34).
+  47 nodes, 1,605 h.
+- Mechanism: a coin traded in fits and starts is held by an episodic, attention-driven clientele that overprices it
+  between bursts; steady trading marks a stable holder base. Other side: the episodic clientele.
+- Not one of the 49: #12 ranked a one-week burst of trades over its norm (contrarian), #13 ticket size, W-09 the 2- over
+  8-week volume trend (long); this ranks the dispersion of daily volume around its 4-week mean, unsigned (a lull counts
+  as a burst does). Close to #12's short leg in burst weeks (question 6).
+- Tier: the equity result held on NYSE/AMEX and on Nasdaq, as I recall; nothing in it needs illiquidity.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: Chordia, Subrahmanyam and Anshuman (2001), US equities, monthly: a strong
+  negative relation between the variability of trading volume and returns. Crypto: none.
+- Bias: #12's contrarian burst read +0.172 and W-09's volume growth -0.375 on DEV; both lean this way in burst weeks.
+
+### Y-05 gen003_y05_noise_ratio (class N, transient price noise; tier: next30)
+- Rule: vr = std of the daily mean of the coin's own hourly log return over the last k days / std of the hourly return
+  over h hours (fact 4); long the lowest (most intraday reversal). k = param(21, 16, 26), h = param(504, 403, 605);
+  `vr = std(tf_mean(r, daily), k) / std(r, h)`. 49 nodes, 1,605 h.
+- Mechanism: noise-trader risk. Transient pressure that reverses within the day deters arbitrage capital; market makers
+  who absorb it and holders who bear it are paid for that. Other side: noise traders paying for the reversals.
+- Not one of the 49: no program read how the coin's own variance scales from hours to days. X-08 read the coin's lag
+  behind BTC; a return relative to BTC would carry that lag into vr, so the own return is used.
+- Tier: noise, and the premium for bearing it, should be larger in thinner books.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: theory (De Long, Shleifer, Summers and Waldmann 1990); no return evidence
+  I can cite.
+- Bias: X-08, another limits-to-arbitrage premium, read +1.302 on next30 and -0.255 in top30; this idea was chosen with
+  that known (question 6).
+
+### Y-06 gen003_y06_wick_share (class N, transient price noise; tier: next30)
+- Rule: ws = the mean over the last m weekly bins of (high - low - |close - open|) / close over the mean of
+  (high - low) / close: the share of the hourly range given back within the hour; long the highest. m = param(2, 1, 3).
+  61 nodes, 1,605 h.
+- Mechanism: Y-05's at the sub-hour scale: stop runs and liquidation sweeps that do not hold mark a thin, hunted book
+  and noise that deters arbitrage; holders are paid for it. Other side: leveraged traders whose stops are run.
+- Not one of the 49: W-07 ranked the signed asymmetry of the wicks (lower minus upper); this is both wicks' unsigned
+  share of the range (a ratio of means, so no 0/0).
+- Tier: as Y-05. Drag 0.40 -> 1.14 / 1.90. Outside evidence: none.
+- Bias: W-07 (signed) lost on DEV (-0.932); nothing is known of the unsigned share. Y-05 and Y-06 read one mechanism at
+  two scales; the selection takes at most one of class N.
+
+### Y-07 gen003_y07_vol_feedback (class V, volatility feedback; tier: next30)
+- Rule: fb = corr over the last n hours of the relative return over the j - 1 hours before (fact 4) with the current
+  |e|; short the highest (volatility rising after relative gains). j = param(3, 2, 4), n = param(336, 268, 404);
+  `pe = logret(close, j) - logret(btc(close), j) - e`, `fb = tf_last(corr(pe, abs(e), n), weekly)`. 58 nodes, 1,605 h.
+- Mechanism: an inverted leverage effect (larger moves after gains) marks a chasing clientele that overprices the coin;
+  the usual leverage effect marks holders who cut risk on losses. Other side: the chasers.
+- Not one of the 49: neither the sign nor the size of a move is ranked, only whether volatility follows gains or losses.
+- Tier: chasing clienteles are larger in ranks 31 to 60.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: an inverted asymmetry of volatility in Bitcoin's bull phases (Bouri, Azzi
+  and Dyhrberg 2017), descriptive only; none on returns. Bias: nothing specific I can name.
+
+### Y-08 gen003_y08_volume_coupling (class D, disagreement; tier: next30)
+- Rule: c = corr over the last n hours of the hourly quote volume with the coin's own |hourly log return|; long the
+  highest, short the lowest (volume without price change). n = param(336, 268, 404). 44 nodes, 1,605 h.
+- Mechanism: volume that changes hands without moving the price marks traders reading the same news differently; with
+  costly shorting of the spot coin the optimists set the price, which falls back as the disagreement resolves. Other
+  side: the optimists.
+- Not one of the 49: W-04 ranked the change of absolute return per unit of volume against its own norm (an impact
+  shock), #12 a trade-count burst; this ranks the hour-by-hour co-movement of volume and absolute return.
+- Tier: spot shorting is harder for smaller coins.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: Miller (1977), Kandel and Pearson (1995) for the mechanism; Diether,
+  Malloy and Scherbina (2002), Garfinkel (2009, unexplained volume) for lower returns after disagreement, US equities.
+  Crypto: none.
+- Bias: W-04 had the wrong sign (-0.156); both series share an hour-of-day cycle common to all coins.
+
+### Y-09 gen003_y09_volume_commonality (class L, liquidity commonality; tier: both, stronger in next30)
+- Rule: c = corr over the last k days of the daily log change of quote volume with the unit's mean change; long the
+  highest. k = param(28, 22, 34); `c = tf_last(corr(dq, cs_mean(dq), k), weekly)`. 46 nodes, 1,605 h.
+- Mechanism: a coin whose trading dries up when the market's does carries systematic liquidity risk and is paid for it;
+  a coin traded on its own rhythm is driven by coin-specific attention that overprices it. Other side: attention
+  traders; holders who must sell in market-wide dry-ups.
+- Not one of the 49: W-08 ranked the change of the RETURN correlation with BTC; no program read the co-movement of a
+  coin's trading with the market's.
+- Tier: liquidity risk weighs more in thinner books.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: Acharya and Pedersen (2005), Pastor and Stambaugh (2003), US equities,
+  liquidity measured from prices and volume, not volume alone. Crypto: none.
+- Bias: W-08 (short the coins decoupling in returns) had the wrong sign (-0.179); this book's short leg leans the same
+  way. A partly persistent measure (question 7).
+
+### Y-10 gen003_y10_premium_commonality (class F, leverage commonality; READS index_close; tier: next30)
+- Rule: p = (close - index) / index at each daily close; c = corr over the last k days of the daily change of p with the
+  unit's mean change; long the highest. k = param(28, 22, 34). 52 nodes, 1,605 h. Playbook 4b (KP-017): screened on
+  DEV; recommended at most "subject to the per-program measurement".
+- Mechanism: a premium that moves on its own marks coin-specific leveraged speculation (a narrative trade) that
+  overprices the coin and unwinds; one that moves with the market's marks leverage held as part of the market. Other
+  side: the narrative's leveraged longs.
+- Not one of the 49: #18, #20 and #22 ranked the premium's level or shock (contrarian), W-10 its churn per unit of price
+  churn; only its co-movement with the market's premium is ranked: neither a contrarian shock nor a carry level.
+- Tier: idiosyncratic leverage and thinner arbitrage in ranks 31 to 60.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: none.
+- Bias: the premium contrarian books were positive on DEV and #21 failed in VAL; W-10 read +0.670 on next30 and -0.188
+  in top30. Both known (question 5).
+
+### Y-11 gen003_y11_ensemble (class X, combination; tier: as its parts, next30-leaning)
+- Rule: cs_rank(Y-01's kurt) - cs_rank(Y-02's vov) + cs_rank(Y-09's c), centred, beta neutral; each part exactly as in
+  its file at the same defaults. m = param(2, 1, 3), kv = param(21, 16, 26), kc = param(28, 22, 34), nb. 86 nodes,
+  1,605 h. A coin is held only where all three parts are known.
+- Mechanism: none new: three measures from three classes, likely little correlated; k signals of Sharpe S give about
+  S x sqrt(k) while their trades partly net. Not one of the 49: W-11 combined W-01, W-03 and W-07, none of these.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: each part's; the arithmetic.
+- Bias: its parts'. The selection takes it or its parts, never both; a pass with its parts failing is a pass of the
+  combination only.
+
+### Y-12 gen003_y12_leverage_state_kurtosis (state-conditional S1; DEV-informed; READS funding8h; tier: both)
+- Rule: Y-01's book times -s; s = the sign of the unit's mean, over coins, of (mean funding8h over the last a hours
+  minus over the last b hours) at the last hour of each weekly bin. Leverage building (s = +1): short high kurtosis;
+  unwinding (s = -1): long it. m, a = param(168, 134, 202), b = param(1008, 806, 1210), nb. 72 nodes, 1,605 h.
+- State: the market's leverage trend, a real series, not used before (neither BTC's trailing return sign nor its
+  volatility ratio). The per-coin funding shock is the input of #19 and #21, but only its cross-sectional mean enters;
+  no coin is ranked on its own funding. Playbook 4b (KP-017): screen-only.
+- DEV-informed (the frame): its readings over DEV and by year are not evidence. Control, named now: gen003_y01_kurtosis
+  (run 1 anyway); a survivor's DEV Sharpe before costs must exceed Y-01's by at least 0.5.
+- Reason from outside: leverage and the prices of risky assets (Brunnermeier and Pedersen 2009; Frazzini and Pedersen
+  2014): crowded leverage bids up the riskiest assets, which are cheap after deleveraging; in perps, funding above its
+  norm is crowded long leverage. How sure: low; no crypto test.
+- Tier: a market state applies in both units; the premium it times leans to next30 (Y-01). Drag 0.45 -> 1.19 / 1.95.
+- Bias: the author roughly knows DEV's funding path (high through 2021, low or negative in 2022H1) and VAL's (2024
+  spikes); the windows (1 and 6 weeks) are round numbers inside the lookback.
+
+### Y-13 gen003_y13_noise_state_reversal (state-conditional S2, coin level; DEV-informed; tier: both by design)
+- Rule: rank(vr) x rank(x), centred, gross 1, not beta neutral; x = the k-day log return over the coin's daily
+  volatility of a days (X-10's input), vr = Y-05's noise ratio. High vr (efficient): continue the week's relative move;
+  low vr (noisy): reverse it; middle: little weight. k = param(7, 5, 9), a = param(14, 11, 17), kd = param(21, 16, 26),
+  h = param(504, 403, 605). 27 nodes, lookback 982 h.
+- State: the coin's own noise ratio ranked in its unit, not used before. Counted as one of the two state-conditional
+  seats because it switches between two closed forms, one-week continuation and its reversal (question 3).
+- DEV-informed: LESSONS 44 and 56 (weekly continuation in top30 early in DEV; contrarian books near zero or positive on
+  next30) and X-10's failure; its readings are not evidence. Control, named now: gen003_diag_plain_week (plain one-week
+  continuation, registered in round 2, never run); a survivor's DEV Sharpe before costs must exceed it by at least 0.5.
+- Reason from outside: Avramov, Chordia and Goyal (2006): weekly reversal sits in illiquid US stocks; Zaremba, Bilgin,
+  Long, Mercik and Szczygielski (2021): in crypto, short-term reversal among small and illiquid coins and momentum among
+  large and liquid ones. Illiquidity is proxied here by noise (fact 1). How sure: moderate in equities, low at a week
+  in crypto.
+- Tier: the mechanism is the tier split itself, applied inside each unit. Drag 0.40 -> 1.14 / 1.90.
+- Bias: as said; continuation's 2020 strength in top30 is remembered.
+
+## Run order and budget (decided now)
+
+- Runs 1 to 13: the defaults in the order Y-01 to Y-13 (the ensemble after its parts, the two state-conditional ideas
+  last), each `python -m omr.sandbox strategies/gen003_yNN_<idea>.omr --g6-lags`, one at a time under the coordinator's
+  memory rule. Every default runs, whatever the earlier ones read.
+- Then, only for ideas that passed W1 to W8, in the selection order below: the 0.8 corner, then the 1.2 corner
+  (`--set`), each needing a positive DEV Sharpe AND a positive G4 DEV reading; then, for Y-13, its control at its
+  default (Y-12's control is Y-01's run 1, no extra run). Stop an idea at its first failure. At most 6 such runs; if
+  more than three ideas pass W1 to W8, the first three in the selection order.
+- Corners (integers rounded; a param left unchanged by rounding moves by 1):
+
+  | idea | 0.8 corner | 1.2 corner |
+  |---|---|---|
+  | Y-01 | m=1, nb=34 | m=3, nb=50 |
+  | Y-02 | k=17, nb=34 | k=25, nb=50 |
+  | Y-03 | h=134, k=22, nb=34 | h=202, k=34, nb=50 |
+  | Y-04 | k=22, nb=34 | k=34, nb=50 |
+  | Y-05 | k=17, h=403, nb=34 | k=25, h=605, nb=50 |
+  | Y-06 | m=1, nb=34 | m=3, nb=50 |
+  | Y-07 | j=2, n=269, nb=34 | j=4, n=403, nb=50 |
+  | Y-08 | n=269, nb=34 | n=403, nb=50 |
+  | Y-09 | k=22, nb=34 | k=34, nb=50 |
+  | Y-10 | k=22, nb=34 | k=34, nb=50 |
+  | Y-11 | m=1, kv=17, kc=22, nb=34 | m=3, kv=25, kc=34, nb=50 |
+  | Y-12 | m=1, a=134, b=806, nb=34 | m=3, a=202, b=1210, nb=50 |
+  | Y-13 | k=6, a=11, kd=17, h=403 | k=8, a=17, kd=25, h=605 |
+
+- Reserve: 2 runs, only for an honest restatement after a stage-1 rejection of a default (recorded as an amendment
+  before its run). Cap 21 runs (13 + 6 + 2): generation 3 would end at most at 48 of 60. No counted run is part of
+  this plan.
+
+## Selection rule (fixed now; the DEV Sharpe ranks nothing beyond the screen)
+
+- Eligible: passes W1 to W8 at the default and both corners; Y-12 and Y-13 also their control condition.
+- Order: (1) route (a) before the state-conditional ideas, whose DEV readings are partly by design; (2) A in the paired
+  reading, fewest stale copies at least as good first (the reading built like G6); (3) a program that reads neither
+  funding nor the basis before one that does (Y-10 and Y-12 wait for a per-program KP-017 measurement); (4) the
+  registered cost drag, smallest first; (5) the run order.
+- Take the first eligible idea; then the next eligible idea of another class that shares no component with it (class U
+  holds Y-02, Y-03 and Y-04; class N Y-05 and Y-06; Y-11 shares parts with Y-01, Y-02 and Y-09; Y-12 shares Y-01's book;
+  Y-13 shares Y-05's measure). At most two; at most one state-conditional.
+- A recommendation is not a submission: the coordinator reads the program and decides; at most one counted trial without
+  a further decision; Y-10 and Y-12 only "subject to the KP-017 measurement"; any top30 pass is measured per program in
+  null worlds before the pool (KP-020). If nothing is eligible, the recommendation is NONE.
+
+## Questions for the coordinator
+
+1. Beta neutrality for route (a), Y-01 to Y-11: chosen with LESSONS 48's split in view, so DEV-informed as a
+   construction, though no measure or sign descends from a result. Accepted? If not, the books are restated as plain
+   dollar-neutral ranks (rounds 3 and 4's form) before any run.
+2. Classes: U holds three ideas with one direction (short uncertainty: Y-02, Y-03, Y-04), N two (Y-05, Y-06: one
+   mechanism at two scales). Within the frame's three per class, with the selection taking one per class?
+3. Y-13's state is the coin's own noise rank, not a market series, and in each coin it holds a closed form (one-week
+   continuation or its reversal, on X-10's input). I counted it as one of the two state-conditional seats, with plain
+   one-week continuation as its control. Accepted on those terms, or closed?
+4. Y-12 reads funding only as a market state (the unit's mean of the per-coin funding shock that #19 and #21 ranked
+   contrarian): a funding form that is neither contrarian nor carry, screen-only under KP-017? And Y-01 (run 1) as its
+   state-free control?
+5. Y-10 reads index_close and ranks only the premium's co-movement with the unit's: open next to W-10 and the closed
+   premium forms, and screen-only under KP-017?
+6. Adjacent failed forms, each registered with the sign of its outside evidence or mechanism: Y-02 next to W-03
+   (variance shock), Y-04 next to #12 (activity burst), Y-08 next to W-04 (impact shock), Y-09 next to W-08 (decoupling,
+   whose short leg it shares in spirit), Y-05 next to X-08 (limits to arbitrage, whose next30 reading I know). Open?
+7. Persistence: Y-03, Y-09 and Y-10 rank 4-week correlations or loadings with a persistent part, which G6 does not
+   credit; W6 and W7 will read it. Keep, or strike before the runs?
+8. Budget: 13 defaults, at most 6 corner or control runs, 2 in reserve; cap 21 (generation 3 at most 48 of 60).
+
+Written 2026-11-27 11:39 +08:00 (2026-11-27 03:39 UTC), before any round-5 sandbox run.
+
+## Coordinator's rulings before round 5's run 1 (2026-11-27; appended by the coordinator, nothing above is changed)
+
+The coordinator read version 5's questions and every one of the thirteen programs (the source read of playbook
+section 5: no constant, threshold or scale built from a calendar field or a same-unit ratio; Y-12's state is the
+sign of a real series, the unit's mean funding trend; Y-13's state is a rank across coins), before any round-5
+sandbox run. All thirteen parse (lookbacks 982 to 1,605 hours); the sandbox log stands at 70 rows, none of
+round 5.
+
+1. Beta neutrality (Y-01 to Y-12 take the cross-sectional projection on the beta to BTC out of their ranks):
+   accepted as written. It is a neutrality constraint, as dollar neutrality is, and no signal; its motive is
+   DEV-informed (LESSONS 48) and that is recorded here.
+2. Three ideas of class U with the same short sign and two of class N: accepted; the selection takes one per
+   class.
+3. Y-13 (the one-week move followed where the coin's price is less noisy and faded where it is noisier):
+   accepted as a state-conditional idea on the terms of round 4's rulings 1 and 2. It is DEV-informed (the
+   next30 failure of round 4's X-09 shaped it), its control is gen003_diag_plain_week, and a survivor's DEV
+   Sharpe before costs must exceed the control's by at least 0.5.
+4. Y-12: accepted; screen-only under KP-017 (it reads funding8h, as a state of the whole unit); its control is
+   Y-01 with the same margin of 0.5.
+5. Y-10: open (the comovement of a coin's premium changes with the unit's is neither a contrarian shock form
+   nor a carry level); screen-only under KP-017 (it reads index_close).
+6. The neighbours of failed books (Y-02, Y-04, Y-05, Y-08, Y-09): open as written. Each ranks a level or a
+   comovement where its neighbour ranked a shock or a change. Y-05 stands close to round 4's X-08, whose next30
+   reading is known; that is recorded with any decision about it.
+7. Y-03, Y-09 and Y-10: kept. Whether they are too persistent for G6 is what W6 reads.
+8. Budget: 13 default runs, at most 6 corner or control runs, 2 in reserve; cap 21 (generation 3 would end at
+   most at 48 of 60). One run at a time; a run starts when at least 1,000,000 KB of physical memory and
+   4,000,000 KB of commit headroom are free.
+9. The price of width: thirteen ideas meet one screen, two of them shaped with DEV's readings in view, and the
+   researcher's own account is that the space of untried ideas is thin and several of these are stretches. A
+   survivor is a candidate for one counted trial at most, and all of that goes into the record of the decision.
+10. This is the last round of generation 3. Whatever it reads, the coordinator then closes the generation and
+    puts the whole of it to the human.
+11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
+    passed with the new files in place. Its parts are appended below.

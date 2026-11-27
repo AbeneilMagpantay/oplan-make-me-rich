@@ -1,0 +1,28 @@
+# Generation 3, round 5, Y-03 (generations/gen003/PLAN.md, version 5, the final wide screen). Factor-loading
+# uncertainty. r = the coin's hourly return, mk = the unit's equal-weighted mean hourly return (a cs_* inside a
+# window: a coin enters this measure about five weeks after it is in play). bh = the coin's beta to mk over the last
+# h hours (corr x std ratio); u = the standard deviation of bh sampled at each daily close over the last k days: how
+# unstable the coin's market exposure has been, unsigned. Against the unit's mean (not BTC), so BTC is an ordinary
+# member and not a fixed point. Sampled at the last hour of each weekly bin. Short the most unstable, long the most
+# stable. Dollar and beta neutral (the centred rank's residual on the coins' centred daily beta to BTC over nb days);
+# gross 1; traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y03_beta_instability"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Factor-loading uncertainty: when a coin's exposure to the market keeps changing, holders cannot tell how much market risk they carry; such coins have earned less than stable ones in equities, and speculators who trade the swings keep them rich. Short the coins whose weekly beta to the unit's mean varied most over 4 weeks, long the most stable, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+h = param(168, 134, 202)       # hours in each beta estimate (1 week)
+k = param(28, 22, 34)          # daily beta samples over which their dispersion is measured (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+r = ret(close, 1)
+mk = cs_mean(r)
+bh = corr(r, mk, h) * std(r, h) / std(mk, h)
+u = std(tf_last(bh, daily), k)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(tf_last(u, weekly)))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

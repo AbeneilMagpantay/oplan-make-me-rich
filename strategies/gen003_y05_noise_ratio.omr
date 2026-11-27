@@ -1,0 +1,27 @@
+# Generation 3, round 5, Y-05 (generations/gen003/PLAN.md, version 5, the final wide screen). Transient price noise.
+# r = the coin's OWN hourly log return (not relative to BTC: a relative return would carry the coin's lag behind BTC,
+# the quantity of round 4's X-08). vr = the standard deviation of the daily mean of r over the last k days / the
+# standard deviation of r over the last h hours: the square root of a variance ratio up to the constant factor of
+# 24 hours a day, which no rank can see. vr below the unit's typical value means hourly moves partly reverse within the
+# day (transient pressure that liquidity providers absorb); above it, hourly moves extend. Sampled at the last hour of
+# each weekly bin. Long the lowest vr (the noisiest), short the highest. Dollar and beta neutral (the centred rank's
+# residual on the coins' centred daily beta to BTC over nb days); gross 1; traded at the Monday 00:00 open. No
+# funding, mark or index input.
+name = "gen003_y05_noise_ratio"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Noise-trader risk: a coin whose hourly moves largely reverse within the day is pushed around by transient, uninformed pressure; that noise deters arbitrage capital, and holders are paid for bearing it. Long the coins with the lowest ratio of daily to hourly volatility over 3 weeks (the most intraday reversal), short the highest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(21, 16, 26)          # days of daily means of the hourly return (3 weeks)
+h = param(504, 403, 605)       # hours of hourly returns (3 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+r = logret(close, 1)
+vr = std(tf_mean(r, daily), k) / std(r, h)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(tf_last(vr, weekly)))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

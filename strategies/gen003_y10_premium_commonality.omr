@@ -1,0 +1,28 @@
+# Generation 3, round 5, Y-10 (generations/gen003/PLAN.md, version 5, the final wide screen). READS index_close
+# (playbook 4b, KP-017: screen-only; recommended at most "subject to the per-program measurement"). p = the perp's
+# daily-close premium over its spot index, (close - index) / index; dp = its daily change; c = corr(dp, the unit's
+# mean dp) over the last k days: how far the coin's leverage demand rises and falls with the market's leverage cycle
+# rather than on its own. Neither the premium's level, its sign nor its shock against a norm is ranked (the closed
+# contrarian forms); only its co-movement. Against the unit's mean, so BTC is an ordinary member (a cs_* inside a
+# window: a coin enters about four weeks after it is in play). Sampled weekly. Long the highest commonality, short the
+# lowest. Dollar and beta neutral (the centred rank's residual on the coins' centred daily beta to BTC over nb days);
+# gross 1; traded at the Monday 00:00 open.
+name = "gen003_y10_premium_commonality"
+family = "carry"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Idiosyncratic leverage: a coin whose perp premium moves on its own, not with the market's leverage cycle, carries coin-specific leveraged speculation that overprices it and later unwinds. Long the highest correlation of daily premium changes with the unit's mean over 4 weeks, short the lowest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+dc = daily(close)
+di = daily(index_close)
+dp = delta((dc - di) / di, 1)
+c = tf_last(corr(dp, cs_mean(dp), k), weekly)
+rd = logret(dc, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

@@ -1,0 +1,23 @@
+# Generation 3, round 5, Y-04 (generations/gen003/PLAN.md, version 5, the final wide screen). Variability of trading
+# activity. q = the daily quote volume; cv = its standard deviation over the last k days / its mean over them (the
+# coefficient of variation of the coin's own daily trading; a burst and a lull both raise it; the level of volume
+# cancels). Sampled at the last hour of each weekly bin. Short the highest cv, long the lowest. Dollar and beta neutral
+# (the centred rank's residual on the coins' centred daily beta to BTC over nb days, sum(w) = 0 and sum(w x beta) = 0
+# by identity); gross 1; traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y04_volume_cv"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Variability of trading activity: in equities, stocks whose trading volume swings most have earned markedly less (Chordia, Subrahmanyam and Anshuman 2001); a coin traded in fits and starts is held by an episodic speculative clientele that keeps it rich. Short the highest coefficient of variation of daily quote volume over 4 weeks, long the lowest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(28, 22, 34)          # days in the coefficient of variation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+q = daily(quote_volume)
+cv = std(q, k) / sma(q, k)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(tf_last(cv, weekly)))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

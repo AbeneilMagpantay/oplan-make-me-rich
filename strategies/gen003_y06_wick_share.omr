@@ -1,0 +1,25 @@
+# Generation 3, round 5, Y-06 (generations/gen003/PLAN.md, version 5, the final wide screen). Intrabar excursions.
+# Per hour, g = (high - low) / close (the bar's range) and x = (high - low - |close - open|) / close (the part of the
+# range the bar gave back: both wicks together, unsigned). ws = the mean of x over the last m weekly bins / the mean of
+# g over them: the share of the coin's hourly price range that reverted within the hour (stop runs and liquidation
+# sweeps that do not hold). Ratio of means, so a bar with no range adds nothing and no 0/0 arises. Sampled weekly.
+# Long the highest ws, short the lowest. Dollar and beta neutral (the centred rank's residual on the coins' centred
+# daily beta to BTC over nb days); gross 1; traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_y06_wick_share"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Noise in the bar: a coin whose hourly ranges are mostly wicks that revert is hunted by stop runs and liquidation sweeps on a thin book; that noise deters arbitrage capital and holders are paid for bearing it. Long the coins with the largest share of the hourly range given back within the hour over 2 weeks, short the smallest, beta neutral, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(2, 1, 3)             # weekly bins (2 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+g = (high - low) / close
+x = (high - low - abs(close - open)) / close
+ws = sma(tf_mean(x, weekly), m) / sma(tf_mean(g, weekly), m)
+rd = logret(daily(close), 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(ws))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)
