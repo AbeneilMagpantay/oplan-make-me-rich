@@ -1,0 +1,26 @@
+# Generation 3, round 4, X-02 (generations/gen003/PLAN.md, version 4, the second wide screen). Volume at the highs.
+# Over each weekly bin: VWAP (weekly quote volume over weekly base volume) minus TWAP (the mean of the week's hourly
+# closes), both relative to the previous week's close, over the week's range relative to the same close. g > 0: the
+# week's volume was traded at the upper prices of its path (heavy trading at the highs); g < 0: at the lower prices
+# (heavy trading at the lows). The TWAP reads weekly(close) on the hourly grid, which is the previous week's close
+# on every hour of the bin except its last, where it is that hour's own close (a 1/168 weight). x = the week's log
+# return in units of the coin's annualised daily volatility over n days; z = g net of a cross-sectional fit on x on
+# every bin. Short the largest z, long the smallest; rank weights, dollar neutral, gross 1, traded at the Monday
+# 00:00 open. No funding, mark or index input.
+name = "gen003_x02_vwap_twap_gap"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Volume at price: heavy trading at the upper prices of the week's path marks late buyers absorbed by sellers (distribution) and heavy trading at its lower prices marks forced sellers absorbed by patient buyers (accumulation); the absorbing side is the better informed, beyond what the week's move explains. Short volume at the highs, long volume at the lows, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(28, 22, 34)          # days of daily volatility that scale the week's move
+
+c0 = lag(weekly(close), 1)
+twap = tf_mean(close / weekly(close), weekly)
+vwap = weekly(quote_volume) / weekly(volume) / c0
+g = (vwap - twap) / ((weekly(high) - weekly(low)) / c0)
+x = tf_last(logret(weekly(close), 1) / realised_vol(daily(close), n), weekly)
+gd = cs_demean(g)
+xd = cs_demean(x)
+z = gd - cs_mean(xd * gd) / cs_mean(xd * xd) * xd
+signal = cs_scale(cs_demean(-cs_rank(z)))

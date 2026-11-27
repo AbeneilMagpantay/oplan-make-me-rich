@@ -1,0 +1,21 @@
+# Generation 3, round 4, X-08 (generations/gen003/PLAN.md, version 4, the second wide screen). Price delay.
+# r1 = the coin's hourly log return, b1 = BTC's; lr = the coin's log return over the j - 1 hours before this one,
+# lb = BTC's over the same hours (j = 3: the two hours before). dl = corr(r1, lb) - corr(lr, b1) over the last n hours
+# (2 weeks): how much more the coin follows BTC's recent moves late than BTC follows the coin's. Sampled at the last
+# hour of each weekly bin. Long the most delayed coins, short the leaders; rank weights, dollar neutral, gross 1,
+# traded at the Monday 00:00 open. BTC's own dl is 0. No funding, mark or index input.
+name = "gen003_x08_price_delay"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Neglect premium: a coin whose price responds to market news with a delay is followed by fewer arbitrageurs and market makers; holders of neglected coins are paid for it, and the delay itself means news is priced late. Long the coins that have lately followed BTC with the longest delay, short those that lead it, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+j = param(3, 2, 4)             # hours back that delimit the lagged window (3: the two hours before)
+n = param(336, 268, 404)       # hours in the correlation window (2 weeks)
+
+r1 = logret(close, 1)
+b1 = logret(btc(close), 1)
+lr = logret(close, j) - r1
+lb = logret(btc(close), j) - b1
+dl = corr(r1, lb, n) - corr(lr, b1, n)
+signal = cs_scale(cs_demean(cs_rank(tf_last(dl, weekly))))

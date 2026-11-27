@@ -1,0 +1,18 @@
+# Generation 3, round 4, X-06 (generations/gen003/PLAN.md, version 4, the second wide screen). Flow toxicity.
+# imb = the hour's taker imbalance; |imb| x sqrt(trades / its own trailing w-hour mean) removes the part of the
+# one-sidedness that comes from fewer trades alone (random trade signs give |imb| about 1/sqrt(trades)). t = the
+# week's mean of it; shock = t over its mean over the last m weekly bins (this one included). Unsigned: the direction
+# of the flow and of the move is not read. Long the largest shock, short the smallest; rank weights, dollar neutral,
+# gross 1, traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_x06_flow_toxicity"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Adverse-selection premium: when a coin's order flow turns more one-sided than its trade count explains, informed trading has risen; uninformed liquidity providers mark the price down and demand a higher return to hold it, which is earned over the next weeks as the information is absorbed. Long the largest rise in normalised flow one-sidedness, short the largest fall, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, or no G6 timing."
+
+w = param(168, 134, 202)       # hours in the coin's own trade-count norm (1 week)
+m = param(4, 3, 5)             # weekly bins in the norm of the shock (4 weeks)
+
+imb = (taker_buy_quote_volume + taker_buy_quote_volume - quote_volume) / quote_volume
+t = tf_mean(abs(imb) * sqrt(trades / sma(trades, w)), weekly)
+signal = cs_scale(cs_demean(cs_rank(t / sma(t, m))))

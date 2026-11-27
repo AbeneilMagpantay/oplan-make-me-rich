@@ -1,0 +1,27 @@
+# Generation 3, round 4, X-01 (generations/gen003/PLAN.md, version 4, the second wide screen). Chasing takers.
+# Over each weekly bin (bars opening Monday 00:00 to Sunday 23:00 UTC): the taker-buy VWAP (taker-buy quote volume
+# over taker-buy base volume) minus the taker-sell VWAP (the rest of the week's volume), over the week's range (high
+# minus low). g > 0: takers bought at higher prices than they sold within the week (they bought more as the price
+# rose: positive feedback); g < 0: takers bought dips and sold rallies. x = the week's log return in units of the
+# coin's annualised daily volatility over n days. z = g net of a cross-sectional fit on x on every bin, so the book
+# is neither a reversal nor a continuation book on the week's move. Short the largest z, long the smallest; rank
+# weights, dollar neutral, gross 1; visible at the bar that opens Sunday 23:00, traded at the Monday 00:00 open.
+# No funding, mark or index input.
+name = "gen003_x01_taker_vwap_gap"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Positive-feedback takers: where takers bought at higher prices than they sold within the week, beyond what the week's move explains, momentum-chasing market orders set the price, and it gives back that chase premium over the next weeks; where takers bought dips and sold rallies, the price is held by patient value traders. Short chasers, long dip-buyers, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(28, 22, 34)          # days of daily volatility that scale the week's move
+
+bq = weekly(taker_buy_quote_volume)
+bv = weekly(taker_buy_volume)
+q = weekly(quote_volume)
+v = weekly(volume)
+g = (bq / bv - (q - bq) / (v - bv)) / (weekly(high) - weekly(low))
+x = tf_last(logret(weekly(close), 1) / realised_vol(daily(close), n), weekly)
+gd = cs_demean(g)
+xd = cs_demean(x)
+z = gd - cs_mean(xd * gd) / cs_mean(xd * xd) * xd
+signal = cs_scale(cs_demean(-cs_rank(z)))

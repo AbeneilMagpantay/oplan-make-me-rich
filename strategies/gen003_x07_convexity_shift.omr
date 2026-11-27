@@ -1,0 +1,26 @@
+# Generation 3, round 4, X-07 (generations/gen003/PLAN.md, version 4, the second wide screen). Upside convexity.
+# r = the coin's hourly return, rb = BTC's. Up-beta = sum of r x rb over BTC's up hours / sum of rb x rb over them;
+# down-beta the same over the other hours (regressions through the origin; hourly means are near 0). conv = up-beta
+# minus down-beta over the last k hours (2 weeks) minus the same over the last n hours (8 weeks): how much more the
+# coin has lately joined BTC's rises than its falls, against its own norm. Sampled at the last hour of each weekly
+# bin. Short the largest rise in convexity, long the largest fall; rank weights, dollar neutral, gross 1, traded at
+# the Monday 00:00 open. BTC's own conv is 0. No funding, mark or index input.
+name = "gen003_x07_convexity_shift"
+family = "relative"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Paying for upside: leveraged speculators bid up coins that have lately joined the market's rises more than its falls (positive coskewness), and such a coin then earns less than its risk; a coin that has turned concave must pay a premium to be held. Short the largest recent rise in up-beta minus down-beta against BTC, long the largest fall, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(336, 268, 404)       # hours in the recent window (2 weeks)
+n = param(1344, 1075, 1613)    # hours in the coin's own norm (8 weeks)
+
+r = ret(close, 1)
+rb = ret(btc(close), 1)
+up = rb > 0
+pu = where(up, r * rb, 0)
+qu = where(up, rb * rb, 0)
+pd = where(up, 0, r * rb)
+qd = where(up, 0, rb * rb)
+ck = sma(pu, k) / sma(qu, k) - sma(pd, k) / sma(qd, k)
+cn = sma(pu, n) / sma(qu, n) - sma(pd, n) / sma(qd, n)
+signal = cs_scale(cs_demean(-cs_rank(tf_last(ck - cn, weekly))))

@@ -1,0 +1,21 @@
+# Generation 3, round 4, X-11 (generations/gen003/PLAN.md, version 4, the second wide screen). Route (b), DEV-informed
+# (LESSONS 44 and 48). Market trend through beta. bt = the coin's hourly beta to BTC over the last n hours (4 weeks;
+# corr x std ratio, own series and btc() only); s = the sign of BTC's ls-day log return (2 weeks); both sampled at the
+# last hour of each weekly bin. After a rising fortnight long the high-beta coins and short the low-beta ones; after
+# a falling fortnight the reverse. Dollar neutral, so the market bet is carried only by the beta spread; the book
+# stays in the market in both states. Rank weights, gross 1, traded at the Monday 00:00 open. BTC's own beta is 1.
+# No funding, mark or index input.
+name = "gen003_x11_trend_beta"
+family = "trend"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Time-series momentum of the crypto market at one to four weeks: the market's direction over the last two weeks tends to persist, and a dollar-neutral beta spread carries that bet without a net position. Long high-beta and short low-beta coins after BTC rose over 2 weeks, the reverse after it fell, weekly. DEV-informed. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+n = param(672, 537, 807)       # hours in the beta window (4 weeks)
+ls = param(14, 11, 17)         # days of BTC's return that set the state (2 weeks)
+
+r = ret(close, 1)
+rb = ret(btc(close), 1)
+bt = tf_last(corr(r, rb, n) * std(r, n) / std(rb, n), weekly)
+s = tf_last(sign(logret(daily(btc(close)), ls)), weekly)
+signal = cs_scale(cs_demean(s * cs_rank(bt)))

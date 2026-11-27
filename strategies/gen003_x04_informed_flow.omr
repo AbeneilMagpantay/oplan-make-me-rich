@@ -1,0 +1,20 @@
+# Generation 3, round 4, X-04 (generations/gen003/PLAN.md, version 4, the second wide screen). Informed flow.
+# imb = the hour's taker imbalance (taker-buy minus taker-sell quote volume, over quote volume); rr = the hour's return
+# minus BTC's. c = the correlation of the previous hour's imbalance with this hour's rr over the last n hours (4
+# weeks): c > 0, flow is followed by further movement its way (its impact is permanent, the flow carries
+# information); c < 0, its impact reverses (liquidity flow). f = the week's mean imbalance. Score = c x f, both at the
+# last hour of each weekly bin: long informed net buying and uninformed net selling, short the reverse. Rank weights,
+# dollar neutral, gross 1, traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_x04_informed_flow"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Information in order flow: where taker flow has lately been followed by further moves its way, it carries information and this week's net direction is still being priced; where flow has been followed by reversals, it is liquidity trading and its pressure fades. Long net buying with informative flow and net selling with reverting flow, short the reverse, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, or no G6 timing."
+
+n = param(672, 537, 807)       # hours in the informativeness window (4 weeks)
+
+imb = (taker_buy_quote_volume + taker_buy_quote_volume - quote_volume) / quote_volume
+rr = ret(close, 1) - ret(btc(close), 1)
+c = tf_last(corr(lag(imb, 1), rr, n), weekly)
+f = tf_mean(imb, weekly)
+signal = cs_scale(cs_demean(cs_rank(c * f)))

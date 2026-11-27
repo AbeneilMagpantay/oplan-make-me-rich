@@ -1980,3 +1980,365 @@ Correction to the first DEV observation above (same session, found on re-reading
 changed): "No registered book earned in both halves of DEV" holds for the ten single-idea books. The combination W-11
 was positive in 2020 (SR 1.424) and, barely, in 2022H1 (SR 0.174), its parts' opposite profiles cancelling; its DEV
 Sharpe was 0.372 and it failed W2. The recommendation is unchanged: NONE.
+
+# Generation 3 - PLAN, version 4 (round 4, the second wide screen, pre-registered 2026-11-27 before any round-4 sandbox run)
+
+Researcher session for generation 3, round 4, stage 1. Unit top30. A fresh session: everything it knows of the project
+comes from the files below. Appended below version 3 and its stage-2 parts; the 180,229 bytes before this line (sha256
+7b27f7c6ea7c621c...) are unchanged.
+
+- Kernel: `omr.status` OK d09812fdec752a17, semantic 7d923e7e2375986d, text b74122f3f9821056, sealed (G6 core 0.05,
+  top30 0.10). Data research_hash 28d9084a8c5c7659, validated, snapshot_end 2026-11-18 10:00 UTC.
+- Ledger: M = 6 (generation 0: 4, 1: 1, 2: 1, 3: 0 of 5), N 5.90, rho 0.021, Tier 1 0, pool 0 of 5, one uncounted
+  stage-1 rejection. Sandbox log 60 rows; generation 3 has used 17 of 60 sandbox runs.
+- Read: RESEARCH_PLAYBOOK.md (all; 3, 4, 4b, 5 and 8b with care), generations/META_REVIEW_2026-11-26.md (all),
+  LESSONS.md (51), LANGUAGE.md (all), CONSTITUTION.md 4 to 7 and 13, generations/gen003/REPORT.md (rounds 1 to 3),
+  generations/gen003/PLAN.md version 3 in full (facts, ideas, rulings, run log, screen outcome, DEV observations,
+  correction), rows 49 to 59 of ledger/sandbox_log.jsonl, `omr.status`, `omr.ledger summary`. Kernel code read only for
+  what the parser returns (omr/lang.py: Program, parse_file). Shapes: strategies/gen003_w01, w03, w04, w05, w08 and the
+  two plain controls of round 2 (gen003_diag_plain_multiweek, gen003_diag_plain_week).
+- Not opened: data/, ledger/returns/, ledger/trials/, calibration files, audits/. No project program was run on data:
+  only `omr.status`, `omr.ledger summary` and a parse-only check (scratch gen003_r4/parse_check.py; omr.lang.parse_file).
+- Numbers seen before writing: every DEV number of generations 2 and 3 (REPORTs, run logs, sandbox rows 40 to 59), the
+  review's tables and bar, and the VAL rows of the six counted trials. No VAL or DEV number exists for any program below.
+- Files of this version: this text and eleven new programs, strategies/gen003_x01_* to gen003_x11_*. Nothing else.
+
+Facts from the kernel's rules that shaped the list (behaviour, not results):
+1. cs_scale(x) divides by sum(abs(x)), so a row-constant market state s in cs_scale(cs_demean(s * y)) survives only as
+   its sign: the route-(b) books keep gross 1 in both states and stay in the market (W1); no state can thin them.
+2. No program puts a cs_* inside a rolling window (round 3, fact 3): every cross-section is taken on a weekly series, so
+   names held should stay near round 3's 27.6 of 28. States and betas come from btc() series only.
+3. A lag with the literal 1 around a return with the literal 1 is a hidden window (nested_unit_window), and a lag param
+   needs default - 1 >= 1 inside its range: X-08 takes the lagged move as logret(x, j) - logret(x, 1) with j = 3 (the
+   two hours before the current one), so G5 moves it between one and three hours, never to an empty window.
+4. tf_mean takes only a dimensionless series: flow enters as the imbalance share (2 x taker-buy - total) / total quote
+   volume, written without a literal; taker-side VWAPs come from weekly sums (taker_buy_quote_volume / taker_buy_volume
+   has the unit of price; the taker-sell side is the rest of the volume).
+5. weekly(close) on the hourly grid holds the last completed week and switches at the bin's last hour (X-02's caveat).
+
+Considered, not registered: funding-reading forms (each I could write was contrarian, a carry level, or the funding x
+return interaction of #20); a spot-perp lead split of the move (a composition of the move); a variance-ratio rank (no
+sign I can defend unsigned; signed, a coin-state composition of the move); net flow in BTC's down hours minus its up
+hours (it ranks a flow beta, a persistent tilt whose sign follows the market); a factor-momentum switch on continuation
+(the market-state form was kept: its outside evidence is about momentum itself); W-01 conditioned on a state (descended
+from W-01's result, pre-cost 1.820 < 2.5, and aimed at its known W7 failure); a non-equal combination of this round's
+ideas (it hides tests inside one program).
+
+## The screen, fixed now, the same for every idea (W1 to W8)
+
+W1 stage 1 passes with at least 30 direction changes, average gross at least 0.5, at least 15 names held on average, not
+liquidated; W2 DEV Sharpe before costs (the DEV Sharpe plus the drop under G4's reading, i.e. DEV Sharpe + (DEV Sharpe -
+G4 DEV Sharpe)) at least 1.5; W3 G4's DEV reading positive; W4 G2's DEV reading positive; W5 next30 DEV Sharpe at least
+0.3; W6 the speed-limit statistic at most 0.40 at each of one to three steps (a reason line fails); W7 in the paired
+reading at most 4 of 10 stale copies at least as good as the book AND the book's median Sharpe over the last 365 days of
+DEV positive (a refused reading fails); W8 at least two of the three DEV years positive. A wrong sign is a failure; no
+sign is ever flipped; no default is changed after a run. No sparse book (a book flat much of the time fails W1; the
+state must enter the signal while the book stays in the market).
+
+Numbers are taken as the sandbox prints them (full stage 1, no --quick, with --g6-lags): the stage-1 line, "DEV
+Sharpe", "rebalances ... avg gross ... liquidated", the per-year rows (2020, 2021, 2022; a year is positive when its
+return is above 0), and the KP-018 block (r(1) to r(3), next30, G2 and G4 on DEV, names held, the paired reading A of 10
+and book median B). Every idea's registered sign is the sign of its signal line; a negative DEV Sharpe fails W2.
+
+## The bar, shared arithmetic (playbook 8b)
+
+- Cost drag = the Sharpe that 1x costs take, i.e. the expected G4 drop. Measured for weekly top30 books: 0.23 to 0.46
+  (review 2.3); in round 3, 0.29 to 0.42 for unsigned weekly books (C/G 0.13 to 0.23, LESSONS 50) and 0.26 for the
+  reference books; 0.23 to 0.34 for round 2's continuation books (C/G 0.29 to 0.45, LESSONS 45). Registered here:
+  - 0.40: a rank re-drawn every week from one week's input (X-01, X-02, X-04, X-05, X-06, X-10);
+  - 0.30: a rank from two-week or longer windows, sampled weekly (X-03, X-07, X-08);
+  - 0.35: X-09, a continuation-type book plus whole-book flips when its state changes (estimate 10 to 20 flips over
+    DEV, each trading twice the gross: 0.01 to 0.02 a year per unit of gross);
+  - 0.25: X-11, slow beta ranks whose turnover is mostly state flips (estimate 30 to 45 over DEV, about 0.04 a year per
+    unit of gross), on a beta spread more volatile than a rank book of the same gross.
+- Sharpe needed in VAL before costs: 0.74 + drag for G1's line, 1.5 + drag for decent odds. Drag 0.25: 0.99 / 1.75;
+  0.30: 1.04 / 1.80; 0.35: 1.09 / 1.85; 0.40: 1.14 / 1.90.
+- G2 takes another 0.5 to 0.8 on DEV from any full book (LESSONS 42); W4 asks only that its DEV reading stay positive.
+- W2's 1.5 is a floor, not the bar: with the decay the review estimates, 2.5 to 3.5 before costs on DEV would be needed
+  to expect 1.5 in VAL. For the three route-(b) ideas the DEV readings are partly predictable (below), so a pass says
+  even less. A pass is a candidate for one counted trial, nothing more.
+
+## Disclosures for every idea
+
+- The author model has read this market's history through DEV, VAL and the vault, and this session every DEV number of
+  generations 2 and 3. No rule names a date, coin, price level or event; every tunable number is a declared param (no
+  file has a jitterable literal). That does not remove hindsight from the CHOICE of ideas (KP-010).
+- Remembered DEV path: the 2020 to 2021 bull with the May 2021 crash, the 2022 bear (January, LUNA in May, Celsius and
+  Three Arrows in June). The sign of BTC's 2-week and 8-week returns through DEV is therefore roughly known to the
+  author, and so are VAL's broad phases (2022H2 bear with FTX, 2023 recovery, 2024 rally with the spot ETFs): for the
+  route-(b) states this is the KP-010 channel at its widest. Remembered DEV readings: all of LESSONS 39 to 50.
+- Microstructure: I remember no result of any rule like X-01 to X-08, in crypto or elsewhere, in VAL or anywhere.
+- Eleven ideas against one screen: if a no-skill book passed it 3 times in 100, one of eleven would pass by luck about
+  28 times in 100 (round 3's ruling 10).
+
+## The ideas
+
+All eleven: kind portfolio, unit top30, rank weights cs_scale(cs_demean(cs_rank(.))) (X-09 to X-11 times a state's
+sign), dollar neutral, gross 1, decided once a week (a weekly series visible at the bar that opens Sunday 23:00 UTC,
+traded at the Monday 00:00 open). No funding, mark or index input in any of them: playbook 4b's funding restriction does
+not arise; KP-020 does for any pass. imb = the hour's taker imbalance, (taker-buy - taker-sell) quote volume / quote
+volume; rr = the hour's return minus BTC's. "Net of the move" = round 3's W-04 fit: on every weekly bin the score is
+replaced by its residual on x, the week's (X-03: m weeks') log return over annualised daily volatility of n days.
+Classes I to N are route (a), S1 to S3 route (b). Lookbacks at every window param's high bound, from the parse check.
+
+### X-01 gen003_x01_taker_vwap_gap (route (a), class I: volume at price)
+- Rule: g = (taker-buy VWAP - taker-sell VWAP) / (high - low) over the weekly bin, net of the move; short the largest,
+  long the smallest. n = param(28, 22, 34); `g = (bq / bv - (q - bq) / (v - bv)) / (weekly(high) - weekly(low))` on
+  weekly sums. 56 nodes, lookback 1,197 h.
+- Mechanism: takers who buy more as the price rises and sell more as it falls are positive-feedback traders (De Long,
+  Shleifer, Summers and Waldmann 1990); the chase premium they pay fades. Other side: patient sellers into the chase.
+- Not one of the 39: it reads at what prices each side traded, not the flow's size or sign (#14, core's taker flow) nor
+  the move or its parts.
+- Both markets: chasing is measured on both sides and net of the week's move; nothing in it needs a rising market.
+- Drag 0.40 -> before costs in VAL 1.14 line / 1.90 odds. Outside evidence: theory only; none on returns that I know.
+- Bias: nothing specific I can name. Risk: in quiet weeks the gap is small against the range (noise).
+
+### X-02 gen003_x02_vwap_twap_gap (route (a), class I: volume at price)
+- Rule: g = (VWAP - TWAP) / range over the weekly bin, all relative to the previous week's close, net of the move; short
+  the largest (volume at the week's highs), long the smallest. n = param(28, 22, 34);
+  `twap = tf_mean(close / weekly(close), weekly)`,
+  `vwap = weekly(quote_volume) / weekly(volume) / lag(weekly(close), 1)`.
+  58 nodes, lookback 1,197 h. Caveat (fact 5): the TWAP's last hour reads its own close (weight 1/168).
+- Mechanism: heavy trading at a week's upper prices is late demand absorbed by sellers (distribution); at its lower
+  prices, forced supply absorbed by patient buyers (accumulation); the absorbing side is the better informed. Other
+  side: late buyers at highs, capitulating sellers at lows.
+- Not one of the 39: W-02 compared the CLOSE with a 4-week VWAP (a reference price) and #24 split the MOVE by heavy
+  hours; this is the covariance of volume with the price level inside the week, with no closing price in it.
+- Both markets: net of the move, symmetric legs. Drag 0.40 -> 1.14 / 1.90. Outside evidence: none academic (chart lore).
+- Bias: W-07, another "absorption" story (wicks), lost on DEV (-0.932). The selection takes at most one of class I.
+
+### X-03 gen003_x03_impact_asymmetry (route (a), class J: liquidity asymmetry)
+- Rule: over the last m weekly bins, bu = mean rr in net-buying hours / mean imb in them, se = the same in net-selling
+  hours; a = (bu - se) / (|bu| + |se|), net of the m-week move; long the largest. m = param(2, 1, 3),
+  n = param(28, 22, 34); `bu = sma(tf_mean(where(imb > 0, rr, 0), weekly), m) / sma(tf_mean(where(imb > 0, imb, 0),
+  weekly), m)`. 90 nodes, lookback 1,197 h.
+- Mechanism: market makers thin the side of the book where they fear informed flow (Glosten and Milgrom 1985): a thinner
+  offer than bid says liquidity providers expect buyers to be right. Other side: sellers trading into the deep bid.
+- Not one of the 39: W-04 read the size of price impact against its norm (unsigned); this is the difference between the
+  impact of buying and of selling, a signed measure no earlier program read.
+- Both markets: moves relative to BTC and net of the coin's own move; the asymmetry can point either way in any market.
+- Drag 0.30 -> 1.04 / 1.80. Outside evidence: buys move equity prices more than sells (Chan and Lakonishok 1993; Saar
+  2001), a description, not a forecast; none on returns. Bias: nothing specific.
+
+### X-04 gen003_x04_informed_flow (route (a), class K: information in flow)
+- Rule: score = c x f at the week's last hour, c = corr(previous hour's imb, this hour's rr) over n hours, f = the
+  week's mean imb; long the largest. n = param(672, 537, 807); `c = tf_last(corr(lag(imb, 1), rr, n), weekly)`. 28 nodes,
+  lookback 1,142 h.
+- Mechanism: flow whose impact persists carries information (Kyle 1985; Hasbrouck 1991) and this week's net direction is
+  not yet fully priced; flow whose impact reverses is liquidity trading whose pressure fades. Other side: liquidity
+  providers to informed flow; the takers of reverting flow.
+- Not one of the 39: #14 ranked flow net of the week's return (contrarian) and core's taker_flow_long went with the flow
+  level; here the flow's sign is weighted by its measured informativeness, which flips it where c < 0 (question 5).
+- Both markets: both terms are coin-specific (rr relative to BTC); symmetric legs.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: order-flow predictability in crypto at minutes to hours (recalled,
+  unverified); none at a week. Bias: LESSONS 17 (flow net of return continued on DEV); where c > 0 the book leans that
+  way. Noise: c's standard error over 672 hours is about 0.04.
+
+### X-05 gen003_x05_stealth_flow (route (a), class K: information in flow)
+- Rule: s = volume-weighted imb in the week's quiet hours (quote volume under its own trailing w-hour median) minus in
+  its other hours, net of the move; long the largest. w = param(168, 134, 202), n = param(28, 22, 34). 77 nodes,
+  lookback 1,197 h.
+- Mechanism: stealth trading (Barclay and Warner 1993): informed traders work orders when they are least seen and move
+  the price least; the busy hours carry the crowd. Other side: passive sellers in quiet books; the crowd in busy hours.
+- Not one of the 39: #24 split the MOVE by heavy hours (contrarian); this splits the FLOW by quiet hours, net of the
+  move; not a level or burst of activity (#12, #13), not a calendar share (W-05, W-06).
+- Both markets: a difference between two flows of the same coin, net of its move; symmetric.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: for, Barclay and Warner 1993 (equities); against, Admati and Pfleiderer
+  1988 (informed traders cluster in busy hours). None in crypto. Bias: busy-hour flow travels with busy-hour moves, so
+  -hf leans against them, #24's sign (DEV -0.256).
+
+### X-06 gen003_x06_flow_toxicity (route (a), class L: adverse-selection premium)
+- Rule: t = the week's mean of |imb| x sqrt(trades / its own trailing w-hour mean); shock = t / its mean over m weekly
+  bins; long the largest. w = param(168, 134, 202), m = param(4, 3, 5). 24 nodes, lookback 1,208 h.
+- Mechanism: a rise in informed trading makes uninformed holders mark the coin down and demand more to hold it (Easley,
+  Hvidkjaer and O'Hara 2002; Easley and O'Hara 2004). Other side: liquidity providers facing informed takers. The trade
+  factor removes the one-sidedness that fewer trades alone produce (random signs give |imb| about 1/sqrt(trades)).
+- Not one of the 39: no program read the one-sidedness of flow; but it is a shock against the coin's own norm like W-03
+  and W-04, and the trade count enters it (#12): question 4.
+- Both markets: unsigned; nothing in it depends on direction.
+- Drag 0.40 -> 1.14 / 1.90. Outside evidence: the PIN premium in equities, disputed (Duarte and Young 2009 trace it to
+  illiquidity); crypto none. Bias: W-04 (long when liquidity providers bear more risk) had the wrong sign (-0.156).
+
+### X-07 gen003_x07_convexity_shift (route (a), class M: asymmetric comovement)
+- Rule: conv = (up-beta - down-beta to BTC over k hours) - (the same over n hours) at the week's last hour; short the
+  largest, long the smallest. k = param(336, 268, 404), n = param(1344, 1075, 1613); up-beta = sma(where(rb > 0, r x rb,
+  0)) / sma(where(rb > 0, rb x rb, 0)), down-beta on the other hours. 63 nodes, lookback 1,948 h.
+- Mechanism: upside participation is overpaid (coskewness, Harvey and Siddique 2000); a coin that has lately turned
+  concave must pay to be held. Other side: leveraged speculators wanting coins that rise with BTC more than they fall.
+- Not one of the 39: W-08 read the change of the plain correlation; this reads the asymmetry of beta between BTC's rises
+  and falls; #15 and #27 read the coin's own skewness, not its co-movement (question 6).
+- Both markets: direction-free but volatility-dependent: while the asymmetry persists the book is short convexity and
+  loses on large BTC moves of either sign; stated, not hidden.
+- Drag 0.30 -> 1.04 / 1.80. Outside evidence: coskewness and downside beta are priced in equities (Harvey and Siddique
+  2000; Ang, Chen and Xing 2006) as characteristics, not as shifts; crypto none I can verify. Bias: nothing specific.
+
+### X-08 gen003_x08_price_delay (route (a), class N: delayed response)
+- Rule: dl = corr(coin's hourly log return, BTC's log return over the j - 1 hours before) - corr(coin's over those
+  hours, BTC's hourly) over n hours, at the week's last hour; long the most delayed, short the leaders.
+  j = param(3, 2, 4), n = param(336, 268, 404). 27 nodes, lookback 742 h.
+- Mechanism: price delay (Hou and Moskowitz 2005): coins whose prices take market news late are followed by fewer
+  arbitrageurs and market makers, and holders are paid for that neglect. Other side: no loser by design; a premium.
+- Not one of the 39: no earlier program read a lagged correlation; W-08's decoupling was contemporaneous (question 6).
+- Both markets: the lag structure is direction-free; the follower-minus-leader form removes own autocorrelation.
+- Drag 0.30 -> 1.04 / 1.80. Outside evidence: strong in equities, as a persistent characteristic, which G6 does not
+  credit; only its week-to-week change is tested. In a top 30 followed by arbitrage bots it is likely tiny.
+- Bias: nothing specific.
+
+### X-09 gen003_x09_state_continuation (route (b), class S1: market-direction state; DEV-informed)
+- Rule: s x rank(x), s = sign of BTC's ls-day log return, x = the coin's k-day log return over its own daily volatility
+  of k days. k = param(21, 16, 26), ls = param(56, 44, 68). 22 nodes, lookback 2,013 h.
+- DEV-informed (LESSONS 44 and 48: winner-leaning books earned in 2020 and lost in 2022H1). Its readings over all of DEV
+  and by year are partly predictable from #26 (2020 SR 2.015, 2022H1 -2.716) and are NOT evidence.
+- Reason for the conditioning, from outside this project: Cooper, Gutierrez and Hameed (2004): US equity momentum
+  earned after up markets (about 0.9% a month, as I recall) and lost after down markets; Daniel and Moskowitz (2016):
+  momentum crashes in rebounds after bear markets, when past losers are the high-beta names. Mechanism: overconfidence
+  and inflows after gains feed continuation; after losses, forced deleveraging overshoots in the losers. How sure:
+  moderate for equities at monthly horizons; low for crypto at a week; no crypto test I can verify.
+- Not one of the 39 only through the switch: in each state it holds a closed form (continuation, or its reversal)
+  (question 1). #26 had a positive DEV Sharpe, so the reversal half is not the mirror of a losing book.
+- Drag 0.35 -> 1.09 / 1.85. Control: the run order's route-(b) condition (question 3).
+- Bias: the author roughly knows when BTC's 8-week return was positive in DEV and VAL; ls = 56 days (8 weeks) was
+  chosen as a round slow window inside the 90-day lookback (2,013 h at its high bound), not from a remembered path.
+
+### X-10 gen003_x10_stress_reversal (route (b), class S2: volatility state; DEV-informed)
+- Rule: s x rank(x), s = sign(BTC's daily volatility over b days - over a days) (+1 calm, -1 stressed), x = the k-day
+  log return over own daily volatility of a days. k = param(7, 5, 9), a = param(14, 11, 17), b = param(56, 44, 68).
+  26 nodes, lookback 2,013 h.
+- DEV-informed (LESSONS 44 and 48). One-week continuation (#28) and one-week reversal (#11) both lost in 2022H1, so its
+  yearly rows are less predictable than X-09's; they are not evidence either way.
+- Reason for the conditioning: Nagel (2012): the return to short-term reversal (liquidity provision) rises with market
+  volatility as liquidity supply shrinks; Hameed, Kang and Viswanathan (2010): reversal is strongest after market
+  declines. How sure: moderate for equity reversal in high-volatility states; low for the calm continuation half and
+  for crypto at a week.
+- Not one of the 39 only through the switch: one-week continuation when calm, its reversal under stress; the calm half
+  has the sign of #11's mirror (#11 lost in all years; #28 registered that sign after it): question 2.
+- Drag 0.40 -> 1.14 / 1.90. Control: the run order's route-(b) condition. Bias: DEV's stress episodes are remembered
+  (March 2020, May 2021, 2022).
+
+### X-11 gen003_x11_trend_beta (route (b), class S3: market-trend state through beta; DEV-informed)
+- Rule: s x rank(bt), s = sign of BTC's ls-day log return, bt = the coin's hourly beta to BTC over n hours (corr x std
+  ratio). n = param(672, 537, 807), ls = param(14, 11, 17). 29 nodes, lookback 1,142 h.
+- DEV-informed: in 2020 the winners were largely the high-beta coins, so its up-state half resembles the winner-leaning
+  books of LESSONS 48; its readings are partly predictable and not evidence.
+- Reason for the conditioning: time-series momentum of the crypto market at one to four weeks (Liu and Tsyvinski 2021,
+  data to 2018; Moskowitz, Ooi and Pedersen 2012 across assets). Against it, here: core's trend rules showed no timing
+  beyond drift in VAL (LESSONS 4, 8, 9). How sure: low.
+- Not one of the 39: a beta tilt alone is a persistent characteristic (no G6 credit); signed by the state it is a
+  dollar-neutral market-timing book, which no top30 program was; core's trend switches were long-biased (question 8).
+- Drag 0.25 -> 0.99 / 1.75. Risk: W6 if the state stays one-signed for months (beta ranks persist). Bias: as X-09.
+
+## Run order and budget (decided now)
+
+- Runs 1 to 11: the defaults, in the order X-01 to X-11 (route (b) last), each
+  `python -m omr.sandbox strategies/gen003_xNN_<idea>.omr --g6-lags`, one at a time under the coordinator's memory rule.
+  Every default runs, whatever the earlier ones read.
+- Then corners, only for ideas that passed W1 to W8, in the selection order below: the 0.8 corner, then the 1.2 corner
+  (`--set`), each needing a positive DEV Sharpe AND a positive G4 DEV reading; stop that idea at its first failure. At
+  most 6 corner runs; if more than three ideas pass W1 to W8, corners for the first three in the selection order.
+- Corners (integers rounded; a param left unchanged by rounding moves by 1):
+
+  | idea | 0.8 corner | 1.2 corner |
+  |---|---|---|
+  | X-01 | n=22 | n=34 |
+  | X-02 | n=22 | n=34 |
+  | X-03 | m=1, n=22 | m=3, n=34 |
+  | X-04 | n=538 | n=806 |
+  | X-05 | w=134, n=22 | w=202, n=34 |
+  | X-06 | w=134, m=3 | w=202, m=5 |
+  | X-07 | k=269, n=1075 | k=403, n=1613 |
+  | X-08 | j=2, n=269 | j=4, n=403 |
+  | X-09 | k=17, ls=45 | k=25, ls=67 |
+  | X-10 | k=6, a=11, b=45 | k=8, a=17, b=67 |
+  | X-11 | n=538, ls=11 | n=806, ls=17 |
+
+- Control, route (b) only, a condition fixed now (question 3): before X-09 or X-10 can be recommended, its state-free
+  control runs at its default (X-09: strategies/gen003_diag_plain_multiweek.omr, plain 3-week continuation; X-10:
+  strategies/gen003_diag_plain_week.omr, plain one-week continuation; both registered in round 2 and never run), and
+  the survivor's DEV Sharpe before costs must exceed the control's by at least 0.5. X-11 has no state-free form that is
+  not a persistent tilt; none is registered for it. A control run comes out of the 6 corner runs or the reserve.
+- Reserve: 2 runs, only for an honest restatement after a stage-1 rejection of a default (the restated file is recorded
+  as an amendment before its run). Cap 19 runs (11 + 6 + 2), so generation 3 would have used at most 36 of 60.
+- No counted run is part of this plan.
+
+## Selection rule (fixed now; the DEV Sharpe ranks nothing beyond the screen)
+
+- Eligible: passes W1 to W8 at the default and both corners; for X-09 and X-10 also the control condition above.
+- Order: (1) route (a) before route (b), because route (b)'s DEV readings are partly predictable; (2) A in the paired
+  reading, fewest stale copies at least as good first (the reading built like G6); (3) the registered cost drag,
+  smallest first; (4) the run order.
+- Take the first eligible idea; then the next eligible idea of another class (class I holds X-01 and X-02, class K holds
+  X-04 and X-05; every other idea is its own class). At most two; at most one of route (b).
+- A recommendation is not a submission: the coordinator reads the program and decides; at most one counted trial
+  without a further decision; any top30 pass is measured per program in null worlds before the pool (KP-020). No
+  program here reads funding or the basis, so no KP-017 measurement is asked for.
+- If nothing is eligible, the recommendation is NONE.
+
+## Questions for the coordinator
+
+1. Route (b) and closed inputs: X-09 and X-10 hold a closed form in each state (continuation, or its reversal) and are
+   new only through the state switch; X-11 holds a beta tilt, a persistent characteristic, signed by the state. Are they
+   accepted as route (b)? And playbook 8b limits rules descended from a DEV result to parents with a pre-cost DEV
+   Sharpe of at least 2.5 (X-09's nearest parents #26 0.77 and W-01 1.82; X-10's #28 1.17): does this order's route-(b)
+   frame (at most three, each said to be DEV-informed) supersede that limit for these three?
+2. X-10's calm half has the sign of the mirror of #11, a book that lost in all three DEV years (LESSONS 16); round 2
+   registered that sign as #28 after it. Held only in calm states, is it a mirror under this order's rule?
+3. Route-(b) control: accept the condition written in the run order (state-free control at its default, the survivor's
+   pre-cost at least 0.5 above the control's, from the corner budget or the reserve)? Any control wanted for X-11?
+4. X-06 reads an input no program has read (flow one-sidedness, normalised by the trade count), but as a shock against
+   the coin's own norm, like W-03 and W-04, with trades inside it (#12). Open, or a closed shock or activity form? If
+   closed, the round has ten ideas and its cap becomes 18.
+5. X-01 to X-06 read taker volumes. The stop list names weekly books on "flow residuals"; none of these ranks flow net
+   of the return (#14) or the flow level. X-04 weights the week's flow by its measured informativeness, so where flow has
+   been informative it leans with the flow (the direction of #14's mirror, LESSONS 17). Open as written?
+6. X-07 (beta asymmetry) and X-08 (lead-lag) read co-movement with BTC, whose decoupling form (W-08) is closed. They are
+   labelled two classes (M and N); if they count as one, that class holds two. Open?
+7. Is X-02's TWAP caveat (fact 5: the bin's last hour reads its own close, a 1/168 weight) acceptable as written, or
+   should the TWAP be restated before any run?
+8. X-11 is market timing through a dollar-neutral beta spread; core's G6 found no timing beyond drift in three trend
+   trials (LESSONS 4, 8). Kept at low odds as the third route-(b) slot: keep, or strike before the runs?
+
+Written 2026-11-27 09:55 +08:00 (2026-11-27 01:55 UTC), before any round-4 sandbox run.
+
+## Coordinator's rulings before round 4's run 1 (2026-11-27; appended by the coordinator, nothing above is changed)
+
+The coordinator read version 4's head, screen, run order, selection rule and questions, and every one of the
+eleven programs (the source read of playbook section 5: no constant, threshold or scale built from a calendar
+field or a same-unit ratio; each market state is the sign of a real BTC series; the taker imbalance is written
+as buy + buy - total instead of 2 x buy - total, a fixed identity and not a tuned number, so nothing is hidden
+from G5), before any round-4 sandbox run. All eleven parse (lookbacks 742 to 2,013 hours); the sandbox log
+stands at 60 rows, none of round 4.
+
+1. Route (b): X-09 and X-10 are route (b) and are accepted on the frame's terms. For these seats only, the
+   frame sets aside playbook 8b's rule that a descended idea needs a parent of 2.5 before costs: that rule
+   guards a single parent's descendant, while a state-conditional form is a new construction whose fit to DEV
+   is partly by design. That is exactly why its readings over the whole of DEV and by year are not evidence,
+   why the control of ruling 3 applies, and why any counted trial would have to rest on the reason from outside
+   this project and on the items the design cannot fix.
+2. X-10's calm half: not a banned mirror. A mirror is a sign flip of a book that failed; X-10 switches between
+   two forms that were both registered and both failed on their own (round 2's one-week continuation and
+   generation 2's one-week reversal), which is what route (b) is for.
+3. The control condition for X-09 and X-10: accepted as written (a survivor's DEV Sharpe before costs must
+   exceed its state-free control's by at least 0.5; the controls gen003_diag_plain_multiweek at its default
+   and gen003_diag_plain_week, from the corner budget or the reserve).
+4. X-06: open. It ranks a shock in the one-sidedness of flow, an input no program has ranked; it stands close
+   to the closed shock forms, and that is recorded with any decision about it.
+5. X-01 to X-05: open. They are new measures built from the taker fields, not the closed forms (contrarian
+   taker flow net of the week's return; crowding by activity). X-04 leans partly the way of the mirror of
+   generation 2's absorbed-flow book where its correlation is positive; that too is recorded with any decision.
+6. X-07 and X-08: open next to the closed decoupling form (an asymmetry of beta and a lead-lag are other
+   quantities than a change of correlation).
+7. X-02's TWAP caveat: accepted (the last hour of a bin enters with a weight of 1/168 and the week's move is
+   taken out of the measure).
+8. X-11: STRUCK by the coordinator before any run. A dollar-neutral book that is long high beta when BTC trends
+   up and short it when BTC trends down is a bet on the market's trend placed through beta. Symmetric trend
+   rules on BTC and ETH have had their counted trials in unit core and failed (generation 0: VAL Sharpe -0.531
+   with G6 p 0.866 for the long/short breakout; LESSONS 4 and 8), and the same bet through another door is a
+   closed class. The file stays in the repository as registered and struck; it is never run.
+9. So the round has TEN ideas, X-01 to X-10. Budget: 10 default runs, at most 6 corner or control runs, 2 in
+   reserve; cap 18 (generation 3 would end at most at 35 of 60). One run at a time; a run starts when at least
+   1,000,000 KB of physical memory and 4,000,000 KB of commit headroom are free.
+10. The price of width holds as in round 3: ten ideas meet one screen, and two of them were shaped with DEV's
+    two regimes in view. A survivor is a candidate for one counted trial at most; the number of ideas screened
+    and, for a route (b) survivor, its DEV-informed design go into the record of that decision.
+11. Stage 2 starts only after this plan and its programs are on the remote and the kernel's strategy test has
+    passed with the new files in place. Its parts are appended below.

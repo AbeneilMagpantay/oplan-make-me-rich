@@ -1,0 +1,27 @@
+# Generation 3, round 4, X-03 (generations/gen003/PLAN.md, version 4, the second wide screen). Thin side of the book.
+# imb = the hour's taker imbalance (taker-buy minus taker-sell quote volume, over quote volume); rr = the hour's return
+# minus BTC's. Over the last m weekly bins: bu = mean rr over net-buying hours / mean imb over them (how far the coin
+# moved per unit of net buying), se = the same over net-selling hours (both normally positive); a = (bu - se) /
+# (|bu| + |se|). a > 0: buying moved the price more than selling did, i.e. the offer side was the thinner one. x = the
+# m-week log return in units of annualised daily volatility over n days; z = a net of a cross-sectional fit on x on
+# every bin. Long the largest z, short the smallest; rank weights, dollar neutral, gross 1, traded at the Monday 00:00
+# open. No funding, mark or index input.
+name = "gen003_x03_impact_asymmetry"
+family = "other"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity asymmetry: market makers thin the side of the book where they fear informed flow; when net buying moves a coin further than net selling does, liquidity providers expect buyers to be right, and the price follows. Long the coins where buying moves the price most relative to selling, short the reverse, net of the move, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+m = param(2, 1, 3)             # weekly bins averaged (2 weeks)
+n = param(28, 22, 34)          # days of daily volatility that scale the move
+
+imb = (taker_buy_quote_volume + taker_buy_quote_volume - quote_volume) / quote_volume
+rr = ret(close, 1) - ret(btc(close), 1)
+bu = sma(tf_mean(where(imb > 0, rr, 0), weekly), m) / sma(tf_mean(where(imb > 0, imb, 0), weekly), m)
+se = sma(tf_mean(where(imb < 0, rr, 0), weekly), m) / sma(tf_mean(where(imb < 0, imb, 0), weekly), m)
+a = (bu - se) / (abs(bu) + abs(se))
+x = tf_last(logret(weekly(close), m) / realised_vol(daily(close), n), weekly)
+ad = cs_demean(a)
+xd = cs_demean(x)
+z = ad - cs_mean(xd * ad) / cs_mean(xd * xd) * xd
+signal = cs_scale(cs_demean(cs_rank(z)))

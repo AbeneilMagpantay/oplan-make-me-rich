@@ -1,0 +1,22 @@
+# Generation 3, round 4, X-10 (generations/gen003/PLAN.md, version 4, the second wide screen). Route (b), DEV-informed
+# (LESSONS 44 and 48). Liquidity state and the one-week move. x = the coin's k-day log return (1 week) in units of its
+# own annualised daily volatility over a days; s = the sign of BTC's annualised daily volatility over b days (8 weeks)
+# minus over a days (2 weeks): +1 when the market is calmer than its norm, -1 when it is stressed; both sampled at the
+# last hour of each weekly bin. Calm: long last week's relative winners, short the losers; stressed: the reverse
+# (liquidity provision). The book stays in the market in both states. Rank weights, dollar neutral, gross 1, traded
+# at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_x10_stress_reversal"
+family = "meanrev"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Liquidity supply by state: when market volatility is above its norm, liquidity providers are scarce and the price pressure behind a week's relative move reverses; when it is below, moves are mostly news and continue. Reversal of the one-week relative move when BTC's 2-week volatility exceeds its 8-week volatility, continuation otherwise, weekly. DEV-informed. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, no G6 timing, or next30 disagrees."
+
+k = param(7, 5, 9)             # days of the coin's relative move (1 week)
+a = param(14, 11, 17)          # days of the recent volatility (2 weeks)
+b = param(56, 44, 68)          # days of BTC's volatility norm (8 weeks)
+
+d = daily(close)
+db = daily(btc(close))
+x = tf_last(logret(d, k) / realised_vol(d, a), weekly)
+s = tf_last(sign(realised_vol(db, b) - realised_vol(db, a)), weekly)
+signal = cs_scale(cs_demean(s * cs_rank(x)))

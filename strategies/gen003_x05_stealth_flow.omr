@@ -1,0 +1,26 @@
+# Generation 3, round 4, X-05 (generations/gen003/PLAN.md, version 4, the second wide screen). Stealth flow.
+# imb = the hour's taker imbalance; rv = the hour's quote volume over its own trailing w-hour mean; a quiet hour is
+# one whose quote volume is below its own trailing w-hour median. qf = the volume-weighted mean imbalance of the
+# week's quiet hours, hf = the same over its other hours; s = qf - hf. x = the week's log return in units of
+# annualised daily volatility over n days; z = s net of a cross-sectional fit on x on every bin. Long the largest z
+# (net buying when few are watching, net selling in the busy hours), short the smallest; rank weights, dollar
+# neutral, gross 1, traded at the Monday 00:00 open. No funding, mark or index input.
+name = "gen003_x05_stealth_flow"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Stealth trading: patient informed traders work their orders in quiet hours, when they move the price least and are least noticed, while busy hours carry the crowd's flow. A coin net bought in its quiet hours relative to its busy hours, beyond the week's move, is being accumulated and keeps rising relative to the unit. Long quiet-hour buying, short quiet-hour selling, weekly. Falsified if the DEV screen fails (sign never flipped), VAL PSR(0) < 0.90, 2x costs negative, or no G6 timing."
+
+w = param(168, 134, 202)       # hours in the coin's own volume norm (1 week)
+n = param(28, 22, 34)          # days of daily volatility that scale the week's move
+
+imb = (taker_buy_quote_volume + taker_buy_quote_volume - quote_volume) / quote_volume
+rv = quote_volume / sma(quote_volume, w)
+quiet = quote_volume < median(quote_volume, w)
+qf = tf_mean(where(quiet, imb * rv, 0), weekly) / tf_mean(where(quiet, rv, 0), weekly)
+hf = tf_mean(where(quiet, 0, imb * rv), weekly) / tf_mean(where(quiet, 0, rv), weekly)
+x = tf_last(logret(weekly(close), 1) / realised_vol(daily(close), n), weekly)
+sd = cs_demean(qf - hf)
+xd = cs_demean(x)
+z = sd - cs_mean(xd * sd) / cs_mean(xd * xd) * xd
+signal = cs_scale(cs_demean(cs_rank(z)))
