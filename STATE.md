@@ -354,7 +354,8 @@ GENERATION 3 IS CLOSED (2026-11-27; generations/gen003/REPORT.md, last part): 0 
 all (ten in unit core, fifty-two in unit top30), six in counted trials; none Tier 1. The coordinator's reading:
 with the fields, the horizon and the gates as they stand, the weekly top30 search is exhausted for practical
 purposes. What comes next is the human's decision (open decision 13); no round starts and nothing in the
-kernel changes before he gives it.
+kernel changes before he gives it. The kernel's full test suite, run at this close with all 92 strategy files
+in place (2026-11-27): 1228 passed, 0 failed, in 31 min 49 s.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
