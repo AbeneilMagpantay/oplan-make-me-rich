@@ -807,3 +807,31 @@ rates, status.
   no-skill rule to pass the DEV screen. The screen is strict and reads the readings nobody has tuned to, but
   it cannot tell VAL winners apart (LESSONS 35). The protection is unchanged: one counted trial per survivor at
   most, counted in M.
+
+## 2026-11-27 (coordinator) Decision by delegation after generation 3: test the premise of the "place" gap before any build
+
+- What was put to the human: generation 3's close (62 ideas, none passed; the weekly top30 search exhausted for
+  practical purposes) and, at his question, the gaps between what the project has and an edge that could pass:
+  strength, information, place, speed, proof, capital; with the order the coordinator would attack them in
+  (place, then information, then proof) and the plain statement that the odds stay low.
+- The human's answer, in his words: "continue go ahead what u think is best". Recorded as a delegation of THIS
+  decision.
+- The decision. The place gap is attacked first, but not by a build. A unit for the coins ranked below the top
+  30 would cost a design, a build, audits and both calibrations again, and its premise (that there is more to
+  find where a small account is not at a disadvantage) has no support so far: of the 42 runs whose next30 DEV
+  Sharpe the sandbox has logged, one read 1.0 or more, 16 were above 0, and their mean is -0.265. Those
+  programs were written for the top 30, so that is not a test of the premise either. The sandbox already reads any top30 program on ranks 31 to 60 (the
+  next30 reading of KP-018), so the premise can be tested with the tools as they are, in one round:
+  GENERATION 4, ROUND 1, a tier premise test. About twelve ideas whose mechanism belongs to the less liquid
+  tier, each one default run, read first on next30.
+- The reading rule, fixed now, before any idea is written. Let k be the number of the round's ideas whose next30
+  DEV Sharpe is 1.0 or more with the registered sign. With no edge at all, one such reading in about 18 is
+  expected by chance, and three or more of twelve in about 3 rounds of 100. So: k of 3 or more: the coordinator
+  proposes the build of a unit for the less liquid tier to the human, with the round's numbers and the costs. k
+  of 2 or fewer: the place gap is closed as a front for these data, no unit is proposed, and the coordinator
+  goes on to the information gap by a desk study of which other data are free, long enough and clean enough
+  to be admitted.
+- What this decision does not cover: any change of the kernel, any build, any counted trial. A next30 reading is
+  a DEV reading of a program written for another unit, after the top30 cost rate, with one number and no stress;
+  it can justify a proposal and nothing more. An idea that happens to pass the ordinary top30 screen W1 to W8
+  is handled as in generation 3.

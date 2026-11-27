@@ -356,6 +356,16 @@ with the fields, the horizon and the gates as they stand, the weekly top30 searc
 purposes. What comes next is the human's decision (open decision 13); no round starts and nothing in the
 kernel changes before he gives it. The kernel's full test suite, run at this close with all 92 strategy files
 in place (2026-11-27): 1228 passed, 0 failed, in 31 min 49 s.
+AFTER GENERATION 3 (2026-11-27). The human asked what stands between the project and an edge; the coordinator
+named six gaps (strength, information, place, speed, proof, capital) and the order it would attack them in,
+with the odds stated as low. He answered "continue go ahead what u think is best". Decided by delegation
+(KERNEL_PROPOSALS.md, entry of 2026-11-27, "test the premise of the place gap before any build"): no build
+yet. GENERATION 4, ROUND 1 is a tier premise test with the tools as they are: about twelve ideas whose
+mechanism belongs to the less liquid coins, one default run each, read first on next30 (ranks 31 to 60, which
+the sandbox already reads for every top30 program). The reading rule is fixed in advance: three or more ideas
+with a next30 DEV Sharpe of 1.0 or more and the coordinator proposes a unit for the less liquid tier to the
+human; two or fewer and that front is closed, and a desk study of other data follows. No kernel change, no
+counted trial.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.

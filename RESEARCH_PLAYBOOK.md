@@ -242,6 +242,15 @@ What changed in this playbook and why (coordinator, on the independent analyst's
   three ideas did: a survivor is a candidate for ONE counted trial, nothing more, and every counted trial
   raises M.
 
+- The tier premise test (generation 4, round 1; decided by delegation on 2026-11-27, KERNEL_PROPOSALS.md entry
+  of that date). A wide screen of about twelve ideas whose mechanism belongs to the less liquid coins. Each is
+  written as a top30 program (the only universe unit there is) and gets one default run; its FIRST reading is
+  the sandbox's next30 DEV Sharpe (ranks 31 to 60), its top30 screen W1 to W8 is read as well. No form whose
+  next30 reading is already logged is registered again. The round's result is the count k of ideas with a
+  next30 DEV Sharpe of 1.0 or more with the registered sign: three or more and the coordinator proposes a unit
+  for the less liquid tier to the human; two or fewer and that front is closed. A next30 reading is one DEV
+  number after the top30 cost rate, with no stress: it can justify a proposal, never a submission.
+
 ## 9. New data sources
 
 Propose them in `KERNEL_PROPOSALS.md` with the data-admission evidence (CONSTITUTION section 3.2).
