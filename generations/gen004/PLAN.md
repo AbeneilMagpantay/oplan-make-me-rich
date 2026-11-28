@@ -517,3 +517,449 @@ came closest: it failed W2 and W7 only. No corner and no control was due; nothin
   22.7 of 28.0, the 28-day wait of entrants, as expected. Speed limit -0.165 to 0.274 at one to three steps.
 - WEAK throughout: one DEV period, one default each, one researcher session; a next30 reading is one DEV number after
   the top30 cost rate with no stress; nothing here is a parameter recommendation, and no corner was run.
+
+# PLAN version 2 (round 2: the spot premise study, KP-029), stage 1, written 2026-11-28 before any spot file exists here
+
+(Appended below version 1 and its round-1 record, so that the 46,323 bytes before it (sha256 a507a4d9aaeb5291...) stay an
+unchanged prefix. Researcher session for generation 4, round 2, stage 1; a fresh session that knows the project only from
+the files named below.)
+
+## Head (version 2)
+
+- What: a premise study of the spot market of the same coins (Binance spot klines 1h: quote volume, taker-buy quote
+  volume) on DEV only, OUTSIDE the sandbox and the kernel, under the rule KP-029 fixed in advance. Why: admitting the
+  dataset is a re-key (a build, audits, about 13 machine hours), so its premise is tested first with the tools as they
+  are, as round 1 tested the tier premise. By whose decision: the human's of 2026-11-28 ("Run the cheap check"), ordered as
+  round 2 by the coordinator. This is stage 1 (plan, code, validation); stage 2 (download, runs) is ordered separately,
+  after this version and studies/kp029/ are committed and on the remote.
+- Kernel: omr.status OK d09812fdec752a17, semantic 7d923e7e2375986d, sealed (top30 0.10); omr.kernel_lock verify OK before
+  and after. Data research_hash 28d9084a8c5c7659, validated. Ledger M = 6. Sandbox log 95 rows, unchanged: the study writes
+  no sandbox or ledger row and imports neither omr.sandbox nor omr.evaluate.
+- Read: KP-028, KP-029 and the two entries after it; the desk study note (2, 4, 5, coordinator's note); the playbook 4, 4b,
+  5, 8b, 9; version 1 and its record; generation 3's S10, corner and control rulings; CONSTITUTION 3 to 7, 13; LANGUAGE 5
+  to 7, 10; LESSONS 44 to 68; read-only code: omr/sandbox.py, upipeline.py, interp.py, universe.py, datasets.py,
+  engine.py, pipeline.py, stats.py, lang.py, kernel_lock.py, tests/test_structure.py, tests/conftest.py.
+- Not opened: data/ except through the kernel's loaders under dev_end; ledger/returns/, ledger/trials/; no spot file, no
+  Binance address; _build/kp029_study/ does not exist. Run: a parse check of the eight study programs (all pass, constant
+  probe included), validate_evaluator.py (exact, below), synthetic_tests.py (22 of 22), spot_plan.py, and pytest
+  tests/test_structure.py -q (9 passed with the new folder in place). Numbers seen: all of version 1 and of generation 3's
+  plans; no number of any spot hypothesis exists, and none can before stage 2.
+- Files: this text and studies/kp029/ (README.md; kp029_spot.py, kp029_features.py, kp029_eval.py; programs/ with four
+  hypotheses and four controls; validate_evaluator.py and validation_stage1.json; synthetic_tests.py; spot_plan.py and
+  spot_symbols.json; download_spot.py and run_study.py, not run). Nothing else was written.
+
+## The rule fixed in advance (KERNEL_PROPOSALS.md, KP-029, quoted unchanged)
+
+> a hypothesis passes if it meets the wide screen of playbook 8b as far as that can be computed outside the sandbox, with
+> the floor before costs raised from 1.5 to 1.85, AND then holds at its corners, AND beats its control (the same book with
+> the perpetual's own volume or flow in place of the spot input: the new data must add to what the kernel already has). If
+> at least one hypothesis passes, the coordinator brings the human the proposal to admit the dataset, with the numbers. If
+> none passes, the spot front is closed, the dataset is not proposed, and the search is parked.
+
+By the human's decision a pass first goes to an independent auditor of the study. The exact form is in "The pass rule
+made exact"; nothing in it is looser than these words.
+
+## The evaluation path
+
+Finding. The kernel's scoring functions take a weight matrix, not a program: Blocked.run / run_targets (the universe
+engine: costs, funding, liquidation check, rebalance band), dev_speed_limit, dev_names_held and dev_paired_lags take W
+(with stage 1's known channel and the in-play mask); only the weights (Blocked.unit, stage1_u) and next30_score need a
+program. So no evaluator that mirrors the engine was written.
+
+The path. The hypotheses are programs of the kernel's own language (studies/kp029/programs/*.omr), computed by the
+kernel's interpreter, block path and stage 1. The language has no spot field, so the study serves spot through two SLOTS
+of the perpetual klines table, for study programs only:
+
+    volume := SPOT quote volume (USDT);  taker_buy_volume := SPOT taker-buy quote volume (USDT); same coin, same hour.
+
+They are filled through the UData loader hook (omr.upipeline.UData(loader=...), a constructor argument): the study's
+loader (kp029_features.study_udata) returns the kernel's own tables of the symbol, as load_udata("dev_end") reads them,
+with those two columns replaced. Nothing of the kernel is copied, replaced or patched; every other column, the membership,
+in-play mask, funding, mark and index tables and every engine column stay the kernel's. kp029_eval then makes the
+sandbox's calls in its order: stage1_u (24 random truncation cuts + DEV end, start cuts, block_overlap, activity),
+Blocked.run, stats.summary and per_year, the benchmark, dev_speed_limit, dev_names_held, the G2 and G4 runs
+(dev_sharpe_of), dev_paired_lags, then next30_score(end = DEV end) after the top30 panel is released.
+
+Why: (1) guard D1 (KNOWN channel, windows, tf_last, in-play cs_*, uniform warm-up, weight rule, execution at the next
+open) holds by construction, and the kernel's stage-1 self-checks run on every study program; (2) the study's own
+look-ahead surface shrinks to joining one spot row to the perpetual row of the same hour; (3) the books are built as the
+registered weekly programs are (costs and turnover compare) and as programs after an admission would be (two fields
+renamed). The price: the slot map must be kept in mind; every study program states it and kp029_features.SLOTS holds it.
+
+Validation (studies/kp029/validate_evaluator.py; output validation_stage1.json; about 105 s per program). Three registered
+weekly top30 programs of different construction (a price against its high; a market-state switch; a beta-neutral
+correlation book), weights from the kernel's interpreter and full stage 1 (25 cuts, 7 start cuts, all OK), scored through
+kp029_eval, against the sandbox's logged rows 49, 68 and 91 (kernel d09812fdec752a17) and the numbers the plans printed:
+
+| reading | W-01 high_anchor (n 42) | X-09 state_continuation (k 21, ls 56) | T-09 gain_chasing (j 3, k 42, nb 42) |
+|---|---|---|---|
+| DEV Sharpe | 1.557518 = | 1.618957 = | 1.101843 = |
+| G4 / G2 DEV | 1.295576 / 0.887789 = | 1.359318 / 1.032097 = | 0.862005 / 0.344343 = |
+| next30 DEV (symbols) | 0.600567 (100) = | 0.106355 (100) = | 0.554196 (100) = |
+| speed r(1), r(2), r(3) | 0.129146, -0.080298, -0.032382 = | -0.071830, -0.015997, -0.060955 = | 0.274324, -0.066449, -0.083110 = |
+| paired A of 10; p; B; stale median | 6; 0.636364; -0.549138; -0.528415 = | 2; 0.272727; 0.579133; -0.540789 = | 5; 0.545455; -0.187036; -0.413398 = |
+| names held / in play | 27.664138 / 28.038348 = | 27.628740 / 28.038348 = | 27.734935 / 28.038348 = |
+| direction changes; rebalances | 1198; 571 = | 1433; 636 = | 980; 578 = |
+| funding paid / received | 0.731965 / 0.793809 = | 0.622642 / 0.687370 = | 0.482490 / 0.505771 = |
+| years SR 2020 / 2021 / 2022H1 (printed) | 3.721 / 1.831 / -2.093 = | 2.312 / 1.532 / 1.025 = | 0.743 / 2.325 / -0.926 = |
+| avg gross; costs (printed) | 0.855; 0.3024 = | 0.855; 0.3138 = | 0.853; 0.1669 = |
+
+"=": every logged reading reproduced exactly (difference 0.0 in floating point over all 60 logged values compared, 20 per
+program, the speed-limit start row included; the table shows 6 decimals); the printed numbers to the digits printed;
+benchmark 0.619 / maxDD 0.847 as printed. With the spot wrapper and no spot data, each program's weights and engine run
+are bit-identical to the kernel's.
+
+Screen readings: W1 (stage1_u's self-checks and activity, direction changes, Run.gross, dev_names_held, Run.liquidated),
+W2 to W4 (Blocked.run, dev_sharpe_of at costs x2 and at funding paid x1.5 / received x0.5), W5 (next30_score on the
+study's UData; the spot of next30 coins is downloaded too), W6 (dev_speed_limit), W7 (dev_paired_lags) are each
+reproduced exactly above; W8 (stats.per_year) to the printed digits with every sign equal. NOT COMPUTABLE: none of the
+eight. The sandbox's log row and printout are replaced by studies/kp029/run_log.jsonl and run_study.py's print.
+
+## The hypotheses
+
+Base rate, plainly: of the 46 ideas put to the wide screen so far, none passed, at a floor before costs of 1.5; this
+screen's is 1.85. The desk study's analyst put the chance that a rule on these data clears the bar on held-back data at
+well under one in ten, and found no published evidence that spot against perpetual volume or flow says which coins beat
+which over a week (S44). My expectation, recorded before any number: no hypothesis passes.
+
+Shared construction (all eight programs): kind portfolio, unit top30, decided once a week (a weekly series visible at the
+bar that opens Sunday 23:00 UTC, traded at the Monday 00:00 open), rank weights, dollar neutral and beta neutral by
+generation 3 round 5's projection (bd = the centred daily beta to BTC over nb days; w = z - (mean(z bd) / mean(bd bd)) bd),
+gross 1; only H-S3 and its control are gated (with their own W1). No funding, mark or index input (KP-017 does not bear);
+no numeric literal but the gate value 1 of H-S3 and C-S3; lookback 1,605 hours in all eight (the beta window); a spot
+window reaches at most 43 days back; spot enters only as ratios of slots or as log changes, so no ratio mixes units. As
+windows and bins need every hour known, ONE missing or guarded spot hour removes that coin from the weekly decisions whose
+inputs hold it: 6 for H-S1 and H-S3 at their defaults (synthetic test 8a; lag's window includes its own rows, LANGUAGE.md
+6), 2 for H-S2, 5 or 6 for H-S4; a market-wide missing hour leaves those decisions flat. The controls lose the same coins.
+
+The controls (one rule): the hypothesis with the spot input DROPPED, all else unchanged. Read literally ("the perpetual's
+own volume or flow in place of the spot input") a contrast of spot against perpetual is zero, so the perpetual's part is
+kept: the book the kernel can already build. Each control reads the spot term only through where(spot_term > 0,
+perp_term, perp_term), whose value is the perpetual term and which is known only where the spot term is: the control holds
+the same coins in the same weeks (coverage matched), so a hypothesis cannot beat it by which coins have spot data.
+
+### H-S1 kp029_hs1_share_shift: trading moving from spot to the perpetual, bet against (the desk study's H-S1)
+- Feature: xp = log(the perpetual's mean daily quote volume over the last k days / its mean over the n days before them,
+  lag(sma(qp, n), k)); xs the same for spot; x = xp - xs (the change of the log perp-to-spot volume ratio), weekly. Sign:
+  SHORT the largest x, long the smallest. k = param(7, 5, 9), n = param(28, 22, 34), nb = param(42, 33, 51).
+- Mechanism: a rise of the perpetual's share is new leveraged demand (or shorting), fragile, unwound at the next stress; a
+  rise of the spot share is buying by holders, unlevered. Other side: leveraged perpetual traders.
+- Changed from the desk study: the reference is the 4 weeks before the last week, not 8 (half the weeks a missing spot
+  hour keeps a coin out; faster for G6), excluding the last week (lag), as the desk study's words do.
+- Bar check: drag 0.35 (lessons 54, 59: 0.23 to 0.45; activity_fade, a one-week input, 0.31): 1.09 before costs in VAL for
+  G1's line, 1.85 for decent odds; DEV floor 1.85 (W2).
+- Outside evidence: none for this ratio; related only: He, Manela, Ross, von Wachter (perp-spot deviations track leveraged
+  demand; pricing, not a weekly predictor).
+- Bias: bets AGAINST pressure lost in every DEV year in top30 (lesson 56); the perpetual's own volume books read -0.375
+  (W-09) and +0.172 (activity_fade), next to C-S1. The sign is the mechanism's. Remembered: perpetual-led pumps of 2021.
+- Control C-S1 kp029_cs1_perp_volume_shift: x = xp, short the largest, coverage matched through xs. Corners: 0.8 (k 6, n 22,
+  nb 34); 1.2 (k 8, n 34, nb 50).
+
+### H-S2 kp029_hs2_spot_flow: aggressive buying on spot against aggressive buying on the perpetual (the desk study's H-S2)
+- Feature: ss = spot taker-buy quote volume / spot quote volume over the last k days (sums of daily bins); sp the same on
+  the perpetual; x = ss - sp, weekly. ONE sign: LONG the largest x, short the smallest. k = param(7, 5, 9), nb as H-S1.
+- Mechanism: aggressive spot buyers hold unlevered, so their pressure persists; aggressive buying on the perpetual is
+  leveraged and unwinds (H-S1's story on signed flow). The named confound has the OPPOSITE sign: cash-and-carry (buy spot,
+  sell the perpetual when the premium is rich) raises x when perpetual longs are crowded. A negative reading fails.
+- Bar check: drag 0.40 (one-week taker measures re-ranked weekly; lesson 54: 0.24 to 0.45): 1.14 / 1.90 in VAL. Outside
+  evidence: none cross-sectionally (order-flow imbalance predicts over minutes to hours). Bias: the perpetual's taker books
+  read strongly on DEV (lesson 53: -2.514 in every year); C-S2 is a taker-share book of another construction.
+- Control C-S2 kp029_cs2_perp_flow: SHORT the largest sp (the perpetual part of x), coverage matched through ss. Corners:
+  0.8 (k 6, nb 34); 1.2 (k 8, nb 50).
+
+### H-S3 kp029_hs3_leverage_gate: a market-wide gate on the same ratio (the desk study's H-S3)
+- The book it gates, named in advance: H-S1's, unchanged. The gate: m = the unit's mean of H-S1's x over the coins in play
+  at the weekly decision; ON for the week when m > 0 (the market's trading moved toward the perpetuals), flat otherwise.
+- Mechanism: after a market-wide build-up of perpetual trading the unwinding falls hardest on the coins whose own share
+  rose most; after a move toward spot there is little to unwind. Bar check: ON about half the weeks, costs and volatility
+  both roughly halve: drag 0.35 (1.09 / 1.85). Outside evidence: none. Bias: the leverage flushes of May 2021 and May 2022
+  are the picture the gate is drawn from, and they are DEV.
+- Control C-S3 kp029_cs3_volume_gate: C-S1's book, ON when the unit's mean of xp > 0 (spot dropped from book and gate),
+  coverage matched. Corners as H-S1. Its own W1: see the pass rule.
+
+### H-S4 kp029_hs4_rally_carrier: which market carries the rallies (added)
+- Feature: dsh = the daily log change of the perp-to-spot quote-volume ratio (logret(daily(quote_volume), 1) -
+  logret(daily(volume), 1)); c = corr(dsh, rd, k), rd the daily log return; weekly. SHORT the largest c (up days come with
+  trading moving to the perpetual), long the smallest. k = param(28, 22, 34), nb.
+- Mechanism: rises carried by leveraged perpetual buying overshoot and give back; rises carried by spot buying are bought
+  by holders. Round 1's T-06 construction (who carries the rallies) on the venue instead of the ticket size. Bar check: a
+  4-week correlation re-estimated weekly (T-06 dropped 0.27 under G4): drag 0.30 (1.04 / 1.80). Outside evidence: none.
+  Bias: T-06 read 0.094 in top30 on DEV (known).
+- Control C-S4 kp029_cs4_volume_return: c = corr(daily log change of the perpetual's own quote volume, rd, k), short the
+  largest, coverage matched through the spot term's correlation. Corners: 0.8 (k 22, nb 34); 1.2 (k 34, nb 50).
+
+Expected correlations: H-S3 with H-S1 high (its ON weeks); H-S1 with H-S4 moderate; H-S2 with the others low to moderate;
+each control with its hypothesis moderate to high. At worst two bets (volume share, signed flow), not four. Classes: L,
+leverage share (H-S1, its gate H-S3, H-S4); F, venue of the flow (H-S2).
+
+## The pass rule made exact (fixed now; studies/kp029/kp029_eval.py holds the same numbers)
+
+A hypothesis PASSES when (a), (b) and (c) all hold, every run among them with its truncation test passed.
+
+(a) The screen at its default (playbook 8b's wide screen, items as numbered in version 1, the floor raised):
+
+| item | threshold (all on DEV, at the default) |
+|---|---|
+| W1 | the kernel's stage 1 passes (no self-check fault; activity >= 20); direction changes >= 30; avg gross (Run.gross mean over DEV) >= 0.5; names held >= 15; not liquidated. H-S3 only (a gated book): direction changes >= 30, not liquidated, ON in 25% to 75% of the DEV decision hours with a unit, and over the ON hours avg gross >= 0.5 and names held >= 15 (ON less than a quarter of the time is too sparse to read; more than three quarters is H-S1 by another name) |
+| W2 | DEV Sharpe + (DEV Sharpe - G4 DEV Sharpe) >= 1.85 |
+| W3 | G4 DEV Sharpe > 0 |
+| W4 | G2 DEV Sharpe > 0 |
+| W5 | next30 DEV Sharpe >= 0.3 (a code in place of a Sharpe fails) |
+| W6 | r(1), r(2), r(3) each <= 0.40 (a reason line in place of the values fails) |
+| W7 | at most 4 of 10 stale copies at least as good AND the book median over the last 365 days of DEV > 0 (a refused reading fails) |
+| W8 | at least two of 2020, 2021, 2022H1 with a return above 0 |
+
+A wrong sign is a failure; no sign is flipped; no default is changed after a run; numbers are read unrounded from the row.
+
+(b) Its corners: generation 3's rule S10 (generations/gen003/PLAN.md line 235; applied in rounds 3 to 5 and in version 1):
+the 0.8 and the 1.2 corner, every param at the same G5 end (integers rounded; a param left unchanged by rounding moves by
+1), each with DEV Sharpe > 0 AND G4 DEV Sharpe > 0. The corners are listed with each hypothesis.
+
+(c) Its control: the hypothesis's DEV Sharpe before costs at its default must exceed its control's DEV Sharpe before costs
+at the control's default by at least 0.5: generation 3's number (rounds 3, 4 and 5, ruling 3 each) and the coordinator's
+suggestion. One DEV Sharpe carries a standard error of about 0.65; a hypothesis and its coverage-matched control share the
+perpetual term, so their difference is measured more tightly (about 0.5 to 0.65 at a return correlation of 0.5 to 0.7);
+0.5 asks the spot input to add about one such error ON TOP of a 1.85 floor. A control is never screened on its own.
+
+Void: a run whose study truncation test fails, or whose kernel stage 1 faults, has no reading; it is fixed by an amendment
+written before a re-run from the reserve. If at least one hypothesis passes, the coordinator has the study audited and then
+brings the human the proposal; if none passes, the spot front is closed and the search is parked.
+
+## Look-ahead guards (built in stage 1)
+
+- D1 timing = the kernel's KNOWN channel, by construction (above): a spot bar is final at its close, as a klines bar; a
+  weekly decision uses the bin closing at the Sunday 23:00 bar; positions take effect at the next open (the kernel's engine).
+- D2 the study truncation test (kp029_eval.truncation_test), run in stage 2 for every hypothesis, control and corner BEFORE
+  any reading is computed: 6 fixed cuts (decision bars 2020-08-16, 2021-04-11 and 2021-12-19 23:00; 2020-12-13 22:00, an
+  hour before one; mid-week 2021-08-18 13:00 and 2022-05-10 07:00) and 2 random DEV hours (fresh entropy, seed logged). At
+  each cut every perpetual and spot row after it is dropped, the slots are re-derived from what is left, the program is
+  evaluated by the kernel's block path up to the cut, and weights, raw values and known flags of every row up to it must
+  equal the full run's bit for bit; a failure makes the run void. The kernel's own 25-cut self-check runs as well.
+- D3 synthetic proofs (synthetic_tests.py; 15 synthetic perpetuals, one 1000-prefixed, synthetic spot): 22 of 22 pass.
+  Changing every perpetual and spot row after a cut (three cuts) leaves every weight, raw value and known flag at or
+  before it identical while later rows change. The truncation test passes on the honest path (8 cuts) and FAILS on a
+  deliberate one-hour look-ahead. One missing spot hour (2021-03-10 12:00) removes that coin from exactly the six weekly
+  decisions 2021-03-14 to 04-18, the other 14 stay known; the same hour with ZERO volume keeps it known; a spot close 6%
+  off acts as a missing hour (4% off is kept); S3 on spot (the 25th zero-trade hour unknown). Also: the ceiling (no month
+  outside 2019-12 .. 2022-06 can be named, later rows dropped, a stored 2022-07 file or a checksum mismatch stops the
+  loader), the CSV parser, the symbol map, slot isolation (a perpetual-only program is bit-identical through the wrapper),
+  and the whole stage-2 path on H-S1 into a temporary log, the coverage count finding a planted market-wide missing hour.
+- D4 the join guard: a spot row is used only when spot close x multiplier lies within 5% of the perpetual's close of the
+  same hour, else both slots are unknown; spot bars follow the kernel's rule S3; rows with a non-finite or non-positive
+  close, a negative volume or a taker-buy volume above the volume are dropped (unknown) and counted; 1000XXXUSDT (and
+  1000000XXXUSDT) map to spot XXXUSDT with multiplier 1000 (1e6) in the guard only; quote volumes are compared in USDT.
+- D5 the ceiling, hard-coded in kp029_spot.py: no URL of a month after 2022-06 (or before 2019-12) can be built; a stored
+  file of such a month stops the loader; rows after 2022-06-30 23:00 UTC are dropped on load; every zip is checked against
+  its .CHECKSUM at download and at every read. 2019-12 is the only warm-up month (the universe grid starts 2019-12-31).
+
+## The download (stage 2; download_spot.py --go)
+
+- What (studies/kp029/spot_symbols.json, from the kernel's DEV membership): 114 perpetuals ever a member on DEV (75 of
+  top30, 100 of next30), 114 spot pairs, one 1000-prefixed (1000SHIBUSDT -> SHIBUSDT), each with a folder in the desk
+  study's cached listing. Months per pair: from the month holding (first member month - 97 days, the block warm-up that
+  covers the 90-day lookback) to the last member month, within 2019-12 .. 2022-06: 1,911 zips and 1,911 .CHECKSUM files.
+- Size about 68 MB (35.5 KB per zip, the mean of 170 such files of six pairs in the cached listings) plus 0.2 MB of
+  checksums. Time: 3,822 requests, plus one per month the archive does not hold (a 404 on the checksum, then no zip
+  request), strictly one at a time with a pause of at least 0.25 s: about 32 to 45 minutes.
+- Rules: data.binance.vision only; User-Agent research-data-client/1.0, nothing identifying; one connection; a file kept
+  only when its sha256 equals its checksum; resumable; outcomes logged (no data row) in _build/kp029_study/spot/. Without
+  --go it fetches nothing.
+- Before the first evaluation `run_study.py --coverage` counts the spot data only (no book): per perpetual the active hours
+  of its window, spot rows present, slots known after the guard, and the hours at which 80% or more of the pairs have no
+  row (market-wide), into studies/kp029/spot_coverage.json; no evaluation runs before that file exists.
+
+## Run order and budget (decided now; run_study.py enforces it)
+
+- First the download and the coverage count; neither evaluates anything.
+- Runs 1 to 4: the defaults in the order H-S1, H-S2, H-S3, H-S4 (`.venv\Scripts\python.exe -I studies\kp029\run_study.py
+  <stem>`), one at a time under the memory floor (1,000,000 KB physical, 4,000,000 KB commit). Every default runs, whatever
+  the earlier ones read.
+- Then, only for a hypothesis that passed the screen at its default, in run order: its control, then the 0.8 corner, then
+  the 1.2 corner, stopping at its first failure (the control first: one run decides whether the spot input adds anything).
+  At most 3 runs per survivor, 12 in all.
+- Reserve: 2 runs, only to re-run a void or faulted run after an amendment. Cap 18 evaluations. Every evaluation, failed
+  and void ones included, is a row of studies/kp029/run_log.jsonl (time, hypothesis, parameters, every reading, screen
+  items, truncation cuts and result, the sha256 of every study file, kernel hash, versions). The verdict: `run_study.py
+  --summary`. Nothing here is a counted trial or a recommendation for one; a pass leads to an audit and a proposal.
+
+## Questions for the coordinator
+
+1. The spot slots are filled through the UData loader hook, a kernel constructor argument; no kernel code is replaced and
+   perpetual-only programs are bit-identical through it. Acceptable, or is it a patch in your reading?
+2. Controls coverage matched through where(spot_term > 0, perp_term, perp_term), or on the perpetual's own coverage? The
+   matched form is the stricter test of content.
+3. H-S3's own W1 (ON in 25% to 75% of the decision hours; gross and names over the ON hours). Accept?
+4. Four hypotheses, three in one class if H-S3 (H-S1's book under a gate) counts as its own idea. Accept, or strike H-S4
+   or H-S3? Fewer ideas, fewer chances for noise to pass.
+5. Market-wide spot outages stay unknown (KP-029) and cost six weekly decisions of H-S1 and H-S3 each. I propose to proceed
+   strictly, report the coverage count before the first evaluation, and let W1 decide. Or a rule for them now?
+6. H-S1's reference window 4 weeks instead of the desk study's 8 (coverage, speed). Accept?
+7. Budget: 4 defaults, at most 12 control and corner runs, 2 in reserve; cap 18.
+8. Tracked outputs: validation_stage1.json and spot_symbols.json now; spot_coverage.json and run_log.jsonl in stage 2.
+
+Written 2026-11-28 14:21 +08:00, before any spot file was downloaded, opened or listed for content, and before any study
+hypothesis was evaluated.
+
+## Coordinator's rulings before any spot file (version 2; 2026-11-28; appended by the coordinator, nothing above is changed)
+
+The coordinator read version 2 whole, the four hypotheses and one control as programs, the spot rules and the slot
+builder (studies/kp029/kp029_spot.py, kp029_features.py) line by line, and searched the evaluator, the runner and the
+downloader for any write outside the study, any import of the sandbox or the evaluator and any ceiling other than
+DEV's: none. The kernel's engine, activity and membership read open, high, low, close, trades and the gap flag, never
+the two slot columns (omr/upipeline.py, ENGINE_KLINE_COLS). The mechanical gate: the 46,323 bytes of version 1 and its
+record unchanged; the lock verifies, sealed; the ledger chains verify; the sandbox log at 95 rows;
+_build/kp029_study/ does not exist; every study file ASCII with LF. No spot data file has been downloaded or opened
+by anyone in this project: the desk study and stage 1 used file listings only.
+
+1. The slots through the loader hook: ACCEPTED. No byte of the kernel changes, and a perpetual-only program is
+   bit-identical through the wrapper. Conditions: study programs stay under studies/kp029/programs/, never under
+   strategies/, never given to omr.sandbox or omr.evaluate, and each states the slot map in its head, as they do.
+2. Controls matched to the hypothesis's coverage: ACCEPTED as designed (the stricter test of what the spot input adds).
+3. and 4. H-S3 AND ITS CONTROL C-S3 ARE STRUCK, before any run. Playbook 8b allows at most two ideas of one mechanism
+   class and the leverage-share class has three; H-S3 would need a screen item of its own, and the rule fixed in
+   advance is one screen for all with nothing looser; and by the plan's own note its gate is drawn from DEV's two
+   leverage flushes. The study has THREE hypotheses, in this order: H-S1, H-S2, H-S4. Their two program files are
+   removed so that nothing can run them; the text above stays as the record.
+5. MARKET-WIDE SPOT OUTAGES: a rule now, not "let W1 decide". KP-029's words "unknown, never zero volume" were written
+   for a spot pair that has stopped. An hour in which the spot exchange itself was down is another case: every pair's
+   volume in that hour WAS zero, and everybody knew it at the time. Left unknown, each such hour would take the whole
+   book out of five or six weekly decisions, and the study would then measure the exchange's maintenance calendar
+   instead of the premise. The rule:
+   - A spot OUTAGE HOUR is an hour, at or after the first row of the stored spot BTCUSDT table, for which that table
+     has no row (BTCUSDT trades in every hour the spot exchange is open). It is known at the close of that hour.
+   - At an outage hour a spot pair that has no row of its own gets a synthetic row: zero trades, zero quote volume,
+     zero taker-buy quote volume, provided the pair has a real row at some earlier hour. Rule S3 then decides
+     usability exactly as for any present zero-trade bar (so at most 24 non-trading hours in a row; outage hours and
+     absent hours count in the run), and the price guard takes its verdict from the pair's last real row instead of
+     comparing a price that does not exist.
+   - Everything else is as written: an absent spot hour that is NOT an outage hour stays unknown (a pair not yet
+     listed, halted, ended, or a row dropped by the cleaning); a real row is always used as it is.
+   - The rule reads only rows at or before the hour, so the truncation test must pass with it; the synthetic tests
+     get a market-wide outage (zero-filled, the cross-section kept), an outage longer than 24 hours (unknown from
+     the 25th hour), and a stopped pair at a later outage hour (unknown).
+   - The coverage count reports the outage hours, their blocks and the longest block, and at outage hours the share
+     of the other stored pairs with a real row in the 24 hours before that have no row either. TRIPWIRE, fixed now:
+     if that share is under 95% over all outage hours, or a block is longer than 24 hours, or there are more than
+     200 outage hours on DEV, the runner stops after the coverage count and the researcher reports to the
+     coordinator before any evaluation. Otherwise the runs go on without a stop.
+   Known side effect, accepted: an outage lowers every pair's spot volume of that day together, which moves the
+   daily share change of every coin the same way on two days of H-S4's 28.
+6. THE PRICE GUARD: 20%, not 5%. The guard is there to catch another coin under the same name or a wrong price
+   multiplier, and those put the two prices apart by far more than 20%. A tolerance that ordinary stress can reach
+   would take a coin out of five or six weekly decisions for one stressed hour, after exactly the events the
+   hypotheses are about. For the record, and before the pre-registration: on the kernel's own DEV rows of the 114
+   perpetuals (in-play hours, the kernel's loaders, DEV ceiling) count the hours at which the perpetual's close is
+   more than 2%, 5%, 10% and 20% from its index close, with the number of coins and of distinct weeks touched, and
+   put the table in the amendment. If more than 20 coin-hours exceed 20%, stop and report before anything else.
+7. H-S1's reference window of 4 weeks instead of the desk study's 8: ACCEPTED (decided before data, with its reasons).
+8. Budget: 3 defaults; for a hypothesis that passes the screen at its default its control, then the 0.8 corner,
+   then the 1.2 corner, stopping at the first failure (at most 9); 2 in reserve for a void or faulted run after a
+   written amendment. Cap 14 evaluations.
+9. Tracked: validation_stage1.json and spot_symbols.json now; spot_coverage.json and run_log.jsonl in stage 2. The
+   spot files stay under _build/ and are never committed.
+10. The pass rule stands as made exact above (one screen for all, the floor before costs 1.85, corners by rule S10,
+    the control beaten by at least 0.5 before costs, every run with its truncation test passed). A pass is not a
+    result for the human until an independent auditor has checked the study; no pass, and the spot front is closed
+    and the search is parked, as he was told. No default, sign, window or rule is changed after the first spot file
+    is opened; the reserve is for void runs only.
+11. The researcher's amendment for rulings 3 to 6 and 8 (the code, the tests, the guard table) is appended below
+    and gated by the coordinator. Stage 2 starts only after this plan, the amendment and studies/kp029/ are
+    committed and on the remote.
+
+## Coordinator's ruling on the guard table (version 2; 2026-11-28; appended by the coordinator, nothing above is changed)
+
+The researcher stopped at ruling 6 as ordered, before any other amendment and before any spot file. Its table, from
+the kernel's own DEV rows (114 perpetuals, 927,748 in-play coin-hours, the perpetual's close against the kernel's
+index close; studies/kp029/guard_table.py and guard_table.json):
+
+| perpetual close against index close | coin-hours | coins | weeks |
+|---|---|---|---|
+| more than 2% apart | 363 | 77 | 26 |
+| more than 5% apart | 185 | 55 | 12 |
+| more than 10% apart | 99 | 27 | 5 |
+| more than 20% apart | 33 | 8 | 3 |
+| more than 25%, 30%, 50% apart | 27, 17, 14 | | |
+
+The 33 hours beyond 20% are three events: the crash hour of 2021-05-19 (six coins, one hour each, up to 0.436), seven
+hours of one coin on 2021-11-11 (up to 0.271), and twenty hours of LUNA's collapse on 2022-05-11 to 13 (ratios of 24
+and 159; all 14 hours beyond 50% are these). None of them is another coin under the same name or a wrong multiplier:
+they are the same coin under stress, which is what the guard must let through. The first plan's 5% would have taken
+up to 55 coins out of five or six weekly decisions each.
+
+6 (revised). THE PRICE GUARD IS 50%: a spot row is used when spot close x multiplier lies within 50% of the
+   perpetual's close of the same hour (a ratio from 0.5 to 1.5). Its one job is identity. A wrong multiplier is a
+   factor of 1000, and another coin is off by some factor hour after hour; the same coin under stress stayed inside
+   50% in every in-play hour of DEV except the last days of a collapse, where "unknown" is the right answer. The
+   number is set on the kernel's own rows of the perpetual and the index, before any spot file exists here; the index
+   is a stand-in for the spot price, and the real spot closes may sit nearer to the perpetual.
+   The stop of ruling 6 ("more than 20 coin-hours beyond the tolerance") is met at 50% (14) and is spent: there is no
+   further stop on this table.
+   In its place, in the coverage count: the number of in-play coin-hours the guard rejects on the real spot rows,
+   and the pairs with more than 24 rejected hours. TRIPWIRE, fixed now: more than 5 such pairs means the symbol map
+   is wrong somewhere; the runner then stops after the coverage count, before any evaluation, for an amendment of
+   the map only. No tolerance, window, sign or default is changed after the first spot file is opened.
+   guard_table.py and guard_table.json are tracked with the study.
+   Everything else in the rulings above stands; the researcher's amendment follows below.
+
+## Amendment after the coordinator's rulings (stage 1b; 2026-11-28; appended by the researcher, nothing above is changed)
+
+The 81,043 bytes above (sha256 3d7d98c6b786a1c9...) are unchanged. Still no spot file, no _build/kp029_study/, no Binance
+address, no hypothesis evaluated; no kernel file, ledger/ or data/ touched.
+
+What changed, by file (studies/kp029/):
+- programs/: kp029_hs3_leverage_gate.omr and kp029_cs3_volume_gate.omr DELETED (rulings 3, 4). The six others: head
+  comments only (the outage zero row of ruling 5, the 50% guard of ruling 6); bodies, params and canonical forms
+  unchanged; all six parse with the constant probe (lookback 1,605 h).
+- kp029_features.py: GUARD_TOL 0.50 (spot close x multiplier / perpetual close within 0.5 .. 1.5). The outage rule
+  (slot_detail), on the pair's own hourly grid: an outage hour is an hour at or after the first stored spot BTCUSDT
+  row with no BTCUSDT row; a pair with no stored row of its own there gets a synthetic row (trades, quote volume,
+  taker-buy quote volume 0) if it has a real row at an earlier hour; S3 (omr.universe.usable_of) then decides, outage
+  and absent hours counting in the run; a synthetic row takes the guard verdict of the pair's last real row; any other
+  absent hour stays unknown; a real row is used as it is. Every input reads rows at or before the hour; inject cuts
+  the BTCUSDT table with the pair's and the perpetual's rows, so the truncated and the full run see the same outage
+  hours on every row up to the cut.
+- kp029_spot.py: the spot stores also keep each pair's stored open times before cleaning (raw_index): "has a row".
+- kp029_eval.py: H-S3's own W1 and the gate readings removed (one screen for all); guard_table.py added to the files
+  whose sha256 every run logs.
+- run_study.py: three hypotheses (H-S1, H-S2, H-S4) and their controls; cap 14 enforced (3 defaults, at most 9
+  control and corner runs, 2 in reserve). --coverage now reports the outage hours, their blocks and the longest, the
+  share at outage hours of the other stored pairs with a real row in the 24 hours before that have no row either, and
+  per perpetual on its in-play hours (the kernel's top30 and next30 masks) the real, synthetic and known slots and the
+  hours the 50% guard rejects on real rows. Tripwires: share under 95%, a block over 24 h, over 200 outage hours on
+  DEV, more than 5 pairs with more than 24 rejected in-play hours. Any of them writes "stop": true into
+  spot_coverage.json, and every evaluation is then refused (coverage_gate) for a report to the coordinator.
+- synthetic_tests.py: BTCUSDT is now one of the 15 synthetic perpetuals (the outage reference); the guard tests moved
+  to 50%; new tests 11 (outages) and 12 (coverage and the runner's refusals); 31 of 31 checks pass.
+- README.md: the rules, files and stage-2 order above. guard_table.py and guard_table.json: as the ruling quotes them,
+  unchanged since; tracked.
+
+Guard table (studies/kp029/guard_table.py; the kernel's DEV rows, 114 perpetuals, 927,748 in-play coin-hours,
+perpetual close against the kernel's index close): beyond 2% 363 coin-hours (77 coins, 26 weeks); beyond 5% 185 (55,
+12); beyond 10% 99 (27, 5); beyond 20% 33 (8, 3); beyond 25%, 30%, 50% 27, 17, 14 (the 14 all LUNA, 2022-05-12/13).
+
+Tests (stage 1b): synthetic_tests.py 31 of 31 checks pass (the 3 h market-wide outage keeps every coin in every weekly decision
+with zero, known slots; the 30 h outage is unknown from its 25th hour; a pair stopped a month before an outage stays
+unknown; BTCUSDT itself gets a zero row at an outage hour; an absent hour that is not an outage stays unknown; the
+truncation test passes with cuts inside and just after a 3 h and a 30 h outage; each tripwire sets the stop flag; the
+runner refuses on the flag, without the coverage file and at the cap). validate_evaluator.py: the three programs reproduce exactly again (all 60 logged values, difference 0.0; the printed numbers to their digits; the wrapper bit-identical).
+tests/test_structure.py -q: 9 passed. omr.kernel_lock verify: OK, sealed. Parse check: six of six.
+
+Download plan: unchanged (spot_symbols.json: 114 perpetuals, 114 pairs, 1,911 monthly files). BTCUSDT's window,
+2020-01 .. 2022-06, is the union of every pair's window, so the outage reference covers every hour the study reads.
+
+Stage 2, in this order (from the project root; one at a time, memory floor checked by the scripts):
+
+    .venv\Scripts\python.exe -I studies\kp029\download_spot.py --go
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py --coverage
+      (STOP printed: report to the coordinator; every evaluation is refused)
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py kp029_hs1_share_shift
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py kp029_hs2_spot_flow
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py kp029_hs4_rally_carrier
+      then for each hypothesis whose default passed the screen, in that order, stopping at its first failure:
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py <its control: kp029_cs1_perp_volume_shift,
+      kp029_cs2_perp_flow or kp029_cs4_volume_return>
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py <hypothesis> --label corner08
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py <hypothesis> --label corner12
+    .venv\Scripts\python.exe -I studies\kp029\run_study.py --summary
+
+Written 2026-11-28 15:24 +08:00, before any spot file was downloaded or opened.

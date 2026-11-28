@@ -1,0 +1,31 @@
+# KP-029 premise study (generation 4, round 2; PLAN version 2), C-S1: the CONTROL of H-S1. Never a strategy; scored
+# only by studies/kp029 with the SPOT SLOT MAP (volume = SPOT quote volume, taker_buy_volume = SPOT taker-buy quote
+# volume; every other field the perpetual's own). H-S1 with the spot input dropped: x = the change of the
+# perpetual's own log quote volume (last k days against the n days before them), short the largest rise. The spot
+# term xs enters only through where(xs > 0, xp, xp), whose VALUE is xp in every row and which is known only where
+# xs is known: the control holds the same coins in the same weeks as H-S1 (coverage matched), so H-S1 must beat it
+# by what the spot market adds, not by which coins have spot data. Same weights, beta neutrality and timing as H-S1.
+# Spot rule (rulings 5, 6): a missing spot hour is unknown, except at a spot exchange outage hour (zero volume, S3);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown.
+name = "kp029_cs1_perp_volume_shift"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Control of H-S1 (KP-029 premise study): the same weekly beta-neutral rank book on the change of the perpetual's own log quote volume over the last week against the four weeks before, short the largest rise, on the coins and weeks where H-S1's spot input is known. Never a strategy; read only against H-S1."
+
+k = param(7, 5, 9)             # days of the recent window (1 week)
+n = param(28, 22, 34)          # days of the reference window before it (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+qp = daily(quote_volume)
+qs = daily(volume)
+xp = log(sma(qp, k) / lag(sma(qp, n), k))
+xs = log(sma(qs, k) / lag(sma(qs, n), k))
+x = tf_last(where(xs > 0, xp, xp), weekly)
+d = daily(close)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(x))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

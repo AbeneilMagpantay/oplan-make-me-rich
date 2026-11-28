@@ -1,0 +1,26 @@
+# KP-029 premise study (generation 4, round 2; PLAN version 2), H-S4. Never a strategy; scored only by studies/kp029
+# with the SPOT SLOT MAP (volume = SPOT quote volume, taker_buy_volume = SPOT taker-buy quote volume; every other
+# field the perpetual's own). dsh = the daily change of the coin's log perp-to-spot volume ratio; rd = its daily log
+# return; c = corr(dsh, rd) over the last k days (4 weeks), sampled at the last hour of each weekly bin. Short the
+# coins whose up days come with a rising perpetual share (rallies carried by the perpetual), long the coins whose up
+# days come with a rising spot share; rank weights, dollar and beta neutral, gross 1, Monday 00:00 open.
+# Spot rule (rulings 5, 6): a missing spot hour is unknown, except at a spot exchange outage hour (zero volume, S3);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown.
+name = "kp029_hs4_rally_carrier"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Who carries the rallies: a coin whose up days come with its trading moving to the perpetual is being bid by leveraged traders, overshoots and gives back; one whose up days come with its trading moving to spot is bought by holders. Short the coins with the highest 4-week correlation of daily changes in the perpetual's volume share with daily returns, long the lowest, beta neutral, weekly. KP-029 premise study; sign never flipped."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+rd = logret(d, 1)
+dsh = logret(daily(quote_volume), 1) - logret(daily(volume), 1)
+c = tf_last(corr(dsh, rd, k), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

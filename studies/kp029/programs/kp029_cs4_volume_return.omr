@@ -1,0 +1,26 @@
+# KP-029 premise study (generation 4, round 2; PLAN version 2), C-S4: the CONTROL of H-S4. Never a strategy; scored
+# only by studies/kp029 with the SPOT SLOT MAP (volume = SPOT quote volume, taker_buy_volume = SPOT taker-buy quote
+# volume; every other field the perpetual's own). H-S4 with the spot input dropped: c = corr(daily change of the
+# perpetual's own log quote volume, daily return) over the last k days, short the highest. Coverage matched to H-S4
+# through where(ks > 0, cp, cp) (value cp, known where the spot term's correlation is known).
+# Spot rule (rulings 5, 6): a missing spot hour is unknown, except at a spot exchange outage hour (zero volume, S3);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown.
+name = "kp029_cs4_volume_return"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Control of H-S4 (KP-029 premise study): the same weekly beta-neutral rank book short the coins with the highest 4-week correlation of daily changes in the perpetual's own log quote volume with daily returns, long the lowest, on the coins and weeks where H-S4's spot input is known. Never a strategy; read only against H-S4."
+
+k = param(28, 22, 34)          # days in the correlation (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+d = daily(close)
+rd = logret(d, 1)
+cp = corr(logret(daily(quote_volume), 1), rd, k)
+ks = corr(logret(daily(volume), 1), rd, k)
+c = tf_last(where(ks > 0, cp, cp), weekly)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(c))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

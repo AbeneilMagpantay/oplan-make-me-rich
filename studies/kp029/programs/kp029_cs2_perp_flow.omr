@@ -1,0 +1,27 @@
+# KP-029 premise study (generation 4, round 2; PLAN version 2), C-S2: the CONTROL of H-S2. Never a strategy; scored
+# only by studies/kp029 with the SPOT SLOT MAP (volume = SPOT quote volume, taker_buy_volume = SPOT taker-buy quote
+# volume; every other field the perpetual's own). H-S2 with the spot input dropped: short the coins with the highest
+# perpetual taker-buy share over the last k days, long the lowest. The spot share ss enters only through
+# where(ss > 0, sp, sp): value sp in every row, known only where ss is known (coverage matched to H-S2). Same
+# weights, beta neutrality and timing as H-S2.
+# Spot rule (rulings 5, 6): a missing spot hour is unknown, except at a spot exchange outage hour (zero volume, S3);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown.
+name = "kp029_cs2_perp_flow"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Control of H-S2 (KP-029 premise study): the same weekly beta-neutral rank book short the coins with the highest perpetual taker-buy share of quote volume over the last week and long the lowest, on the coins and weeks where H-S2's spot input is known. Never a strategy; read only against H-S2."
+
+k = param(7, 5, 9)             # days of taker flow (1 week)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+ss = sma(daily(taker_buy_volume), k) / sma(daily(volume), k)
+sp = sma(daily(taker_buy_quote_volume), k) / sma(daily(quote_volume), k)
+x = tf_last(where(ss > 0, sp, sp), weekly)
+d = daily(close)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(x))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

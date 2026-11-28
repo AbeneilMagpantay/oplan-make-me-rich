@@ -1,0 +1,32 @@
+# KP-029 premise study (generation 4, round 2; generations/gen004/PLAN.md, PLAN version 2), H-S1. NOT a strategy of
+# the kernel and never run by omr.sandbox or omr.evaluate: a study program, scored only by studies/kp029 with the
+# SPOT SLOT MAP (studies/kp029/kp029_features.py): the field volume holds the SPOT quote volume (USDT) of the same
+# coin and hour, taker_buy_volume the SPOT taker-buy quote volume (USDT); every other field is the perpetual's own. A
+# missing spot hour is unknown in both slots, except at a spot exchange outage hour (zero volume, rule S3; ruling 5);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown (ruling 6).
+# xp = log of the perpetual's mean daily quote volume over the last k days over its mean over the n days before them;
+# xs = the same for the spot market; xp - xs = the change of the coin's log perp-to-spot volume ratio. Sampled at the
+# last hour of each weekly bin. Short the largest rise of the perpetual's share, long the largest fall; rank weights,
+# dollar and beta neutral (generation 3 round 5's projection), gross 1, traded at the Monday 00:00 open.
+name = "kp029_hs1_share_shift"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Leverage share shift: when a coin's trading moves from its spot market to its perpetual, the new demand is leveraged and fragile and unwinds; when it moves to spot, the buyers hold the coin unlevered. Short the coins whose perpetual share of volume rose most over the last week against the four weeks before, long the largest fall, beta neutral, weekly. KP-029 premise study; sign never flipped."
+
+k = param(7, 5, 9)             # days of the recent window (1 week)
+n = param(28, 22, 34)          # days of the reference window before it (4 weeks)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+qp = daily(quote_volume)
+qs = daily(volume)
+xp = log(sma(qp, k) / lag(sma(qp, n), k))
+xs = log(sma(qs, k) / lag(sma(qs, n), k))
+x = tf_last(xp - xs, weekly)
+d = daily(close)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(-cs_rank(x))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)

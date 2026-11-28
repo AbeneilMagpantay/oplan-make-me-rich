@@ -395,6 +395,22 @@ well under one in ten. FILED AS KP-029, OPEN: the coordinator recommends no buil
 on DEV only under a rule fixed in advance; whether that study is run is the human's decision (open decision
 14). Side findings: the archive's dataset terms (open decision 15) and a forward recorder that never ran (open
 decision 16). No project file other than the records changed; no round, no build, no counted trial.
+GENERATION 4, ROUND 2, THE SPOT PREMISE STUDY (KP-029; ordered 2026-11-28 on the human's decision "Run the cheap
+check"; generations/gen004/PLAN.md version 2 with the coordinator's rulings and the researcher's amendment;
+code in studies/kp029/, outside the kernel). On DEV only and outside the sandbox: the hypotheses are programs of
+the kernel's own language, scored by the kernel's own interpreter, stage 1 and engine; the spot market's quote
+volume and taker-buy quote volume are served in two columns of the perpetual's table through the kernel's
+loader argument, no kernel byte changed. The scoring path reproduced all 60 logged readings of three registered
+programs exactly. THREE hypotheses (a shift of volume share from spot to the perpetual, bet against; spot
+against perpetual taker buying; which market carries the rallies), each with a control that drops the spot
+input on the same coins and weeks; a fourth (a gate) was struck before any run. The pass rule, fixed in KP-029
+before any spot file existed here and made exact in the plan: the wide screen with the floor before costs at
+1.85, then both corners, then the control beaten by at least 0.5 before costs, every run with a truncation test
+passed. Data rules fixed before any spot file: no month after 2022-06 can be requested or read; an hour in which
+the spot exchange was down counts as zero volume (known), any other missing hour is unknown; a price guard of 50%
+for identity only. Cap 14 evaluations. PRE-REGISTERED (this commit) BEFORE the first spot file is downloaded.
+OUTCOME: pending. If no hypothesis passes, the spot front is closed and the search is parked; a pass goes to an
+independent auditor before it is put to the human as a proposal to admit the dataset.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.

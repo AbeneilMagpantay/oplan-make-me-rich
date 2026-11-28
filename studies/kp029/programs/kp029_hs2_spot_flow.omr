@@ -1,0 +1,27 @@
+# KP-029 premise study (generation 4, round 2; PLAN version 2), H-S2. Never a strategy; scored only by studies/kp029
+# with the SPOT SLOT MAP (volume = SPOT quote volume, taker_buy_volume = SPOT taker-buy quote volume; every other
+# field the perpetual's own). ss = the spot market's taker-buy share of quote volume over the last k days; sp = the
+# perpetual's taker-buy share over the same days; x = ss - sp, sampled at the last hour of each weekly bin. Long the
+# coins whose aggressive buying sits most in the spot market relative to the perpetual, short the coins whose
+# aggressive buying sits most in the perpetual; rank weights, dollar and beta neutral, gross 1, Monday 00:00 open.
+# Spot rule (rulings 5, 6): a missing spot hour is unknown, except at a spot exchange outage hour (zero volume, S3);
+# a spot close more than 50% from the perpetual's close of the same hour is unknown.
+name = "kp029_hs2_spot_flow"
+family = "flow"
+kind = "portfolio"
+unit = "top30"
+hypothesis = "Where the buying happens: aggressive buying on the spot market comes from buyers who take delivery and hold the coin unlevered, and its pressure persists; aggressive buying concentrated on the perpetual is leveraged and unwinds. Long the coins whose spot taker-buy share over the last week exceeds their perpetual taker-buy share most, short the reverse, beta neutral, weekly. KP-029 premise study; sign never flipped."
+
+k = param(7, 5, 9)             # days of taker flow (1 week)
+nb = param(42, 33, 51)         # days in the daily beta to BTC that neutralises the book (6 weeks)
+
+ss = sma(daily(taker_buy_volume), k) / sma(daily(volume), k)
+sp = sma(daily(taker_buy_quote_volume), k) / sma(daily(quote_volume), k)
+x = tf_last(ss - sp, weekly)
+d = daily(close)
+rd = logret(d, 1)
+rbd = logret(daily(btc(close)), 1)
+bd = cs_demean(tf_last(corr(rd, rbd, nb) * std(rd, nb) / std(rbd, nb), weekly))
+z = cs_demean(cs_rank(x))
+w = z - cs_mean(z * bd) / cs_mean(bd * bd) * bd
+signal = cs_scale(w)
