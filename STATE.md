@@ -1,4 +1,4 @@
-# STATE (2026-11-28: THE SEARCH IS PARKED. Six counted trials in generations 0 to 2, none Tier 1; generations 3 and 4 closed without a counted trial; seventy-five ideas screened or scored, none passed; the less liquid coins and the spot-market data were each tested by a premise study and closed; the kernel is sealed and ready for a single idea the human brings)
+# STATE (2026-11-29: the search, parked on 2026-11-28 after seventy-five ideas with none passing, is REOPENED by the human's direction in one direction, free data: KP-030, a premise study of one-minute bars of the same perpetuals, is under way (generation 5, round 1, DEV only, outside the sandbox). Six counted trials in generations 0 to 2, none Tier 1; generations 3 and 4 closed without a counted trial; the less liquid coins and the spot-market data were each tested by a premise study and closed)
 
 ## Where things stand
 
@@ -425,6 +425,18 @@ sealed and ready: a single idea the human brings is tested in one short run agai
 decision; none of it is recommended by the evidence so far, and none of his money belongs in any rule tested
 here. The kernel's full test suite, run at this close with all 102 strategy files and studies/kp029/ in
 place (2026-11-28): 1228 passed, 0 failed, in 31 min 58 s.
+REOPENED IN ONE DIRECTION (2026-11-29). Told that paid data are not recommended (no evidence they would work,
+and a subscription costs more than a passing rule could earn at about 1,000 USD), the human answered "not
+everything we need is paid we just need to keep looking for it". The coordinator reads that, and said so to
+him, as: keep looking in FREE data, and test a free candidate by a premise study on DEV only under rules
+written before its data are opened (KERNEL_PROPOSALS.md, the two entries of 2026-11-29). KP-030: one-minute
+klines of the same perpetuals, a gap in the desk study's list (the same archive, format and terms as the
+kernel's hourly bars; what happens inside the hour). The pass rule (the wide screen at 1.85 before costs, both
+corners, a control built from the kernel's hourly bars beaten by at least 0.5) and the data rules are fixed in
+the entry before any one-minute file exists here. GENERATION 5, ROUND 1, in studies/kp030/, the plan and the
+code on the remote before the first download. OUTCOME: pending. Not covered and not done without his decision:
+a paid source, an account or any detail of his sent to a service, a kernel change, a build, a counted trial.
+What is left in free data after this is listed in KP-030 and is short.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.

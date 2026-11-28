@@ -283,6 +283,12 @@ session is ordered only when the human brings an idea of his own or decides to c
 the scorer credits. A single idea of his is registered and run as one default run against the wide screen of
 section 8b, with the stop list and the bar check as they stand.
 
+Reopened on 2026-11-29 in one direction, by the human's words "not everything we need is paid we just need to
+keep looking for it": FREE data, one candidate at a time, each tested by a premise study in the form section 9
+describes and closed by its rule, and after each the human is told what is left. KP-030 (one-minute bars of
+the same perpetuals) is the first. Nothing paid, no account, no build and no counted trial follows from it
+without his decision.
+
 ## Never
 
 - Never edit the kernel or anything under `ledger/` or `data/`.

@@ -963,3 +963,67 @@ rates, status.
   The kernel stays sealed; a single idea he brings is tested in one short run against the wide screen.
 - Still open for the human, unchanged: the rule set's confirmation, the kernel proposals KP-020 to KP-027 and the
   older ones, the data terms before any step toward live trading, the forward recorder (STATE.md's list).
+
+## 2026-11-29 (coordinator) The human's direction after the park: keep looking, in free data
+
+- What was put to the human on 2026-11-28 and 29: the spot study's result (0 of 3), the search parked, and the
+  three things that would reopen it. He asked "so i need paid data after all?"; the coordinator answered no: no
+  evidence that paid data would work, and at about 1,000 USD a subscription costs more than a passing rule
+  could earn.
+- His answer, in his words (2026-11-29): "not everything we need is paid we just need to keep looking for it".
+- The coordinator's reading, said to him in the same turn so that he can correct it: the search is REOPENED in
+  one direction, free data. It covers: looking further for free sources, and testing a free candidate by a
+  premise study on DEV only, outside the sandbox, under a pass rule and data rules written before its data are
+  opened, in the manner of KP-029. It does not cover: any paid source, any account, key or detail of his sent to
+  a service, any change of a kernel file, any build, any counted trial, any money. A pass still goes to an
+  independent auditor and then to him as a proposal; the admission of a dataset stays his decision.
+- A bound the coordinator sets on itself: one candidate at a time, each closed by its rule; after each, the
+  human is told plainly what is left in free data. The list is short (below) and is not to be padded.
+
+## 2026-11-29 (coordinator, under the human's direction of the same day) KP-030 Finer bars of the same perpetuals (1-minute klines): a premise study on DEV first (OPEN)
+
+- A gap in the desk study of 2026-11-28, found by the coordinator when the human said to keep looking: its list
+  of candidates (the coordinator's own) had no finer bars of the data the kernel already uses. The exchange's
+  archive publishes the same klines at one minute, in the same format and under the same terms as the hourly
+  files the kernel reads. By general knowledge (to be verified on the archive's listings before anything else):
+  monthly files from each contract's first month, delisted contracts kept, a megabyte or two per symbol and
+  month. Admission would be the easy kind: the same source, clock, columns and revision check as klines.
+- What it adds: what happens INSIDE the hour, which hourly bars cannot show: the realized variance of one-minute
+  returns and its up and down halves, jumps, and the timing of volume and taker flow within the hour. It is
+  public data, as everything here is; but it is finer than any input of the 75 ideas so far.
+- Outside evidence, from general knowledge and to be checked by the researcher: for stocks, measures of this
+  kind built from intraday returns (realized skewness; the signed part of jump variation) are among the
+  better-documented predictors of the next week's cross-section; for cryptocurrencies a few papers report
+  realized higher moments predicting weekly returns. What speaks against it: this project's own higher-moment
+  books, measured on hourly bars, failed (LESSONS 57, 58); bets against pressure lost in every DEV year (LESSONS
+  56); none of the 49 ideas put to a wide screen so far passed. The coordinator's estimate: under one chance in
+  ten that anything here clears the bar on held-back data.
+- NO build. A premise study on DEV only, as KP-029's, reusing its scoring path (the kernel's own interpreter,
+  stage 1 and engine called from outside; the new series served through the loader argument; studies/kp029/ is
+  not modified, new code goes to studies/kp030/). Generation 5, round 1; the plan and the code are committed and
+  on the remote BEFORE the first one-minute file is downloaded.
+- The pass rule, fixed now, before any one-minute file exists here: a hypothesis passes if it meets the wide
+  screen of playbook 8b with the floor before costs at 1.85, AND then holds at both corners (rule S10), AND
+  beats its control by at least 0.5 of DEV Sharpe before costs, every run with its truncation test passed. The
+  CONTROL is the same book with the quantity measured from the kernel's HOURLY bars in place of the one-minute
+  measurement, on the same coins and weeks: the finer bars must add to what the kernel already has. At most six
+  hypotheses, at most two of one mechanism class, each with its sign, features and defaults in the plan; no
+  mirror or close relative of a logged run (a logged hourly form may serve as a control). At most 14
+  evaluations. If at least one passes: an independent audit, then the proposal to admit the finer bars goes to
+  the human. If none passes: the front is closed and the dataset is not proposed.
+- The data rules, fixed now, by asking what was true at the time:
+  - No file of a month after 2022-06 is requested or read; rows after 2022-06-30 23:59 UTC are dropped.
+  - A one-minute bar belongs to the hour that contains its open time; a value for hour t is built only from
+    the minutes of hour t, so it is known at the close of hour t, as the hourly bar is.
+  - A minute without a bar inside an hour that the kernel's own table holds as traded had no trade: it adds
+    zero volume and a zero return. An hour the kernel's table does not hold as usable stays unknown.
+  - The consistency guard: the one-minute bars of an hour must add up to the kernel's hourly bar (quote volume
+    within 0.1%, the last close equal to the hourly close within 0.1%); an hour that does not is unknown for
+    the minute-built series. TRIPWIRE: if more than 0.5% of in-play coin-hours fail it, the files and the
+    kernel's table disagree in kind, and the runner stops before any evaluation for a report.
+- What is left in free data after this, for the record and not to be padded: (1) the trade-by-trade files of
+  the same archive (every trade with its size; hundreds of gigabytes for DEV alone, and worth the weight only if
+  the one-minute bars show something); (2) attention data (page views of encyclopedia articles, counts of news
+  items), a different kind of information from market data but messy, with weak evidence, and for the page views
+  needing the human's consent to send a contact address; (3) other exchanges' archives, which this network could
+  not reach and which are not to be reached around. Nothing else that is free, long enough and clean is known.
