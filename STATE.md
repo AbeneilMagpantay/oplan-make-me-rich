@@ -423,7 +423,8 @@ trials, none Tier 1, none close on held-back data. The coordinator starts no fur
 sealed and ready: a single idea the human brings is tested in one short run against the wide screen (playbook
 8b). Everything else (another horizon, paid data, a change of what the scorer credits, live trading) is his
 decision; none of it is recommended by the evidence so far, and none of his money belongs in any rule tested
-here. The kernel's full test suite is run at this close; its result is recorded here with the next commit.
+here. The kernel's full test suite, run at this close with all 102 strategy files and studies/kp029/ in
+place (2026-11-28): 1228 passed, 0 failed, in 31 min 58 s.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
