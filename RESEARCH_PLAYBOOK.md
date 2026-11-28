@@ -268,6 +268,21 @@ one it rejected without a new fact (a longer history, a changed licence, an arch
 source that passed, the spot market of the same coins, is filed as KP-029; nothing is built on it and no
 study of it is run before the human's decision. Read a source's terms of use when it is proposed.
 
+Outcome (2026-11-28; generations/gen004/REPORT.md round 2, LESSONS 69 to 73): by the human's decision the
+premise of KP-029 was tested on DEV, outside the sandbox, by `studies/kp029/` (the kernel's own interpreter
+and engine called from outside, the new data served through the loader argument, the plan and the code on the
+remote before the first file was fetched). None of its three hypotheses passed; the spot front is closed and
+the dataset is not proposed. The form is kept for any later source: a premise study before a build, its pass
+rule and its data rules (what a missing hour means, what a guard is for) written before the data are opened.
+
+## 10. The search is parked (2026-11-28)
+
+After generation 4 the coordinator starts no round. Seventy-five ideas were screened or scored and none
+passed; the less liquid coins and the spot-market data were each closed by a premise study. A researcher
+session is ordered only when the human brings an idea of his own or decides to change what is searched or what
+the scorer credits. A single idea of his is registered and run as one default run against the wide screen of
+section 8b, with the stop list and the bar check as they stand.
+
 ## Never
 
 - Never edit the kernel or anything under `ledger/` or `data/`.

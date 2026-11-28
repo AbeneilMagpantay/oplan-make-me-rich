@@ -388,3 +388,38 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     of open interest was built and tested on 2026-11-19 and never started; nine days later a desk study found
     the folder it writes to missing. When such a tool is built, either schedule it or write in STATE.md that
     it is not running. PROCESS.
+
+## From generation 4, round 2, the spot premise study, and from the generation as a whole (generations/gen004/REPORT.md; studies/kp029/)
+
+69. A premise study of the spot market of the same coins (hourly quote volume and taker-buy volume, unseen by the
+    kernel) registered three weekly, dollar- and beta-neutral top30 books before any spot file existed, scored
+    them with the kernel's own interpreter and engine outside the sandbox, and found none near the screen:
+    before costs 0.193 (a shift of trading from spot to the perpetual, bet against), -0.891 (aggressive buying on
+    spot against the perpetual, the wrong sign in every DEV year) and 0.242 (which market carries the rallies),
+    against 1.85 required; next30 -0.875, -1.103, +0.170. Generation 4 PLAN run log, round 2, runs 1 to 3; no
+    trial id. WEAK: DEV only, one default each; under the rule fixed in advance the spot front is closed and the
+    search is parked.
+70. The exchange's spot hourly archive for the coins of top30 and next30 was nearly complete on DEV: 1,911 monthly
+    files of 114 pairs, all present and verified; 30 hours of exchange-wide outage in 14 blocks of at most 5
+    hours; 99.998% of in-play coin-hours with a usable spot row under a 50% price guard, which rejected 11
+    coin-hours (8 of them one coin's collapse). INSTRUMENT; counts, no result.
+71. Process: a study outside the kernel can be scored exactly as the kernel would score it by CALLING the kernel's
+    functions (the weight matrix in, the readings out) and feeding new data through a constructor argument
+    instead of copying the engine. The three registered programs it was checked on reproduced to the last bit,
+    so the study's only look-ahead surface was joining one spot row to the perpetual row of the same hour.
+    PROCESS.
+72. Process: how missing and odd data are handled is part of the test, and is decided before the data by asking
+    what was true at the time. An hour in which the exchange was down had zero volume, and everybody knew it;
+    written as "unknown" it would have emptied the books for about five weeks, fourteen times, and the study
+    would have measured a maintenance calendar. A guard meant to catch a wrong coin was first set where ordinary
+    stress reaches (5%, then 20%); a count on rows the kernel already held (the perpetual against its index)
+    showed real stress out to 44% and set it at 50%. Measure such a tolerance on data already in hand before
+    writing a stop rule around it: the first stop rule fired on real events and cost a round trip. PROCESS.
+73. Generation 4 as a whole, and the search. Two premises, each tested before the build it would have justified
+    and under a rule written before its data were seen: the less liquid coins (2 of 12, three needed) and the
+    spot market of the same coins (0 of 3). Both closed in two days, with no kernel change, no build and no
+    counted trial. Seventy-five ideas have been screened or scored (ten in unit core, sixty-five in unit top30),
+    six in counted trials; none passed, and none came close on held-back data. With free public data, the weekly
+    horizon, the thirty most liquid perpetuals and gates that credit timing skill only, the search found nothing
+    and is PARKED. What would reopen it is the human's: an idea of his own (one short run), or a change of what
+    is searched or of what the scorer credits. PROCESS and INSTRUMENT.

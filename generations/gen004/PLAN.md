@@ -963,3 +963,84 @@ Stage 2, in this order (from the project root; one at a time, memory floor check
     .venv\Scripts\python.exe -I studies\kp029\run_study.py --summary
 
 Written 2026-11-28 15:24 +08:00, before any spot file was downloaded or opened.
+
+## Study run log (round 2), stage 2
+
+(Appended below the stage-1b amendment, so that the 86,523 bytes pre-registered as 64ba281 (sha256 a484673824121f8a...)
+stay an unchanged prefix. Every command was run from the project root with `.venv\Scripts\python.exe -I`, one heavy step
+at a time, each started with at least 3.2 million KB of physical memory and 10.5 million KB of commit free. Outputs saved
+as ASCII in the session scratch folder, gen004_r2/download_1.txt, coverage.txt, run_01_hs1.txt to run_03_hs4.txt; the
+tables below are read from studies/kp029/run_log.jsonl and spot_coverage.json by a script, not copied by hand.)
+
+Download (`download_spot.py --go`, 2026-11-28, about 32 minutes): 114 spot pairs, 1,911 monthly files requested, 1,911
+kept, 0 missing (404), 0 checksum failures, 0 HTTP errors; 3,836 requests (3,822 plus 14 retries of transient errors);
+68,165,377 bytes of zips in _build/kp029_study/spot/. Only data.binance.vision spot kline files of 2019-12 .. 2022-06.
+
+Coverage count (`run_study.py --coverage`; spot data only, before any evaluation):
+- Outage hours (no spot BTCUSDT row): 30 in 14 blocks, the longest 5 hours (2020-02-19 12:00 to 16:00); the others on
+  2020-02-09, 2020-03-04, 2020-04-25, 2020-06-28, 2020-11-30, 2020-12-21, 2020-12-25, 2021-02-11, 2021-03-06,
+  2021-04-20, 2021-04-25, 2021-08-13 and 2021-09-29, 1 to 4 hours each. At those hours 1,705 of 1,705 other pairs with
+  a real row in the 24 hours before had no row either (share 1.000): market-wide exchange outages, as ruling 5 assumed.
+- In-play coin-hours of the 114 perpetuals: 927,748. Real spot rows 926,690; synthetic outage rows 1,052; slots known
+  927,731 (0.99998). Rejected by the 50% guard: 11 (LUNAUSDT 8, SUSHIUSDT, ALPHAUSDT, 1INCHUSDT 1 each); 6 more in-play
+  hours unknown (LUNAUSDT, absent spot rows that are no outage). Pairs with more than 24 rejected hours: none. Rows
+  dropped by the cleaning: 0.
+- Tripwires (share under 95%, a block over 24 h, over 200 outage hours, more than 5 pairs over 24 rejected hours): none
+  set. The runs went on.
+
+Evaluations (`run_study.py <stem>`), the registered order, every one logged in studies/kp029/run_log.jsonl. Pre-cost =
+DEV Sharpe + (DEV Sharpe - G4 DEV). Years: the number of 2020, 2021, 2022H1 with a return above 0. Costs: of equity over
+DEV, C/G = costs / avg gross.
+
+| # | run | DEV | G4 | G2 | pre-cost | next30 | r(1), r(2), r(3) | A of 10; B | years + (SR 2020 / 2021 / 2022H1) | names held | avg gross | dir. ch. | costs (C/G) | spot known | truncation test | s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | H-S1 share_shift (k 7, n 28, nb 42) | -0.210 | -0.612 | -1.029 | 0.193 | -0.875 | -0.154, -0.013, -0.038 | 0; 1.252 | 1 (-1.269 / -0.011 / 0.729) | 27.672 of 28.038 | 0.854 | 1585 | 0.160 (0.187) | 1.000 | PASS, 8 cuts | 212.2 |
+| 2 | H-S2 spot_flow (k 7, nb 42) | -1.218 | -1.545 | -1.945 | -0.891 | -1.103 | 0.102, 0.025, 0.010 | 6; -0.455 | 0 (-2.718 / -0.939 / -0.396) | 27.707 of 28.038 | 0.856 | 1478 | 0.111 (0.130) | 1.000 | PASS, 8 cuts | 212.6 |
+| 3 | H-S4 rally_carrier (k 28, nb 42) | -0.041 | -0.325 | -0.841 | 0.242 | 0.170 | 0.043, 0.009, -0.035 | 8; -0.960 | 1 (0.414 / -0.274 / -0.135) | 27.681 of 28.038 | 0.855 | 1143 | 0.137 (0.160) | 1.000 | PASS, 8 cuts | 212.4 |
+
+Every run: status ok; the kernel's stage 1 OK (25 truncation cuts, 7 start cuts, no block_overlap fault); not
+liquidated; 75 symbols ever in the unit, next30 over 100 symbols; benchmark DEV Sharpe 0.619; speed-limit rows from
+2020-07-20 14:00; paired decisions 2021-06-30 23:00 to 2022-06-30 22:00. The study's truncation test, every cut equal
+bit for bit: the six fixed cuts (2020-08-16 23:00, 2020-12-13 22:00, 2021-04-11 23:00, 2021-08-18 13:00, 2021-12-19
+23:00, 2022-05-10 07:00) and the random ones, run 1 2020-08-10 10:00 and 2022-01-20 09:00, run 2 2020-03-01 14:00 and
+2021-01-18 07:00, run 3 2020-03-11 09:00 and 2022-02-22 01:00. Other numbers (PSR(0); maxDD; rebalances; funding paid
+/ received): H-S1 0.370, 0.301, 602, 0.344 / 0.323; H-S2 0.032, 0.530, 617, 0.275 / 0.237; H-S4 0.474, 0.337, 555,
+0.388 / 0.406.
+
+No default passed the screen, so no control and no corner was due (run_study.py's order); 3 evaluations of the cap of
+14, the reserve unused. `run_study.py --summary`: hypotheses passing 0 of 3. No void run, no fault, no refusal. The
+sandbox log stays at 95 rows; the lock verifies, sealed.
+
+## Amendments (round 2), stage 2
+
+none: no rule, tolerance, window, sign, default, program, screen item or file of the study was changed after the first
+spot file existed, and the reserve was not used.
+
+## The round's reading
+
+| hypothesis | W1 | W2 (pre-cost >= 1.85) | W3 (G4 > 0) | W4 (G2 > 0) | W5 (next30 >= 0.3) | W6 (r <= 0.40) | W7 (A <= 4, B > 0) | W8 (years >= 2) | first failed |
+|---|---|---|---|---|---|---|---|---|---|
+| H-S1 share_shift | pass (1585; 0.854; 27.7) | FAIL (0.193) | FAIL (-0.612) | FAIL (-1.029) | FAIL (-0.875) | pass (max -0.013) | pass (0; 1.252) | FAIL (1) | W2 |
+| H-S2 spot_flow | pass (1478; 0.856; 27.7) | FAIL (sign: -0.891) | FAIL (-1.545) | FAIL (-1.945) | FAIL (-1.103) | pass (max 0.102) | FAIL (6; -0.455) | FAIL (0) | W2 |
+| H-S4 rally_carrier | pass (1143; 0.855; 27.7) | FAIL (0.242) | FAIL (-0.325) | FAIL (-0.841) | FAIL (0.170) | pass (max 0.043) | FAIL (8; -0.960) | FAIL (1) | W2 |
+
+All three failed the screen at their defaults, at W2 first (H-S2 with the wrong sign in every DEV year), and each also
+failed W3, W4, W5 and W8. No control and no corner was reached. By the rule fixed in advance (KERNEL_PROPOSALS.md,
+KP-029; PLAN version 2 and the rulings): NO hypothesis passes, so the spot front is closed, the dataset is not proposed,
+and the search is parked.
+
+## DEV observations (round 2; NOT hypotheses)
+
+- The spot data were cleaner than feared: 30 outage hours in 14 short blocks, every one market-wide; 99.998% of in-play
+  slots known; the 50% guard rejected 11 coin-hours (8 of them LUNA in May 2022). Coverage did not decide anything.
+- H-S2 (long spot-led over perpetual-led aggressive buying) lost in every DEV year (-2.718 / -0.939 / -0.396) and on
+  next30 (-1.103): the cash-and-carry confound the plan named has the sign DEV shows, or the story is wrong. DEV is spent
+  for its mirror: flipped, it would be a flipped reading, not a discovery.
+- H-S1 lost in 2020 (-1.269), was flat in 2021 and earned in 2022H1 (0.729); over the last 365 days of DEV its book on
+  the common names had a median Sharpe of 1.252 with 0 of 10 stale copies as good, the only screen items besides W1 and
+  W6 it met. One DEV period, no corner, next30 -0.875; a rule descended from it would need a parent at 2.5 before costs
+  (playbook 8b) and has 0.193. Recorded as an observation only.
+- H-S4 read about zero (-0.041; next30 +0.170).
+- Costs 0.111 to 0.160 of equity over DEV (C/G 0.130 to 0.187); G4 dropped 0.402, 0.327 and 0.283 against the plan's
+  drags of 0.35, 0.40 and 0.30; G2 dropped 0.73 to 0.82. Each run took about 212 s.
+- WEAK throughout: one DEV period, one default each, three hypotheses; nothing here is a parameter recommendation.

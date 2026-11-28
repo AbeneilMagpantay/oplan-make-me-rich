@@ -1,0 +1,969 @@
+{
+ "at": "2026-11-28T08:00:15Z",
+ "guard_rejected": 11,
+ "guard_tol": 0.5,
+ "inplay_hours": 927748,
+ "outage": {
+  "blocks": 14,
+  "eligible": 1705,
+  "hours": [
+   "2020-02-09 02:00:00+00:00",
+   "2020-02-19 12:00:00+00:00",
+   "2020-02-19 13:00:00+00:00",
+   "2020-02-19 14:00:00+00:00",
+   "2020-02-19 15:00:00+00:00",
+   "2020-02-19 16:00:00+00:00",
+   "2020-03-04 10:00:00+00:00",
+   "2020-04-25 02:00:00+00:00",
+   "2020-04-25 03:00:00+00:00",
+   "2020-06-28 02:00:00+00:00",
+   "2020-06-28 03:00:00+00:00",
+   "2020-06-28 04:00:00+00:00",
+   "2020-11-30 06:00:00+00:00",
+   "2020-12-21 15:00:00+00:00",
+   "2020-12-21 16:00:00+00:00",
+   "2020-12-21 17:00:00+00:00",
+   "2020-12-25 02:00:00+00:00",
+   "2021-02-11 04:00:00+00:00",
+   "2021-03-06 02:00:00+00:00",
+   "2021-04-20 02:00:00+00:00",
+   "2021-04-20 03:00:00+00:00",
+   "2021-04-25 05:00:00+00:00",
+   "2021-04-25 06:00:00+00:00",
+   "2021-04-25 07:00:00+00:00",
+   "2021-08-13 02:00:00+00:00",
+   "2021-08-13 03:00:00+00:00",
+   "2021-08-13 04:00:00+00:00",
+   "2021-08-13 05:00:00+00:00",
+   "2021-09-29 07:00:00+00:00",
+   "2021-09-29 08:00:00+00:00"
+  ],
+  "longest_block": 5,
+  "missing_ref": false,
+  "n_hours": 30,
+  "no_row": 1705,
+  "ref_rows": 21858,
+  "share": 1.0
+ },
+ "pairs": 114,
+ "pairs_over_24_rejected": {},
+ "per_perp": {
+  "1000SHIBUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 7273,
+   "real": 7271,
+   "slot_known": 7273,
+   "spot": "SHIBUSDT",
+   "synthetic": 2
+  },
+  "1INCHUSDT": {
+   "guard_rejected": 1,
+   "inplay_hours": 10224,
+   "real": 10213,
+   "slot_known": 10223,
+   "spot": "1INCHUSDT",
+   "synthetic": 11
+  },
+  "AAVEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 12361,
+   "real": 12348,
+   "slot_known": 12361,
+   "spot": "AAVEUSDT",
+   "synthetic": 13
+  },
+  "ADAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "ADAUSDT",
+   "synthetic": 21
+  },
+  "ALGOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13849,
+   "real": 13837,
+   "slot_known": 13849,
+   "spot": "ALGOUSDT",
+   "synthetic": 12
+  },
+  "ALICEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 8761,
+   "real": 8755,
+   "slot_known": 8761,
+   "spot": "ALICEUSDT",
+   "synthetic": 6
+  },
+  "ALPHAUSDT": {
+   "guard_rejected": 1,
+   "inplay_hours": 5880,
+   "real": 5868,
+   "slot_known": 5879,
+   "spot": "ALPHAUSDT",
+   "synthetic": 12
+  },
+  "ANKRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1464,
+   "real": 1464,
+   "slot_known": 1464,
+   "spot": "ANKRUSDT",
+   "synthetic": 0
+  },
+  "ANTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 720,
+   "real": 720,
+   "slot_known": 720,
+   "spot": "ANTUSDT",
+   "synthetic": 0
+  },
+  "APEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1,
+   "real": 1,
+   "slot_known": 1,
+   "spot": "APEUSDT",
+   "synthetic": 0
+  },
+  "ARUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2880,
+   "real": 2880,
+   "slot_known": 2880,
+   "spot": "ARUSDT",
+   "synthetic": 0
+  },
+  "ATOMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18241,
+   "real": 18220,
+   "slot_known": 18241,
+   "spot": "ATOMUSDT",
+   "synthetic": 21
+  },
+  "AUDIOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1465,
+   "real": 1465,
+   "slot_known": 1465,
+   "spot": "AUDIOUSDT",
+   "synthetic": 0
+  },
+  "AVAXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13105,
+   "real": 13092,
+   "slot_known": 13105,
+   "spot": "AVAXUSDT",
+   "synthetic": 13
+  },
+  "AXSUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 9481,
+   "real": 9475,
+   "slot_known": 9481,
+   "spot": "AXSUSDT",
+   "synthetic": 6
+  },
+  "BAKEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2184,
+   "real": 2182,
+   "slot_known": 2184,
+   "spot": "BAKEUSDT",
+   "synthetic": 2
+  },
+  "BALUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2904,
+   "real": 2898,
+   "slot_known": 2904,
+   "spot": "BALUSDT",
+   "synthetic": 6
+  },
+  "BANDUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5088,
+   "real": 5076,
+   "slot_known": 5088,
+   "spot": "BANDUSDT",
+   "synthetic": 12
+  },
+  "BATUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10176,
+   "real": 10162,
+   "slot_known": 10176,
+   "spot": "BATUSDT",
+   "synthetic": 14
+  },
+  "BCHUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "BCHUSDT",
+   "synthetic": 21
+  },
+  "BLZUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 744,
+   "real": 744,
+   "slot_known": 744,
+   "spot": "BLZUSDT",
+   "synthetic": 0
+  },
+  "BNBUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18241,
+   "real": 18220,
+   "slot_known": 18241,
+   "spot": "BNBUSDT",
+   "synthetic": 21
+  },
+  "BTCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "BTCUSDT",
+   "synthetic": 21
+  },
+  "BTTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2928,
+   "real": 2922,
+   "slot_known": 2928,
+   "spot": "BTTUSDT",
+   "synthetic": 6
+  },
+  "BZRXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2904,
+   "real": 2898,
+   "slot_known": 2904,
+   "spot": "BZRXUSDT",
+   "synthetic": 6
+  },
+  "C98USDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1488,
+   "real": 1488,
+   "slot_known": 1488,
+   "spot": "C98USDT",
+   "synthetic": 0
+  },
+  "CELOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 720,
+   "real": 720,
+   "slot_known": 720,
+   "spot": "CELOUSDT",
+   "synthetic": 0
+  },
+  "CELRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5809,
+   "real": 5809,
+   "slot_known": 5809,
+   "spot": "CELRUSDT",
+   "synthetic": 0
+  },
+  "CHRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 7296,
+   "real": 7290,
+   "slot_known": 7296,
+   "spot": "CHRUSDT",
+   "synthetic": 6
+  },
+  "CHZUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10225,
+   "real": 10219,
+   "slot_known": 10225,
+   "spot": "CHZUSDT",
+   "synthetic": 6
+  },
+  "COMPUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10968,
+   "real": 10950,
+   "slot_known": 10968,
+   "spot": "COMPUSDT",
+   "synthetic": 18
+  },
+  "COTIUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 4368,
+   "real": 4368,
+   "slot_known": 4368,
+   "spot": "COTIUSDT",
+   "synthetic": 0
+  },
+  "CRVUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13849,
+   "real": 13832,
+   "slot_known": 13849,
+   "spot": "CRVUSDT",
+   "synthetic": 17
+  },
+  "DASHUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 12432,
+   "real": 12411,
+   "slot_known": 12432,
+   "spot": "DASHUSDT",
+   "synthetic": 21
+  },
+  "DENTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5184,
+   "real": 5180,
+   "slot_known": 5184,
+   "spot": "DENTUSDT",
+   "synthetic": 4
+  },
+  "DODOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 3563,
+   "real": 3557,
+   "slot_known": 3563,
+   "spot": "DODOUSDT",
+   "synthetic": 6
+  },
+  "DOGEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13849,
+   "real": 13832,
+   "slot_known": 13849,
+   "spot": "DOGEUSDT",
+   "synthetic": 17
+  },
+  "DOTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13849,
+   "real": 13832,
+   "slot_known": 13849,
+   "spot": "DOTUSDT",
+   "synthetic": 17
+  },
+  "DYDXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 4345,
+   "real": 4345,
+   "slot_known": 4345,
+   "spot": "DYDXUSDT",
+   "synthetic": 0
+  },
+  "EGLDUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10177,
+   "real": 10170,
+   "slot_known": 10177,
+   "spot": "EGLDUSDT",
+   "synthetic": 7
+  },
+  "ENJUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10969,
+   "real": 10958,
+   "slot_known": 10969,
+   "spot": "ENJUSDT",
+   "synthetic": 11
+  },
+  "ENSUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1441,
+   "real": 1441,
+   "slot_known": 1441,
+   "spot": "ENSUSDT",
+   "synthetic": 0
+  },
+  "EOSUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "EOSUSDT",
+   "synthetic": 21
+  },
+  "ETCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "ETCUSDT",
+   "synthetic": 21
+  },
+  "ETHUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "ETHUSDT",
+   "synthetic": 21
+  },
+  "FILUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 12361,
+   "real": 12348,
+   "slot_known": 12361,
+   "spot": "FILUSDT",
+   "synthetic": 13
+  },
+  "FLMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1416,
+   "real": 1415,
+   "slot_known": 1416,
+   "spot": "FLMUSDT",
+   "synthetic": 1
+  },
+  "FTMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 11689,
+   "real": 11678,
+   "slot_known": 11689,
+   "spot": "FTMUSDT",
+   "synthetic": 11
+  },
+  "GALAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 4345,
+   "real": 4345,
+   "slot_known": 4345,
+   "spot": "GALAUSDT",
+   "synthetic": 0
+  },
+  "GMTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1,
+   "real": 1,
+   "slot_known": 1,
+   "spot": "GMTUSDT",
+   "synthetic": 0
+  },
+  "GRTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10945,
+   "real": 10934,
+   "slot_known": 10945,
+   "spot": "GRTUSDT",
+   "synthetic": 11
+  },
+  "GTCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1416,
+   "real": 1416,
+   "slot_known": 1416,
+   "spot": "GTCUSDT",
+   "synthetic": 0
+  },
+  "HBARUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 744,
+   "real": 744,
+   "slot_known": 744,
+   "spot": "HBARUSDT",
+   "synthetic": 0
+  },
+  "HNTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2160,
+   "real": 2160,
+   "slot_known": 2160,
+   "spot": "HNTUSDT",
+   "synthetic": 0
+  },
+  "HOTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2904,
+   "real": 2904,
+   "slot_known": 2904,
+   "spot": "HOTUSDT",
+   "synthetic": 0
+  },
+  "ICPUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 0,
+   "real": 0,
+   "slot_known": 0,
+   "spot": "ICPUSDT",
+   "synthetic": 0
+  },
+  "ICXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 744,
+   "real": 744,
+   "slot_known": 744,
+   "spot": "ICXUSDT",
+   "synthetic": 0
+  },
+  "IMXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 721,
+   "real": 721,
+   "slot_known": 721,
+   "spot": "IMXUSDT",
+   "synthetic": 0
+  },
+  "IOSTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 11016,
+   "real": 11002,
+   "slot_known": 11016,
+   "spot": "IOSTUSDT",
+   "synthetic": 14
+  },
+  "IOTAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10224,
+   "real": 10207,
+   "slot_known": 10224,
+   "spot": "IOTAUSDT",
+   "synthetic": 17
+  },
+  "IOTXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1416,
+   "real": 1416,
+   "slot_known": 1416,
+   "spot": "IOTXUSDT",
+   "synthetic": 0
+  },
+  "KAVAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10201,
+   "real": 10183,
+   "slot_known": 10201,
+   "spot": "KAVAUSDT",
+   "synthetic": 18
+  },
+  "KNCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 6553,
+   "real": 6542,
+   "slot_known": 6553,
+   "spot": "KNCUSDT",
+   "synthetic": 11
+  },
+  "KSMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 8016,
+   "real": 8003,
+   "slot_known": 8016,
+   "spot": "KSMUSDT",
+   "synthetic": 13
+  },
+  "LINAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2928,
+   "real": 2926,
+   "slot_known": 2928,
+   "spot": "LINAUSDT",
+   "synthetic": 2
+  },
+  "LINKUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "LINKUSDT",
+   "synthetic": 21
+  },
+  "LRCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5833,
+   "real": 5832,
+   "slot_known": 5833,
+   "spot": "LRCUSDT",
+   "synthetic": 1
+  },
+  "LTCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "LTCUSDT",
+   "synthetic": 21
+  },
+  "LUNAUSDT": {
+   "guard_rejected": 8,
+   "inplay_hours": 9056,
+   "real": 9044,
+   "slot_known": 9042,
+   "spot": "LUNAUSDT",
+   "synthetic": 6
+  },
+  "MANAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5065,
+   "real": 5063,
+   "slot_known": 5065,
+   "spot": "MANAUSDT",
+   "synthetic": 2
+  },
+  "MATICUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10945,
+   "real": 10934,
+   "slot_known": 10945,
+   "spot": "MATICUSDT",
+   "synthetic": 11
+  },
+  "MKRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 6576,
+   "real": 6561,
+   "slot_known": 6576,
+   "spot": "MKRUSDT",
+   "synthetic": 15
+  },
+  "MTLUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 721,
+   "real": 721,
+   "slot_known": 721,
+   "spot": "MTLUSDT",
+   "synthetic": 0
+  },
+  "NEARUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 7969,
+   "real": 7967,
+   "slot_known": 7969,
+   "spot": "NEARUSDT",
+   "synthetic": 2
+  },
+  "NEOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13152,
+   "real": 13131,
+   "slot_known": 13152,
+   "spot": "NEOUSDT",
+   "synthetic": 21
+  },
+  "OCEANUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1464,
+   "real": 1458,
+   "slot_known": 1464,
+   "spot": "OCEANUSDT",
+   "synthetic": 6
+  },
+  "OGNUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2185,
+   "real": 2183,
+   "slot_known": 2185,
+   "spot": "OGNUSDT",
+   "synthetic": 2
+  },
+  "OMGUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 12381,
+   "real": 12369,
+   "slot_known": 12381,
+   "spot": "OMGUSDT",
+   "synthetic": 12
+  },
+  "ONEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5809,
+   "real": 5809,
+   "slot_known": 5809,
+   "spot": "ONEUSDT",
+   "synthetic": 0
+  },
+  "ONTUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 10968,
+   "real": 10949,
+   "slot_known": 10968,
+   "spot": "ONTUSDT",
+   "synthetic": 19
+  },
+  "PEOPLEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2185,
+   "real": 2185,
+   "slot_known": 2185,
+   "spot": "PEOPLEUSDT",
+   "synthetic": 0
+  },
+  "QTUMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 14640,
+   "real": 14619,
+   "slot_known": 14640,
+   "spot": "QTUMUSDT",
+   "synthetic": 21
+  },
+  "REEFUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1464,
+   "real": 1464,
+   "slot_known": 1464,
+   "spot": "REEFUSDT",
+   "synthetic": 0
+  },
+  "RENUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2880,
+   "real": 2873,
+   "slot_known": 2880,
+   "spot": "RENUSDT",
+   "synthetic": 7
+  },
+  "RLCUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 5088,
+   "real": 5076,
+   "slot_known": 5088,
+   "spot": "RLCUSDT",
+   "synthetic": 12
+  },
+  "ROSEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2185,
+   "real": 2185,
+   "slot_known": 2185,
+   "spot": "ROSEUSDT",
+   "synthetic": 0
+  },
+  "RSRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 3601,
+   "real": 3594,
+   "slot_known": 3601,
+   "spot": "RSRUSDT",
+   "synthetic": 7
+  },
+  "RUNEUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13105,
+   "real": 13092,
+   "slot_known": 13105,
+   "spot": "RUNEUSDT",
+   "synthetic": 13
+  },
+  "SANDUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 9481,
+   "real": 9475,
+   "slot_known": 9481,
+   "spot": "SANDUSDT",
+   "synthetic": 6
+  },
+  "SNXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 7297,
+   "real": 7280,
+   "slot_known": 7297,
+   "spot": "SNXUSDT",
+   "synthetic": 17
+  },
+  "SOLUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13105,
+   "real": 13092,
+   "slot_known": 13105,
+   "spot": "SOLUSDT",
+   "synthetic": 13
+  },
+  "SRMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 7296,
+   "real": 7289,
+   "slot_known": 7296,
+   "spot": "SRMUSDT",
+   "synthetic": 7
+  },
+  "STORJUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 1464,
+   "real": 1464,
+   "slot_known": 1464,
+   "spot": "STORJUSDT",
+   "synthetic": 0
+  },
+  "SUSHIUSDT": {
+   "guard_rejected": 1,
+   "inplay_hours": 13105,
+   "real": 13092,
+   "slot_known": 13104,
+   "spot": "SUSHIUSDT",
+   "synthetic": 13
+  },
+  "SXPUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13104,
+   "real": 13086,
+   "slot_known": 13104,
+   "spot": "SXPUSDT",
+   "synthetic": 18
+  },
+  "THETAUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 16033,
+   "real": 16015,
+   "slot_known": 16033,
+   "spot": "THETAUSDT",
+   "synthetic": 18
+  },
+  "TLMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 0,
+   "real": 0,
+   "slot_known": 0,
+   "spot": "TLMUSDT",
+   "synthetic": 0
+  },
+  "TOMOUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 672,
+   "real": 671,
+   "slot_known": 672,
+   "spot": "TOMOUSDT",
+   "synthetic": 1
+  },
+  "TRBUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 3624,
+   "real": 3622,
+   "slot_known": 3624,
+   "spot": "TRBUSDT",
+   "synthetic": 2
+  },
+  "TRXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "TRXUSDT",
+   "synthetic": 21
+  },
+  "UNFIUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 720,
+   "real": 718,
+   "slot_known": 720,
+   "spot": "UNFIUSDT",
+   "synthetic": 2
+  },
+  "UNIUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 13105,
+   "real": 13092,
+   "slot_known": 13105,
+   "spot": "UNIUSDT",
+   "synthetic": 13
+  },
+  "VETUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18241,
+   "real": 18220,
+   "slot_known": 18241,
+   "spot": "VETUSDT",
+   "synthetic": 21
+  },
+  "WAVESUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 9505,
+   "real": 9488,
+   "slot_known": 9505,
+   "spot": "WAVESUSDT",
+   "synthetic": 17
+  },
+  "XLMUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18264,
+   "real": 18243,
+   "slot_known": 18264,
+   "spot": "XLMUSDT",
+   "synthetic": 21
+  },
+  "XMRUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 14617,
+   "real": 14596,
+   "slot_known": 14617,
+   "spot": "XMRUSDT",
+   "synthetic": 21
+  },
+  "XRPUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18985,
+   "real": 18964,
+   "slot_known": 18985,
+   "spot": "XRPUSDT",
+   "synthetic": 21
+  },
+  "XTZUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 18241,
+   "real": 18220,
+   "slot_known": 18241,
+   "spot": "XTZUSDT",
+   "synthetic": 21
+  },
+  "YFIIUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2880,
+   "real": 2873,
+   "slot_known": 2880,
+   "spot": "YFIIUSDT",
+   "synthetic": 7
+  },
+  "YFIUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 8712,
+   "real": 8695,
+   "slot_known": 8712,
+   "spot": "YFIUSDT",
+   "synthetic": 17
+  },
+  "ZECUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 16777,
+   "real": 16756,
+   "slot_known": 16777,
+   "spot": "ZECUSDT",
+   "synthetic": 21
+  },
+  "ZENUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2232,
+   "real": 2227,
+   "slot_known": 2232,
+   "spot": "ZENUSDT",
+   "synthetic": 5
+  },
+  "ZILUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 8041,
+   "real": 8026,
+   "slot_known": 8041,
+   "spot": "ZILUSDT",
+   "synthetic": 15
+  },
+  "ZRXUSDT": {
+   "guard_rejected": 0,
+   "inplay_hours": 2904,
+   "real": 2899,
+   "slot_known": 2904,
+   "spot": "ZRXUSDT",
+   "synthetic": 5
+  }
+ },
+ "real": 926690,
+ "reasons": [],
+ "slot_known": 927731,
+ "stop": false,
+ "synthetic": 1052
+}

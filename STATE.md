@@ -1,4 +1,4 @@
-# STATE (2026-11-28: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; generation 4's round 1 tested the premise of the less liquid coins and closed that front, k = 2 of 12; the desk study of other data found one admissible source, the spot market of the same coins, filed as KP-029 for the human's decision)
+# STATE (2026-11-28: THE SEARCH IS PARKED. Six counted trials in generations 0 to 2, none Tier 1; generations 3 and 4 closed without a counted trial; seventy-five ideas screened or scored, none passed; the less liquid coins and the spot-market data were each tested by a premise study and closed; the kernel is sealed and ready for a single idea the human brings)
 
 ## Where things stand
 
@@ -408,9 +408,22 @@ before any spot file existed here and made exact in the plan: the wide screen wi
 1.85, then both corners, then the control beaten by at least 0.5 before costs, every run with a truncation test
 passed. Data rules fixed before any spot file: no month after 2022-06 can be requested or read; an hour in which
 the spot exchange was down counts as zero volume (known), any other missing hour is unknown; a price guard of 50%
-for identity only. Cap 14 evaluations. PRE-REGISTERED (this commit) BEFORE the first spot file is downloaded.
-OUTCOME: pending. If no hypothesis passes, the spot front is closed and the search is parked; a pass goes to an
-independent auditor before it is put to the human as a proposal to admit the dataset.
+for identity only. Cap 14 evaluations. PRE-REGISTERED (commit 64ba281) BEFORE the first spot file was downloaded.
+OUTCOME (2026-11-28; generations/gen004/REPORT.md, round 2; LESSONS 69 to 73): NO HYPOTHESIS PASSED. 1,911 spot
+files of 114 pairs, 99.998% of in-play hours usable (30 outage hours in 14 blocks counted as zero volume; 11
+coin-hours rejected by the guard); three evaluations of the cap of 14, each with its truncation test passed;
+Sharpe before costs 0.193, -0.891 and 0.242 against the floor of 1.85, and each idea also failed G4's and G2's
+readings, next30 and the years item. No control and no corner was reached, nothing was amended after the first
+spot file, no audit is due. The coordinator recounted the verdict from studies/kp029/run_log.jsonl. BY THE RULE
+FIXED IN ADVANCE THE SPOT FRONT IS CLOSED AND THE DATASET IS NOT PROPOSED (KP-029 closed).
+GENERATION 4 IS CLOSED AND THE SEARCH IS PARKED (2026-11-28). Generation 4: 0 of 5 counted submissions, 12 of 60
+sandbox runs, three study evaluations outside the sandbox; two premises tested before any build, both closed.
+In all: seventy-five ideas screened or scored (ten in unit core, sixty-five in unit top30), six in counted
+trials, none Tier 1, none close on held-back data. The coordinator starts no further round. The kernel stays
+sealed and ready: a single idea the human brings is tested in one short run against the wide screen (playbook
+8b). Everything else (another horizon, paid data, a change of what the scorer credits, live trading) is his
+decision; none of it is recommended by the evidence so far, and none of his money belongs in any rule tested
+here. The kernel's full test suite is run at this close; its result is recorded here with the next commit.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
@@ -512,6 +525,9 @@ measurement in null worlds (KP-020).
    2026-11-28, "The human's decision on KP-029"). It is run as generation 4, round 2, outside the sandbox, on
    DEV only. It covers no build, no admission of the dataset, no kernel change and no counted trial; if
    nothing passes, the search is parked.
+   OUTCOME (2026-11-28): nothing passed (0 of 3; best 0.242 before costs against 1.85). The spot front is
+   closed, the dataset is not proposed, and THE SEARCH IS PARKED. What would reopen it is his: an idea of his
+   own (one short run against the same screen), or a change of what is searched or of what the scorer credits.
 15. THE DATA TERMS (for the human, before any step toward live trading). The archive the kernel's data come
    from has dataset terms dated 2026-08-26: non-commercial, share-alike; they permit "algorithmic historical
    backtesting for purely personal non-production research" and exclude "live proprietary trading execution"

@@ -948,3 +948,18 @@ rates, status.
   trial, any reading of a VAL row. If a hypothesis passes, the study is checked by an independent auditor
   before the coordinator brings the human the proposal to admit the dataset. If none passes, the spot front is
   closed and the search is parked, as he was told.
+
+## 2026-11-28 (coordinator) Outcome of KP-029's premise study: no hypothesis passed; the spot front is closed, the dataset is NOT proposed, the search is parked
+
+- The study (generation 4, round 2; pre-registered in commit 64ba281 before any spot file was downloaded): three
+  hypotheses on the spot market of the same coins, scored by the kernel's own interpreter and engine outside the
+  sandbox, on DEV only; 1,911 monthly spot files of 114 pairs, 99.998% of in-play hours usable.
+- The result, recounted by the coordinator from the study's run log: Sharpe before costs 0.193, -0.891 and 0.242
+  against the floor of 1.85; each also failed G4's and G2's readings, next30 and the years item. No control and
+  no corner was reached; 3 evaluations of the cap of 14; nothing void, nothing amended after the first spot file.
+- By the rule in KP-029: the spot front is CLOSED and the dataset is NOT proposed for admission. KP-029 is closed
+  with this entry. No audit is due (it was owed only for a pass). No kernel file changed at any point.
+- The search is PARKED, as the human was told when he chose the check: the coordinator starts no further round.
+  The kernel stays sealed; a single idea he brings is tested in one short run against the wide screen.
+- Still open for the human, unchanged: the rule set's confirmation, the kernel proposals KP-020 to KP-027 and the
+  older ones, the data terms before any step toward live trading, the forward recorder (STATE.md's list).
