@@ -1,4 +1,4 @@
-# STATE (2026-11-27: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; generation 4's round 1 tested the premise of the less liquid coins and closed that front, k = 2 of 12; a desk study of other data is under way)
+# STATE (2026-11-28: six counted trials in generations 0 to 2, none Tier 1; generation 3 closed without a counted trial after 40 screened ideas; generation 4's round 1 tested the premise of the less liquid coins and closed that front, k = 2 of 12; the desk study of other data found one admissible source, the spot market of the same coins, filed as KP-029 for the human's decision)
 
 ## Where things stand
 
@@ -383,6 +383,18 @@ of when each value was knowable and are not rewritten later (CONSTITUTION 3.2), 
 changes fast enough for G6 to credit. Documentation, file listings and papers only; no project file changes.
 Its outcome is either an OPEN proposal in KERNEL_PROPOSALS.md for the human (admitting a dataset is a re-key
 and his decision) or the record that nothing qualifies. Nothing is built and no round starts on its account.
+THE DESK STUDY'S RESULT (2026-11-28; notes/desk_study_other_data_2026-11-28.md; LESSONS 66 to 68; the analyst
+was stopped by the workers' weekly usage limit on 2026-11-27 and resumed the next morning). 53 candidate
+sources checked. ONE passes the admission rule and carries per-coin information that changes within days: the
+spot market of the same coins on the same exchange (hourly volume, trade count, taker-buy volume). The data
+everyone names fail on history or on rewriting (open interest and positioning ratios, order book depth,
+liquidations, options indices); vendors' free tiers are too short or need an account; page views and
+market-wide series are weak for the reasons in KP-029. No published evidence was found that any admissible
+source says which coins beat which over a week after costs, and the analyst puts the odds of a passing rule
+well under one in ten. FILED AS KP-029, OPEN: the coordinator recommends no build, and first a premise study
+on DEV only under a rule fixed in advance; whether that study is run is the human's decision (open decision
+14). Side findings: the archive's dataset terms (open decision 15) and a forward recorder that never ran (open
+decision 16). No project file other than the records changed; no round, no build, no counted trial.
 New for a researcher: tf_last and tf_mean (LANGUAGE.md section 6), the DEV readings the sandbox
 prints for a top30 program (RESEARCH_PLAYBOOK 4b), and a G6 threshold of 0.05 in unit core. The counted trial
 of generation 2 keeps the id of the KP-015 kernel; a program submitted under the new kernel is a new trial.
@@ -472,4 +484,19 @@ measurement in null worlds (KP-020).
    less liquid coins were tested by a premise test before any build, and that front is closed (k = 2 of 12;
    generation 4, round 1). A desk study of other data is under way; its outcome comes back here, as a proposal
    to admit a dataset (his decision) or as the record that nothing qualifies. Still open for him: (a), another
-   horizon, and (c).
+   horizon, and (c). The desk study is done (2026-11-28): see decision 14.
+14. KP-029, THE SPOT-MARKET DATA (put to the human on 2026-11-28). The one other source that could be admitted
+   is the spot market of the same coins; the odds that it yields a passing rule are low (the analyst: well
+   under one in ten), and it is as public as the data already used. Choices: (a) one last cheap check, a
+   premise study on DEV only under the rule written in KP-029 (a few hours of worker time, no kernel change);
+   the search is parked afterwards unless a hypothesis passes, and only a pass brings a proposal to build (the
+   coordinator's recommendation); (b) park the search now, with the kernel sealed and ready for any single
+   idea he brings; (c) stop. Nothing of this is covered by a delegation: it waits for his word.
+15. THE DATA TERMS (for the human, before any step toward live trading). The archive the kernel's data come
+   from has dataset terms dated 2026-08-26: non-commercial, share-alike; they permit "algorithmic historical
+   backtesting for purely personal non-production research" and exclude "live proprietary trading execution"
+   (KP-029, side finding 1; LESSONS 67). Research and the paper forward test are unaffected. How these terms
+   bear on live trading belongs with his decision on the venue and on going live.
+16. THE FORWARD RECORDER (KP-015, tools/record_metrics.py) IS NOT RUNNING and never ran. It would store open
+   interest and positioning ratios day by day for use in a forward period years from now; it needs a scheduled
+   task on his machine. Worth starting only if he means to keep the project alive that long.

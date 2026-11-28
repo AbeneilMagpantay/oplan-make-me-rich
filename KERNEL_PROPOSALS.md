@@ -857,3 +857,76 @@ rates, status.
   part (a build, audits and both calibrations again) and is his decision, as is any account or licence a source
   asks for. If none qualifies, that is recorded and the choices left are put to him again (STATE.md, open
   decision 13). The delegation covers the study, nothing after it.
+
+## 2026-11-28 (coordinator, from the desk study of other data) KP-029 The spot market of the same coins as a dataset: a premise study on DEV first (OPEN, the human's decision)
+
+- The desk study (notes/desk_study_other_data_2026-11-28.md; ordered under the delegation of 2026-11-27, done
+  by a fresh analyst on documentation, file listings and papers only): 53 candidate sources were checked
+  against CONSTITUTION 3.2. ONE passes all five tests and carries per-coin information that changes within
+  days: Binance SPOT klines, 1h, of the same coins (quote volume, number of trades, taker-buy volume of the
+  spot market; the kernel today sees the spot market only as a price, the index).
+- The admission evidence, as the analyst verified it on the archive's listings on 2026-11-27 and 2026-11-28:
+  (a) history: BTCUSDT from 2017-08, LINKUSDT 2019-01, DOGEUSDT 2019-07, SOLUSDT 2020-08 (its listing month);
+  all 152 perpetuals listed by 2022-06-30 have a spot USDT folder, delisted ones included; in a sample of 40
+  the spot pair began on or before the perpetual in 40, and 9 spot pairs ended before their perpetual. (b)
+  bar open time on the same exchange clock; microseconds from 2025-01-01. (c) the live REST endpoint serves
+  the same hours without a key. (d) free, under the archive's dataset terms (see below). (e) written once in a
+  backfill of 2021-06, one rewrite since (every 2022-03 file on 2022-09-02); checkable by the kernel's
+  stored-row comparison. About 0.3 to 0.5 GB for 150 symbols. Traps for an adapter: a spot pair can stop while
+  the perpetual trades (unknown, never zero volume); 1000-prefixed perpetuals map to the unprefixed spot pair;
+  one spot name appears to have been reused for another coin (its unbroken listing is verified, the reuse is
+  general knowledge), so a join needs a price-agreement guard.
+- What speaks against it. Spot data are as public as the perpetual data: this adds a second view of the same
+  trading, it does not close the information gap. No published evidence was found that spot against perpetual
+  volume or flow says which coins beat which over a week. The analyst's estimate: well under one chance in ten
+  that a rule built on it clears the bar on the held-back data. Of the 46 ideas put to the wide screen so far,
+  most of them weekly market-neutral books as these would be, none passed.
+- The coordinator's recommendation: NO build now. First a premise study on DEV only, with the tools as they
+  are, in the manner of the tier premise test:
+  - only spot files of months up to 2022-06, for the symbols that were ever in the unit during DEV, into a
+    study folder outside data/ and outside git; perpetual rows only through the kernel's own loaders with the
+    dev_end ceiling; no VAL row of any kind;
+  - the books scored by the kernel's own engine if it takes the study's weights read-only, else by an
+    evaluator that first reproduces the sandbox's DEV Sharpe of three registered weekly programs to within
+    0.10;
+  - at most six hypotheses, each with its sign, its features and its defaults written into a plan that is
+    committed and on the remote BEFORE the first spot file is opened; one default run each;
+  - the rule, fixed now: a hypothesis passes if it meets the wide screen of playbook 8b as far as that can be
+    computed outside the sandbox, with the floor before costs raised from 1.5 to 1.85, AND then holds at its
+    corners, AND beats its control (the same book with the perpetual's own volume or flow in place of the
+    spot input: the new data must add to what the kernel already has). If at least one hypothesis passes, the
+    coordinator brings the human the proposal to admit the dataset, with the numbers. If none passes, the spot
+    front is closed, the dataset is not proposed, and the search is parked.
+- What is the human's decision, and is not covered by any delegation so far: (1) whether the premise study is
+  run at all (a few hours of worker time; no kernel file changes; DEV is spent for these inputs once it is
+  run); (2) if a hypothesis passes, whether the dataset is admitted: a re-key of the semantic part, with a
+  build, audits and both calibrations (about 13 machine hours).
+- A ruling on the stop list (the analyst's question 4). The class "weekly market-neutral rank books on price,
+  volume or flow residuals" was closed on the perpetual's own fields. A quantity that sets the spot market
+  against the perpetual is a new input and may be registered in the premise study; its plan states the base
+  rate of the wide screen (0 of 46 passed).
+- Not proposed, with the reason (details in the note):
+  - Page views of encyclopedia articles: fast and per coin, but the traffic classes changed on 2020-04-29
+    inside DEV, the coin-to-article map is hand-made and open to hindsight, the evidence is weak and partly of
+    the opposite sign, and the operator asks automated clients for contact details. Nothing of the human's is
+    sent to any service without his word.
+  - Market-wide series (positioning reports for CME bitcoin futures, volatility and dollar indices): they
+    pass the admission tests, but a market-wide state can only take weeks out of a book that already earns,
+    and no such book exists.
+  - Trade-by-trade files: admissible, but 0.5 to 1 TB for 150 symbols, and what they add is a flow book of a
+    closed class.
+  - Open interest and positioning ratios (most coins from 2021-12; files rewritten again in 2026-11), order
+    book depth (from 2023), liquidations (2023 to 2024, one contract family), options indices (from 2021 or
+    2023), free tiers of on-chain and market-cap vendors (one to three years, or an account): they fail (a),
+    (c), (d) or (e).
+- Three side findings for the human:
+  1. The archive's dataset terms (version 1.0, dated 2026-08-26, older than the project; read again by the
+     coordinator): a non-commercial share-alike licence; permitted is "algorithmic historical backtesting for
+     purely personal non-production research"; excluded is "live proprietary trading execution". They cover
+     the kernel's present data too. Research and the paper forward test are the first kind of use. Whether and
+     how these terms bear on live trading is for the human to settle before any step toward it, together with
+     the venue; the project reports the clauses and interprets nothing.
+  2. The forward recorder of open interest (tools/record_metrics.py, KP-015) has never run: there is no
+     records/ folder. It needs a schedule on the human's machine to be of any use, and what it stores can
+     never enter DEV or VAL. Started only if the human wants the project kept alive for years.
+  3. From this network several other exchanges' data sites fail their certificate checks. Not worked around.

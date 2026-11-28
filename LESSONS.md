@@ -365,3 +365,26 @@ at G6 0.10 for core and 0.10 for top30) reproduces those rows exactly
     premise in twelve short runs. The count rule was written before the ideas were, and it did its work at the
     margin: k came out one short, and the record leaves no room to argue it up. The next30 reading charges the
     top30 cost rate, so it flatters the tier; a result that fails even so is the cheaper kind of no. PROCESS.
+
+## About other data (desk study of 2026-11-28; notes/desk_study_other_data_2026-11-28.md)
+
+66. Of 53 candidate sources of other data, checked on documentation and file listings against the admission
+    rule (CONSTITUTION 3.2), ONE passes all five tests and carries per-coin information that changes within
+    days: the spot market of the same coins on the same exchange (hourly volume, trade count, taker-buy volume;
+    from each coin's spot listing, delisted pairs kept, written once). The data everyone names fail on history
+    or on rewriting: open interest and positioning ratios (most coins from 2021-12, files rewritten again in
+    2026-11), order book depth (from 2023), liquidations (one contract family, 2023 to 2024), options indices
+    (from 2021 or 2023). Free tiers of on-chain and market-cap vendors give one to three years or need an
+    account; page views change definition inside DEV and need a hand-made map. Market-wide series are
+    admissible but can only take weeks out of a book that already earns. No published evidence was found that
+    any admissible source says which coins beat which over a week after costs. INSTRUMENT; a desk study, no
+    measurement (KP-029).
+67. The archive the kernel's data come from has dataset terms of its own, dated 2026-08-26 and so older than
+    the project, which had not read them: a non-commercial share-alike licence that permits "algorithmic
+    historical backtesting for purely personal non-production research" and excludes "live proprietary
+    trading execution". Research is use of the first kind; live trading is a question for the human with
+    these clauses in hand. Read a source's terms when it is admitted, not two re-keys later. PROCESS.
+68. Process: a tool built to run regularly does not run without a schedule and an owner. The forward recorder
+    of open interest was built and tested on 2026-11-19 and never started; nine days later a desk study found
+    the folder it writes to missing. When such a tool is built, either schedule it or write in STATE.md that
+    it is not running. PROCESS.

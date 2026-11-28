@@ -262,6 +262,12 @@ What changed in this playbook and why (coordinator, on the independent analyst's
 Propose them in `KERNEL_PROPOSALS.md` with the data-admission evidence (CONSTITUTION section 3.2).
 Never wire a source in yourself.
 
+The desk study of 2026-11-28 (`notes/desk_study_other_data_2026-11-28.md`, LESSONS 66 to 68) checked 53
+candidate sources against section 3.2. Read its table before proposing a source, and do not propose again
+one it rejected without a new fact (a longer history, a changed licence, an archive of vintages). The one
+source that passed, the spot market of the same coins, is filed as KP-029; nothing is built on it and no
+study of it is run before the human's decision. Read a source's terms of use when it is proposed.
+
 ## Never
 
 - Never edit the kernel or anything under `ledger/` or `data/`.
