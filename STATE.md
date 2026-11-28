@@ -492,6 +492,10 @@ measurement in null worlds (KP-020).
    the search is parked afterwards unless a hypothesis passes, and only a pass brings a proposal to build (the
    coordinator's recommendation); (b) park the search now, with the kernel sealed and ready for any single
    idea he brings; (c) stop. Nothing of this is covered by a delegation: it waits for his word.
+   ANSWERED on 2026-11-28: (a). He chose "Run the cheap check (Recommended)" (KERNEL_PROPOSALS.md, entry of
+   2026-11-28, "The human's decision on KP-029"). It is run as generation 4, round 2, outside the sandbox, on
+   DEV only. It covers no build, no admission of the dataset, no kernel change and no counted trial; if
+   nothing passes, the search is parked.
 15. THE DATA TERMS (for the human, before any step toward live trading). The archive the kernel's data come
    from has dataset terms dated 2026-08-26: non-commercial, share-alike; they permit "algorithmic historical
    backtesting for purely personal non-production research" and exclude "live proprietary trading execution"

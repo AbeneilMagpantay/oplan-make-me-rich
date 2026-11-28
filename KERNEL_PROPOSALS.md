@@ -930,3 +930,21 @@ rates, status.
      records/ folder. It needs a schedule on the human's machine to be of any use, and what it stores can
      never enter DEV or VAL. Started only if the human wants the project kept alive for years.
   3. From this network several other exchanges' data sites fail their certificate checks. Not worked around.
+
+## 2026-11-28 (coordinator) The human's decision on KP-029: the premise study is run
+
+- Put to the human on 2026-11-28 with the desk study's result, the low odds as the analyst states them, the
+  remark that the study draws on the workers' weekly usage allowance, and three choices: run the one cheap
+  check (the coordinator's recommendation), park the search now, or stop the project.
+- His answer: he chose "Run the cheap check (Recommended)", which was described to him as: test a handful of
+  spot-market ideas on pre-2022 data only, under a pass rule already written down; a few hours of worker
+  time; no change to the scorer; if nothing passes the search is parked; only a pass brings a proposal to
+  build.
+- What it covers: the premise study of KP-029 on DEV only, under the rule in that entry, which was committed
+  and on the remote (6a1e7ac) before his answer and before any spot data file was opened. It is run as
+  generation 4, round 2, outside the sandbox: PLAN version 2 and the study's scripts (studies/kp029/) are
+  committed and on the remote before the first spot file is downloaded.
+- What it does not cover: the admission of the dataset, any change of a kernel file, any build, any counted
+  trial, any reading of a VAL row. If a hypothesis passes, the study is checked by an independent auditor
+  before the coordinator brings the human the proposal to admit the dataset. If none passes, the spot front is
+  closed and the search is parked, as he was told.
